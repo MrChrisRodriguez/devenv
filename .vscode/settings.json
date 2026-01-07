@@ -1,0 +1,17 @@
+{
+	"yaml.schemas": {
+		"file:///workspace/.moon/cache/schemas/tasks.json": [
+			"file:///workspace/.moon/tasks/*.yml",
+			"file:///workspace/**/.moon.yml"
+		],
+		"file:///workspace/.moon/cache/schemas/toolchain.json": [
+			"file:///workspace/.moon/toolchain.yml"
+		],
+		"file:///workspace/.moon/cache/schemas/workspace.json": [
+			"file:///workspace/.moon/workspace.yml"
+		]
+	},
+	// use the project's TS version rather than the VSCode's built-in one
+	"typescript.tsdk": "./node_modules/typescript/lib",
+	"typescript.enablePromptUseWorkspaceTsdk": true
+}

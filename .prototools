@@ -1,0 +1,21 @@
+bun = "1.3.4"
+moon = "1.41.7"
+direnv = "2.37.1"
+fly = "0.3.231"
+infisical = "0.41.90"
+jq = "1.8.1"
+yq = "4.49.2"
+python = "3.14.2"
+dagger = "0.19.8"
+
+[settings]
+pin-latest = "local"
+
+[plugins]
+biome = "https://raw.githubusercontent.com/Phault/proto-toml-plugins/main/biome/plugin.toml"
+direnv = "https://raw.githubusercontent.com/appthrust/proto-toml-plugins/main/direnv/plugin.toml"
+fly = "https://raw.githubusercontent.com/Phault/proto-toml-plugins/main/flyctl/plugin.toml"
+infisical = "https://raw.githubusercontent.com/Phault/proto-toml-plugins/main/infisical/plugin.toml"
+jq = "https://raw.githubusercontent.com/appthrust/proto-toml-plugins/main/jq/plugin.toml"
+yq = "https://raw.githubusercontent.com/appthrust/proto-toml-plugins/main/yq/plugin.toml"
+dagger = "https://raw.githubusercontent.com/Phault/proto-toml-plugins/main/dagger/plugin.toml"

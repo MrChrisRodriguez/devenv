@@ -1,0 +1,76 @@
+# Logs
+**/*.log
+**/logs/
+
+# Environment files
+**/.env*
+!**/.env.example
+**/.dev.vars
+
+# Cache directories
+**/.cache/
+**/.eslintcache
+**/.moon/cache/
+**/.moon/docker/
+**/.nx/cache/
+**/.nx/installation/
+**/.nx/workspace-data/
+**/.pnp*
+**/.yarn/
+
+# Build outputs
+**/dist/
+**/out/
+**/.output/
+**/build/
+**/coverage/
+**/tmp/
+**/.temp/
+**/.nitro/
+
+# Convex
+**/convex/.cache
+**/convex/_generated
+
+# IDE files
+**/.DS_Store
+**/.idea/
+
+# Package managers
+**/node_modules/
+**/.pnp*
+
+# Cloudflare
+**/.wrangler/
+
+# Next.js
+**/.next/
+
+# Credentials
+.coda-credentials.json
+
+# DMNO files
+**/.dmno/.env.local
+**/.dmno/.icon-cache
+**/.dmno/.typegen/
+**/.dmno/cache-key.json
+**/.dmno/cache.json
+**/.dmno/certs/
+
+# Project-specific
+**/hasura/config.yaml
+**/production-export-*
+**/experiments/agent/.output/
+
+# Test coverage
+**/*.lcov
+**/report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Archives
+**/*.tgz
+
+# TypeScript
+**/*.tsbuildinfo
+
+# /apps/afiliar-portal
+/apps/afiliar-portal-working

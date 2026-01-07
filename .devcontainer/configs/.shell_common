@@ -1,0 +1,66 @@
+# Shared shell configuration for both bash and zsh
+# This file contains common aliases and configurations
+
+# Navigation aliases
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+alias ..='cd ..'
+alias ...='cd ../..'
+
+# Color grep aliases
+alias grep='grep --color=auto'
+alias fgrep='fgrep --color=auto'
+alias egrep='egrep --color=auto'
+
+# Git aliases
+alias gs='git status'
+alias ga='git add'
+alias gc='git commit'
+alias gp='git push'
+alias gl='git pull'
+alias gd='git diff'
+alias gb='git branch'
+alias gco='git checkout'
+
+# Bun aliases
+alias bi='bun install'
+alias ba='bun add'
+alias br='bun remove'
+alias bd='bun add -d'
+alias bs='bun start'
+alias bt='bun test'
+
+# Proto aliases
+alias protolist='proto list'
+alias protoinstall='proto install'
+alias protoupdate='proto outdated'
+
+# Claude Code and development productivity aliases
+alias rg='rg --color=always'
+alias bcat='batcat --paging=never'
+alias bless='batcat --paging=always'
+alias find='fd'
+alias tree='tree -I node_modules'
+alias search='fzf --preview "batcat --color=always {}"'
+alias claude-config='code ~/.clauderc'
+alias claude-docs='code /workspace/CLAUDE.md'
+alias claude-auto='claude --dangerously-skip-permissions'
+
+# Other aliases
+alias biome='bunx biome'
+
+# Proto configuration
+export PROTO_HOME="$HOME/.proto"
+export PATH="$HOME/.proto/shims:$HOME/.proto/bin:/home/vscode/.bun/bin:/home/vscode/.bun/install/global/node_modules/.bin:$PATH"
+
+# Common function to load tool completions
+load_completions() {
+    local shell_type="$1"
+    [[ -f ~/.config/moon/completions.${shell_type} ]] && source ~/.config/moon/completions.${shell_type}
+    [[ -f ~/.config/proto/completions.${shell_type} ]] && source ~/.config/proto/completions.${shell_type}
+    [ -f ~/.fzf.${shell_type} ] && source ~/.fzf.${shell_type}
+}
+
+# Load Claude Code configuration
+[[ -f ~/.clauderc ]] && source ~/.clauderc

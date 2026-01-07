@@ -1,0 +1,114 @@
+{
+	"name": "Confiador Development",
+	"image": "mcr.microsoft.com/vscode/devcontainers/base:bookworm",
+	"features": {
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
+		"ghcr.io/devcontainers/features/git:1": {},
+		"ghcr.io/devcontainers/features/github-cli:1": {},
+		"ghcr.io/devcontainers/features/common-utils:2": {
+			"installZsh": true,
+			"configureZshAsDefaultShell": false,
+			"installOhMyZsh": false,
+			"username": "vscode",
+			"userUid": "automatic",
+			"userGid": "automatic"
+		}
+	},
+	"onCreateCommand": ["bash", "/workspace/.devcontainer/on-create.sh"],
+	"postCreateCommand": ["bash", "-c", "export PATH=\"$HOME/.proto/bin:$PATH\""],
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"anthropic.claude-code",
+				"biomejs.biome",
+				"bradlc.vscode-tailwindcss",
+				"cloudflare.vscode-cloudflare-workers",
+				"foam.foam-vscode",
+				"infisical.infisical-vscode",
+				"karunamurti.tera",
+				"ms-vscode.vscode-docker",
+				"ms-vscode.vscode-json",
+				"ms-vscode.vscode-typescript-next",
+				"redhat.vscode-yaml",
+				"shd101wyy.markdown-preview-enhanced"
+			],
+			"settings": {
+				"terminal.integrated.defaultProfile.linux": "zsh",
+				"terminal.integrated.profiles.linux": {
+					"zsh": {
+						"path": "/usr/bin/zsh",
+						"args": ["-l"]
+					},
+					"bash": {
+						"path": "/usr/bin/bash",
+						"args": ["-l"]
+					}
+				},
+				"typescript.preferences.preferTypeOnlyAutoImports": true,
+				"editor.formatOnSave": true,
+				"editor.defaultFormatter": "biomejs.biome",
+				"editor.codeActionsOnSave": {
+					"source.fixAll": "explicit"
+				},
+				"foam.files.newNotePath": "root",
+				"foam.files.notesExtensions": "mdc",
+				"[typescript]": {
+					"editor.defaultFormatter": "biomejs.biome"
+				},
+				"[yaml]": {
+					"editor.defaultFormatter": "redhat.vscode-yaml"
+				},
+				"[yml]": {
+					"editor.defaultFormatter": "redhat.vscode-yaml"
+				}
+			}
+		}
+	},
+	"postStartCommand": [
+		"bash",
+		"-c",
+		"export PATH=\"$HOME/.proto/bin:$PATH\" && bun install"
+	],
+	"forwardPorts": [
+		3000, 4000, 5000, 8080, 8081, 8082, 8083, 8084, 8085, 8787, 8788, 8789,
+		8790, 8791, 8792
+	],
+	"portsAttributes": {
+		"3000": {
+			"label": "Next.js Dev Server",
+			"onAutoForward": "notify"
+		},
+		"4000": {
+			"label": "NestJS/ElysiaJS Server",
+			"onAutoForward": "notify"
+		},
+		"5000": {
+			"label": "Additional Service",
+			"onAutoForward": "silent"
+		},
+		"8080-8085": {
+			"label": "Development Server",
+			"onAutoForward": "silent"
+		},
+		"8787-8792": {
+			"label": "Cloudflare Workers Dev",
+			"onAutoForward": "notify"
+		}
+	},
+	"remoteUser": "vscode",
+	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+	"workspaceFolder": "/workspace",
+	"mounts": [
+		"source=claude-code-shellhistory,target=/commandhistory,type=volume",
+		"source=claude-code-config,target=/home/vscode/.claude,type=volume"
+	],
+	"containerEnv": {
+		"SHELL": "/usr/bin/zsh",
+		"TERM": "xterm-256color",
+		"COLORTERM": "truecolor"
+	},
+	"remoteEnv": {
+		"NODE_OPTIONS": "--max-old-space-size=4096",
+		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+	}
+}
