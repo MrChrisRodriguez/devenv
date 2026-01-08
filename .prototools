@@ -12,7 +12,6 @@ dagger = "0.19.8"
 pin-latest = "local"
 
 [plugins]
-biome = "https://raw.githubusercontent.com/Phault/proto-toml-plugins/main/biome/plugin.toml"
 direnv = "https://raw.githubusercontent.com/appthrust/proto-toml-plugins/main/direnv/plugin.toml"
 fly = "https://raw.githubusercontent.com/Phault/proto-toml-plugins/main/flyctl/plugin.toml"
 infisical = "https://raw.githubusercontent.com/Phault/proto-toml-plugins/main/infisical/plugin.toml"

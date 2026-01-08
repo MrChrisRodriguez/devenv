@@ -1,0 +1,28 @@
+{
+	"name": "template-devenv",
+	"workspaces": {
+		"packages": [
+			"apps/*",
+			"libs/*",
+			"scripts/*"
+		],
+		"catalog": {
+			"@biomejs/biome": "^2",
+			"@types/bun": "latest",
+			"@types/node": "latest",
+			"dotenv": "latest",
+			"tsx": "latest",
+			"typescript": "latest"
+		}
+	},
+	"engines": {
+		"node": "~22"
+	},
+	"devDependencies": {
+		"@types/bun": "latest",
+		"@biomejs/biome": "catalog:"
+	},
+	"peerDependencies": {
+		"typescript": "^5"
+	}
+}
