@@ -48,6 +48,7 @@
 
 # Credentials
 .coda-credentials.json
+**/opencode/auth.json
 
 # DMNO files
 **/.dmno/.env.local

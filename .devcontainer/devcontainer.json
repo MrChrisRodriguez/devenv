@@ -100,7 +100,8 @@
 	"workspaceFolder": "/workspace",
 	"mounts": [
 		"source=claude-code-shellhistory,target=/commandhistory,type=volume",
-		"source=claude-code-config,target=/home/vscode/.claude,type=volume"
+		"source=claude-code-config,target=/home/vscode/.claude,type=volume",
+		"source=${localEnv:HOME}/.local/share/opencode/auth.json,target=/tmp/opencode-auth.json,type=bind,consistency=cached"
 	],
 	"containerEnv": {
 		"SHELL": "/usr/bin/zsh",

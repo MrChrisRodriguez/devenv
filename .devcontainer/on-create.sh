@@ -40,6 +40,12 @@ source /workspace/.devcontainer/on-create/setup-shell.sh
 # Install Claude Code
 source /workspace/.devcontainer/on-create/setup-claude.sh
 
+# Install Opencode
+source /workspace/.devcontainer/on-create/setup-opencode.sh
+
+# Install Oh-My-Opencode
+source /workspace/.devcontainer/on-create/setup-oh-my-opencode.sh
+
 echo "✨ Development environment setup complete!"
 echo "💡 Tips:"
 echo "  - Use 'proto list' to see installed tools"
