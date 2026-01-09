@@ -41,7 +41,16 @@ This is a **template repository** designed to be the starting point for new proj
    
    **Don't forget to update `package.json`** with your project's name after initialization!
 
-4. **Authenticate Opencode**
+4. **Build a new DevPod project**
+   
+   After initializing your project, create a new DevPod workspace for your codebase using Docker:
+   ```bash
+   devpod up --provider docker
+   ```
+   
+   This will create a new DevPod workspace based on your project's configuration using Docker as the provider.
+
+5. **Authenticate Opencode**
    ```bash
    opencode auth
    ```
