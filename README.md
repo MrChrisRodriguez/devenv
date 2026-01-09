@@ -1,23 +1,43 @@
-Todo:
-- figure out how to authenticate Opencode
+# Project Template
 
-tl;dr:
-1. Reset git history
-2. Authenticate Opencode
+This is a **template repository** designed to be the starting point for new projects. When you clone this repository and build the devcontainer, it becomes your own completely new project.
 
-# 1. Reset git history
+## Getting Started
 
-This is a template; you don't want to build on the existing git history. When you clone this be sure to wipe and reset git so you start fresh. You can do that by cloning the repository and then running the following commands:
-```bash
-git reset --hard HEAD
-git clean -fdx
-git push -f
-```
+1. **Clone this repository**
+   ```bash
+   git clone <repository-url>
+   cd <project-directory>
+   ```
 
-# 2. Authenticate Opencode
-```bash
-opencode auth
-```
+2. **Build and open the devcontainer**
+   - Open the project in VS Code (or your preferred editor with devcontainer support)
+   - The devcontainer will automatically build and configure the development environment
+
+3. **Initialize your new project** (Important!)
+   
+   This is a template; you don't want to build on the existing git history. Run the initialization script to reset git and set up your new repository:
+   ```bash
+   ./init-new-project.sh [repository-name-or-url]
+   ```
+   
+   The script accepts:
+   - A repository name (e.g., `my-new-project`) - will assume GitHub and use your git config username
+   - A full repository name (e.g., `username/my-new-project`) - will create GitHub URL
+   - A full repository URL (e.g., `https://github.com/username/my-new-project.git`)
+   - No argument - will reset git but not set up a remote (you can add it manually later)
+   
+   After running the script, if you provided a repository, push your code:
+   ```bash
+   git push -u origin main
+   ```
+
+4. **Authenticate Opencode**
+   ```bash
+   opencode auth
+   ```
+
+You're now ready to start building your new project!
 
 
 --------------------------------
@@ -25,6 +45,7 @@ opencode auth
 AI Tools:
 - Openspec (https://github.com/fission-ai/openspec)
 - Opencode (https://opencode.ai/)
+- oh-my-opencode (https://github.com/danzilberdan/oh-my-opencode)
 - Claude Code
 - Biome
 
