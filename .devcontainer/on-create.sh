@@ -5,6 +5,7 @@ echo "🚀 Setting up Confiador development environment with Proto..."
 
 # Install required system packages
 echo "📦 Installing system dependencies..."
+export DEBIAN_FRONTEND=noninteractive
 sudo apt-get update
 sudo apt-get install -y \
 bat \
@@ -27,7 +28,7 @@ sudo apt-get clean && sudo rm -rf /var/lib/apt/lists/*
 # Install git-delta
 echo "📦 Installing git-delta..."
 ARCH=$(dpkg --print-architecture) && \
-  wget "https://github.com/dandavison/delta/releases/download/0.18.2/git-delta_0.18.2_${ARCH}.deb" && \
+  wget -q --show-progress "https://github.com/dandavison/delta/releases/download/0.18.2/git-delta_0.18.2_${ARCH}.deb" && \
   sudo dpkg -i "git-delta_0.18.2_${ARCH}.deb" && \
   rm "git-delta_0.18.2_${ARCH}.deb"
 
