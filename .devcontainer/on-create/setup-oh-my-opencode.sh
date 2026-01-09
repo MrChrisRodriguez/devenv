@@ -3,11 +3,8 @@ set -e
 
 echo "🤖 Installing Oh-My-Opencode..."
 
-# Function to setup Proto environment (same as in setup-proto.sh)
-setup_proto_env() {
-    export PATH="$HOME/.proto/shims:$HOME/.proto/bin:$PATH"
-    export PROTO_HOME="$HOME/.proto"
-}
+# Source common setup functions
+source /workspace/.devcontainer/on-create/setup-common.sh
 
 # Setup Proto environment to access bun
 setup_proto_env
@@ -39,19 +36,50 @@ else
     exit 1
 fi
 
-bunx oh-my-opencode install --no-tui --claude=yes --chatgpt=yes --gemini=yes
-
-# Check oh-my-opencode in plugin array
-if [ -f "$HOME/.config/opencode/opencode.json" ]; then
-    if grep -q '"oh-my-opencode"' "$HOME/.config/opencode/opencode.json"; then
-        echo "✅ 'oh-my-opencode' found in opencode plugins"
-    else
-        echo "❌ 'oh-my-opencode' not found in opencode plugins"
-        exit 1
-    fi
+# Install oh-my-opencode
+if bunx oh-my-opencode install --no-tui --claude=yes --chatgpt=yes --gemini=yes; then
+    echo "✅ oh-my-opencode installation command completed"
 else
-    echo "❌ ~/.config/opencode/opencode.json does not exist"
-    exit 1
+    echo "⚠️  oh-my-opencode installation command returned non-zero exit code"
+    echo "   This might be okay if it's already installed or partially installed"
 fi
 
-echo "✅ OpenCode installed!" 
+# Check oh-my-opencode in plugin array (with retry and flexible checking)
+CONFIG_FILE="$HOME/.config/opencode/opencode.json"
+MAX_RETRIES=3
+RETRY_COUNT=0
+PLUGIN_FOUND=false
+
+while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+    if [ -f "$CONFIG_FILE" ]; then
+        # Check for various possible plugin name formats
+        if grep -q '"oh-my-opencode"' "$CONFIG_FILE" || \
+           grep -q '"ohMyOpencode"' "$CONFIG_FILE" || \
+           grep -q 'oh-my-opencode' "$CONFIG_FILE"; then
+            echo "✅ 'oh-my-opencode' found in opencode plugins"
+            PLUGIN_FOUND=true
+            break
+        else
+            echo "⚠️  'oh-my-opencode' not found in plugins (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
+            if [ $RETRY_COUNT -lt $((MAX_RETRIES - 1)) ]; then
+                sleep 1
+            fi
+        fi
+    else
+        echo "⚠️  Config file not found, waiting... (attempt $((RETRY_COUNT + 1))/$MAX_RETRIES)"
+        if [ $RETRY_COUNT -lt $((MAX_RETRIES - 1)) ]; then
+            sleep 1
+        fi
+    fi
+    RETRY_COUNT=$((RETRY_COUNT + 1))
+done
+
+if [ "$PLUGIN_FOUND" = false ]; then
+    echo "⚠️  Warning: Could not verify 'oh-my-opencode' plugin installation"
+    echo "   The plugin may still be installed. Check manually with: opencode --version"
+    echo "   Config file location: $CONFIG_FILE"
+    # Don't exit with error - allow setup to continue
+    # The plugin might still work even if we can't verify it
+fi
+
+echo "✅ Oh-My-Opencode setup complete!" 

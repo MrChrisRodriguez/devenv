@@ -3,11 +3,8 @@ set -e
 # Install Proto and Proto-managed apps
 # https://moonrepo.dev/proto
 
-# Function to setup Proto environment
-setup_proto_env() {
-    export PATH="$HOME/.proto/shims:$HOME/.proto/bin:$PATH"
-    export PROTO_HOME="$HOME/.proto"
-}
+# Source common setup functions
+source /workspace/.devcontainer/on-create/setup-common.sh
 
 if ! command -v proto &> /dev/null; then
     echo "🛠️ Installing Proto..."

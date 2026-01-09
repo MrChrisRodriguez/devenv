@@ -3,11 +3,8 @@ set -e
 
 echo "🤖 Setting up Claude Code environment..."
 
-# Function to setup Proto environment (same as in setup-proto.sh)
-setup_proto_env() {
-    export PATH="$HOME/.proto/shims:$HOME/.proto/bin:$PATH"
-    export PROTO_HOME="$HOME/.proto"
-}
+# Source common setup functions
+source /workspace/.devcontainer/on-create/setup-common.sh
 
 # Setup Proto environment to access bun
 setup_proto_env
