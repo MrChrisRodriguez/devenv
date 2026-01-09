@@ -4,10 +4,10 @@ This is a **template repository** designed to be the starting point for new proj
 
 ## Getting Started
 
-1. **Clone this repository**
+1. **Clone this template repository**
    ```bash
-   git clone <repository-url>
-   cd <project-directory>
+   git clone https://github.com/MrChrisRodriguez/devenv.git <your-project-name>
+   cd <your-project-name>
    ```
 
 2. **Build and open the devcontainer**
@@ -16,9 +16,14 @@ This is a **template repository** designed to be the starting point for new proj
 
 3. **Initialize your new project** (Important!)
    
-   This is a template; you don't want to build on the existing git history. Run the initialization script to reset git and set up your new repository:
+   This is a template; you don't want to build on the existing git history. Run the initialization script to reset git and set up your new repository. **Give your project a name** when running the script:
    ```bash
-   ./init-new-project.sh [repository-name-or-url]
+   ./init-new-project.sh <your-project-name>
+   ```
+   
+   Or if you want to create it in an organization:
+   ```bash
+   ./init-new-project.sh <org-name>/<your-project-name>
    ```
    
    The script accepts:
@@ -33,6 +38,8 @@ This is a **template repository** designed to be the starting point for new proj
    ```bash
    git push -u origin main
    ```
+   
+   **Don't forget to update `package.json`** with your project's name after initialization!
 
 4. **Authenticate Opencode**
    ```bash

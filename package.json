@@ -1,5 +1,5 @@
 {
-	"name": "template-devenv",
+	"name": "devenv-template",
 	"workspaces": {
 		"packages": [
 			"apps/*",
