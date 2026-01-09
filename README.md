@@ -22,10 +22,12 @@ This is a **template repository** designed to be the starting point for new proj
    ```
    
    The script accepts:
-   - A repository name (e.g., `my-new-project`) - will assume GitHub and use your git config username
-   - A full repository name (e.g., `username/my-new-project`) - will create GitHub URL
+   - A repository name (e.g., `my-new-project`) - will assume GitHub and use your GitHub username
+   - A full repository name (e.g., `username/my-new-project` or `orgname/my-new-project`) - will create GitHub URL
    - A full repository URL (e.g., `https://github.com/username/my-new-project.git`)
    - No argument - will reset git but not set up a remote (you can add it manually later)
+   
+   **Automatic repository creation**: If you have GitHub CLI (`gh`) installed and authenticated, the script will automatically create the repository on GitHub if it doesn't exist. This works for both personal accounts and organizations (e.g., `myorg/myproject`). Make sure your GitHub CLI is authenticated with an account that has permission to create repositories in the target organization. Otherwise, you'll need to create it manually first.
    
    After running the script, if you provided a repository, push your code:
    ```bash
