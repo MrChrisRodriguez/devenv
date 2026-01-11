@@ -10,8 +10,8 @@ source /workspace/.devcontainer/on-create/setup-common.sh
 setup_proto_env
 
 # Copy mounted auth file to the correct location during installation
-# The auth file is mounted from the host at /tmp/opencode-auth.json
-MOUNTED_FILE="/tmp/opencode-auth.json"
+# The auth file is mounted from the host directory at /mnt/opencode-mount/auth.json
+MOUNTED_FILE="/mnt/opencode-mount/auth.json"
 TARGET_DIR="${HOME}/.local/share/opencode"
 TARGET_FILE="${TARGET_DIR}/auth.json"
 
