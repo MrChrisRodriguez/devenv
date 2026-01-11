@@ -31,6 +31,6 @@ else
 fi
 
 # Install Opencode
-bun install -g opencode-ai@latest
+bun install -g opencode-ai
 
 echo "✅ Opencode installed!" 
