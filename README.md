@@ -10,11 +10,7 @@ This is a **template repository** designed to be the starting point for new proj
    cd <your-project-name>
    ```
 
-2. **Build and open the devcontainer**
-   - Open the project in VS Code (or your preferred editor with devcontainer support)
-   - The devcontainer will automatically build and configure the development environment
-
-3. **Initialize your new project** (Important!)
+2. **Initialize your new project** (Important!)
    
    This is a template; you don't want to build on the existing git history. Run the initialization script to reset git and set up your new repository. **Give your project a name** when running the script:
    ```bash
@@ -41,14 +37,14 @@ This is a **template repository** designed to be the starting point for new proj
    
    **Don't forget to update `package.json`** with your project's name after initialization!
 
-4. **Create a new DevPod workspace**
+3. **Create a new DevPod workspace**
    
    After initializing your project, create a new DevPod workspace for your codebase using your default provider:
    ```bash
    devpod up .
    ```
 
-5. **Authenticate Opencode**
+4. **Authenticate Opencode**
    ```bash
    opencode auth
    ```
