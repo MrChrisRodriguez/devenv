@@ -49,7 +49,6 @@ alias claude-auto='claude --dangerously-skip-permissions'
 
 # Other aliases
 alias biome='bunx biome'
-alias openspec='bunx @fission-ai/openspec'
 
 # Proto configuration
 export PROTO_HOME="$HOME/.proto"

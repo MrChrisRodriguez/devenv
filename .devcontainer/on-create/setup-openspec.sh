@@ -10,7 +10,7 @@ source /workspace/.devcontainer/on-create/setup-common.sh
 setup_proto_env
 
 # Install Openspec
-bun add -D @fission-ai/openspec
-bunx openspec init --tools cursor,opencode
+bun install -g @fission-ai/openspec
+openspec init --tools cursor,opencode
 
 echo "✅ Openspec installed!" 
