@@ -35,8 +35,9 @@ source /workspace/.devcontainer/configs/.shell_common
 # Shell-specific proto activation
 eval "$(proto activate bash)"
 
-source /usr/share/doc/fzf/examples/key-bindings.bash
-source /usr/share/doc/fzf/examples/completion.bash
+# Load fzf key bindings and completions if available
+[ -f /usr/share/doc/fzf/examples/key-bindings.bash ] && source /usr/share/doc/fzf/examples/key-bindings.bash
+[ -f /usr/share/doc/fzf/examples/completion.bash ] && source /usr/share/doc/fzf/examples/completion.bash
 
 # Load tool completions
 load_completions "bash"
