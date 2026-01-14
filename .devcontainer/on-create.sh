@@ -38,6 +38,9 @@ source /workspace/.devcontainer/on-create/setup-proto.sh
 # Install and configure bash and zsh and completions
 source /workspace/.devcontainer/on-create/setup-shell.sh
 
+# Install Biome
+source /workspace/.devcontainer/on-create/setup-biome.sh
+
 # Install Claude Code
 source /workspace/.devcontainer/on-create/setup-claude.sh
 
