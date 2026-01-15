@@ -1,0 +1,19 @@
+{
+	// NOTE: This file is auto-generated from .devcontainer/devcontainer.json
+	// Source of truth: devcontainer.json -> customizations.vscode.extensions
+	// Run .devcontainer/scripts/sync-extensions-json.sh to regenerate
+	"recommendations": [
+		"anthropic.claude-code",
+		"biomejs.biome",
+		"bradlc.vscode-tailwindcss",
+		"cloudflare.vscode-cloudflare-workers",
+		"foam.foam-vscode",
+		"infisical.infisical-vscode",
+		"karunamurti.tera",
+		"ms-vscode.vscode-docker",
+		"ms-vscode.vscode-json",
+		"ms-vscode.vscode-typescript-next",
+		"redhat.vscode-yaml",
+		"shd101wyy.markdown-preview-enhanced"
+	]
+}
