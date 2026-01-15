@@ -53,6 +53,15 @@ source /workspace/.devcontainer/on-create/setup-oh-my-opencode.sh
 # Install Openspec
 source /workspace/.devcontainer/on-create/setup-openspec.sh
 
+# Sync extensions.json from devcontainer.json (ensures it's always in sync)
+if [ -f "/workspace/.devcontainer/scripts/sync-extensions-json.sh" ]; then
+	echo "🔄 Syncing .vscode/extensions.json from devcontainer.json..."
+	bash /workspace/.devcontainer/scripts/sync-extensions-json.sh || echo "⚠️  Could not sync extensions.json (this is okay)"
+fi
+
+# Install VS Code extensions (for DevPod compatibility)
+source /workspace/.devcontainer/on-create/setup-vscode-extensions.sh
+
 echo "✨ Development environment setup complete!"
 echo "💡 Tips:"
 echo "  - Use 'proto list' to see installed tools"
