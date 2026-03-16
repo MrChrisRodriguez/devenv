@@ -5,5 +5,11 @@
 		"opencode-openai-codex-auth"
 	],
 	"provider": {},
+	"mcp": {
+		"context7": {
+			"command": "bunx",
+			"args": ["@upstash/context7-mcp"]
+		}
+	},
 	"$schema": "https://opencode.ai/config.json"
 }
