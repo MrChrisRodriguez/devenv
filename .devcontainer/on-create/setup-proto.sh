@@ -6,15 +6,7 @@ set -e
 # Source common setup functions
 source /workspace/.devcontainer/on-create/setup-common.sh
 
-if ! command -v proto &> /dev/null; then
-    echo "🛠️ Installing Proto..."
-    bash <(curl -fsSL https://moonrepo.dev/install/proto.sh) --yes
-    setup_proto_env
-else
-    echo "✅ Proto already installed"
-fi
-
-# Ensure Proto is available in the current session
+# Proto is pre-installed in the Docker image — ensure it's available in the current session
 setup_proto_env
 
 # Install tools and plugins via Proto from .prototools

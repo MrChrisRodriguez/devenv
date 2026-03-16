@@ -27,16 +27,8 @@ fi
 echo "📝 Installing our .bashrc template..."
 cp "/workspace/.devcontainer/configs/.bashrc" "$HOME/.bashrc"
 
-# Setup Zsh and Zinit
+# Setup Zsh (Zinit is pre-installed in the Docker image)
 echo "🔧 Setting up Zsh configuration..."
-
-# Install Zinit if not present
-if [ ! -d "$HOME/.local/share/zinit" ]; then
-    echo "📦 Installing Zinit..."
-    bash -c "$(curl --fail --show-error --silent --location https://raw.githubusercontent.com/zdharma-continuum/zinit/HEAD/scripts/install.sh)"
-else
-    echo "✅ Zinit already installed"
-fi
 
 # Configure zsh
 echo "🔧 Configuring zsh..."

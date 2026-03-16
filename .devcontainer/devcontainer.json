@@ -1,6 +1,8 @@
 {
 	"name": "Confiador Development",
-	"image": "mcr.microsoft.com/vscode/devcontainers/base:bookworm",
+	"build": {
+		"dockerfile": "Dockerfile"
+	},
 	"features": {
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
 		"ghcr.io/devcontainers/features/git:1": {},
