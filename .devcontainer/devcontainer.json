@@ -69,10 +69,7 @@
 	},
 	"postStartCommand": "sudo /usr/local/bin/init-firewall.sh && export PATH=\"$HOME/.proto/bin:$PATH\" && bun install",
 	"waitFor": "postStartCommand",
-	"forwardPorts": [
-		3000, 4000, 5000, 8080, 8081, 8082, 8083, 8084, 8085, 8787, 8788, 8789,
-		8790, 8791, 8792
-	],
+	"forwardPorts": [3000, 4000, 8080, 8787],
 	"portsAttributes": {
 		"3000": {
 			"label": "Next.js Dev Server",
@@ -82,15 +79,11 @@
 			"label": "NestJS/ElysiaJS Server",
 			"onAutoForward": "notify"
 		},
-		"5000": {
-			"label": "Additional Service",
-			"onAutoForward": "silent"
-		},
-		"8080-8085": {
+		"8080": {
 			"label": "Development Server",
 			"onAutoForward": "silent"
 		},
-		"8787-8792": {
+		"8787": {
 			"label": "Cloudflare Workers Dev",
 			"onAutoForward": "notify"
 		}
