@@ -95,7 +95,8 @@
 		"source=claude-code-shellhistory-${devcontainerId},target=/commandhistory,type=volume",
 		"source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
 		"source=${localEnv:HOME}/.local/share/opencode,target=/mnt/opencode-mount,type=bind,consistency=cached",
-		"source=${localEnv:HOME}/.ssh,target=/mnt/host-ssh,type=bind,readonly,consistency=cached"
+		"source=${localEnv:HOME}/.ssh,target=/mnt/host-ssh,type=bind,readonly,consistency=cached",
+		"source=${localEnv:HOME}/.config/devcontainer,target=/run/devcontainer-config,type=bind,readonly,consistency=cached"
 	],
 	"containerEnv": {
 		"DEVCONTAINER": "true",
@@ -106,7 +107,7 @@
 	},
 	"remoteEnv": {
 		"NODE_OPTIONS": "--max-old-space-size=4096",
-		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
-		"CONTEXT7_API_KEY": "${localEnv:CONTEXT7_API_KEY}"
-	}
+		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+	},
+	"_comment_secrets": "Add API keys to ~/.config/devcontainer/secrets on your host (format: KEY=value, one per line). That directory is bind-mounted read-only to /run/devcontainer-config and injected into /etc/environment during onCreateCommand, so all container processes — including VS Code/Cursor extension hosts and MCP server subprocesses — inherit the values regardless of how the IDE was launched."
 }

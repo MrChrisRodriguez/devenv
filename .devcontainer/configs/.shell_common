@@ -64,3 +64,7 @@ load_completions() {
 
 # Load Claude Code configuration
 [[ -f ~/.clauderc ]] && source ~/.clauderc
+
+# Load devcontainer secrets (host-mounted at /run/devcontainer-config/secrets).
+# Belt-and-suspenders for terminal sessions; /etc/environment covers extension hosts.
+[[ -f /run/devcontainer-config/secrets ]] && source /run/devcontainer-config/secrets

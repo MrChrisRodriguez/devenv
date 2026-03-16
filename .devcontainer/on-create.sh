@@ -3,6 +3,29 @@ set -e
 
 echo "🚀 Setting up Confiador development environment with Proto..."
 
+# ── Secrets ──────────────────────────────────────────────────────────────────
+# Reads ~/.config/devcontainer/secrets from the host (bind-mounted read-only).
+# Writes each key=value into /etc/environment so ALL container processes inherit
+# them: VS Code/Cursor extension hosts, MCP server subprocesses, and terminals.
+# Format: one KEY=value per line; lines starting with # are ignored.
+SECRETS_FILE="/run/devcontainer-config/secrets"
+if [ -f "$SECRETS_FILE" ]; then
+    echo "🔐 Loading devcontainer secrets into /etc/environment..."
+    set -a
+    # shellcheck source=/dev/null
+    source "$SECRETS_FILE"
+    set +a
+    grep -v '^[[:space:]]*#' "$SECRETS_FILE" \
+        | grep -v '^[[:space:]]*$' \
+        | sed 's/^[[:space:]]*export[[:space:]]*//' \
+        | sudo tee -a /etc/environment > /dev/null
+    echo "✅ Secrets loaded"
+else
+    echo "⚠️  No secrets file found. Create ~/.config/devcontainer/secrets on your host."
+    echo "   Format: KEY=value (one per line). See devcontainer.json _comment_secrets."
+fi
+# ─────────────────────────────────────────────────────────────────────────────
+
 # Install Proto-managed apps in .prototools
 source /workspace/.devcontainer/on-create/setup-proto.sh
 
@@ -40,10 +63,3 @@ echo "✨ Development environment setup complete!"
 echo "💡 Tips:"
 echo "  - Use 'proto list' to see installed tools"
 echo "  - Run 'p10k configure' to customize your prompt"
-
-# Warn if API keys expected by MCP servers are missing
-if [ -z "${CONTEXT7_API_KEY:-}" ]; then
-    echo "⚠️  CONTEXT7_API_KEY is not set. Context7 MCP will start but API calls will fail."
-    echo "   Set it on your host machine and recreate the container:"
-    echo "   export CONTEXT7_API_KEY=\"your-key\"  # get it at context7.com/dashboard"
-fi
