@@ -3,6 +3,7 @@
 	"build": {
 		"dockerfile": "Dockerfile"
 	},
+	"runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],
 	"features": {
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
 		"ghcr.io/devcontainers/features/git:1": {},
@@ -66,11 +67,8 @@
 			}
 		}
 	},
-	"postStartCommand": [
-		"bash",
-		"-c",
-		"export PATH=\"$HOME/.proto/bin:$PATH\" && bun install"
-	],
+	"postStartCommand": "sudo /usr/local/bin/init-firewall.sh && export PATH=\"$HOME/.proto/bin:$PATH\" && bun install",
+	"waitFor": "postStartCommand",
 	"forwardPorts": [
 		3000, 4000, 5000, 8080, 8081, 8082, 8083, 8084, 8085, 8787, 8788, 8789,
 		8790, 8791, 8792
@@ -101,14 +99,16 @@
 	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
 	"workspaceFolder": "/workspace",
 	"mounts": [
-		"source=claude-code-shellhistory,target=/commandhistory,type=volume",
-		"source=claude-code-config,target=/home/vscode/.claude,type=volume",
+		"source=claude-code-shellhistory-${devcontainerId},target=/commandhistory,type=volume",
+		"source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
 		"source=${localEnv:HOME}/.local/share/opencode,target=/mnt/opencode-mount,type=bind,consistency=cached"
 	],
 	"containerEnv": {
+		"DEVCONTAINER": "true",
 		"SHELL": "/usr/bin/zsh",
 		"TERM": "xterm-256color",
-		"COLORTERM": "truecolor"
+		"COLORTERM": "truecolor",
+		"POWERLEVEL9K_DISABLE_GITSTATUS": "true"
 	},
 	"remoteEnv": {
 		"NODE_OPTIONS": "--max-old-space-size=4096",

@@ -2,22 +2,33 @@ FROM mcr.microsoft.com/vscode/devcontainers/base:bookworm
 
 # Install system packages (baked into image layer, not re-run on every container creation)
 RUN apt-get update && apt-get install -y \
+    aggregate \
     bat \
     build-essential \
     ca-certificates \
     curl \
     dnsutils \
+    fd-find \
     fzf \
     git \
     gzip \
+    iproute2 \
+    iptables \
+    ipset \
     jq \
     less \
+    nano \
+    procps \
     ripgrep \
+    sudo \
     tree \
     unzip \
+    vim \
     wget \
     xz-utils \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/fdfind /usr/local/bin/fd \
+    && ln -sf /usr/bin/batcat /usr/local/bin/bat
 
 # Install git-delta
 RUN ARCH=$(dpkg --print-architecture) \
@@ -36,3 +47,9 @@ RUN git clone https://github.com/zdharma-continuum/zinit.git \
     "${HOME}/.local/share/zinit/zinit.git"
 
 USER root
+
+# Allow vscode user to run init-firewall.sh without a password
+COPY init-firewall.sh /usr/local/bin/init-firewall.sh
+RUN chmod +x /usr/local/bin/init-firewall.sh \
+    && echo "vscode ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh" > /etc/sudoers.d/vscode-firewall \
+    && chmod 0440 /etc/sudoers.d/vscode-firewall
