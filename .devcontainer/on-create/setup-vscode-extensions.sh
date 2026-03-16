@@ -29,9 +29,9 @@ if [ -z "$EXTENSIONS" ]; then
 	exit 0
 fi
 
-# Check if code command is available
-if ! command -v code &> /dev/null; then
-	echo "⚠️  VS Code CLI (code) not found. Extensions will be installed when VS Code connects."
+# Check if code command is available and functional (not just a non-working shim)
+if ! command -v code &> /dev/null || ! code --list-extensions &> /dev/null; then
+	echo "⚠️  VS Code CLI (code) not found or not functional. Extensions will be installed when VS Code connects."
 	echo "   This is normal for DevPod - extensions will install automatically when the editor connects."
 	exit 0
 fi
