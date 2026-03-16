@@ -26,6 +26,10 @@ sudo chmod -R 755 /home/vscode/.claude
 
 # Register Context7 MCP server at user scope (writes to CLAUDE_CONFIG_DIR volume)
 echo "🔌 Registering Context7 MCP server..."
-claude mcp add --scope user context7 -- bunx @upstash/context7-mcp
+if ! claude mcp get context7 &> /dev/null; then
+    claude mcp add --scope user context7 -- bunx @upstash/context7-mcp
+else
+    echo "ℹ️ Context7 MCP server already registered, skipping."
+fi
 
 echo "✅ Claude Code setup complete!"
