@@ -101,14 +101,16 @@
 	"workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
 	"workspaceFolder": "/workspace",
 	"mounts": [
-		"source=claude-code-shellhistory,target=/commandhistory,type=volume",
-		"source=claude-code-config,target=/home/vscode/.claude,type=volume",
+		"source=claude-code-shellhistory-${devcontainerId},target=/commandhistory,type=volume",
+		"source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
 		"source=${localEnv:HOME}/.local/share/opencode,target=/mnt/opencode-mount,type=bind,consistency=cached"
 	],
 	"containerEnv": {
+		"DEVCONTAINER": "true",
 		"SHELL": "/usr/bin/zsh",
 		"TERM": "xterm-256color",
-		"COLORTERM": "truecolor"
+		"COLORTERM": "truecolor",
+		"POWERLEVEL9K_DISABLE_GITSTATUS": "true"
 	},
 	"remoteEnv": {
 		"NODE_OPTIONS": "--max-old-space-size=4096",

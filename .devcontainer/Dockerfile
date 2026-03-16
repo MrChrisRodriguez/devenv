@@ -7,17 +7,24 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     curl \
     dnsutils \
+    fd-find \
     fzf \
     git \
     gzip \
     jq \
     less \
+    nano \
+    procps \
     ripgrep \
+    sudo \
     tree \
     unzip \
+    vim \
     wget \
     xz-utils \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/fdfind /usr/local/bin/fd \
+    && ln -sf /usr/bin/batcat /usr/local/bin/bat
 
 # Install git-delta
 RUN ARCH=$(dpkg --print-architecture) \
