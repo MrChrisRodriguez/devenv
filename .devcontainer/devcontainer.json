@@ -108,6 +108,7 @@
 	},
 	"remoteEnv": {
 		"NODE_OPTIONS": "--max-old-space-size=4096",
-		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
+		"CONTEXT7_API_KEY": "${localEnv:CONTEXT7_API_KEY}"
 	}
 }

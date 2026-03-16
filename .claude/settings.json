@@ -1,0 +1,11 @@
+{
+	"mcpServers": {
+		"context7": {
+			"command": "bunx",
+			"args": ["@upstash/context7-mcp"],
+			"env": {
+				"DEFAULT_MINIMUM_TOKENS": "10000"
+			}
+		}
+	}
+}
