@@ -100,6 +100,7 @@
 	],
 	"containerEnv": {
 		"DEVCONTAINER": "true",
+		"DEVCONTAINER_PROJECT": "confiador",
 		"SHELL": "/usr/bin/zsh",
 		"TERM": "xterm-256color",
 		"COLORTERM": "truecolor",
@@ -109,5 +110,5 @@
 		"NODE_OPTIONS": "--max-old-space-size=4096",
 		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
 	},
-	"_comment_secrets": "Add API keys to ~/.config/devcontainer/secrets on your host (format: KEY=value, one per line). That directory is bind-mounted read-only to /run/devcontainer-config and injected into /etc/environment during onCreateCommand, so all container processes — including VS Code/Cursor extension hosts and MCP server subprocesses — inherit the values regardless of how the IDE was launched."
+	"_comment_secrets": "Two-tier secrets — both files use KEY=value format (one per line, # for comments). (1) Common: ~/.config/devcontainer/secrets — loaded in every project; good for shared keys like CONTEXT7_API_KEY. (2) Per-project: ~/.config/devcontainer/secrets.d/<DEVCONTAINER_PROJECT> — loaded only for this container; good for project-specific tokens. Per-project values override common ones when the same key appears in both. Update DEVCONTAINER_PROJECT to a short lowercase slug when creating a new project from this template."
 }

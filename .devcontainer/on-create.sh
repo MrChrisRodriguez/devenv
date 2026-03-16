@@ -4,25 +4,38 @@ set -e
 echo "🚀 Setting up Confiador development environment with Proto..."
 
 # ── Secrets ──────────────────────────────────────────────────────────────────
-# Reads ~/.config/devcontainer/secrets from the host (bind-mounted read-only).
-# Writes each key=value into /etc/environment so ALL container processes inherit
-# them: VS Code/Cursor extension hosts, MCP server subprocesses, and terminals.
-# Format: one KEY=value per line; lines starting with # are ignored.
-SECRETS_FILE="/run/devcontainer-config/secrets"
-if [ -f "$SECRETS_FILE" ]; then
-    echo "🔐 Loading devcontainer secrets into /etc/environment..."
-    set -a
-    # shellcheck source=/dev/null
-    source "$SECRETS_FILE"
-    set +a
-    grep -v '^[[:space:]]*#' "$SECRETS_FILE" \
-        | grep -v '^[[:space:]]*$' \
-        | sed 's/^[[:space:]]*export[[:space:]]*//' \
-        | sudo tee -a /etc/environment > /dev/null
-    echo "✅ Secrets loaded"
-else
-    echo "⚠️  No secrets file found. Create ~/.config/devcontainer/secrets on your host."
-    echo "   Format: KEY=value (one per line). See devcontainer.json _comment_secrets."
+# Two-tier secrets loaded from the host bind-mount at /run/devcontainer-config.
+# Each file uses KEY=value format (one per line; # lines are ignored).
+# Both are written to /etc/environment so ALL container processes inherit them:
+# VS Code/Cursor extension hosts, MCP server subprocesses, and terminals.
+# Per-project values override common ones when the same key appears in both.
+
+load_secrets_file() {
+    local file="$1" label="$2"
+    if [ -f "$file" ]; then
+        echo "🔐 Loading $label secrets..."
+        set -a
+        # shellcheck source=/dev/null
+        source "$file"
+        set +a
+        grep -v '^[[:space:]]*#' "$file" \
+            | grep -v '^[[:space:]]*$' \
+            | sed 's/^[[:space:]]*export[[:space:]]*//' \
+            | sudo tee -a /etc/environment > /dev/null
+        echo "✅ $label secrets loaded"
+    else
+        echo "ℹ️  No $label secrets file found ($file)"
+    fi
+}
+
+# 1. Common secrets — shared across all projects
+load_secrets_file "/run/devcontainer-config/secrets" "common"
+
+# 2. Per-project secrets — overrides common values for this container only
+if [ -n "${DEVCONTAINER_PROJECT:-}" ]; then
+    load_secrets_file \
+        "/run/devcontainer-config/secrets.d/${DEVCONTAINER_PROJECT}" \
+        "project (${DEVCONTAINER_PROJECT})"
 fi
 # ─────────────────────────────────────────────────────────────────────────────
 

@@ -37,25 +37,42 @@ This is a **template repository** designed to be the starting point for new proj
    
    **Don't forget to update `package.json`** with your project's name after initialization!
 
-3. **Create your secrets file** (one-time host setup)
+3. **Create your secrets files** (one-time host setup)
 
-   API keys for MCP servers and other tools are stored in `~/.config/devcontainer/secrets` on your host machine. This file is bind-mounted read-only into the container and loaded into every process automatically — terminals, VS Code/Cursor extension hosts, and MCP server subprocesses all inherit the values, regardless of how the IDE was launched.
+   API keys and secrets are stored in `~/.config/devcontainer/` on your host machine and bind-mounted read-only into every container. There are two tiers — both use the same `KEY=value` format, and per-project values override common ones when the same key appears in both.
 
    ```bash
-   mkdir -p ~/.config/devcontainer
-   touch ~/.config/devcontainer/secrets
-   chmod 600 ~/.config/devcontainer/secrets
+   mkdir -p ~/.config/devcontainer/secrets.d
+   chmod 700 ~/.config/devcontainer/secrets.d
    ```
 
-   Then add your keys (one per line, `#` for comments):
+   **Common secrets** — loaded in every project (MCP servers, shared tooling):
 
    ```bash
    # ~/.config/devcontainer/secrets
    CONTEXT7_API_KEY=your-key-from-context7.com/dashboard
-   # ANOTHER_API_KEY=...
+   # ANOTHER_SHARED_KEY=...
    ```
 
-   > **Why not `.zshrc`?** GUI apps (Dock, Spotlight, DevPod) don't inherit shell env vars, so `export` in `.zshrc` is invisible to the IDE process that starts the container. The secrets file bypasses this entirely.
+   **Per-project secrets** — loaded only for a specific container, named after `DEVCONTAINER_PROJECT` in `devcontainer.json`:
+
+   ```bash
+   # ~/.config/devcontainer/secrets.d/confiador   (for this template)
+   # ~/.config/devcontainer/secrets.d/my-other-app  (for another project)
+   DATABASE_URL=postgres://...
+   STRIPE_SECRET_KEY=sk_live_...
+   ```
+
+   Lock down permissions so only you can read them:
+
+   ```bash
+   chmod 600 ~/.config/devcontainer/secrets
+   chmod 600 ~/.config/devcontainer/secrets.d/*
+   ```
+
+   > **Why not `.zshrc`?** GUI apps (Dock, Spotlight, DevPod) don't inherit shell env vars, so `export` in `.zshrc` is invisible to the IDE process that starts the container. The secrets files are bind-mounted directly, so they work regardless of how the IDE was launched.
+
+   > **When cloning this template** for a new project, update `DEVCONTAINER_PROJECT` in `.devcontainer/devcontainer.json` to a short lowercase slug matching the name you used for the per-project secrets file (e.g. `"my-other-app"`).
 
 4. **Create a new DevPod workspace**
 
