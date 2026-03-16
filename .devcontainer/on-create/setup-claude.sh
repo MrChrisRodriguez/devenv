@@ -24,4 +24,8 @@ sudo mkdir -p /home/vscode/.claude/ide
 sudo chown -R vscode:vscode /home/vscode/.claude
 sudo chmod -R 755 /home/vscode/.claude
 
-echo "✅ Claude Code setup complete!" 
+# Register Context7 MCP server at user scope (writes to CLAUDE_CONFIG_DIR volume)
+echo "🔌 Registering Context7 MCP server..."
+claude mcp add --scope user context7 -- bunx @upstash/context7-mcp
+
+echo "✅ Claude Code setup complete!"

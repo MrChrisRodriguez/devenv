@@ -40,3 +40,10 @@ echo "✨ Development environment setup complete!"
 echo "💡 Tips:"
 echo "  - Use 'proto list' to see installed tools"
 echo "  - Run 'p10k configure' to customize your prompt"
+
+# Warn if API keys expected by MCP servers are missing
+if [ -z "${CONTEXT7_API_KEY:-}" ]; then
+    echo "⚠️  CONTEXT7_API_KEY is not set. Context7 MCP will start but API calls will fail."
+    echo "   Set it on your host machine and recreate the container:"
+    echo "   export CONTEXT7_API_KEY=\"your-key\"  # get it at context7.com/dashboard"
+fi
