@@ -37,14 +37,34 @@ This is a **template repository** designed to be the starting point for new proj
    
    **Don't forget to update `package.json`** with your project's name after initialization!
 
-3. **Create a new DevPod workspace**
-   
+3. **Create your secrets file** (one-time host setup)
+
+   API keys for MCP servers and other tools are stored in `~/.config/devcontainer/secrets` on your host machine. This file is bind-mounted read-only into the container and loaded into every process automatically — terminals, VS Code/Cursor extension hosts, and MCP server subprocesses all inherit the values, regardless of how the IDE was launched.
+
+   ```bash
+   mkdir -p ~/.config/devcontainer
+   touch ~/.config/devcontainer/secrets
+   chmod 600 ~/.config/devcontainer/secrets
+   ```
+
+   Then add your keys (one per line, `#` for comments):
+
+   ```bash
+   # ~/.config/devcontainer/secrets
+   CONTEXT7_API_KEY=your-key-from-context7.com/dashboard
+   # ANOTHER_API_KEY=...
+   ```
+
+   > **Why not `.zshrc`?** GUI apps (Dock, Spotlight, DevPod) don't inherit shell env vars, so `export` in `.zshrc` is invisible to the IDE process that starts the container. The secrets file bypasses this entirely.
+
+4. **Create a new DevPod workspace**
+
    After initializing your project, create a new DevPod workspace for your codebase using your default provider:
    ```bash
    devpod up .
    ```
 
-4. **Authenticate Opencode**
+5. **Authenticate Opencode**
    ```bash
    opencode auth
    ```
@@ -106,14 +126,16 @@ Then **rebuild the container** (the firewall runs at startup, so a restart alone
 
 ### Example: adding Context7
 
-Context7 is an MCP server that fetches up-to-date library documentation. To find what domains it needs, check its documentation or run it once with the firewall temporarily disabled, then inspect the blocked connections. Once you know the hostnames, add them to the loop above — for example:
+Context7 is pre-configured in this template as an MCP server for Claude Code, Cursor, and OpenCode. It fetches up-to-date library documentation and is registered automatically during container setup.
+
+To activate it, add your API key (get one at [context7.com/dashboard](https://context7.com/dashboard)) to your secrets file:
 
 ```bash
-    "upstash.io" \
-    "context7.com" \
+# ~/.config/devcontainer/secrets
+CONTEXT7_API_KEY=your-key-here
 ```
 
-Restart the container after editing `init-firewall.sh` for the new rules to take effect.
+The required firewall domains are already in `init-firewall.sh`. If you need to allow additional MCP servers or services, add their hostnames to the allowlist and restart the container.
 
 --------------------------------
 
@@ -122,6 +144,7 @@ AI Tools:
 - Opencode (https://opencode.ai/)
 - oh-my-opencode (https://github.com/danzilberdan/oh-my-opencode)
 - Claude Code
+- Context7 MCP (https://context7.com) — up-to-date library docs for Claude Code, Cursor, and OpenCode
 - Biome
 
 Toolchain:
