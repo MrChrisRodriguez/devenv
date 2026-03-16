@@ -22,7 +22,7 @@
 		"node": "~22"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "^2.4.7",
+		"@biomejs/biome": "2.4.7",
 		"@commitlint/cli": "latest",
 		"@commitlint/config-conventional": "latest",
 		"@fission-ai/openspec": "^0.19.0",
