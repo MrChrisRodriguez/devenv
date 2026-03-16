@@ -54,6 +54,69 @@ You're now ready to start building your new project!
 
 --------------------------------
 
+## Network Firewall
+
+The devcontainer runs an iptables-based outbound firewall (`init-firewall.sh`) to restrict Claude Code to a known set of safe domains. This prevents accidental or unauthorized network access from inside the container.
+
+### How it works
+
+Every time the container starts, `init-firewall.sh` runs as root before anything else:
+
+1. **Flushes** all existing iptables rules
+2. **Resolves allowed domains** to IP addresses using `dig` and adds them to an `ipset` named `allowed-domains`
+3. **Sets default policies** to DROP for INPUT, OUTPUT, and FORWARD
+4. **Adds allowlist rules** permitting only traffic to/from `allowed-domains`, plus DNS (UDP 53), SSH (TCP 22), and localhost
+5. **Verifies** the firewall by confirming `example.com` is blocked and `api.github.com` is reachable
+
+Because IPs are resolved at startup, the allowlist is always current — no hardcoded IPs in the config.
+
+### Currently allowed domains
+
+| Domain | Purpose |
+|---|---|
+| GitHub (via API meta) | `git push/pull`, API access, Actions |
+| `registry.npmjs.org` | `bun install` / npm packages |
+| `api.anthropic.com` | Claude Code API |
+| `sentry.io` | Error reporting |
+| `statsig.anthropic.com`, `statsig.com` | Claude Code telemetry |
+| `marketplace.visualstudio.com` | VS Code extension installs |
+| `vscode.blob.core.windows.net` | VS Code extension downloads |
+| `update.code.visualstudio.com` | VS Code updates |
+
+### Adding a new domain
+
+To allow a new service (e.g. an MCP server, a package registry, or an AI tool), add its hostname to the `for domain in` loop in `.devcontainer/init-firewall.sh`:
+
+```bash
+for domain in \
+    "registry.npmjs.org" \
+    "api.anthropic.com" \
+    "sentry.io" \
+    "statsig.anthropic.com" \
+    "statsig.com" \
+    "marketplace.visualstudio.com" \
+    "vscode.blob.core.windows.net" \
+    "update.code.visualstudio.com" \
+    "your-new-domain.com"; do   # <-- add here
+```
+
+Then **rebuild the container** (the firewall runs at startup, so a restart alone is enough if you haven't changed the image).
+
+> **Tip:** If a tool is failing silently or timing out, run `sudo iptables -L OUTPUT -n -v` inside the container to check whether traffic is being dropped. You can also check `sudo ipset list allowed-domains` to see what IPs are currently in the allowlist.
+
+### Example: adding Context7
+
+Context7 is an MCP server that fetches up-to-date library documentation. To find what domains it needs, check its documentation or run it once with the firewall temporarily disabled, then inspect the blocked connections. Once you know the hostnames, add them to the loop above — for example:
+
+```bash
+    "upstash.io" \
+    "context7.com" \
+```
+
+Restart the container after editing `init-firewall.sh` for the new rules to take effect.
+
+--------------------------------
+
 AI Tools:
 - Openspec (https://github.com/fission-ai/openspec)
 - Opencode (https://opencode.ai/)
