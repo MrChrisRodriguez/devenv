@@ -11,6 +11,6 @@ setup_proto_env
 
 # Install Openspec
 bun install -g @fission-ai/openspec
-openspec init --tools cursor,opencode
+openspec init --tools cursor,opencode --force
 
 echo "✅ Openspec installed!" 
