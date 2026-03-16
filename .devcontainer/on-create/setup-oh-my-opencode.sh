@@ -37,7 +37,7 @@ else
 fi
 
 # Install oh-my-opencode
-if bunx oh-my-opencode install --no-tui --claude=yes --gemini=yes; then
+if bunx oh-my-opencode install --no-tui --claude=yes --gemini=yes --copilot=no; then
     echo "✅ oh-my-opencode installation command completed"
 else
     echo "⚠️  oh-my-opencode installation command returned non-zero exit code"
