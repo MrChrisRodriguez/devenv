@@ -64,3 +64,11 @@ load_completions() {
 
 # Load Claude Code configuration
 [[ -f ~/.clauderc ]] && source ~/.clauderc
+
+# Load devcontainer secrets (host-mounted at /run/devcontainer-config).
+# Belt-and-suspenders for terminal sessions; /etc/environment covers extension hosts.
+# 1. Common secrets — shared across all projects
+[[ -f /run/devcontainer-config/secrets ]] && source /run/devcontainer-config/secrets
+# 2. Per-project secrets — overrides common values for this container only
+[[ -n "${DEVCONTAINER_PROJECT:-}" && -f "/run/devcontainer-config/secrets.d/${DEVCONTAINER_PROJECT}" ]] \
+    && source "/run/devcontainer-config/secrets.d/${DEVCONTAINER_PROJECT}"

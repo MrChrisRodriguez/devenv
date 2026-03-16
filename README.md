@@ -37,14 +37,51 @@ This is a **template repository** designed to be the starting point for new proj
    
    **Don't forget to update `package.json`** with your project's name after initialization!
 
-3. **Create a new DevPod workspace**
-   
+3. **Create your secrets files** (one-time host setup)
+
+   API keys and secrets are stored in `~/.config/devcontainer/` on your host machine and bind-mounted read-only into every container. There are two tiers — both use the same `KEY=value` format, and per-project values override common ones when the same key appears in both.
+
+   ```bash
+   mkdir -p ~/.config/devcontainer/secrets.d
+   chmod 700 ~/.config/devcontainer/secrets.d
+   ```
+
+   **Common secrets** — loaded in every project (MCP servers, shared tooling):
+
+   ```bash
+   # ~/.config/devcontainer/secrets
+   CONTEXT7_API_KEY=your-key-from-context7.com/dashboard
+   # ANOTHER_SHARED_KEY=...
+   ```
+
+   **Per-project secrets** — loaded only for a specific container, named after `DEVCONTAINER_PROJECT` in `devcontainer.json`:
+
+   ```bash
+   # ~/.config/devcontainer/secrets.d/confiador   (for this template)
+   # ~/.config/devcontainer/secrets.d/my-other-app  (for another project)
+   DATABASE_URL=postgres://...
+   STRIPE_SECRET_KEY=sk_live_...
+   ```
+
+   Lock down permissions so only you can read them:
+
+   ```bash
+   chmod 600 ~/.config/devcontainer/secrets
+   chmod 600 ~/.config/devcontainer/secrets.d/*
+   ```
+
+   > **Why not `.zshrc`?** GUI apps (Dock, Spotlight, DevPod) don't inherit shell env vars, so `export` in `.zshrc` is invisible to the IDE process that starts the container. The secrets files are bind-mounted directly, so they work regardless of how the IDE was launched.
+
+   > **When cloning this template** for a new project, update `DEVCONTAINER_PROJECT` in `.devcontainer/devcontainer.json` to a short lowercase slug matching the name you used for the per-project secrets file (e.g. `"my-other-app"`).
+
+4. **Create a new DevPod workspace**
+
    After initializing your project, create a new DevPod workspace for your codebase using your default provider:
    ```bash
    devpod up .
    ```
 
-4. **Authenticate Opencode**
+5. **Authenticate Opencode**
    ```bash
    opencode auth
    ```
@@ -54,11 +91,13 @@ You're now ready to start building your new project!
 
 --------------------------------
 
+
 AI Tools:
 - Openspec (https://github.com/fission-ai/openspec)
 - Opencode (https://opencode.ai/)
 - oh-my-opencode (https://github.com/danzilberdan/oh-my-opencode)
 - Claude Code
+- Context7 MCP (https://context7.com) — up-to-date library docs for Claude Code, Cursor, and OpenCode
 - Biome
 
 Toolchain:

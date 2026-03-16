@@ -97,10 +97,13 @@
 	"mounts": [
 		"source=claude-code-shellhistory-${devcontainerId},target=/commandhistory,type=volume",
 		"source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
-		"source=${localEnv:HOME}/.local/share/opencode,target=/mnt/opencode-mount,type=bind,consistency=cached"
+		"source=${localEnv:HOME}/.local/share/opencode,target=/mnt/opencode-mount,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/.ssh,target=/mnt/host-ssh,type=bind,readonly,consistency=cached",
+		"source=${localEnv:HOME}/.config/devcontainer,target=/run/devcontainer-config,type=bind,readonly,consistency=cached"
 	],
 	"containerEnv": {
 		"DEVCONTAINER": "true",
+		"DEVCONTAINER_PROJECT": "confiador",
 		"SHELL": "/usr/bin/zsh",
 		"TERM": "xterm-256color",
 		"COLORTERM": "truecolor",
@@ -108,7 +111,7 @@
 	},
 	"remoteEnv": {
 		"NODE_OPTIONS": "--max-old-space-size=4096",
-		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
-		"CONTEXT7_API_KEY": "${localEnv:CONTEXT7_API_KEY}"
-	}
+		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude"
+	},
+	"_comment_secrets": "Two-tier secrets — both files use KEY=value format (one per line, # for comments). (1) Common: ~/.config/devcontainer/secrets — loaded in every project; good for shared keys like CONTEXT7_API_KEY. (2) Per-project: ~/.config/devcontainer/secrets.d/<DEVCONTAINER_PROJECT> — loaded only for this container; good for project-specific tokens. Per-project values override common ones when the same key appears in both. Update DEVCONTAINER_PROJECT to a short lowercase slug when creating a new project from this template."
 }

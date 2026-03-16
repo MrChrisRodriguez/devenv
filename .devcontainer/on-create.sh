@@ -3,6 +3,42 @@ set -e
 
 echo "🚀 Setting up Confiador development environment with Proto..."
 
+# ── Secrets ──────────────────────────────────────────────────────────────────
+# Two-tier secrets loaded from the host bind-mount at /run/devcontainer-config.
+# Each file uses KEY=value format (one per line; # lines are ignored).
+# Both are written to /etc/environment so ALL container processes inherit them:
+# VS Code/Cursor extension hosts, MCP server subprocesses, and terminals.
+# Per-project values override common ones when the same key appears in both.
+
+load_secrets_file() {
+    local file="$1" label="$2"
+    if [ -f "$file" ]; then
+        echo "🔐 Loading $label secrets..."
+        set -a
+        # shellcheck source=/dev/null
+        source "$file"
+        set +a
+        grep -v '^[[:space:]]*#' "$file" \
+            | grep -v '^[[:space:]]*$' \
+            | sed 's/^[[:space:]]*export[[:space:]]*//' \
+            | sudo tee -a /etc/environment > /dev/null
+        echo "✅ $label secrets loaded"
+    else
+        echo "ℹ️  No $label secrets file found ($file)"
+    fi
+}
+
+# 1. Common secrets — shared across all projects
+load_secrets_file "/run/devcontainer-config/secrets" "common"
+
+# 2. Per-project secrets — overrides common values for this container only
+if [ -n "${DEVCONTAINER_PROJECT:-}" ]; then
+    load_secrets_file \
+        "/run/devcontainer-config/secrets.d/${DEVCONTAINER_PROJECT}" \
+        "project (${DEVCONTAINER_PROJECT})"
+fi
+# ─────────────────────────────────────────────────────────────────────────────
+
 # Install Proto-managed apps in .prototools
 source /workspace/.devcontainer/on-create/setup-proto.sh
 
@@ -37,10 +73,3 @@ echo "✨ Development environment setup complete!"
 echo "💡 Tips:"
 echo "  - Use 'proto list' to see installed tools"
 echo "  - Run 'p10k configure' to customize your prompt"
-
-# Warn if API keys expected by MCP servers are missing
-if [ -z "${CONTEXT7_API_KEY:-}" ]; then
-    echo "⚠️  CONTEXT7_API_KEY is not set. Context7 MCP will start but API calls will fail."
-    echo "   Set it on your host machine and recreate the container:"
-    echo "   export CONTEXT7_API_KEY=\"your-key\"  # get it at context7.com/dashboard"
-fi
