@@ -15,6 +15,9 @@ source /workspace/.devcontainer/on-create/setup-biome.sh
 # Install Claude Code
 source /workspace/.devcontainer/on-create/setup-claude.sh
 
+# Set up SSH server (host keys + authorized_keys)
+source /workspace/.devcontainer/on-create/setup-ssh.sh
+
 # Install Opencode
 source /workspace/.devcontainer/on-create/setup-opencode.sh
 

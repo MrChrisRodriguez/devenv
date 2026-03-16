@@ -3,7 +3,7 @@
 	"build": {
 		"dockerfile": "Dockerfile"
 	},
-	"runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW"],
+	"runArgs": ["--cap-add=NET_ADMIN", "--cap-add=NET_RAW", "-p", "2222:22"],
 	"features": {
 		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
 		"ghcr.io/devcontainers/features/git:1": {},
@@ -67,7 +67,7 @@
 			}
 		}
 	},
-	"postStartCommand": "sudo /usr/local/bin/init-firewall.sh && export PATH=\"$HOME/.proto/bin:$PATH\" && bun install",
+	"postStartCommand": "sudo /usr/local/bin/init-firewall.sh && sudo /usr/sbin/sshd && export PATH=\"$HOME/.proto/bin:$PATH\" && bun install",
 	"waitFor": "postStartCommand",
 	"forwardPorts": [3000, 4000, 8080, 8787],
 	"portsAttributes": {
@@ -94,7 +94,8 @@
 	"mounts": [
 		"source=claude-code-shellhistory-${devcontainerId},target=/commandhistory,type=volume",
 		"source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
-		"source=${localEnv:HOME}/.local/share/opencode,target=/mnt/opencode-mount,type=bind,consistency=cached"
+		"source=${localEnv:HOME}/.local/share/opencode,target=/mnt/opencode-mount,type=bind,consistency=cached",
+		"source=${localEnv:HOME}/.ssh,target=/mnt/host-ssh,type=bind,readonly,consistency=cached"
 	],
 	"containerEnv": {
 		"DEVCONTAINER": "true",

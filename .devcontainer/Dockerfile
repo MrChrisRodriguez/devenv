@@ -18,6 +18,7 @@ RUN apt-get update && apt-get install -y \
     jq \
     less \
     nano \
+    openssh-server \
     procps \
     ripgrep \
     sudo \
@@ -28,7 +29,12 @@ RUN apt-get update && apt-get install -y \
     xz-utils \
     && rm -rf /var/lib/apt/lists/* \
     && ln -sf /usr/bin/fdfind /usr/local/bin/fd \
-    && ln -sf /usr/bin/batcat /usr/local/bin/bat
+    && ln -sf /usr/bin/batcat /usr/local/bin/bat \
+    && rm -f /etc/ssh/ssh_host_* \
+    && mkdir -p /etc/ssh/sshd_config.d \
+    && printf 'PubkeyAuthentication yes\nPasswordAuthentication no\nPermitRootLogin no\nAllowUsers vscode\n' \
+       > /etc/ssh/sshd_config.d/devcontainer.conf \
+    && mkdir -p /run/sshd
 
 # Install git-delta
 RUN ARCH=$(dpkg --print-architecture) \
@@ -53,3 +59,7 @@ COPY init-firewall.sh /usr/local/bin/init-firewall.sh
 RUN chmod +x /usr/local/bin/init-firewall.sh \
     && echo "vscode ALL=(root) NOPASSWD: /usr/local/bin/init-firewall.sh" > /etc/sudoers.d/vscode-firewall \
     && chmod 0440 /etc/sudoers.d/vscode-firewall
+
+# Allow vscode user to generate SSH host keys and start sshd
+RUN echo "vscode ALL=(root) NOPASSWD: /usr/bin/ssh-keygen, /usr/sbin/sshd" > /etc/sudoers.d/vscode-ssh \
+    && chmod 0440 /etc/sudoers.d/vscode-ssh
