@@ -1,0 +1,7 @@
+$schema: 'https://moonrepo.dev/schemas/toolchains.json'
+
+# Bun requires the javascript toolchain to be enabled
+javascript: {}
+
+bun:
+  versionFromPrototools: true
