@@ -21,7 +21,11 @@
 		}
 	},
 	"onCreateCommand": ["bash", "/workspace/.devcontainer/on-create.sh"],
-	"postCreateCommand": ["bash", "-c", "export PATH=\"$HOME/.proto/bin:$PATH\""],
+	"postCreateCommand": [
+		"bash",
+		"-c",
+		"export PATH=\"$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
+	],
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -73,7 +77,7 @@
 	"postStartCommand": [
 		"bash",
 		"-c",
-		"export PATH=\"$HOME/.proto/bin:$PATH\" && bun install"
+		"export PATH=\"$HOME/.proto/shims:$HOME/.proto/bin:$PATH\" && bun install"
 	],
 	"waitFor": "postStartCommand",
 	"forwardPorts": [3000, 4000, 8080, 8787],

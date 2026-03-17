@@ -30,8 +30,11 @@ else
     echo "⚠️  Mounted auth file not found at ${MOUNTED_FILE} (this is okay if you'll configure auth later)"
 fi
 
-# Install Opencode
-bun install -g opencode-ai
+# Install Opencode (skip if already installed)
+if command -v opencode &> /dev/null; then
+    echo "ℹ️  Opencode already installed ($(opencode --version 2>/dev/null || echo 'unknown version')), skipping"
+else
+    bun install -g opencode-ai
+fi
 
-
-echo "✅ Opencode installed!" 
+echo "✅ Opencode installed!"

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "🚀 Setting up Confiador development environment with Proto..."
+echo "🚀 Setting up ${DEVCONTAINER_PROJECT:-development} development environment with Proto..."
 
 # ── Secrets ──────────────────────────────────────────────────────────────────
 # Two-tier secrets loaded from the host bind-mount at /run/devcontainer-config.
