@@ -14,6 +14,9 @@ if [ -d ".git" ]; then
     rm -rf .git
 fi
 
+# Remove template bun.lock so the new project generates a fresh one
+rm -f bun.lock
+
 # Initialize new git repository
 echo "📦 Initializing new git repository..."
 git init
@@ -21,6 +24,18 @@ git init
 # Determine default branch name (main or master)
 DEFAULT_BRANCH=$(git config --global init.defaultBranch 2>/dev/null || echo "main")
 git checkout -b "$DEFAULT_BRANCH" 2>/dev/null || git checkout -b main 2>/dev/null || true
+
+# Update DEVCONTAINER_PROJECT in devcontainer.json if a repo name was provided
+if [ -n "$REPO_ARG" ]; then
+    # Extract just the repo name (strip owner prefix if present)
+    DEVCONTAINER_PROJECT="${REPO_ARG##*/}"
+    DEVCONTAINER_PROJECT="${DEVCONTAINER_PROJECT%.git}"
+    if [ -f ".devcontainer/devcontainer.json" ]; then
+        echo "🔧 Setting DEVCONTAINER_PROJECT to \"$DEVCONTAINER_PROJECT\"..."
+        sed -i.bak "s/\"DEVCONTAINER_PROJECT\": \"[^\"]*\"/\"DEVCONTAINER_PROJECT\": \"$DEVCONTAINER_PROJECT\"/" .devcontainer/devcontainer.json
+        rm -f .devcontainer/devcontainer.json.bak
+    fi
+fi
 
 # Create initial commit
 echo "📝 Creating initial commit..."
