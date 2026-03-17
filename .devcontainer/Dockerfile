@@ -35,9 +35,6 @@ RUN ARCH=$(dpkg --print-architecture) \
 # Switch to vscode user for user-scoped installs
 USER vscode
 
-# Install Proto (tool version manager binary only — tools installed later via proto use)
-RUN curl -fsSL https://moonrepo.dev/install/proto.sh | bash -s -- --yes
-
 # Install Zinit (zsh plugin manager) — clone directly to skip the interactive installer
 RUN git clone https://github.com/zdharma-continuum/zinit.git \
     "${HOME}/.local/share/zinit/zinit.git"

@@ -101,7 +101,7 @@
 	"mounts": [
 		"source=claude-code-shellhistory-${devcontainerId},target=/commandhistory,type=volume",
 		"source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
-		"source=proto-tools-${devcontainerId},target=/home/vscode/.proto/tools,type=volume",
+		"source=proto-home-${devcontainerId},target=/home/vscode/.proto,type=volume",
 		"source=${localEnv:HOME}/.local/share/opencode,target=/mnt/opencode-mount,type=bind,consistency=cached",
 		"source=${localEnv:HOME}/.ssh,target=/mnt/host-ssh,type=bind,readonly,consistency=cached",
 		"source=${localEnv:HOME}/.config/devcontainer,target=/run/devcontainer-config,type=bind,readonly,consistency=cached"
