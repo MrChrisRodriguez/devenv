@@ -35,8 +35,11 @@ RUN ARCH=$(dpkg --print-architecture) \
 # Switch to vscode user for user-scoped installs
 USER vscode
 
-# Install Zinit (zsh plugin manager) — clone directly to skip the interactive installer
-RUN git clone https://github.com/zdharma-continuum/zinit.git \
+# Pre-create ~/.proto so the Docker volume inherits vscode ownership on first mount
+RUN mkdir -p "${HOME}/.proto"
+
+# Install Zinit (zsh plugin manager) — shallow clone to avoid slow/hanging full history fetch
+RUN git clone --depth 1 https://github.com/zdharma-continuum/zinit.git \
     "${HOME}/.local/share/zinit/zinit.git"
 
 USER root
