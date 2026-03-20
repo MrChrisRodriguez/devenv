@@ -4,6 +4,18 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-03-20 — Add Claude and Codex to Openspec init
+
+**Goal:** Ensure Openspec generates configuration for all coding agents used in the template, not just Cursor and OpenCode.
+
+**How to implement:**
+1. In `.devcontainer/on-create/setup-openspec.sh`, update the `openspec init` command to include `claude` and `codex`:
+   ```bash
+   openspec init --tools claude,codex,cursor,opencode --force
+   ```
+
+---
+
 ## 2026-03-20 — Self-delete init-new-project.sh after use
 
 **Goal:** The bootstrap script is a one-time operation for instantiating a new project from the template. It should not remain in the new project's tree.
