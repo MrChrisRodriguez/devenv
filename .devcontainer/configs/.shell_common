@@ -52,7 +52,7 @@ alias biome='bunx biome'
 
 # Proto configuration
 export PROTO_HOME="$HOME/.proto"
-export PATH="$HOME/.proto/shims:$HOME/.proto/bin:/home/vscode/.bun/bin:/home/vscode/.bun/install/global/node_modules/.bin:$PATH"
+export PATH="$HOME/.local/bin:$HOME/.proto/shims:$HOME/.proto/bin:/home/vscode/.bun/bin:/home/vscode/.bun/install/global/node_modules/.bin:$PATH"
 
 # Common function to load tool completions
 load_completions() {

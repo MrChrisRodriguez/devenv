@@ -4,6 +4,22 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-03-20 — Switch Claude Code to native binary installer
+
+**Goal:** Use the official `claude install` native binary instead of the npm package (`bun install -g @anthropic-ai/claude-code`). The native binary is the recommended installation method and doesn't depend on Node/Bun for the CLI itself.
+
+**How to implement:**
+1. In `.devcontainer/on-create/setup-claude.sh`, replace `bun install -g @anthropic-ai/claude-code` with:
+   ```bash
+   curl -fsSL https://claude.ai/install.sh | bash
+   ```
+   The native binary installs to `~/.local/bin/claude`.
+2. Add `$HOME/.local/bin` to PATH in `.devcontainer/on-create/setup-common.sh` (inside `setup_proto_env()`).
+3. Add `$HOME/.local/bin` to the front of the PATH export in `.devcontainer/configs/.shell_common` so interactive shells find the binary.
+4. Remove the `mkdir -p ~/.config/claude-code` line from `setup-claude.sh` — the native binary uses `~/.claude` (already managed by the volume mount).
+
+---
+
 ## 2026-03-20 — Add CHANGES.md for template change tracking
 
 **Goal:** Establish a changelog so that projects forked from this template can track and adopt upstream improvements.

@@ -8,4 +8,6 @@ setup_proto_env() {
     export PROTO_HOME="$HOME/.proto"
     # Add bun's global bin directory to PATH for globally installed packages
     export PATH="$HOME/.bun/bin:$PATH"
+    # Add local bin for Claude Code native binary
+    export PATH="$HOME/.local/bin:$PATH"
 }

@@ -9,14 +9,12 @@ source /workspace/.devcontainer/on-create/setup-common.sh
 # Setup Proto environment to access bun
 setup_proto_env
 
-# Install Claude Code CLI if not present
+# Install Claude Code native binary if not present
 if ! command -v claude &> /dev/null; then
-    echo "📦 Installing Claude Code CLI..."
-    bun install -g @anthropic-ai/claude-code
+    echo "📦 Installing Claude Code native binary..."
+    curl -fsSL https://claude.ai/install.sh | bash
+    export PATH="$HOME/.local/bin:$PATH"
 fi
-
-# Setup Claude Code configuration directory
-mkdir -p ~/.config/claude-code
 
 # Ensure the Claude Code IDE directory exists with proper permissions
 echo "🔧 Setting up Claude Code IDE directory..."
