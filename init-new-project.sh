@@ -37,6 +37,10 @@ if [ -n "$REPO_ARG" ]; then
     fi
 fi
 
+# Self-delete — this is a one-time template bootstrap script
+echo "🧹 Removing init script (one-time use)..."
+rm -f "$0"
+
 # Create initial commit
 echo "📝 Creating initial commit..."
 git add .

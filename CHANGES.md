@@ -4,6 +4,15 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-03-20 — Self-delete init-new-project.sh after use
+
+**Goal:** The bootstrap script is a one-time operation for instantiating a new project from the template. It should not remain in the new project's tree.
+
+**How to implement:**
+1. In `init-new-project.sh`, add `rm -f "$0"` just before the `git add .` / initial commit step so the script deletes itself before being committed to the new repo.
+
+---
+
 ## 2026-03-20 — Switch Claude Code to native binary installer
 
 **Goal:** Use the official `claude install` native binary instead of the npm package (`bun install -g @anthropic-ai/claude-code`). The native binary is the recommended installation method and doesn't depend on Node/Bun for the CLI itself.
