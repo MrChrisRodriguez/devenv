@@ -4,6 +4,15 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-03-20 — Remove template-only files during project init
+
+**Goal:** CHANGES.md tracks template history and shouldn't exist in downstream projects.
+
+**How to implement:**
+1. In `init-new-project.sh`, add `rm -f CHANGES.md` alongside the existing `rm -f bun.lock` in the template-only file cleanup section.
+
+---
+
 ## 2026-03-20 — Add Claude and Codex to Openspec init
 
 **Goal:** Ensure Openspec generates configuration for all coding agents used in the template, not just Cursor and OpenCode.

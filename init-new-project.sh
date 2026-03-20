@@ -14,8 +14,9 @@ if [ -d ".git" ]; then
     rm -rf .git
 fi
 
-# Remove template bun.lock so the new project generates a fresh one
+# Remove template-only files that don't belong in downstream projects
 rm -f bun.lock
+rm -f CHANGES.md
 
 # Initialize new git repository
 echo "📦 Initializing new git repository..."
