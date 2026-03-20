@@ -22,7 +22,7 @@
 		"bun": ">=1.3.4"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.4.7",
+		"@biomejs/biome": "2.4.8",
 		"@commitlint/cli": "latest",
 		"@commitlint/config-conventional": "latest",
 		"@fission-ai/openspec": "^0.19.0",
