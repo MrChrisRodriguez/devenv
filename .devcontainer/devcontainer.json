@@ -1,5 +1,5 @@
 {
-	"name": "Confiador Development",
+	"name": "Development",
 	"build": {
 		"dockerfile": "Dockerfile"
 	},
@@ -112,7 +112,7 @@
 	],
 	"containerEnv": {
 		"DEVCONTAINER": "true",
-		"DEVCONTAINER_PROJECT": "confiador",
+		"DEVCONTAINER_PROJECT": "my-project",
 		"SHELL": "/usr/bin/zsh",
 		"TERM": "xterm-256color",
 		"COLORTERM": "truecolor",
@@ -123,5 +123,5 @@
 		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
 		"GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
 	},
-	"_comment_secrets": "Two-tier secrets — both files use KEY=value format (one per line, # for comments). (1) Common: ~/.config/devcontainer/secrets — loaded in every project; good for shared keys like GITHUB_TOKEN (raises proto/GitHub API rate limit from 60 to 5000 req/hr) and CONTEXT7_API_KEY. (2) Per-project: ~/.config/devcontainer/secrets.d/<DEVCONTAINER_PROJECT> — loaded only for this container; good for project-specific tokens. Per-project values override common ones when the same key appears in both. Update DEVCONTAINER_PROJECT to a short lowercase slug when creating a new project from this template. GITHUB_TOKEN is also auto-passed from the host shell via remoteEnv if already set there."
+	"_comment_secrets": "Two-tier secrets — both files use KEY=value format (one per line, # for comments). (1) Common: ~/.config/devcontainer/secrets — loaded in every project; good for shared keys like GITHUB_TOKEN (raises proto/GitHub API rate limit from 60 to 5000 req/hr) and CONTEXT7_API_KEY. (2) Per-project: ~/.config/devcontainer/secrets.d/<DEVCONTAINER_PROJECT> — loaded only for this container; good for project-specific tokens. Per-project values override common ones when the same key appears in both. Update DEVCONTAINER_PROJECT to a short lowercase slug matching your project when creating a new project from this template. GITHUB_TOKEN is also auto-passed from the host shell via remoteEnv if already set there."
 }

@@ -15,6 +15,17 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-03-21 — Genericize template for public release
+
+**Goal:** Remove project-specific names and gitignore entries before making the repo public.
+
+**How to implement:**
+1. In `.devcontainer/devcontainer.json`, change `"name"` from project-specific to `"Development"` and `"DEVCONTAINER_PROJECT"` to `"my-project"`.
+2. In `.gitignore`, remove project-specific entries (hasura, production-export, afiliar-portal, experiments/agent).
+3. In `README.md`, update the secrets.d example to use `my-project` instead of a project-specific name.
+
+---
+
 ## 2026-03-21 — Add Quick Start section to README
 
 **Goal:** Make it dead simple for non-technical users to get started — three commands, copy-paste from the README.

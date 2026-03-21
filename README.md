@@ -170,7 +170,7 @@ You're all set! Continue to **Getting Started** below to create your first proje
    **Per-project secrets** — loaded only for a specific container, named after `DEVCONTAINER_PROJECT` in `devcontainer.json`:
 
    ```bash
-   # ~/.config/devcontainer/secrets.d/confiador   (for this template)
+   # ~/.config/devcontainer/secrets.d/my-project   (for this template)
    # ~/.config/devcontainer/secrets.d/my-other-app  (for another project)
    DATABASE_URL=postgres://...
    STRIPE_SECRET_KEY=sk_live_...
