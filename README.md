@@ -2,15 +2,32 @@
 
 This is a **template repository** designed to be the starting point for new projects. When you clone this repository and build the devcontainer, it becomes your own completely new project.
 
+## Quick Start (Mac)
+
+Open Terminal (search "Terminal" in Spotlight) and paste these commands one at a time:
+
+```bash
+# 1. Set up your Mac (installs Docker, Git, DevPod, Warp, an editor, etc.)
+curl -fsSL https://raw.githubusercontent.com/MrChrisRodriguez/devenv/main/init-host.sh | bash
+
+# 2. Clone and create your project
+git clone https://github.com/MrChrisRodriguez/devenv.git my-project
+cd my-project
+./init-new-project.sh my-project
+
+# 3. Start the development container
+devpod up .
+```
+
+That's it. The first run takes a few minutes to build the container. After that, `devpod up .` opens your project in seconds.
+
+> If you're on **Windows or Linux**, skip to the [manual prerequisites](#prerequisites-host-machine-setup) below.
+
+---
+
 ## Prerequisites (Host Machine Setup)
 
-Before you can use this template, you need a few things installed on your computer. Follow each step in order.
-
-**Mac users**: You can automate all of this by running the setup script (requires only a terminal):
-```bash
-curl -fsSL https://raw.githubusercontent.com/MrChrisRodriguez/devenv/main/init-host.sh | bash
-```
-Or if you've already cloned the repo: `./init-host.sh`
+If you used the Quick Start above, you can skip this section. These are the manual steps for reference, or for Windows/Linux users.
 
 ### 1. Install Docker
 

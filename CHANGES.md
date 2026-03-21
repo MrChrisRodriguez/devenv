@@ -15,6 +15,16 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-03-21 — Add Quick Start section to README
+
+**Goal:** Make it dead simple for non-technical users to get started — three commands, copy-paste from the README.
+
+**How to implement:**
+1. In `README.md`, add a "Quick Start (Mac)" section at the top with the `curl | bash` one-liner, clone, init, and `devpod up` commands.
+2. Note that the repo must be **public** for the `curl` one-liner to work without authentication.
+
+---
+
 ## 2026-03-21 — Add Warp terminal to host setup
 
 **Goal:** Include the Warp terminal in the macOS host setup script.
