@@ -6,6 +6,12 @@ This is a **template repository** designed to be the starting point for new proj
 
 Before you can use this template, you need a few things installed on your computer. Follow each step in order.
 
+**Mac users**: You can automate all of this by running the setup script (requires only a terminal):
+```bash
+curl -fsSL https://raw.githubusercontent.com/MrChrisRodriguez/devenv/main/init-host.sh | bash
+```
+Or if you've already cloned the repo: `./init-host.sh`
+
 ### 1. Install Docker
 
 Docker runs the development container that has all your tools pre-configured.
@@ -44,7 +50,7 @@ devpod version
 
 You need one of these editors — the development container integrates with them automatically:
 
-- **[Cursor](https://www.cursor.com/)** (recommended) — AI-native code editor built on VS Code
+- **[Cursor](https://www.cursor.com/)** — AI-native code editor built on VS Code
 - **[VS Code](https://code.visualstudio.com/)** — Microsoft's free code editor
 
 Install either one, then open it once so DevPod can detect it.

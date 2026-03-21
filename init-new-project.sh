@@ -17,6 +17,7 @@ fi
 # Remove template-only files that don't belong in downstream projects
 rm -f bun.lock
 rm -f CHANGES.md
+rm -f init-host.sh
 
 # Initialize new git repository
 echo "📦 Initializing new git repository..."

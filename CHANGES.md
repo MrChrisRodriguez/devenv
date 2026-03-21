@@ -4,6 +4,17 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-03-21 — Add macOS host setup script
+
+**Goal:** Let non-technical users set up their Mac with a single command instead of following manual steps.
+
+**How to implement:**
+1. Add `init-host.sh` at the repo root. It installs (via Homebrew): Xcode CLT, Docker Desktop, Git, DevPod, an IDE (Cursor/VS Code, user's choice), GitHub CLI, and SSH keys. It also creates the host directories for container mounts.
+2. In `README.md`, add a note in the Prerequisites section pointing Mac users to the script.
+3. In `init-new-project.sh`, add `rm -f init-host.sh` to the template-only file cleanup so it doesn't carry into downstream projects.
+
+---
+
 ## 2026-03-21 — Add host machine prerequisites to README
 
 **Goal:** Make the template accessible to non-technical users by documenting everything they need to install on their host machine before cloning.
