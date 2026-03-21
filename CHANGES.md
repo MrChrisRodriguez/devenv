@@ -4,6 +4,16 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-03-21 — Add host machine prerequisites to README
+
+**Goal:** Make the template accessible to non-technical users by documenting everything they need to install on their host machine before cloning.
+
+**How to implement:**
+1. In `README.md`, add a "Prerequisites (Host Machine Setup)" section before "Getting Started" covering: Docker Desktop, Git, DevPod, an IDE (Cursor or VS Code), SSH keys, GitHub CLI, and host directory creation.
+2. Remove the redundant `mkdir` from the secrets step (now covered in prerequisites).
+
+---
+
 ## 2026-03-20 — Remove template-only files during project init
 
 **Goal:** CHANGES.md tracks template history and shouldn't exist in downstream projects.
