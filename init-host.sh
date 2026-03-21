@@ -66,6 +66,14 @@ else
     echo "[ok] DevPod ($(devpod version 2>/dev/null || echo "installed"))"
 fi
 
+# ── Warp Terminal ─────────────────────────────────────────────────────────────
+if [[ ! -d "/Applications/Warp.app" ]]; then
+    echo "Installing Warp terminal..."
+    brew install --cask warp
+else
+    echo "[ok] Warp"
+fi
+
 # ── IDE ──────────────────────────────────────────────────────────────────────
 HAS_CURSOR=false
 HAS_VSCODE=false

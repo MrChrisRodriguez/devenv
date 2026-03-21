@@ -15,6 +15,15 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-03-21 — Add Warp terminal to host setup
+
+**Goal:** Include the Warp terminal in the macOS host setup script.
+
+**How to implement:**
+1. In `init-host.sh`, add a Warp section (`brew install --cask warp`) between DevPod and IDE installation.
+
+---
+
 ## 2026-03-21 — Add host machine prerequisites to README
 
 **Goal:** Make the template accessible to non-technical users by documenting everything they need to install on their host machine before cloning.
