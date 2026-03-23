@@ -9,8 +9,14 @@ source /workspace/.devcontainer/on-create/setup-common.sh
 # Setup Proto environment to access bun
 setup_proto_env
 
+# Remove bun-installed claude-code if present (we use the native binary instead)
+if bun pm ls -g 2>/dev/null | grep -q '@anthropic-ai/claude-code'; then
+    echo "🧹 Removing bun-installed @anthropic-ai/claude-code (replaced by native binary)..."
+    bun remove -g @anthropic-ai/claude-code
+fi
+
 # Install Claude Code native binary if not present
-if ! command -v claude &> /dev/null; then
+if [ ! -f "$HOME/.local/bin/claude" ]; then
     echo "📦 Installing Claude Code native binary..."
     curl -fsSL https://claude.ai/install.sh | bash
     export PATH="$HOME/.local/bin:$PATH"
