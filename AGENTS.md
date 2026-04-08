@@ -49,6 +49,10 @@ scripts/   # one-off tooling scripts
   - `tsconfig.next.base.json` — Next.js apps
   - `tsconfig.worker.base.json` — Cloudflare Workers
 
+## Commit Policy
+
+ALWAYS commit and push after completing each significant change. Do NOT wait for the user to ask. Before committing, update `/workspace/CHANGES.md` with a dated entry (Goal + How to implement).
+
 ## Secrets
 
 Secrets are host-mounted, not environment variables in the image:
