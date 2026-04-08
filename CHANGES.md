@@ -4,6 +4,57 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-04-08 — Devcontainer upgrades: Trixie, RTK, zsh default shell, SSH workspace dir, disable Moby
+
+**Goal:** Modernize the devcontainer base image, add token compression tooling, fix SSH shell defaults, and switch from Moby to Docker CE.
+
+**How to implement:**
+1. **Upgrade base image to Debian 13 (Trixie):** In `.devcontainer/Dockerfile`, change base image tag from `bookworm` to `trixie`. Brings GLIBC 2.41, OpenSSL 3.4+, GCC 14.
+2. **Add RTK (token compression):** In `Dockerfile`, add a new `RUN` step after git-delta:
+   ```dockerfile
+   RUN ARCH=$(uname -m) \
+       && wget -q "https://github.com/rtk-ai/rtk/releases/latest/download/rtk-${ARCH}-unknown-linux-gnu.tar.gz" -O /tmp/rtk.tar.gz \
+       && tar xzf /tmp/rtk.tar.gz -C /usr/local/bin/ \
+       && chmod +x /usr/local/bin/rtk \
+       && rm /tmp/rtk.tar.gz
+   ```
+   In `.devcontainer/on-create/setup-claude.sh`, add RTK hook initialization:
+   ```bash
+   if command -v rtk &> /dev/null; then
+       rtk init -g
+   fi
+   ```
+   RTK requires GLIBC 2.39+, which is why the Trixie upgrade is a prerequisite. Saves 60-90% tokens on Claude Code bash output.
+3. **Set zsh as default login shell for SSH:** In `Dockerfile`, add before `USER vscode`:
+   ```dockerfile
+   RUN chsh -s /usr/bin/zsh vscode
+   ```
+   In `devcontainer.json`, flip: `"configureZshAsDefaultShell": true`. SSH reads `/etc/passwd` (ignoring env vars), which `chsh` fixes.
+4. **SSH starts in /workspace:** In `.devcontainer/configs/.shell_common`, add before PATH exports:
+   ```bash
+   [[ "$PWD" == "$HOME" ]] && cd /workspace
+   ```
+   Only fires when the shell opens in `$HOME` (the SSH default).
+5. **Disable Moby:** In `devcontainer.json`, update docker-in-docker feature:
+   ```json
+   "ghcr.io/devcontainers/features/docker-in-docker:2": { "moby": false }
+   ```
+
+---
+
+## 2026-04-08 — Add commit policy to CLAUDE.md
+
+**Goal:** Ensure Claude always commits and pushes after significant changes without waiting for user confirmation.
+
+**How to implement:**
+1. In `CLAUDE.md`, add a "Commit Policy" section before the Frontend section:
+   ```markdown
+   ## Commit Policy
+   ALWAYS commit and push after completing each significant change. Do NOT wait for the user to ask. Before committing, update `/workspace/CHANGES.md` with a dated entry (Goal + How to implement).
+   ```
+
+---
+
 ## 2026-03-21 — Add macOS host setup script
 
 **Goal:** Let non-technical users set up their Mac with a single command instead of following manual steps.

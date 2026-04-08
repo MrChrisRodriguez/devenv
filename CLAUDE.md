@@ -8,6 +8,10 @@ alwaysApply: false
 
 Shared conventions (Bun-first, monorepo structure, code quality, secrets) are in @AGENTS.md.
 
+## Commit Policy
+
+ALWAYS commit and push after completing each significant change. Do NOT wait for the user to ask. Before committing, update `/workspace/CHANGES.md` with a dated entry (Goal + How to implement).
+
 ## Frontend
 
 Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.

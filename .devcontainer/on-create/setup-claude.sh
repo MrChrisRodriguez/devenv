@@ -36,4 +36,10 @@ else
     claude mcp add --scope user context7 -- bunx @upstash/context7-mcp
 fi
 
+# Configure RTK hook for Claude Code (token compression on bash output)
+if command -v rtk &> /dev/null; then
+    echo "🔧 Configuring RTK hook for Claude Code..."
+    rtk init -g
+fi
+
 echo "✅ Claude Code setup complete!"

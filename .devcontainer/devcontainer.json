@@ -4,7 +4,9 @@
 		"dockerfile": "Dockerfile"
 	},
 	"features": {
-		"ghcr.io/devcontainers/features/docker-in-docker:2": {},
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {
+			"moby": false
+		},
 		"ghcr.io/devcontainers/features/git:1": {},
 		"ghcr.io/devcontainers/features/github-cli:1": {},
 		"ghcr.io/devcontainers/features/node:1": {
@@ -13,7 +15,7 @@
 		},
 		"ghcr.io/devcontainers/features/common-utils:2": {
 			"installZsh": true,
-			"configureZshAsDefaultShell": false,
+			"configureZshAsDefaultShell": true,
 			"installOhMyZsh": false,
 			"username": "vscode",
 			"userUid": "automatic",

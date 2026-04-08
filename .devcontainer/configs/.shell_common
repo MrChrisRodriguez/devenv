@@ -50,6 +50,9 @@ alias claude-auto='claude --dangerously-skip-permissions'
 # Other aliases
 alias biome='bunx biome'
 
+# Default working directory (SSH lands in $HOME; this brings us to the workspace)
+[[ "$PWD" == "$HOME" ]] && cd /workspace
+
 # Proto configuration
 export PROTO_HOME="$HOME/.proto"
 export PATH="$HOME/.local/bin:$HOME/.proto/shims:$HOME/.proto/bin:/home/vscode/.bun/bin:/home/vscode/.bun/install/global/node_modules/.bin:$PATH"
