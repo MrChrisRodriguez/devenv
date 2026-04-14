@@ -4,6 +4,18 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-04-14 — Run setup-shell.sh last in on-create.sh
+
+**Goal:** Prevent tool installers from overwriting custom shell config during container setup.
+
+**How to implement:**
+1. In `.devcontainer/on-create.sh`, move the `source /workspace/.devcontainer/on-create/setup-shell.sh` line from early in the script (after `setup-proto.sh`) to the very end, after all other installer scripts and `setup-vscode-extensions.sh`.
+2. Add a comment explaining why it must run last: tool installers (e.g. bun via proto) overwrite `~/.zshrc`, so our shell config must be written after all of them finish.
+
+**Why:** Bun's installer (and potentially others) overwrites `~/.zshrc` during setup. When `setup-shell.sh` ran early, later installers would clobber the custom shell config, breaking devpod SSH auto-cd, aliases, PATH, and completions.
+
+---
+
 ## 2026-04-08 — Devcontainer upgrades: Trixie, RTK, zsh default shell, SSH workspace dir, disable Moby
 
 **Goal:** Modernize the devcontainer base image, add token compression tooling, fix SSH shell defaults, and switch from Moby to Docker CE.
