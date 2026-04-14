@@ -1,4 +1,17 @@
 {
+	"hooks": {
+		"PreToolUse": [
+			{
+				"matcher": "Bash(git commit*)",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash -c 'TYPE=$(echo \"$TOOL_INPUT\" | grep -oP \"(feat|fix|refactor|perf|build|docs|chore|style|ci|test)(?=[\\s(:])\" | head -1); case \"$TYPE\" in docs|chore|style|ci|test) exit 0;; esac; if git diff --cached --name-only | grep -q \"^CHANGES.md$\"; then exit 0; else echo \"CHANGES.md is not staged. Significant commits (feat/fix/refactor/perf/build) require a changelog entry. Update CHANGES.md and stage it before committing.\"; exit 2; fi'"
+					}
+				]
+			}
+		]
+	},
 	"mcpServers": {
 		"context7": {
 			"command": "bunx",

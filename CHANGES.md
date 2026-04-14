@@ -4,6 +4,34 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-04-14 — Pre-commit hook to enforce changelog updates
+
+**Goal:** Automatically block significant commits that don't include a CHANGES.md update, so the changelog never falls behind.
+
+**How to implement:**
+1. In `.claude/settings.json`, add a `PreToolUse` hook with matcher `Bash(git commit*)`:
+   ```json
+   {
+     "hooks": {
+       "PreToolUse": [
+         {
+           "matcher": "Bash(git commit*)",
+           "hooks": [
+             {
+               "type": "command",
+               "command": "bash -c '...check CHANGES.md is staged...'"
+             }
+           ]
+         }
+       ]
+     }
+   }
+   ```
+2. The hook extracts the conventional commit type (`feat:`, `fix:`, etc.) from `$TOOL_INPUT` and skips the check for minor types (`docs`, `chore`, `style`, `ci`, `test`).
+3. For significant types (`feat`, `fix`, `refactor`, `perf`, `build`), it verifies `CHANGES.md` is in the staged files via `git diff --cached --name-only`. If missing, it exits with code 2 (block + message).
+
+---
+
 ## 2026-04-14 — Run setup-shell.sh last in on-create.sh
 
 **Goal:** Prevent tool installers from overwriting custom shell config during container setup.
