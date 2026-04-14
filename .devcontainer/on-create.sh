@@ -42,9 +42,6 @@ fi
 # Install Proto-managed apps in .prototools
 source /workspace/.devcontainer/on-create/setup-proto.sh
 
-# Install and configure bash and zsh and completions
-source /workspace/.devcontainer/on-create/setup-shell.sh
-
 # Install Biome
 source /workspace/.devcontainer/on-create/setup-biome.sh
 
@@ -60,6 +57,12 @@ source /workspace/.devcontainer/on-create/setup-oh-my-opencode.sh
 # Install Openspec
 source /workspace/.devcontainer/on-create/setup-openspec.sh
 
+# Install Gemini CLI
+source /workspace/.devcontainer/on-create/setup-gemini.sh
+
+# Install Codex CLI
+source /workspace/.devcontainer/on-create/setup-codex.sh
+
 # Sync extensions.json from devcontainer.json (ensures it's always in sync)
 if [ -f "/workspace/.devcontainer/scripts/sync-extensions-json.sh" ]; then
 	echo "🔄 Syncing .vscode/extensions.json from devcontainer.json..."
@@ -68,6 +71,11 @@ fi
 
 # Install VS Code extensions (for DevPod compatibility)
 source /workspace/.devcontainer/on-create/setup-vscode-extensions.sh
+
+# Install and configure bash and zsh and completions
+# NOTE: Must run LAST — tool installers (e.g. bun) overwrite ~/.zshrc,
+# so our shell config must be written after all of them finish.
+source /workspace/.devcontainer/on-create/setup-shell.sh
 
 echo "✨ Development environment setup complete!"
 echo "💡 Tips:"
