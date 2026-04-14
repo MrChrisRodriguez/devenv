@@ -16,6 +16,40 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-04-08 — Move commit policy to AGENTS.md (shared across all agents)
+
+**Goal:** All AI agents (Claude Code, Cursor, Opencode) should follow the same commit policy, not just Claude Code.
+
+**How to implement:**
+1. Move the "Commit Policy" section from `CLAUDE.md` to `AGENTS.md`.
+2. Remove the duplicate from `CLAUDE.md` — it already references `@AGENTS.md` for shared conventions.
+
+---
+
+## 2026-03-23 — Add OpenSpec skills/commands and improve Claude Code setup
+
+**Goal:** Provide OpenSpec workflow skills (explore, propose, apply, archive) as slash commands for Claude Code and Codex. Also fix a stale-binary issue in the Claude Code setup script.
+
+**How to implement:**
+1. Create OpenSpec skill definitions under `.claude/skills/` and `.codex/skills/` for four workflows: `openspec-apply-change`, `openspec-archive-change`, `openspec-explore`, and `openspec-propose`.
+2. Create corresponding slash commands under `.claude/commands/opsx/` (`apply.md`, `archive.md`, `explore.md`, `propose.md`).
+3. In `.devcontainer/on-create/setup-claude.sh`, add a step to remove any stale bun-installed `claude-code` binary before installing the native binary, and use an explicit path check (`[ -f ~/.local/bin/claude ]`) instead of `command -v`.
+
+---
+
+## 2026-03-21 — Allow CI test step to pass with no tests
+
+**Goal:** The template ships with no test files, so `bun test` fails and breaks CI. Let CI stay green until downstream projects add their own tests.
+
+**How to implement:**
+1. In `.github/workflows/ci.yml`, add `continue-on-error: true` to the test step:
+   ```yaml
+   - run: bun test
+     continue-on-error: true
+   ```
+
+---
+
 ## 2026-04-08 — Devcontainer upgrades: Trixie, RTK, zsh default shell, SSH workspace dir, disable Moby
 
 **Goal:** Modernize the devcontainer base image, add token compression tooling, fix SSH shell defaults, and switch from Moby to Docker CE.
