@@ -199,6 +199,25 @@ You're all set! Continue to **Getting Started** below to create your first proje
    opencode auth
    ```
 
+6. **Authenticate Gemini CLI**
+
+   Gemini CLI requires a Google Gemini API key. On first run, it will prompt you to log in:
+   ```bash
+   gemini
+   ```
+   Follow the prompts to authenticate with your Google account or provide an API key. You can also set the `GEMINI_API_KEY` environment variable in your secrets file.
+
+7. **Authenticate Codex CLI**
+
+   Codex CLI requires an OpenAI API key. Set it before first use:
+   ```bash
+   export OPENAI_API_KEY=your-key-here
+   ```
+   You can add `OPENAI_API_KEY` to your common or per-project secrets file so it's available automatically. Then run:
+   ```bash
+   codex
+   ```
+
 You're now ready to start building your new project!
 
 
@@ -210,6 +229,8 @@ AI Tools:
 - Opencode (https://opencode.ai/)
 - oh-my-opencode (https://github.com/danzilberdan/oh-my-opencode)
 - Claude Code
+- Gemini CLI (https://github.com/google-gemini/gemini-cli)
+- Codex CLI (https://github.com/openai/codex)
 - Context7 MCP (https://context7.com) — up-to-date library docs for Claude Code, Cursor, and OpenCode
 - Biome
 

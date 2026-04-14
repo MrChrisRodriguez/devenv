@@ -4,6 +4,18 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-04-14 — Add Gemini CLI and Codex CLI to devcontainer
+
+**Goal:** Include Gemini CLI and OpenAI Codex CLI as additional AI coding tools in the devcontainer.
+
+**How to implement:**
+1. Create `.devcontainer/on-create/setup-gemini.sh` — installs `@google/gemini-cli` globally via bun with an idempotency check.
+2. Create `.devcontainer/on-create/setup-codex.sh` — installs `@openai/codex` globally via bun with an idempotency check.
+3. In `.devcontainer/on-create.sh`, source both scripts (they're already wired in from the setup-shell.sh reordering).
+4. In `README.md`, add authentication instructions for both tools (Gemini: Google account or `GEMINI_API_KEY`; Codex: `OPENAI_API_KEY`) and list them in the AI Tools section.
+
+---
+
 ## 2026-04-14 — Pre-commit hook to enforce changelog updates
 
 **Goal:** Automatically block significant commits that don't include a CHANGES.md update, so the changelog never falls behind.
