@@ -4,6 +4,38 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-13 — Fix: devcontainer setup failures (RTK hook, claude-mem, oh-my-opencode)
+
+**Goal:** Three independent on-create failures were silently degrading the devcontainer: the RTK token-compression hook was never patched into `~/.claude/settings.json`, the `claude-mem` plugin's first-run SessionStart hook failed with an unhelpful "no stderr" error, and the oh-my-opencode plugin was never registered in `opencode.json`.
+
+**Root causes:**
+1. **RTK (Fix A):** `rtk init -g` detects non-interactive shell mode (on-create runs without a TTY) and defaults to "N" at the "Patch existing settings.json?" prompt, then exits without writing the hook config. RTK ships an `--auto-patch` flag for exactly this scenario.
+2. **claude-mem (Fix D):** The plugin's SessionStart hook runs `bun install` on a manifest of `tree-sitter-*` packages whose post-install scripts shell out to `node-gyp`. The devcontainer's node feature is configured with `nodeGypDependencies: false`, and npm's bundled node-gyp isn't symlinked onto `$PATH` — so the spawn fails with ENOENT and the hook exits non-zero. (The packages themselves work at runtime via shipped prebuilds; only the install-script step fails.)
+3. **oh-my-opencode (Fix C):** Upstream installer's version comparison is lexicographic — `"1.14.48"` compares as less than `"1.4.0"` because `'1' < '4'` at the second segment. The installer prints `Detected OpenCode 1.x.x, but 1.4.0+ is required` and aborts before writing `opencode.json`, even on currently-released opencode versions.
+
+**How to implement:**
+1. In `.devcontainer/on-create/setup-claude.sh`, after `setup_proto_env`, install `node-gyp` globally if missing:
+   ```bash
+   if command -v npm &> /dev/null && ! command -v node-gyp &> /dev/null; then
+       npm install -g node-gyp >/dev/null 2>&1 || \
+           echo "⚠️   Could not install node-gyp; some Claude Code plugins may fail their first install"
+   fi
+   ```
+   npm is already on `$PATH` from the devcontainer node feature and ships `node-gyp` as a bundled dep, so `npm i -g node-gyp` just creates the bin symlink.
+2. In `.devcontainer/on-create/setup-claude.sh`, change `rtk init -g` to `rtk init -g --auto-patch` so the hook config is patched into `~/.claude/settings.json` non-interactively (also creates `~/.claude/settings.json.bak`).
+3. In `.devcontainer/on-create/setup-oh-my-opencode.sh`, replace the `bunx oh-my-opencode install …` block (and its 3-retry verification loop) with: (a) `bun install -g oh-my-opencode` if not already globally installed, (b) write `~/.config/opencode/opencode.json` directly with `{"$schema":"https://opencode.ai/config.json","plugin":["oh-my-openagent"]}`. This bypasses the broken upstream version check. The plugin is dual-published as `oh-my-opencode` (legacy npm name) and `oh-my-openagent` (new name accepted by opencode without a warning).
+4. **One-off cleanup (per devcontainer):** if a previous run left `/workspace/.codex` as a 0-byte regular file instead of a directory (visible as `ENOTDIR` from `openspec init`), run once: `chmod u+w /workspace/.codex && rm /workspace/.codex`. Not applicable if `.codex/` is already a directory (which it is in this repo). No script changes needed — this is a workspace-data issue, not a setup-script bug.
+
+**Verification (after rebuild):**
+```bash
+command -v node-gyp                                          # /usr/local/share/nvm/.../bin/node-gyp
+grep -A 5 PreToolUse ~/.claude/settings.json                 # shows rtk hook claude
+cat ~/.config/opencode/opencode.json                         # has plugin: ["oh-my-openagent"]
+test -d /workspace/.codex && echo ok || echo "still bad"     # ok
+```
+
+---
+
 ## 2026-05-13 — Fix: `exit` in sourced bash setup scripts silently kills the parent
 
 **Goal:** Sourced on-create helper scripts used `exit N` for early termination, which killed the parent `on-create.sh` shell instead of just returning from the helper. This silently prevented later scripts (notably `setup-shell.sh`) from running.

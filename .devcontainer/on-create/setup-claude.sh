@@ -9,6 +9,17 @@ source /workspace/.devcontainer/on-create/setup-common.sh
 # Setup Proto environment to access bun
 setup_proto_env
 
+# Install node-gyp globally so Claude Code plugins with native deps can build
+# (devcontainer node feature sets nodeGypDependencies:false; some plugins —
+# e.g. claude-mem's tree-sitter post-installs — invoke node-gyp during their
+# first bun/npm install and otherwise fail with ENOENT, silently breaking
+# SessionStart hooks).
+if command -v npm &> /dev/null && ! command -v node-gyp &> /dev/null; then
+    echo "🔧 Installing node-gyp globally for plugin native deps..."
+    npm install -g node-gyp >/dev/null 2>&1 || \
+        echo "⚠️   Could not install node-gyp; some Claude Code plugins may fail their first install"
+fi
+
 # Remove bun-installed claude-code if present (we use the native binary instead)
 if bun pm ls -g 2>/dev/null | grep -q '@anthropic-ai/claude-code'; then
     echo "🧹 Removing bun-installed @anthropic-ai/claude-code (replaced by native binary)..."
@@ -39,7 +50,7 @@ fi
 # Configure RTK hook for Claude Code (token compression on bash output)
 if command -v rtk &> /dev/null; then
     echo "🔧 Configuring RTK hook for Claude Code..."
-    rtk init -g
+    rtk init -g --auto-patch
 fi
 
 echo "✅ Claude Code setup complete!"
