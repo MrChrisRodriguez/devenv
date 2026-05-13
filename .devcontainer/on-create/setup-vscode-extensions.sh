@@ -8,7 +8,7 @@ DEVCONTAINER_JSON="/workspace/.devcontainer/devcontainer.json"
 
 if [ ! -f "$DEVCONTAINER_JSON" ]; then
 	echo "⚠️  devcontainer.json not found at $DEVCONTAINER_JSON"
-	exit 1
+	return 1
 fi
 
 # Try to extract extensions using jq if available, otherwise use grep/sed
@@ -26,14 +26,14 @@ fi
 if [ -z "$EXTENSIONS" ]; then
 	echo "⚠️  Could not extract extensions from devcontainer.json"
 	echo "   Extensions will be installed via .vscode/extensions.json recommendations"
-	exit 0
+	return 0
 fi
 
 # Check if code command is available and functional (not just a non-working shim)
 if ! command -v code &> /dev/null || ! code --list-extensions &> /dev/null; then
 	echo "⚠️  VS Code CLI (code) not found or not functional. Extensions will be installed when VS Code connects."
 	echo "   This is normal for DevPod - extensions will install automatically when the editor connects."
-	exit 0
+	return 0
 fi
 
 # Install each extension

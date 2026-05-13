@@ -21,19 +21,19 @@ version_ge() {
 if ! command -v opencode &> /dev/null; then
     echo "OpenCode is not installed. Please install it first."
     echo "Ref: https://opencode.ai/docs"
-    exit 1
+    return 1
 fi
 
 OPENCODE_VERSION=$(opencode --version 2>/dev/null || echo "none")
 
 if [ "$OPENCODE_VERSION" = "none" ]; then
     echo "❌ opencode is not installed."
-    exit 1
+    return 1
 elif version_ge "$OPENCODE_VERSION" "$OPENCODE_MIN_VERSION"; then
     echo "✅ opencode version $OPENCODE_VERSION is >= $OPENCODE_MIN_VERSION"
 else
     echo "❌ opencode version $OPENCODE_VERSION is < $OPENCODE_MIN_VERSION"
-    exit 1
+    return 1
 fi
 
 # Check if oh-my-opencode is already configured — skip the slow bunx install if so

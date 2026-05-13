@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 set -e
 
+# All scripts in on-create/ are SOURCED from this file, not executed.
+# Use `return N` for early termination, not `exit N` — `exit` from a sourced
+# script kills the parent shell and silently halts the rest of the setup chain.
+
 echo "🚀 Setting up ${DEVCONTAINER_PROJECT:-development} development environment with Proto..."
 
 # ── Secrets ──────────────────────────────────────────────────────────────────

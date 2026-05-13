@@ -4,6 +4,18 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-13 — Fix: `exit` in sourced bash setup scripts silently kills the parent
+
+**Goal:** Sourced on-create helper scripts used `exit N` for early termination, which killed the parent `on-create.sh` shell instead of just returning from the helper. This silently prevented later scripts (notably `setup-shell.sh`) from running.
+
+**How to implement:**
+1. In `.devcontainer/on-create/setup-vscode-extensions.sh`, replace all `exit N` with `return N` (3 occurrences).
+2. In `.devcontainer/on-create/setup-oh-my-opencode.sh`, replace all `exit N` with `return N` (3 occurrences).
+3. In `.devcontainer/on-create.sh`, add a convention comment at the top documenting that sourced helpers must use `return`, not `exit`.
+4. Audit with: `grep -nH -E "^[[:space:]]*exit[[:space:]]+[0-9]" .devcontainer/on-create/*.sh` — should return empty.
+
+---
+
 ## 2026-04-14 — Add Gemini CLI and Codex CLI to devcontainer
 
 **Goal:** Include Gemini CLI and OpenAI Codex CLI as additional AI coding tools in the devcontainer.
