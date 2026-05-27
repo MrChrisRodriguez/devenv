@@ -4,6 +4,26 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-27 — Feature: auto-install Claude Code Warp plugin during devcontainer setup
+
+**Goal:** Install [claude-code-warp](https://github.com/warpdotdev/claude-code-warp) — Warp's official Claude Code plugin — automatically when the devcontainer is created, so it's available without manual `/plugin marketplace add` + `/plugin install` steps.
+
+**How to implement:**
+1. Add `.devcontainer/on-create/setup-claude-warp.sh`. The script:
+   - Runs `claude plugin marketplace add warpdotdev/claude-code-warp` then `claude plugin install warp@claude-code-warp`.
+   - Skipped if `~/.claude/plugins/cache/claude-code-warp/warp` already exists (the `~/.claude` volume persists this across rebuilds, so the install only runs once per fresh volume).
+   - Gracefully no-ops if the `claude` CLI is not on PATH.
+2. In `.devcontainer/on-create.sh`, source the new script **after** `setup-claude.sh` so the `claude` CLI is available.
+
+**Verification (after rebuild):**
+```bash
+ls ~/.claude/plugins/cache/claude-code-warp/warp   # plugin payload present
+```
+
+Inside Claude Code, the Warp commands/skills shipped by the plugin become available immediately.
+
+---
+
 ## 2026-05-27 — Feature: auto-install Claude Octopus during devcontainer setup
 
 **Goal:** Install [claude-octopus](https://github.com/nyldn/claude-octopus) — a multi-LLM orchestration layer with `/octo:*` commands and 50+ skills — automatically when the devcontainer is created, so it's available across Claude Code, Codex CLI, and OpenCode without manual setup steps.
