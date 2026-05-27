@@ -4,6 +4,19 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-27 — Chore: bump `@biomejs/biome` 2.4.10 → 2.4.15
+
+**What changed:** Patch-version bump of Biome (formatter/linter) from `2.4.10` to `2.4.15`. Picked up on a routine `bun install`; no API or rule changes affecting this repo's configuration.
+
+**How to adopt downstream:**
+```bash
+bun add -d @biomejs/biome@2.4.15
+```
+
+**Verification:** `bunx biome --version` → `2.4.15`. Existing `biome check` results unchanged on this codebase.
+
+---
+
 ## 2026-05-27 — Chore: re-sync OpenSpec skills (generator 1.2.0 → 1.3.1) and rename `.opencode/command/` → `.opencode/commands/`
 
 **What changed:** Re-ran the OpenSpec skill generator and committed the resulting drift. `@fission-ai/openspec` is still pinned at `0.19.0` in `package.json`, but the generator's internal `generatedBy` version embedded in each `SKILL.md` bumped from `1.2.0` to `1.3.1`. Two visible effects:
