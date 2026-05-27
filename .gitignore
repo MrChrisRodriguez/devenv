@@ -68,3 +68,9 @@
 # TypeScript
 **/*.tsbuildinfo
 
+# Graphify (per https://github.com/safishamsi/graphify README)
+# Keep graph.json, graph.html, GRAPH_REPORT.md, cache/ committed — they're
+# the shared knowledge graph. Ignore only the per-user noise files.
+graphify-out/manifest.json
+graphify-out/cost.json
+

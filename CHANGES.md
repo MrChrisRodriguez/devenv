@@ -4,6 +4,25 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-27 — Fix: install Graphify with the `gemini` extra + gitignore graphify per-user output files
+
+**What broke:** Running `/graphify .` immediately failed at the semantic-extraction step:
+> Gemini/Kimi/Ollama/OpenAI-compatible extraction requires the openai package. Run: pip install openai
+
+Graphify's skill prefers Gemini for semantic extraction whenever `GEMINI_API_KEY` or `GOOGLE_API_KEY` is set (this devcontainer has them via the host-mounted secrets file), but uses the OpenAI SDK under the hood to talk to Gemini's OpenAI-compatible endpoint. The base `graphifyy` package doesn't pull in `openai` — you need the `[gemini]` (or `[openai]`) extra.
+
+**Fix 1 — install with the extra:** `.devcontainer/on-create/setup-graphify.sh` now runs `uv tool install 'graphifyy[gemini]'` instead of plain `uv tool install graphifyy`. Adds ~3MB (openai SDK + httpx). Tested: fresh uninstall → rerun produces a working install where `import openai` succeeds from graphify's Python.
+
+**Fix 2 — `.gitignore` for per-user graphify output:** After `/graphify .`, `graphify-out/` accumulates `manifest.json` (per-user file hashes that diff on every machine) and `cost.json` (local API spend tracker). Per the [graphify README's official guidance](https://github.com/safishamsi/graphify#what-files-it-handles), only those two should be ignored — `graph.json`, `graph.html`, `GRAPH_REPORT.md`, and `cache/` are intentionally committable so the knowledge graph can be shared across the team. Added to `.gitignore`:
+```
+graphify-out/manifest.json
+graphify-out/cost.json
+```
+
+**Note for downstream:** If your secrets profile sets `OPENAI_API_KEY` instead of `GEMINI_API_KEY`, the same `[gemini]` extra also covers the OpenAI-compatible code path — no second install needed.
+
+---
+
 ## 2026-05-27 — Feature: auto-install Graphify (project-scoped) during devcontainer setup
 
 **Goal:** Install [graphify](https://github.com/safishamsi/graphify) — a knowledge-graph builder for code/docs that AI assistants query instead of grepping raw files — and pre-register it with Claude Code, Codex CLI, OpenCode, and Gemini CLI at **project scope** so downstream template users inherit the configuration via `git clone` and it works in `git worktree`s without re-running setup.

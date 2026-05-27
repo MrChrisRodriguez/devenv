@@ -25,8 +25,12 @@ fi
 if command -v graphify &> /dev/null; then
     echo "ℹ️  graphify already installed at $(command -v graphify), skipping"
 else
-    echo "📦 Installing graphifyy via uv..."
-    uv tool install graphifyy
+    echo "📦 Installing graphifyy[gemini] via uv..."
+    # The `gemini` extra pulls in the `openai` SDK that graphify uses to talk
+    # to Gemini's OpenAI-compatible endpoint. Without it, semantic extraction
+    # fails the moment GEMINI_API_KEY or GOOGLE_API_KEY is set (which is the
+    # default in this devcontainer's secrets file).
+    uv tool install 'graphifyy[gemini]'
 fi
 
 echo "✅ Graphify setup complete!"
