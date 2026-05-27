@@ -4,6 +4,25 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-27 — Chore: re-sync OpenSpec skills (generator 1.2.0 → 1.3.1) and rename `.opencode/command/` → `.opencode/commands/`
+
+**What changed:** Re-ran the OpenSpec skill generator and committed the resulting drift. `@fission-ai/openspec` is still pinned at `0.19.0` in `package.json`, but the generator's internal `generatedBy` version embedded in each `SKILL.md` bumped from `1.2.0` to `1.3.1`. Two visible effects:
+
+1. **All 16 OpenSpec skill/command files re-emitted** across `.claude/`, `.codex/`, `.cursor/`, `.opencode/` with minor whitespace/wording tidies (column-aligned markdown tables, ASCII diagram indentation, one wording clarification: `contextFiles: artifact ID -> array of concrete file paths` in `opsx/apply.md`). No functional behavior change.
+2. **Directory rename for OpenCode commands:** `.opencode/command/` → `.opencode/commands/` (plural). The new generator emits the plural form to match `.claude/commands/` / `.cursor/commands/` conventions. Files inside are byte-identical to the deleted ones.
+
+**How to adopt downstream:**
+```bash
+# Re-emit the skills from the same openspec version you already have installed:
+bunx openspec init --force   # or whichever flag your version uses; check `bunx openspec --help`
+# Then verify the new opencode directory name and remove the old singular one:
+[ -d .opencode/command ] && [ -d .opencode/commands ] && git rm -r .opencode/command
+```
+
+**Verification:** `grep -l 'generatedBy: "1.3.1"' .claude/skills/openspec-*/SKILL.md` should match all four skills (same in `.codex/`, `.cursor/`, `.opencode/`).
+
+---
+
 ## 2026-05-27 — Fix: install Graphify with the `gemini` extra + gitignore graphify per-user output files
 
 **What broke:** Running `/graphify .` immediately failed at the semantic-extraction step:
