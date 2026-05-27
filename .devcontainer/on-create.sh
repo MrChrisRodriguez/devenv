@@ -67,6 +67,9 @@ source /workspace/.devcontainer/on-create/setup-gemini.sh
 # Install Codex CLI
 source /workspace/.devcontainer/on-create/setup-codex.sh
 
+# Install Claude Octopus (must run AFTER claude/codex/opencode so their CLIs are on PATH)
+source /workspace/.devcontainer/on-create/setup-claude-octopus.sh
+
 # Sync extensions.json from devcontainer.json (ensures it's always in sync)
 if [ -f "/workspace/.devcontainer/scripts/sync-extensions-json.sh" ]; then
 	echo "🔄 Syncing .vscode/extensions.json from devcontainer.json..."

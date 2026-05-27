@@ -4,6 +4,31 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-27 — Feature: auto-install Claude Octopus during devcontainer setup
+
+**Goal:** Install [claude-octopus](https://github.com/nyldn/claude-octopus) — a multi-LLM orchestration layer with `/octo:*` commands and 50+ skills — automatically when the devcontainer is created, so it's available across Claude Code, Codex CLI, and OpenCode without manual setup steps.
+
+**How to implement:**
+1. Add `.devcontainer/on-create/setup-claude-octopus.sh`. The script:
+   - Clones `nyldn/claude-octopus` once to `~/.local/share/claude-octopus` (canonical location, shared by all CLIs via symlinks — avoids cloning the repo three times per rebuild).
+   - For **Claude Code**: runs `claude plugin marketplace add https://github.com/nyldn/plugins.git` then `claude plugin install octo@nyldn-plugins`. Skipped if `~/.claude/plugins/cache/nyldn-plugins/octo` already exists (the `~/.claude` volume persists this across rebuilds).
+   - For **Codex CLI**: symlinks `~/.codex/claude-octopus` → canonical clone (only if `codex` is on PATH).
+   - For **OpenCode**: symlinks `~/.opencode/claude-octopus` → canonical clone (only if `opencode` is on PATH).
+   - Creates the shared skill-discovery symlink `~/.agents/skills/claude-octopus` → `<canonical>/skills` (this is the path both Codex and OpenCode read for skill files; the README shows them creating it independently, but they can share one symlink safely).
+   - All steps are idempotent — re-running the script does nothing if everything is already in place.
+2. In `.devcontainer/on-create.sh`, source the new script **after** `setup-claude.sh`, `setup-opencode.sh`, and `setup-codex.sh` — the script needs those CLIs on PATH to detect them and install the Claude Code plugin.
+
+**Verification (after rebuild):**
+```bash
+ls -l ~/.codex/claude-octopus ~/.opencode/claude-octopus ~/.agents/skills/claude-octopus   # all symlinks resolved
+ls ~/.local/share/claude-octopus/skills | head                                              # shows skill dirs
+ls ~/.claude/plugins/cache/nyldn-plugins/octo                                               # contains version dir
+```
+
+Inside Claude Code, run `/octo:setup` to walk through provider configuration (one-time, interactive).
+
+---
+
 ## 2026-05-13 — Fix: devcontainer setup failures (RTK hook, claude-mem, oh-my-opencode)
 
 **Goal:** Three independent on-create failures were silently degrading the devcontainer: the RTK token-compression hook was never patched into `~/.claude/settings.json`, the `claude-mem` plugin's first-run SessionStart hook failed with an unhelpful "no stderr" error, and the oh-my-opencode plugin was never registered in `opencode.json`.
