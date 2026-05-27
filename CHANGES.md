@@ -4,6 +4,45 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-27 — Feature: auto-install Graphify (project-scoped) during devcontainer setup
+
+**Goal:** Install [graphify](https://github.com/safishamsi/graphify) — a knowledge-graph builder for code/docs that AI assistants query instead of grepping raw files — and pre-register it with Claude Code, Codex CLI, OpenCode, and Gemini CLI at **project scope** so downstream template users inherit the configuration via `git clone` and it works in `git worktree`s without re-running setup.
+
+**Why project-scope instead of user-scope (the pattern octopus/warp use):** Graphify ships a first-class `--project` flag that writes skill files and PreToolUse hooks into the project directory. Committing those files means (1) git worktrees inherit them via the tracked tree (user-scoped installs from `on-create.sh` don't run when a worktree is created), and (2) container rebuilds don't have to regenerate them, so the working tree stays clean.
+
+**How to implement:**
+1. Add `uv` to `.prototools` (recommended graphify install method; the [Phault/proto-toml-plugins](https://github.com/Phault/proto-toml-plugins) repo already in use for `fly`/`infisical`/`dagger` ships a maintained `uv` plugin):
+   ```toml
+   uv = "0.11.16"
+   # ...
+   [plugins]
+   uv = "https://raw.githubusercontent.com/Phault/proto-toml-plugins/main/uv/plugin.toml"
+   ```
+2. Add `.devcontainer/on-create/setup-graphify.sh`. The script only installs the graphify CLI via `uv tool install graphifyy` (idempotent — skipped if `graphify` is already on PATH). It does **not** run `graphify install --project` because all project files are committed to the repo.
+3. In `.devcontainer/on-create.sh`, source the new script after `setup-proto.sh` (so `uv` is on PATH).
+4. **One-time, in a fresh clone of the template:** run `graphify install --project` and `graphify install --project --platform {codex,opencode,gemini}` from the repo root, then commit the resulting files:
+   - `.claude/skills/graphify/`, `.claude/CLAUDE.md` (graphify section), `.claude/settings.json` (PreToolUse hook added)
+   - `.agents/skills/graphify/` (Codex skill), `.codex/hooks.json` (PreToolUse hook; references `/home/vscode/.local/bin/graphify` — fine inside this devcontainer where the user is always `vscode` and graphify is installed by step 2)
+   - `.opencode/skills/graphify/`, `.opencode/plugins/graphify.js`, `.opencode/opencode.json`
+   - `.gemini/skills/graphify/`, `.gemini/settings.json` (BeforeTool hook)
+   - Top-level `CLAUDE.md`, `AGENTS.md`, `GEMINI.md` — each gets a `## graphify` section appended by the installer
+
+**Verification (after rebuild):**
+```bash
+graphify --version                                  # 0.8.21+
+ls .claude/skills/graphify .agents/skills/graphify  # skill files present
+grep -A1 PreToolUse .claude/settings.json           # hook registered
+```
+
+Inside any AI assistant: type `/graphify .` to build the graph, then `graphify query "<question>"` to consult it instead of grepping. The PreToolUse hooks nudge the assistant toward the graph automatically once `graphify-out/graph.json` exists.
+
+**Trade-offs / notes for downstream:**
+- The Codex hook bakes in the absolute path `/home/vscode/.local/bin/graphify`. If you ever change the devcontainer user, regenerate `.codex/hooks.json` with `graphify install --project --platform codex`.
+- No optional graphify extras (`pdf`, `office`, `video`, `openai`, `gemini`) are installed by default — add per-project with `uv tool install --with "graphifyy[pdf]" graphifyy`.
+- Building the graph itself (`/graphify .` → creates `graphify-out/`) is user-initiated and per-worktree. Worktrees inherit the configuration but each builds its own graph.
+
+---
+
 ## 2026-05-27 — Feature: auto-install Claude Code Warp plugin during devcontainer setup
 
 **Goal:** Install [claude-code-warp](https://github.com/warpdotdev/claude-code-warp) — Warp's official Claude Code plugin — automatically when the devcontainer is created, so it's available without manual `/plugin marketplace add` + `/plugin install` steps.

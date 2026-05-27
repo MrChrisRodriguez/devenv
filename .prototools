@@ -8,6 +8,7 @@ jq = "1.8.1"
 yq = "4.49.2"
 python = "3.14.2"
 dagger = "0.19.8"
+uv = "0.11.16"
 
 [settings]
 pin-latest = "local"
@@ -19,3 +20,4 @@ infisical = "https://raw.githubusercontent.com/Phault/proto-toml-plugins/main/in
 jq = "https://raw.githubusercontent.com/appthrust/proto-toml-plugins/main/jq/plugin.toml"
 yq = "https://raw.githubusercontent.com/appthrust/proto-toml-plugins/main/yq/plugin.toml"
 dagger = "https://raw.githubusercontent.com/Phault/proto-toml-plugins/main/dagger/plugin.toml"
+uv = "https://raw.githubusercontent.com/Phault/proto-toml-plugins/main/uv/plugin.toml"

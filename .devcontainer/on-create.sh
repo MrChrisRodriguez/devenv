@@ -73,6 +73,9 @@ source /workspace/.devcontainer/on-create/setup-claude-octopus.sh
 # Install Claude Code Warp plugin (must run AFTER setup-claude.sh so claude CLI is on PATH)
 source /workspace/.devcontainer/on-create/setup-claude-warp.sh
 
+# Install Graphify (must run AFTER setup-proto.sh for uv, and AFTER claude/codex/opencode/gemini so their CLIs are on PATH)
+source /workspace/.devcontainer/on-create/setup-graphify.sh
+
 # Sync extensions.json from devcontainer.json (ensures it's always in sync)
 if [ -f "/workspace/.devcontainer/scripts/sync-extensions-json.sh" ]; then
 	echo "🔄 Syncing .vscode/extensions.json from devcontainer.json..."
