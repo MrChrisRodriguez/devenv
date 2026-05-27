@@ -4,6 +4,31 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-27 — Feature: forward Warp ACP signals into the devcontainer + trust workspace for Gemini CLI
+
+**Goal:** Make Claude Code detect Warp when a devcontainer terminal is launched from the Warp app, and silence Gemini CLI's workspace-trust prompt inside the container.
+
+**What changed in `.devcontainer/devcontainer.json`:**
+
+1. **`remoteEnv`** — forward three host vars from Warp into the container:
+   - `WARP_CLI_AGENT_PROTOCOL_VERSION` — Warp's Agent Client Protocol version
+   - `WARP_CLIENT_VERSION` — Warp app version
+   - `TERM_PROGRAM` — `WarpTerminal` when launched from Warp
+
+   When all three are present in the environment, Claude Code detects it's running under Warp and opens a structured-output channel (ACP) instead of plain ANSI. The host has these set automatically when a terminal is spawned from Warp; without `remoteEnv` forwarding, they get lost at the container boundary and Claude Code falls back to plain text.
+
+2. **`containerEnv`** — add `GEMINI_CLI_TRUST_WORKSPACE=true`. Suppresses the interactive "Do you trust the workspace?" prompt Gemini CLI shows on first run inside the mounted `/workspace`. Safe in a devcontainer because the workspace is the user's own bind-mounted code.
+
+**How to adopt downstream:** Add the same three keys to `remoteEnv` (each as `${localEnv:NAME}`) and `GEMINI_CLI_TRUST_WORKSPACE: "true"` to `containerEnv`. Rebuild the container. Verify from inside:
+```bash
+echo "$TERM_PROGRAM $WARP_CLIENT_VERSION $WARP_CLI_AGENT_PROTOCOL_VERSION"
+# → e.g. "WarpTerminal 0.2025.xx.xx.xx 0.1.0" when launched from Warp
+echo "$GEMINI_CLI_TRUST_WORKSPACE"   # → true
+```
+If `TERM_PROGRAM` is empty inside the container, the terminal wasn't launched from Warp (or the host doesn't have the var) — Claude Code will just use plain ANSI, which is harmless.
+
+---
+
 ## 2026-05-27 — Fix: remove `biome.json` that was silently shadowing `biome.jsonc`; merge graphify exclude into `.jsonc`
 
 **What broke:** The previous entry ("commit initial Graphify knowledge graph") added a 6-line `biome.json` at the repo root to exclude `graphify-out/` from Biome. Two problems with that approach:
