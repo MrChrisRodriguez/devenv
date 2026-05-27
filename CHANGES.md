@@ -4,6 +4,34 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-27 — Fix: remove `biome.json` that was silently shadowing `biome.jsonc`; merge graphify exclude into `.jsonc`
+
+**What broke:** The previous entry ("commit initial Graphify knowledge graph") added a 6-line `biome.json` at the repo root to exclude `graphify-out/` from Biome. Two problems with that approach:
+
+1. **Silent shadow.** Biome's config discovery prefers `.json` over `.jsonc` when both exist in the same directory. So the new `biome.json` became the active config, and the real `biome.jsonc` — with the linter rule overrides, VCS integration (`useIgnoreFile: true`), and `!**/worker-configuration.d.ts` / `!**/*.tera` excludes — was silently ignored. No warning, no error. Confirmed with `bunx biome rage | grep Path:` → showed `biome.json`.
+2. **Wrong negation syntax.** The `!!graphify-out/**` in that file is "force-include," not "exclude." In Biome v2 includes globs, `!pattern` excludes and `!!pattern` re-includes a previously excluded path. So even ignoring problem #1, the rule was a no-op on top of `**`.
+
+**Fix:**
+- Deleted `biome.json`.
+- In `biome.jsonc`, added `"!graphify-out/**"` (single bang) to the existing `files.includes` array.
+- Bumped `biome.jsonc`'s `$schema` from `2.4.7` → `2.4.15` to match the installed CLI (silenced "schema version does not match" warning from `biome rage`).
+
+**How to adopt downstream:** If your repo has both `biome.json` and `biome.jsonc` at the same level, the `.json` wins — merge its contents into `.jsonc` and delete the `.json`. Audit with:
+```bash
+bunx biome rage | grep Path:    # must point to the file you intend
+```
+When you do want to exclude generated content, use a single `!` (e.g. `"!graphify-out/**"`), not `!!`.
+
+**Verification:**
+```bash
+bunx biome rage | grep -A6 'Biome Configuration'
+# → Path: biome.jsonc, Linter enabled: true, VCS enabled: true
+bunx biome check graphify-out/graph.html
+# → "These paths were provided but ignored"
+```
+
+---
+
 ## 2026-05-27 — Feature: commit initial Graphify knowledge graph (`graphify-out/`) + Biome excludes for generated content
 
 **Goal:** Commit the project's initial knowledge graph so downstream consumers and git worktrees inherit a usable graph without having to rebuild it (which costs Gemini API credits on every fresh checkout). Per the [graphify README's official guidance](https://github.com/safishamsi/graphify#what-files-it-handles), the shareable artifacts (`graph.json`, `graph.html`, `GRAPH_REPORT.md`, `cache/`, plus the internal `.graphify_*` pointer files) are intended to be committed; only `manifest.json` (per-machine file hashes) and `cost.json` (local API spend) are gitignored — those exclusions were added in the previous changelog entry.
