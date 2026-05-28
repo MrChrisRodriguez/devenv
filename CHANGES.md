@@ -153,14 +153,15 @@ Inside Claude Code, run `/octo:setup` to walk through provider configuration (on
 
 ---
 
-## 2026-05-13 — Fix: devcontainer setup failures (RTK hook, claude-mem, oh-my-opencode)
+## 2026-05-13 — Fix: devcontainer on-create reliability (RTK, claude-mem, oh-my-opencode, sourced-script `exit`)
 
-**Goal:** Three independent on-create failures were silently degrading the devcontainer: the RTK token-compression hook was never patched into `~/.claude/settings.json`, the `claude-mem` plugin's first-run SessionStart hook failed with an unhelpful "no stderr" error, and the oh-my-opencode plugin was never registered in `opencode.json`.
+**Goal:** Several independent on-create failures were silently degrading the devcontainer: the RTK token-compression hook was never patched into `~/.claude/settings.json`; the `claude-mem` plugin's first-run SessionStart hook failed; the oh-my-opencode plugin was never registered in `opencode.json`; and sourced helper scripts used `exit` (which killed the parent `on-create.sh`, preventing later scripts like `setup-shell.sh` from running).
 
 **Root causes:**
-1. **RTK (Fix A):** `rtk init -g` detects non-interactive shell mode (on-create runs without a TTY) and defaults to "N" at the "Patch existing settings.json?" prompt, then exits without writing the hook config. RTK ships an `--auto-patch` flag for exactly this scenario.
-2. **claude-mem (Fix D):** The plugin's SessionStart hook runs `bun install` on a manifest of `tree-sitter-*` packages whose post-install scripts shell out to `node-gyp`. The devcontainer's node feature is configured with `nodeGypDependencies: false`, and npm's bundled node-gyp isn't symlinked onto `$PATH` — so the spawn fails with ENOENT and the hook exits non-zero. (The packages themselves work at runtime via shipped prebuilds; only the install-script step fails.)
-3. **oh-my-opencode (Fix C):** Upstream installer's version comparison is lexicographic — `"1.14.48"` compares as less than `"1.4.0"` because `'1' < '4'` at the second segment. The installer prints `Detected OpenCode 1.x.x, but 1.4.0+ is required` and aborts before writing `opencode.json`, even on currently-released opencode versions.
+1. **RTK:** `rtk init -g` detects non-interactive shell mode (on-create runs without a TTY) and defaults to "N" at the "Patch existing settings.json?" prompt, then exits without writing the hook config. RTK ships an `--auto-patch` flag for exactly this scenario.
+2. **claude-mem:** The plugin's SessionStart hook runs `bun install` on a manifest of `tree-sitter-*` packages whose post-install scripts shell out to `node-gyp`. The devcontainer's node feature is configured with `nodeGypDependencies: false`, and npm's bundled node-gyp isn't symlinked onto `$PATH` — so the spawn fails with ENOENT and the hook exits non-zero. (The packages themselves work at runtime via shipped prebuilds; only the install-script step fails.)
+3. **oh-my-opencode:** Upstream installer's version comparison is lexicographic — `"1.14.48"` compares as less than `"1.4.0"` because `'1' < '4'` at the second segment. The installer prints `Detected OpenCode 1.x.x, but 1.4.0+ is required` and aborts before writing `opencode.json`, even on currently-released opencode versions.
+4. **Sourced-script `exit`:** Helper scripts sourced by `on-create.sh` used `exit N` for early termination, which kills the parent shell instead of returning from the helper — silently preventing later scripts (notably `setup-shell.sh`) from running.
 
 **How to implement:**
 1. In `.devcontainer/on-create/setup-claude.sh`, after `setup_proto_env`, install `node-gyp` globally if missing:
@@ -173,7 +174,8 @@ Inside Claude Code, run `/octo:setup` to walk through provider configuration (on
    npm is already on `$PATH` from the devcontainer node feature and ships `node-gyp` as a bundled dep, so `npm i -g node-gyp` just creates the bin symlink.
 2. In `.devcontainer/on-create/setup-claude.sh`, change `rtk init -g` to `rtk init -g --auto-patch` so the hook config is patched into `~/.claude/settings.json` non-interactively (also creates `~/.claude/settings.json.bak`).
 3. In `.devcontainer/on-create/setup-oh-my-opencode.sh`, replace the `bunx oh-my-opencode install …` block (and its 3-retry verification loop) with: (a) `bun install -g oh-my-opencode` if not already globally installed, (b) write `~/.config/opencode/opencode.json` directly with `{"$schema":"https://opencode.ai/config.json","plugin":["oh-my-openagent"]}`. This bypasses the broken upstream version check. The plugin is dual-published as `oh-my-opencode` (legacy npm name) and `oh-my-openagent` (new name accepted by opencode without a warning).
-4. **One-off cleanup (per devcontainer):** if a previous run left `/workspace/.codex` as a 0-byte regular file instead of a directory (visible as `ENOTDIR` from `openspec init`), run once: `chmod u+w /workspace/.codex && rm /workspace/.codex`. Not applicable if `.codex/` is already a directory (which it is in this repo). No script changes needed — this is a workspace-data issue, not a setup-script bug.
+4. Replace every `exit N` with `return N` in the sourced helpers — `setup-vscode-extensions.sh` (3 occurrences) and `setup-oh-my-opencode.sh` (3 occurrences) — and add a convention comment at the top of `on-create.sh` documenting that sourced helpers must use `return`, not `exit`. Audit with `grep -nH -E "^[[:space:]]*exit[[:space:]]+[0-9]" .devcontainer/on-create/*.sh` (should return empty).
+5. **One-off cleanup (per devcontainer):** if a previous run left `/workspace/.codex` as a 0-byte regular file instead of a directory (visible as `ENOTDIR` from `openspec init`), run once: `chmod u+w /workspace/.codex && rm /workspace/.codex`. Not applicable if `.codex/` is already a directory (which it is in this repo). No script changes needed — this is a workspace-data issue, not a setup-script bug.
 
 **Verification (after rebuild):**
 ```bash
@@ -181,19 +183,8 @@ command -v node-gyp                                          # /usr/local/share/
 grep -A 5 PreToolUse ~/.claude/settings.json                 # shows rtk hook claude
 cat ~/.config/opencode/opencode.json                         # has plugin: ["oh-my-openagent"]
 test -d /workspace/.codex && echo ok || echo "still bad"     # ok
+grep -nH -E "^[[:space:]]*exit[[:space:]]+[0-9]" .devcontainer/on-create/*.sh   # empty
 ```
-
----
-
-## 2026-05-13 — Fix: `exit` in sourced bash setup scripts silently kills the parent
-
-**Goal:** Sourced on-create helper scripts used `exit N` for early termination, which killed the parent `on-create.sh` shell instead of just returning from the helper. This silently prevented later scripts (notably `setup-shell.sh`) from running.
-
-**How to implement:**
-1. In `.devcontainer/on-create/setup-vscode-extensions.sh`, replace all `exit N` with `return N` (3 occurrences).
-2. In `.devcontainer/on-create/setup-oh-my-opencode.sh`, replace all `exit N` with `return N` (3 occurrences).
-3. In `.devcontainer/on-create.sh`, add a convention comment at the top documenting that sourced helpers must use `return`, not `exit`.
-4. Audit with: `grep -nH -E "^[[:space:]]*exit[[:space:]]+[0-9]" .devcontainer/on-create/*.sh` — should return empty.
 
 ---
 
@@ -249,13 +240,17 @@ test -d /workspace/.codex && echo ok || echo "still bad"     # ok
 
 ---
 
-## 2026-04-08 — Move commit policy to AGENTS.md (shared across all agents)
+## 2026-04-08 — Add a shared commit policy in AGENTS.md (all agents)
 
-**Goal:** All AI agents (Claude Code, Cursor, Opencode) should follow the same commit policy, not just Claude Code.
+**Goal:** Every AI agent (Claude Code, Cursor, Opencode) should always commit and push after each significant change without waiting for user confirmation — and follow the *same* policy, not a Claude-only copy.
 
 **How to implement:**
-1. Move the "Commit Policy" section from `CLAUDE.md` to `AGENTS.md`.
-2. Remove the duplicate from `CLAUDE.md` — it already references `@AGENTS.md` for shared conventions.
+1. Add a "Commit Policy" section to `AGENTS.md` (the shared-conventions file all agents consume):
+   ```markdown
+   ## Commit Policy
+   ALWAYS commit and push after completing each significant change. Do NOT wait for the user to ask. Before committing, update `/workspace/CHANGES.md` with a dated entry (Goal + How to implement).
+   ```
+2. In `CLAUDE.md`, reference `@AGENTS.md` for shared conventions rather than duplicating the policy. (The policy was first added directly to `CLAUDE.md`, then moved into `AGENTS.md` the same day so all agents inherit one copy.)
 
 ---
 
@@ -321,65 +316,25 @@ test -d /workspace/.codex && echo ok || echo "still bad"     # ok
 
 ---
 
-## 2026-04-08 — Add commit policy to CLAUDE.md
+## 2026-03-21 — macOS onboarding: host setup script + README Quick Start & prerequisites
 
-**Goal:** Ensure Claude always commits and pushes after significant changes without waiting for user confirmation.
+**Goal:** Let a non-technical user go from a bare Mac to a running devcontainer with minimal manual steps — a one-command host bootstrap plus copy-paste README instructions.
 
 **How to implement:**
-1. In `CLAUDE.md`, add a "Commit Policy" section before the Frontend section:
-   ```markdown
-   ## Commit Policy
-   ALWAYS commit and push after completing each significant change. Do NOT wait for the user to ask. Before committing, update `/workspace/CHANGES.md` with a dated entry (Goal + How to implement).
-   ```
+1. **Host setup script — `init-host.sh`** (repo root). Installs, via Homebrew: Xcode CLT, Docker Desktop, Git, DevPod, the Warp terminal (`brew install --cask warp`, between DevPod and IDE installation), an IDE (Cursor or VS Code, user's choice), GitHub CLI, and SSH keys. Also creates the host directories used for container mounts.
+2. **README — "Prerequisites (Host Machine Setup)"** section before "Getting Started", covering: Docker Desktop, Git, DevPod, an IDE, SSH keys, GitHub CLI, and host directory creation. Point Mac users to `init-host.sh` as the one-command path. Remove the now-redundant `mkdir` from the secrets step (covered here).
+3. **README — "Quick Start (Mac)"** section at the top: the `curl | bash` one-liner, clone, init, and `devpod up`. Note the repo must be **public** for the `curl` one-liner to work without authentication.
+4. **Template cleanup:** add `rm -f init-host.sh` to the template-only file cleanup in `init-new-project.sh` so the host script doesn't carry into downstream projects (see the project-init cleanup entry).
 
 ---
 
-## 2026-03-21 — Add macOS host setup script
+## 2026-03-20 — Clean up template-only files during project init
 
-**Goal:** Let non-technical users set up their Mac with a single command instead of following manual steps.
+**Goal:** `init-new-project.sh` bootstraps a new project from the template; template-history files and the bootstrap script itself should not survive into the downstream project's tree.
 
-**How to implement:**
-1. Add `init-host.sh` at the repo root. It installs (via Homebrew): Xcode CLT, Docker Desktop, Git, DevPod, an IDE (Cursor/VS Code, user's choice), GitHub CLI, and SSH keys. It also creates the host directories for container mounts.
-2. In `README.md`, add a note in the Prerequisites section pointing Mac users to the script.
-3. In `init-new-project.sh`, add `rm -f init-host.sh` to the template-only file cleanup so it doesn't carry into downstream projects.
-
----
-
-## 2026-03-21 — Add Quick Start section to README
-
-**Goal:** Make it dead simple for non-technical users to get started — three commands, copy-paste from the README.
-
-**How to implement:**
-1. In `README.md`, add a "Quick Start (Mac)" section at the top with the `curl | bash` one-liner, clone, init, and `devpod up` commands.
-2. Note that the repo must be **public** for the `curl` one-liner to work without authentication.
-
----
-
-## 2026-03-21 — Add Warp terminal to host setup
-
-**Goal:** Include the Warp terminal in the macOS host setup script.
-
-**How to implement:**
-1. In `init-host.sh`, add a Warp section (`brew install --cask warp`) between DevPod and IDE installation.
-
----
-
-## 2026-03-21 — Add host machine prerequisites to README
-
-**Goal:** Make the template accessible to non-technical users by documenting everything they need to install on their host machine before cloning.
-
-**How to implement:**
-1. In `README.md`, add a "Prerequisites (Host Machine Setup)" section before "Getting Started" covering: Docker Desktop, Git, DevPod, an IDE (Cursor or VS Code), SSH keys, GitHub CLI, and host directory creation.
-2. Remove the redundant `mkdir` from the secrets step (now covered in prerequisites).
-
----
-
-## 2026-03-20 — Remove template-only files during project init
-
-**Goal:** CHANGES.md tracks template history and shouldn't exist in downstream projects.
-
-**How to implement:**
-1. In `init-new-project.sh`, add `rm -f CHANGES.md` alongside the existing `rm -f bun.lock` in the template-only file cleanup section.
+**How to implement (all in `init-new-project.sh`):**
+1. In the template-only file cleanup section, remove files that only make sense in the template repo — add `rm -f CHANGES.md` alongside the existing `rm -f bun.lock`. (The macOS onboarding entry also adds `rm -f init-host.sh` here.)
+2. Add `rm -f "$0"` just before the `git add .` / initial-commit step so the bootstrap script deletes itself before being committed to the new repo.
 
 ---
 
@@ -392,15 +347,6 @@ test -d /workspace/.codex && echo ok || echo "still bad"     # ok
    ```bash
    openspec init --tools claude,codex,cursor,opencode --force
    ```
-
----
-
-## 2026-03-20 — Self-delete init-new-project.sh after use
-
-**Goal:** The bootstrap script is a one-time operation for instantiating a new project from the template. It should not remain in the new project's tree.
-
-**How to implement:**
-1. In `init-new-project.sh`, add `rm -f "$0"` just before the `git add .` / initial commit step so the script deletes itself before being committed to the new repo.
 
 ---
 
