@@ -4,6 +4,18 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-28 — Feat: ccstatusline auto-installs on rebuild (Claude Code status line)
+
+**Goal:** Keep the Claude Code status line working across container rebuilds. `~/.claude/settings.json` points `statusLine.command` at the bare `ccstatusline` binary, but that binary installs to `~/.bun/bin`, which is **not** volume-mounted — so every rebuild wipes it and Claude Code warns that the status line command failed.
+
+**New `setup-ccstatusline.sh` on-create script:**
+- Installs the binary on every rebuild with `bun add -g ccstatusline` (guarded by a `command -v ccstatusline` check so re-runs are idempotent). `~/.bun/bin` is already on PATH via `setup_proto_env`, same as graphify's `~/.local/bin`.
+- Seeds `~/.config/ccstatusline/settings.json` from the committed `.ccstatusline-settings.bak` **only when the config is missing**, so a fresh `~/.config` volume gets the intended status line (model · context · git branch · git changes) without manual reconfiguration. An existing config is never clobbered. (`~/.config` *is* volume-mounted, so the config normally persists on its own — this is just the fresh-volume fallback.)
+
+**Wired into `on-create.sh`** immediately after `setup-claude.sh` (it backs the `statusLine` command in `~/.claude/settings.json`). Verified: first run installs `ccstatusline@2.2.19` and seeds the config identical to the backup; second run no-ops on both the binary and the config.
+
+---
+
 ## 2026-05-28 — Fix: Graphify install survives Python 3.14 (clang→gcc) + stop tracking per-container pointers
 
 **Goal:** Keep the on-rebuild Graphify auto-install working on the proto-managed Python 3.14 toolchain, and stop committing per-container pointer files.
