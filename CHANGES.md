@@ -4,6 +4,30 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-28 — Fix: Graphify install survives Python 3.14 (clang→gcc) + stop tracking per-container pointers
+
+**Goal:** Keep the on-rebuild Graphify auto-install working on the proto-managed Python 3.14 toolchain, and stop committing per-container pointer files.
+
+**1. Compiler fallback in `setup-graphify.sh` (clang → gcc/g++):**
+`graphifyy` (0.8.22) depends on `tree-sitter-dm` (0.25.1), which ships no prebuilt wheel for proto's Python 3.14 on this arch, so `uv tool install` compiles it from source. Python 3.14's `sysconfig` hardcodes **clang/clang++** for `CC`, `CXX`, `LDSHARED`, and `LDCXXSHARED`, but the devcontainer image ships only **gcc/g++** — so the build fails with `error: command 'clang' failed: No such file or directory`. Before installing, when `clang` is absent and `gcc` is present, export the overrides:
+```bash
+export CC="${CC:-gcc}"
+export CXX="${CXX:-g++}"
+export LDSHARED="${LDSHARED:-gcc -shared}"
+export LDCXXSHARED="${LDCXXSHARED:-g++ -shared}"
+```
+Overriding `CC`/`CXX` alone is insufficient — the *link* step (`LDSHARED`/`LDCXXSHARED`) independently hardcodes clang and must be redirected too. Verified by reproducing the failure and confirming the fix yields a working `graphify 0.8.22`.
+
+**2. Stop tracking per-container pointer/lock files (`.gitignore`):**
+```
+graphify-out/.graphify_root
+graphify-out/.graphify_python
+graphify-out/.rebuild.lock
+```
+`.graphify_root` (repo root) and `.graphify_python` (absolute path to the uv-tools Python) are regenerated per container and are meaningless — or wrong — in another container, so they shouldn't be committed. If already tracked, untrack once with `git rm --cached graphify-out/.graphify_root graphify-out/.graphify_python`.
+
+---
+
 ## 2026-05-28 — Feature: AUTH-PERSISTENCE.md guide + Octopus provider allowlist
 
 **Goal:** Document how auth/secrets persist (a living reference for adding credentialed tools), and add an explicit, repo-scoped allowlist for which providers Claude Octopus may use.

@@ -77,4 +77,9 @@
 # the shared knowledge graph. Ignore only the per-user noise files.
 graphify-out/manifest.json
 graphify-out/cost.json
+# Per-container pointers (absolute paths to the repo root + uv-tools python) and
+# the rebuild lock — regenerated in each container, so they must not be tracked.
+graphify-out/.graphify_root
+graphify-out/.graphify_python
+graphify-out/.rebuild.lock
 
