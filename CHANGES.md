@@ -4,11 +4,13 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
-## 2026-05-28 — Refactor: claim all volume-mounted home dirs once, upfront in on-create.sh
+## 2026-05-28 — Fix: claim root-owned volumes upfront so on-create can't abort mid-chain
 
-**Goal:** Make volume-ownership correctness independent of script source order. The previous fix (entry below) `chown`ed `~/.codex` inside `setup-codex.sh`, but an audit found that's **too late**: `setup-openspec.sh` runs `openspec init --tools …,codex,…` (which writes `~/.codex/prompts`) *earlier* in the chain than `setup-codex.sh`, so on a fresh rebuild OpenSpec's Codex setup would still hit `EACCES … mkdir '/home/vscode/.codex/prompts'` (non-fatal, but Codex never gets its OpenSpec slash commands). Scattering per-tool `chown`s makes correctness depend on ordering.
+**Symptom:** A build log showed `on-create.sh` exiting status 1 at the Claude Octopus step, so every later script — `setup-claude-warp.sh`, `setup-graphify.sh`, the extension sync, and crucially `setup-shell.sh` — never ran. Since `setup-shell.sh` installs the proto-activating `~/.zshrc` template, the downstream symptom was `bun`/`bunx`/`proto` missing from the interactive shell PATH (a stock Oh My Zsh `~/.zshrc` left in place) and husky `pre-commit` hooks failing with `bunx: not found`.
 
-**Change:** A single claim loop in `on-create.sh`, right after the secrets block and before any tool script runs:
+**Root cause:** Docker named volumes mount **empty as `root:root`** unless the image pre-populated the path (copy-on-first-use seeds the volume with the image dir's ownership). `~/.proto` is pre-created in the Dockerfile and the `base:trixie` image happens to ship `/home/vscode/.config`, but `~/.codex` / `~/.gemini` are neither — so they mount `root:root` and the `vscode` user can't write to them. Two writes then failed: OpenSpec's Codex refresh (`EACCES … mkdir '/home/vscode/.codex/prompts'`, swallowed/non-fatal) and `setup-claude-octopus.sh`'s `ln -s … ~/.codex/claude-octopus` (`Permission denied`). Because `on-create.sh` runs `set -e` and **sources** each helper, that unguarded `ln` failure aborted the whole remaining chain.
+
+**Fix 1 — claim every volume-mounted home dir once, upfront.** A single loop in `on-create.sh`, right after the secrets block and before any tool script runs (order-independent — important because `setup-openspec.sh` writes `~/.codex/prompts` *before* `setup-codex.sh` would run, so a per-script chown there is too late):
 ```bash
 for d in "$HOME/.claude" "$HOME/.codex" "$HOME/.gemini" "$HOME/.config" "$HOME/.proto"; do
     if [ -d "$d" ] && [ "$(stat -c '%U' "$d")" != "$(whoami)" ]; then
@@ -16,31 +18,11 @@ for d in "$HOME/.claude" "$HOME/.codex" "$HOME/.gemini" "$HOME/.config" "$HOME/.
     fi
 done
 ```
-This also closes a latent `~/.config` gap: nothing claimed it — it only worked because the `base:trixie` image ships `/home/vscode/.config` as `vscode`, so Docker's copy-on-first-use seeded the volume correctly. That breaks the moment the mount is scoped to an image-unpopulated subdir (e.g. `~/.config/ccstatusline`, an alternative the original config-volume commit suggested). Claiming it explicitly removes the reliance on base-image behavior.
+This also closes a latent `~/.config` gap: nothing claimed it — it worked only by relying on the base image shipping it as `vscode`, which breaks the moment the mount is scoped to an image-unpopulated subdir (e.g. `~/.config/ccstatusline`). `setup-claude.sh` and `setup-proto.sh` keep their own existing claims as harmless belt-and-suspenders.
 
-**Removed** the now-redundant per-script `chown`s added to `setup-codex.sh` / `setup-gemini.sh` in the previous entry (replaced by short pointer comments). Left `setup-claude.sh` and `setup-proto.sh`'s existing claims as harmless belt-and-suspenders, and kept the octopus `|| echo` fault-tolerance guards. Verified: the loop is a no-op on this container (all five dirs already `vscode`-owned) and all scripts pass `bash -n`.
+**Fix 2 — fault tolerance (defense in depth).** The three `mkdir`/`ln -s` calls in `setup-claude-octopus.sh` (`~/.codex`, `~/.opencode`, `~/.agents/skills`) are now `|| echo "⚠️  …"` guarded, so an optional integration step degrades to a warning instead of killing the whole setup under `set -e`. (Same spirit as the existing "sourced scripts use `return`, not `exit`" convention — here it was an external command tripping `set -e`.)
 
----
-
-## 2026-05-28 — Fix: claim root-owned ~/.codex & ~/.gemini volumes; stop one failure from aborting on-create
-
-**Goal:** Stop the on-create chain from silently aborting partway through. A build log showed `on-create.sh` exiting with status 1 at the Claude Octopus step, which meant every script after it — `setup-claude-warp.sh`, `setup-graphify.sh`, the extension sync, and crucially `setup-shell.sh` — never ran. Because `setup-shell.sh` is what installs the proto-activating `~/.zshrc` template, the symptom downstream was `bun`/`bunx`/`proto` missing from the interactive shell PATH (a stock Oh My Zsh `~/.zshrc` was left in place) and husky `pre-commit` hooks failing with `bunx: not found`.
-
-**Root cause:** The `codex-home` and `gemini-home` Docker named volumes mount **empty as `root:root`**, so the `vscode` user can't write to `~/.codex` / `~/.gemini`. Nothing claimed them (unlike `~/.claude`, which `setup-claude.sh` already `chown`s). Two writes then failed:
-- OpenSpec's Codex refresh: `Failed: Codex (EACCES: permission denied, mkdir '/home/vscode/.codex/prompts')` — swallowed, non-fatal.
-- `setup-claude-octopus.sh`: `ln -s … ~/.codex/claude-octopus` → `Permission denied`. Since `on-create.sh` runs `set -e` and **sources** each script, this unguarded external-command failure aborted the entire remaining chain.
-
-**Fix 1 — claim the volumes (real fix).** `setup-codex.sh` and `setup-gemini.sh` now `chown` their volume to `vscode` when it isn't already, mirroring `setup-claude.sh`:
-```bash
-if [ "$(stat -c '%U' "$HOME/.codex" 2>/dev/null)" != "vscode" ]; then
-    sudo chown -R vscode:vscode "$HOME/.codex"
-fi
-```
-(Guarded by the `stat` check so it's a no-op on rebuilds where the volume already belongs to `vscode`.)
-
-**Fix 2 — fault tolerance (defense in depth).** The three `mkdir`/`ln -s` calls in `setup-claude-octopus.sh` (`~/.codex`, `~/.opencode`, `~/.agents/skills`) are now `|| echo "⚠️  …"` guarded, so an optional integration step can degrade to a warning instead of killing the whole setup under `set -e`. (Same spirit as the existing "sourced scripts use `return`, not `exit`" convention — here it was an external command tripping `set -e`.)
-
-Verified: applied the `chown` live on this container — `~/.codex` and `~/.gemini` are now `vscode:vscode` and writable; all three scripts pass `bash -n`.
+Verified: the claim loop is a no-op on a container where the dirs are already `vscode`-owned; all touched scripts pass `bash -n`.
 
 ---
 
