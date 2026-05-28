@@ -45,8 +45,9 @@ if command -v codex &> /dev/null; then
         echo "ℹ️  $CODEX_LINK already exists, skipping"
     else
         echo "🔗 Linking claude-octopus into ~/.codex..."
-        mkdir -p "$HOME/.codex"
-        ln -s "$OCTOPUS_DIR" "$CODEX_LINK"
+        mkdir -p "$HOME/.codex" || echo "⚠️   Could not create ~/.codex; skipping Codex integration"
+        ln -s "$OCTOPUS_DIR" "$CODEX_LINK" \
+            || echo "⚠️   Could not link claude-octopus into ~/.codex; skipping Codex integration"
     fi
 else
     echo "ℹ️  codex CLI not found, skipping Codex integration"
@@ -59,8 +60,9 @@ if command -v opencode &> /dev/null; then
         echo "ℹ️  $OPENCODE_LINK already exists, skipping"
     else
         echo "🔗 Linking claude-octopus into ~/.opencode..."
-        mkdir -p "$HOME/.opencode"
-        ln -s "$OCTOPUS_DIR" "$OPENCODE_LINK"
+        mkdir -p "$HOME/.opencode" || echo "⚠️   Could not create ~/.opencode; skipping OpenCode integration"
+        ln -s "$OCTOPUS_DIR" "$OPENCODE_LINK" \
+            || echo "⚠️   Could not link claude-octopus into ~/.opencode; skipping OpenCode integration"
     fi
 else
     echo "ℹ️  opencode CLI not found, skipping OpenCode integration"
@@ -72,8 +74,9 @@ if [ -L "$SKILLS_LINK" ] || [ -e "$SKILLS_LINK" ]; then
     echo "ℹ️  $SKILLS_LINK already exists, skipping"
 else
     echo "🔗 Linking claude-octopus skills into ~/.agents/skills..."
-    mkdir -p "$HOME/.agents/skills"
-    ln -s "$OCTOPUS_DIR/skills" "$SKILLS_LINK"
+    mkdir -p "$HOME/.agents/skills" || echo "⚠️   Could not create ~/.agents/skills; skipping skills symlink"
+    ln -s "$OCTOPUS_DIR/skills" "$SKILLS_LINK" \
+        || echo "⚠️   Could not link claude-octopus skills into ~/.agents/skills"
 fi
 
 echo "✅ Claude Octopus setup complete!"

@@ -4,6 +4,28 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-28 — Fix: claim root-owned ~/.codex & ~/.gemini volumes; stop one failure from aborting on-create
+
+**Goal:** Stop the on-create chain from silently aborting partway through. A build log showed `on-create.sh` exiting with status 1 at the Claude Octopus step, which meant every script after it — `setup-claude-warp.sh`, `setup-graphify.sh`, the extension sync, and crucially `setup-shell.sh` — never ran. Because `setup-shell.sh` is what installs the proto-activating `~/.zshrc` template, the symptom downstream was `bun`/`bunx`/`proto` missing from the interactive shell PATH (a stock Oh My Zsh `~/.zshrc` was left in place) and husky `pre-commit` hooks failing with `bunx: not found`.
+
+**Root cause:** The `codex-home` and `gemini-home` Docker named volumes mount **empty as `root:root`**, so the `vscode` user can't write to `~/.codex` / `~/.gemini`. Nothing claimed them (unlike `~/.claude`, which `setup-claude.sh` already `chown`s). Two writes then failed:
+- OpenSpec's Codex refresh: `Failed: Codex (EACCES: permission denied, mkdir '/home/vscode/.codex/prompts')` — swallowed, non-fatal.
+- `setup-claude-octopus.sh`: `ln -s … ~/.codex/claude-octopus` → `Permission denied`. Since `on-create.sh` runs `set -e` and **sources** each script, this unguarded external-command failure aborted the entire remaining chain.
+
+**Fix 1 — claim the volumes (real fix).** `setup-codex.sh` and `setup-gemini.sh` now `chown` their volume to `vscode` when it isn't already, mirroring `setup-claude.sh`:
+```bash
+if [ "$(stat -c '%U' "$HOME/.codex" 2>/dev/null)" != "vscode" ]; then
+    sudo chown -R vscode:vscode "$HOME/.codex"
+fi
+```
+(Guarded by the `stat` check so it's a no-op on rebuilds where the volume already belongs to `vscode`.)
+
+**Fix 2 — fault tolerance (defense in depth).** The three `mkdir`/`ln -s` calls in `setup-claude-octopus.sh` (`~/.codex`, `~/.opencode`, `~/.agents/skills`) are now `|| echo "⚠️  …"` guarded, so an optional integration step can degrade to a warning instead of killing the whole setup under `set -e`. (Same spirit as the existing "sourced scripts use `return`, not `exit`" convention — here it was an external command tripping `set -e`.)
+
+Verified: applied the `chown` live on this container — `~/.codex` and `~/.gemini` are now `vscode:vscode` and writable; all three scripts pass `bash -n`.
+
+---
+
 ## 2026-05-28 — Feat: ccstatusline auto-installs on rebuild (Claude Code status line)
 
 **Goal:** Keep the Claude Code status line working across container rebuilds. `~/.claude/settings.json` points `statusLine.command` at the bare `ccstatusline` binary, but that binary installs to `~/.bun/bin`, which is **not** volume-mounted — so every rebuild wipes it and Claude Code warns that the status line command failed.
