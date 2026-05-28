@@ -122,7 +122,8 @@
 		"TERM": "xterm-256color",
 		"COLORTERM": "truecolor",
 		"POWERLEVEL9K_DISABLE_GITSTATUS": "true",
-		"GEMINI_CLI_TRUST_WORKSPACE": "true"
+		"GEMINI_CLI_TRUST_WORKSPACE": "true",
+		"OCTO_ALLOWED_PROVIDERS": "claude codex gemini opencode"
 	},
 	"remoteEnv": {
 		"NODE_OPTIONS": "--max-old-space-size=4096",

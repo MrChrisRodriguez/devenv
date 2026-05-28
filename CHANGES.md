@@ -4,6 +4,21 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-28 — Feature: AUTH-PERSISTENCE.md guide + Octopus provider allowlist
+
+**Goal:** Document how auth/secrets persist (a living reference for adding credentialed tools), and add an explicit, repo-scoped allowlist for which providers Claude Octopus may use.
+
+**1. `.devcontainer/AUTH-PERSISTENCE.md`:**
+A reference doc covering the two persistence mechanisms — API keys via the two-tier host secrets files vs. device/OAuth logins on `${devcontainerId}`-keyed named volumes — the "pick one per tool per project" rule (an API-key env var shadows a device login), a table of what each volume persists today, per-tool login steps, and how to replicate the setup in another repo. Read it before wiring up a new credentialed CLI.
+
+**2. Provider allowlist (`.devcontainer/devcontainer.json` → `containerEnv`):**
+```jsonc
+"OCTO_ALLOWED_PROVIDERS": "claude codex gemini opencode"
+```
+Claude Octopus (octo plugin) reads `OCTO_ALLOWED_PROVIDERS` at runtime via its `provider-allowlist.sh` lib: a space/comma-separated list where **unset = all detected providers allowed**, and any provider omitted from a non-empty list is treated as unavailable **even if installed**. Set it to the four CLIs this template installs. `claude` must stay in the list (it's the orchestrator). No setup-script change is needed — the env var alone gates `check-providers.sh` and fleet construction. It's non-secret and repo-specific, so it lives in version control, not the host secrets file. Recognized names: `codex gemini opencode copilot qwen ollama openrouter perplexity` + `claude` (aliases: `claude`/`anthropic`/`sonnet`, `codex`/`openai`, `gemini`/`google`, `local`→`ollama`).
+
+---
+
 ## 2026-05-28 — Feature: Persist ~/.config tool configs across rebuilds, isolated per repo
 
 **Goal:** Keep CLI/tool configuration under `~/.config` (e.g. `ccstatusline/settings.json`) alive across devcontainer rebuilds, scoped per-project, without committing it to the repo.
