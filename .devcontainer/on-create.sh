@@ -43,6 +43,22 @@ if [ -n "${DEVCONTAINER_PROJECT:-}" ]; then
 fi
 # ─────────────────────────────────────────────────────────────────────────────
 
+# ── Claim volume-mounted home dirs ───────────────────────────────────────────
+# Docker named volumes mount empty as root:root unless the image pre-populated
+# the path (copy-on-first-use seeds the volume with the image dir's ownership).
+# Only ~/.proto is pre-created in the Dockerfile and ~/.config happens to be
+# shipped by the base image; ~/.codex / ~/.gemini are not, so they mount as root
+# and the vscode user can't write to them. Claim them all ONCE here, before any
+# tool script runs, so correctness doesn't depend on per-script source order
+# (e.g. setup-openspec.sh writes ~/.codex/prompts before setup-codex.sh runs).
+for d in "$HOME/.claude" "$HOME/.codex" "$HOME/.gemini" "$HOME/.config" "$HOME/.proto"; do
+    if [ -d "$d" ] && [ "$(stat -c '%U' "$d")" != "$(whoami)" ]; then
+        echo "🔧 Claiming $d for $(whoami) (volume mounts as root)..."
+        sudo chown -R "$(whoami):$(whoami)" "$d"
+    fi
+done
+# ─────────────────────────────────────────────────────────────────────────────
+
 # Install Proto-managed apps in .prototools
 source /workspace/.devcontainer/on-create/setup-proto.sh
 

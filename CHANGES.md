@@ -4,6 +4,24 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-28 — Refactor: claim all volume-mounted home dirs once, upfront in on-create.sh
+
+**Goal:** Make volume-ownership correctness independent of script source order. The previous fix (entry below) `chown`ed `~/.codex` inside `setup-codex.sh`, but an audit found that's **too late**: `setup-openspec.sh` runs `openspec init --tools …,codex,…` (which writes `~/.codex/prompts`) *earlier* in the chain than `setup-codex.sh`, so on a fresh rebuild OpenSpec's Codex setup would still hit `EACCES … mkdir '/home/vscode/.codex/prompts'` (non-fatal, but Codex never gets its OpenSpec slash commands). Scattering per-tool `chown`s makes correctness depend on ordering.
+
+**Change:** A single claim loop in `on-create.sh`, right after the secrets block and before any tool script runs:
+```bash
+for d in "$HOME/.claude" "$HOME/.codex" "$HOME/.gemini" "$HOME/.config" "$HOME/.proto"; do
+    if [ -d "$d" ] && [ "$(stat -c '%U' "$d")" != "$(whoami)" ]; then
+        sudo chown -R "$(whoami):$(whoami)" "$d"
+    fi
+done
+```
+This also closes a latent `~/.config` gap: nothing claimed it — it only worked because the `base:trixie` image ships `/home/vscode/.config` as `vscode`, so Docker's copy-on-first-use seeded the volume correctly. That breaks the moment the mount is scoped to an image-unpopulated subdir (e.g. `~/.config/ccstatusline`, an alternative the original config-volume commit suggested). Claiming it explicitly removes the reliance on base-image behavior.
+
+**Removed** the now-redundant per-script `chown`s added to `setup-codex.sh` / `setup-gemini.sh` in the previous entry (replaced by short pointer comments). Left `setup-claude.sh` and `setup-proto.sh`'s existing claims as harmless belt-and-suspenders, and kept the octopus `|| echo` fault-tolerance guards. Verified: the loop is a no-op on this container (all five dirs already `vscode`-owned) and all scripts pass `bash -n`.
+
+---
+
 ## 2026-05-28 — Fix: claim root-owned ~/.codex & ~/.gemini volumes; stop one failure from aborting on-create
 
 **Goal:** Stop the on-create chain from silently aborting partway through. A build log showed `on-create.sh` exiting with status 1 at the Claude Octopus step, which meant every script after it — `setup-claude-warp.sh`, `setup-graphify.sh`, the extension sync, and crucially `setup-shell.sh` — never ran. Because `setup-shell.sh` is what installs the proto-activating `~/.zshrc` template, the symptom downstream was `bun`/`bunx`/`proto` missing from the interactive shell PATH (a stock Oh My Zsh `~/.zshrc` was left in place) and husky `pre-commit` hooks failing with `bunx: not found`.
