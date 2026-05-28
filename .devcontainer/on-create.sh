@@ -59,42 +59,61 @@ for d in "$HOME/.claude" "$HOME/.codex" "$HOME/.gemini" "$HOME/.config" "$HOME/.
 done
 # ─────────────────────────────────────────────────────────────────────────────
 
-# Install Proto-managed apps in .prototools
+# Install Proto-managed apps in .prototools.
+# HARD source (not optional): bun and the PATH for every later script depend on
+# this, so a failure here should abort the whole setup rather than limp onward.
 source /workspace/.devcontainer/on-create/setup-proto.sh
 
+# ── Optional installers ──────────────────────────────────────────────────────
+# Every script below is SOURCED into this `set -e` shell, so an unguarded
+# `return N` or failing command would abort the ENTIRE remaining chain. That bit
+# us before: a missing/old opencode makes setup-oh-my-opencode.sh `return 1`,
+# which would skip everything after it — including setup-shell.sh (the script
+# that installs the proto-activating ~/.zshrc). optional() degrades such a
+# failure to a warning so the chain continues.
+#
+# Caveat: `source X || …` disables `set -e` *inside* X for that call, so X runs
+# to completion and optional() reacts only to X's final/return status — not to a
+# mid-script failure. That's fine for these standalone installers; where a
+# specific step must be caught, guard that command directly (as the octopus
+# mkdir/ln calls do with `|| echo`).
+optional() {
+    source "$1" || echo "⚠️   $(basename "$1") failed; continuing setup without it"
+}
+
 # Install Biome
-source /workspace/.devcontainer/on-create/setup-biome.sh
+optional /workspace/.devcontainer/on-create/setup-biome.sh
 
 # Install Claude Code
-source /workspace/.devcontainer/on-create/setup-claude.sh
+optional /workspace/.devcontainer/on-create/setup-claude.sh
 
 # Install ccstatusline (must run AFTER setup-claude.sh: it backs the statusLine
 # command in ~/.claude/settings.json and installs to the non-persistent ~/.bun/bin)
-source /workspace/.devcontainer/on-create/setup-ccstatusline.sh
+optional /workspace/.devcontainer/on-create/setup-ccstatusline.sh
 
 # Install Opencode
-source /workspace/.devcontainer/on-create/setup-opencode.sh
+optional /workspace/.devcontainer/on-create/setup-opencode.sh
 
 # Install Oh-My-Opencode
-source /workspace/.devcontainer/on-create/setup-oh-my-opencode.sh
+optional /workspace/.devcontainer/on-create/setup-oh-my-opencode.sh
 
 # Install Openspec
-source /workspace/.devcontainer/on-create/setup-openspec.sh
+optional /workspace/.devcontainer/on-create/setup-openspec.sh
 
 # Install Gemini CLI
-source /workspace/.devcontainer/on-create/setup-gemini.sh
+optional /workspace/.devcontainer/on-create/setup-gemini.sh
 
 # Install Codex CLI
-source /workspace/.devcontainer/on-create/setup-codex.sh
+optional /workspace/.devcontainer/on-create/setup-codex.sh
 
 # Install Claude Octopus (must run AFTER claude/codex/opencode so their CLIs are on PATH)
-source /workspace/.devcontainer/on-create/setup-claude-octopus.sh
+optional /workspace/.devcontainer/on-create/setup-claude-octopus.sh
 
 # Install Claude Code Warp plugin (must run AFTER setup-claude.sh so claude CLI is on PATH)
-source /workspace/.devcontainer/on-create/setup-claude-warp.sh
+optional /workspace/.devcontainer/on-create/setup-claude-warp.sh
 
 # Install Graphify (must run AFTER setup-proto.sh for uv, and AFTER claude/codex/opencode/gemini so their CLIs are on PATH)
-source /workspace/.devcontainer/on-create/setup-graphify.sh
+optional /workspace/.devcontainer/on-create/setup-graphify.sh
 
 # Sync extensions.json from devcontainer.json (ensures it's always in sync)
 if [ -f "/workspace/.devcontainer/scripts/sync-extensions-json.sh" ]; then
@@ -103,11 +122,13 @@ if [ -f "/workspace/.devcontainer/scripts/sync-extensions-json.sh" ]; then
 fi
 
 # Install VS Code extensions (for DevPod compatibility)
-source /workspace/.devcontainer/on-create/setup-vscode-extensions.sh
+optional /workspace/.devcontainer/on-create/setup-vscode-extensions.sh
 
-# Install and configure bash and zsh and completions
-# NOTE: Must run LAST — tool installers (e.g. bun) overwrite ~/.zshrc,
-# so our shell config must be written after all of them finish.
+# Install and configure bash and zsh and completions.
+# NOTE: Must run LAST — tool installers (e.g. bun) overwrite ~/.zshrc, so our
+# shell config must be written after all of them finish. HARD source (not
+# optional): it's the final step (nothing downstream to strand) and it installs
+# the proto-activating ~/.zshrc, so a failure here should surface, not be hidden.
 source /workspace/.devcontainer/on-create/setup-shell.sh
 
 echo "✨ Development environment setup complete!"

@@ -4,6 +4,23 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-28 — Fix: wrap non-critical on-create installers in optional() so one failure can't abort the chain
+
+**Goal:** Close the last instance of the "sourced script aborts the whole chain" failure class (see the entry below for the volume-permission instance). All `on-create/*.sh` helpers are **sourced** into `on-create.sh`'s `set -e` shell, so any unguarded `return N` or failing command aborts every script after it. The clearest live hazard: `setup-oh-my-opencode.sh` does `return 1` (lines 24/31/36) when opencode is missing or below its min version — and it runs at step 6 of 14, so that `return 1` would skip everything downstream **including `setup-shell.sh`**, which installs the proto-activating `~/.zshrc`. That's the same root failure (no shell setup → `bun`/`proto` missing from PATH → husky `bunx: not found`) reached by a different trigger.
+
+**Change:** An `optional()` helper in `on-create.sh` wraps each non-critical installer:
+```bash
+optional() {
+    source "$1" || echo "⚠️   $(basename "$1") failed; continuing setup without it"
+}
+```
+- **Hard `source` (unchanged):** `setup-proto.sh` (bun/PATH for everything depends on it — must abort on failure) and `setup-shell.sh` (the final step, with nothing downstream to strand; its failure should surface, not be hidden).
+- **`optional` (all the rest):** biome, claude, ccstatusline, opencode, oh-my-opencode, openspec, gemini, codex, octopus, warp, graphify, vscode-extensions.
+
+**Bash semantics (verified under bash 5.2, not assumed):** Unguarded `source X` under `set -e` aborts the chain on both a `return 1` and a mid-script failure. `source X || echo` lets the chain continue and fires on an explicit `return N`. A subshell on the left of `||` is **not** the right form — `( source X )` discards X's side effects (PATH/env exports) and suppresses `set -e` inside exactly the same as the plain form, so it buys nothing. Note `source X || …` also disables `set -e` *within* X for that call, so `optional()` reacts to X's final/return status, not a mid-script failure — acceptable for standalone installers; where a specific step must be caught we still guard that command directly (e.g. the octopus `mkdir`/`ln`). Simulated both the `return 1` and unguarded cases to confirm; `bash -n` passes. (Credit: the `optional()` approach came from a sibling template repo that hit the same gap.)
+
+---
+
 ## 2026-05-28 — Fix: claim root-owned volumes upfront so on-create can't abort mid-chain
 
 **Symptom:** A build log showed `on-create.sh` exiting status 1 at the Claude Octopus step, so every later script — `setup-claude-warp.sh`, `setup-graphify.sh`, the extension sync, and crucially `setup-shell.sh` — never ran. Since `setup-shell.sh` installs the proto-activating `~/.zshrc` template, the downstream symptom was `bun`/`bunx`/`proto` missing from the interactive shell PATH (a stock Oh My Zsh `~/.zshrc` left in place) and husky `pre-commit` hooks failing with `bunx: not found`.
