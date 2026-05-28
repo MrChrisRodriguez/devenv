@@ -4,6 +4,20 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-28 — Chore: bump `@biomejs/biome` 2.4.15 → 2.4.16
+
+**What changed:** Patch-version bump of Biome (formatter/linter) from `2.4.15` to `2.4.16`. Picked up on a routine `bun install`; no API or rule changes affecting this repo's configuration. Also bumped `biome.jsonc`'s `$schema` from `2.4.15` → `2.4.16` to match the installed CLI (silences the "configuration schema version does not match" warning from `biome rage`).
+
+**How to adopt downstream:**
+```bash
+bun add -d @biomejs/biome@2.4.16
+```
+Then update the `$schema` URL at the top of `biome.jsonc` to `.../schemas/2.4.16/schema.json`.
+
+**Verification:** `bunx biome --version` → `2.4.16`. `bunx biome rage` no longer reports a schema-version mismatch. Existing `biome check` results unchanged on this codebase.
+
+---
+
 ## 2026-05-27 — Feature: forward Warp ACP signals into the devcontainer + trust workspace for Gemini CLI
 
 **Goal:** Make Claude Code detect Warp when a devcontainer terminal is launched from the Warp app, and silence Gemini CLI's workspace-trust prompt inside the container.
