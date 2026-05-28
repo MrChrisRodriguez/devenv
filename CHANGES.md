@@ -4,28 +4,37 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
-## 2026-05-27 — Feature: forward Warp ACP signals into the devcontainer + trust workspace for Gemini CLI
+## 2026-05-27 — Feature: Warp integration (ACP detection signals + Claude Code Warp plugin) + trust workspace for Gemini CLI
 
-**Goal:** Make Claude Code detect Warp when a devcontainer terminal is launched from the Warp app, and silence Gemini CLI's workspace-trust prompt inside the container.
+**Goal:** Integrate the Warp terminal with the devcontainer on two fronts — let Claude Code detect Warp and open its structured-output channel (ACP), and auto-install Warp's official Claude Code plugin — and separately silence Gemini CLI's workspace-trust prompt inside the container.
 
-**What changed in `.devcontainer/devcontainer.json`:**
+**1. Forward Warp ACP detection signals (`.devcontainer/devcontainer.json` → `remoteEnv`):**
+Forward three host vars from Warp into the container, each as `${localEnv:NAME}`:
+- `WARP_CLI_AGENT_PROTOCOL_VERSION` — Warp's Agent Client Protocol version
+- `WARP_CLIENT_VERSION` — Warp app version
+- `TERM_PROGRAM` — `WarpTerminal` when launched from Warp
 
-1. **`remoteEnv`** — forward three host vars from Warp into the container:
-   - `WARP_CLI_AGENT_PROTOCOL_VERSION` — Warp's Agent Client Protocol version
-   - `WARP_CLIENT_VERSION` — Warp app version
-   - `TERM_PROGRAM` — `WarpTerminal` when launched from Warp
+When all three are present, Claude Code detects it's running under Warp and opens a structured-output channel (ACP) instead of plain ANSI. The host sets these automatically when a terminal is spawned from Warp; without `remoteEnv` forwarding they're lost at the container boundary and Claude Code falls back to plain text.
 
-   When all three are present in the environment, Claude Code detects it's running under Warp and opens a structured-output channel (ACP) instead of plain ANSI. The host has these set automatically when a terminal is spawned from Warp; without `remoteEnv` forwarding, they get lost at the container boundary and Claude Code falls back to plain text.
+**2. Auto-install the Claude Code Warp plugin:**
+Add `.devcontainer/on-create/setup-claude-warp.sh`, which installs [claude-code-warp](https://github.com/warpdotdev/claude-code-warp) (Warp's official plugin) so its commands/skills are available without manual `/plugin marketplace add` + `/plugin install`. The script:
+- Runs `claude plugin marketplace add warpdotdev/claude-code-warp` then `claude plugin install warp@claude-code-warp`.
+- Skips if `~/.claude/plugins/cache/claude-code-warp/warp` already exists (the `~/.claude` volume persists this across rebuilds, so the install runs once per fresh volume).
+- Gracefully no-ops if the `claude` CLI is not on PATH.
 
-2. **`containerEnv`** — add `GEMINI_CLI_TRUST_WORKSPACE=true`. Suppresses the interactive "Do you trust the workspace?" prompt Gemini CLI shows on first run inside the mounted `/workspace`. Safe in a devcontainer because the workspace is the user's own bind-mounted code.
+Source it in `.devcontainer/on-create.sh` **after** `setup-claude.sh` so the `claude` CLI is available.
 
-**How to adopt downstream:** Add the same three keys to `remoteEnv` (each as `${localEnv:NAME}`) and `GEMINI_CLI_TRUST_WORKSPACE: "true"` to `containerEnv`. Rebuild the container. Verify from inside:
+**3. Trust the workspace for Gemini CLI (`.devcontainer/devcontainer.json` → `containerEnv`):**
+Add `GEMINI_CLI_TRUST_WORKSPACE=true`. Suppresses the interactive "Do you trust the workspace?" prompt Gemini CLI shows on first run inside the mounted `/workspace`. Safe in a devcontainer because the workspace is the user's own bind-mounted code.
+
+**Verification (after rebuild):**
 ```bash
 echo "$TERM_PROGRAM $WARP_CLIENT_VERSION $WARP_CLI_AGENT_PROTOCOL_VERSION"
 # → e.g. "WarpTerminal 0.2025.xx.xx.xx 0.1.0" when launched from Warp
-echo "$GEMINI_CLI_TRUST_WORKSPACE"   # → true
+echo "$GEMINI_CLI_TRUST_WORKSPACE"                 # → true
+ls ~/.claude/plugins/cache/claude-code-warp/warp   # plugin payload present
 ```
-If `TERM_PROGRAM` is empty inside the container, the terminal wasn't launched from Warp (or the host doesn't have the var) — Claude Code will just use plain ANSI, which is harmless.
+If `TERM_PROGRAM` is empty inside the container, the terminal wasn't launched from Warp (or the host lacks the var) — Claude Code just uses plain ANSI, which is harmless.
 
 ---
 
@@ -105,26 +114,6 @@ Then type `/graphify .` in any assistant to build the graph and `graphify query 
 - The Codex hook bakes in the absolute path `/home/vscode/.local/bin/graphify`. If you change the devcontainer user, regenerate `.codex/hooks.json` with `graphify install --project --platform codex`.
 - No other graphify extras (`pdf`, `office`, `video`) are installed by default — add per-project with `uv tool install --with "graphifyy[pdf]" graphifyy`.
 - Building the graph is user-initiated and per-worktree: worktrees inherit the configuration but each builds its own graph.
-
----
-
-## 2026-05-27 — Feature: auto-install Claude Code Warp plugin during devcontainer setup
-
-**Goal:** Install [claude-code-warp](https://github.com/warpdotdev/claude-code-warp) — Warp's official Claude Code plugin — automatically when the devcontainer is created, so it's available without manual `/plugin marketplace add` + `/plugin install` steps.
-
-**How to implement:**
-1. Add `.devcontainer/on-create/setup-claude-warp.sh`. The script:
-   - Runs `claude plugin marketplace add warpdotdev/claude-code-warp` then `claude plugin install warp@claude-code-warp`.
-   - Skipped if `~/.claude/plugins/cache/claude-code-warp/warp` already exists (the `~/.claude` volume persists this across rebuilds, so the install only runs once per fresh volume).
-   - Gracefully no-ops if the `claude` CLI is not on PATH.
-2. In `.devcontainer/on-create.sh`, source the new script **after** `setup-claude.sh` so the `claude` CLI is available.
-
-**Verification (after rebuild):**
-```bash
-ls ~/.claude/plugins/cache/claude-code-warp/warp   # plugin payload present
-```
-
-Inside Claude Code, the Warp commands/skills shipped by the plugin become available immediately.
 
 ---
 
@@ -466,29 +455,6 @@ grep -nH -E "^[[:space:]]*exit[[:space:]]+[0-9]" .devcontainer/on-create/*.sh   
 
 ---
 
-## 2026-03-16 — GitHub Token forwarding to raise API rate limits
-
-**Goal:** Proto resolves tool versions via the GitHub API. Unauthenticated requests are capped at 60/hr per IP — easily exhausted in a shared network or CI. Forwarding `GITHUB_TOKEN` raises this to 5,000/hr.
-
-**How to implement:**
-Two complementary paths (both can be active; secrets file wins on conflict since it's loaded last):
-
-1. **Via host shell** — forward the token automatically from the host environment:
-   ```json
-   // .devcontainer/devcontainer.json
-   "remoteEnv": {
-     "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
-   }
-   ```
-2. **Via secrets file** (recommended for persistence — works even in GUI-launched IDEs):
-   ```
-   # ~/.config/devcontainer/secrets
-   GITHUB_TOKEN=ghp_your_token_here
-   ```
-3. Document `GITHUB_TOKEN` as a recommended common secret in your `devcontainer.json` comment block or `secrets.example`.
-
----
-
 ## 2026-03-16 — devcontainer hardening: extra CLI tools and scoped volume names
 
 **Goal:** Add missing but commonly needed CLI tools (`fd`, `nano`, `vim`, `procps`/`ps`, `sudo`), set environment variables that improve terminal and IDE behavior, and scope Docker volume names so multiple projects on the same host don't share volumes.
@@ -508,18 +474,13 @@ Two complementary paths (both can be active; secrets file wins on conflict since
    }
    ```
    `DEVCONTAINER=true` is a standard signal to tools that they're running inside a container. `POWERLEVEL9K_DISABLE_GITSTATUS` prevents Powerlevel10k from running git status on every prompt (a significant slowdown in large repos).
-3. Scope all named Docker volume names with `${devcontainerId}` so multiple checkouts of this template on the same host each get their own volumes:
-   ```json
-   "mounts": [
-     "source=devcontainer-${devcontainerId}-proto,target=/home/vscode/.proto,type=volume"
-   ]
-   ```
+3. Scope all named Docker volume names with `${devcontainerId}` so multiple checkouts of this template on the same host each get their own volumes (see the Proto tool caching entry for the `~/.proto` volume mount and the cross-device-link rationale).
 
 ---
 
-## 2026-03-16 — Host-mounted two-tier secrets system
+## 2026-03-16 — Host-mounted two-tier secrets system (incl. GitHub token forwarding)
 
-**Goal:** `${localEnv:VAR}` in `devcontainer.json` only works when the IDE process itself has the env var set — GUI apps launched from Dock, Spotlight, or DevPod don't inherit shell exports, making this approach unreliable. Replace with a bind-mounted secrets file that all container processes can read directly, regardless of how the IDE was launched.
+**Goal:** `${localEnv:VAR}` in `devcontainer.json` only works when the IDE process itself has the env var set — GUI apps launched from Dock, Spotlight, or DevPod don't inherit shell exports, making this approach unreliable. Replace it with a bind-mounted secrets file that all container processes can read directly, regardless of how the IDE was launched. This is also how rate-limit tokens get forwarded: proto resolves tool versions via the GitHub API, and unauthenticated requests are capped at 60/hr per IP — putting `GITHUB_TOKEN` in the secrets file raises this to 5,000/hr.
 
 **How to implement:**
 1. On the host, create the secrets directory and files:
@@ -533,10 +494,10 @@ Two complementary paths (both can be active; secrets file wins on conflict since
    touch ~/.config/devcontainer/secrets.d/my-project
    chmod 600 ~/.config/devcontainer/secrets.d/my-project
    ```
-   File format — one `KEY=value` per line, `#` for comments:
+   File format — one `KEY=value` per line, `#` for comments. Put API and rate-limit tokens here:
    ```
+   GITHUB_TOKEN=ghp_...          # raises GitHub API limit 60/hr → 5,000/hr (used by proto)
    CONTEXT7_API_KEY=your-key-here
-   GITHUB_TOKEN=ghp_...
    ```
 2. In `.devcontainer/devcontainer.json`, bind-mount the config directory and set `DEVCONTAINER_PROJECT`:
    ```json
@@ -567,6 +528,8 @@ Two complementary paths (both can be active; secrets file wins on conflict since
    [ -f /run/devcontainer-config/secrets.d/${DEVCONTAINER_PROJECT} ] && set -a && source /run/devcontainer-config/secrets.d/${DEVCONTAINER_PROJECT} && set +a
    ```
 5. When cloning this template for a new project, update `DEVCONTAINER_PROJECT` in `devcontainer.json` to match the per-project secrets filename.
+
+**`remoteEnv` fallback for `GITHUB_TOKEN`:** `remoteEnv: { "GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}" }` also forwards the token, but only when the IDE was launched from a shell that already has it set — prefer the secrets file, which works in GUI-launched IDEs too. If both are configured, the secrets file wins (it's loaded last).
 
 ---
 
