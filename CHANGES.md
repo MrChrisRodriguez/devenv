@@ -4,6 +4,31 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-28 — Fix: make Warp ACP detection persist across rebuilds (host-captured env, not `${localEnv:...}` forwarding)
+
+**What broke:** The Warp ↔ Claude Code integration added on 2026-05-27 forwarded three host signals (`TERM_PROGRAM`, `WARP_CLIENT_VERSION`, `WARP_CLI_AGENT_PROTOCOL_VERSION`) into the container via `remoteEnv` using `${localEnv:...}`. After any rebuild, all three came back **empty** inside the container, so Claude Code fell back to plain ANSI instead of ACP structured output.
+
+**Root cause:** `${localEnv:VAR}` is resolved by whatever process brings the container up — here **DevPod** — against *its own* environment, fresh on every rebuild with no memory. But Warp injects those vars **only into the interactive terminals it spawns**; they are not persistent global host vars. DevPod is frequently launched from a GUI (Dock/Spotlight), whose env never had them (the same pitfall the README documents for secrets). So `localEnv` resolved to empty and nothing was ever persisted inside the container — `remoteEnv` simply recomputed the same empty result each rebuild.
+
+**Fix — capture on the host, persist to a file, load like secrets:**
+
+1. **`.devcontainer/host/capture-warp-env.sh`** (new, runs on the **host**): writes whatever `TERM_PROGRAM`/`WARP_*` vars are present to `~/.config/devcontainer/warp-env`, overwriting a key **only when a fresh non-empty value exists**. A value seeded from one Warp-terminal launch therefore survives later GUI-launched rebuilds instead of being clobbered.
+2. **`devcontainer.json`** — add `initializeCommand` to run that script before each `devpod up`; **remove** the three dead `${localEnv:WARP_*}` lines from `remoteEnv`; add a `_comment_warp` explaining why forwarding was dropped.
+3. **`on-create.sh`** — load `/run/devcontainer-config/warp-env` (the host file, via the existing read-only bind mount) into `/etc/environment` with the same `load_secrets_file` helper used for secrets, so every container process inherits it.
+
+**How to adopt downstream:** copy `host/capture-warp-env.sh`, add the `initializeCommand` line, drop any `${localEnv:WARP_*}`/`TERM_PROGRAM` entries from `remoteEnv`, and add the `load_secrets_file ".../warp-env" "Warp ACP"` call after the secrets loads. **Seed it once by running `devpod up .` from a Warp terminal** — there's no way to obtain Warp's per-terminal vars otherwise.
+
+**Verification (after rebuild):**
+```bash
+cat ~/.config/devcontainer/warp-env                 # on host: three KEY=value lines
+env | grep -E 'WARP|TERM_PROGRAM'                    # in container: all three non-empty
+grep -E 'WARP|TERM_PROGRAM' /etc/environment         # loaded for all processes
+```
+
+**Caveat:** loading into `/etc/environment` makes `TERM_PROGRAM=WarpTerminal` global to every container shell, and the version strings refresh only when you next `devpod up` from Warp. Both are acceptable for a template whose premise is connecting via Warp.
+
+---
+
 ## 2026-05-28 — Fix: wrap non-critical on-create installers in optional() so one failure can't abort the chain
 
 **Goal:** Close the last instance of the "sourced script aborts the whole chain" failure class (see the entry below for the volume-permission instance). All `on-create/*.sh` helpers are **sourced** into `on-create.sh`'s `set -e` shell, so any unguarded `return N` or failing command aborts every script after it. The clearest live hazard: `setup-oh-my-opencode.sh` does `return 1` (lines 24/31/36) when opencode is missing or below its min version — and it runs at step 6 of 14, so that `return 1` would skip everything downstream **including `setup-shell.sh`**, which installs the proto-activating `~/.zshrc`. That's the same root failure (no shell setup → `bun`/`proto` missing from PATH → husky `bunx: not found`) reached by a different trigger.

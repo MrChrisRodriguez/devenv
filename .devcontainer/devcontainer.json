@@ -22,6 +22,10 @@
 			"userGid": "automatic"
 		}
 	},
+	"initializeCommand": [
+		"bash",
+		"${localWorkspaceFolder}/.devcontainer/host/capture-warp-env.sh"
+	],
 	"onCreateCommand": ["bash", "/workspace/.devcontainer/on-create.sh"],
 	"postCreateCommand": [
 		"bash",
@@ -128,10 +132,8 @@
 	"remoteEnv": {
 		"NODE_OPTIONS": "--max-old-space-size=4096",
 		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
-		"GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}",
-		"WARP_CLI_AGENT_PROTOCOL_VERSION": "${localEnv:WARP_CLI_AGENT_PROTOCOL_VERSION}",
-		"WARP_CLIENT_VERSION": "${localEnv:WARP_CLIENT_VERSION}",
-		"TERM_PROGRAM": "${localEnv:TERM_PROGRAM}"
+		"GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
 	},
+	"_comment_warp": "Warp ACP signals (TERM_PROGRAM, WARP_CLIENT_VERSION, WARP_CLI_AGENT_PROTOCOL_VERSION) are NOT forwarded here via remoteEnv ${localEnv:...} — that blanks out on every rebuild because DevPod resolves localEnv against its own (often GUI-launched) process env, which lacks Warp's per-terminal vars. Instead, initializeCommand runs .devcontainer/host/capture-warp-env.sh on the host to persist them to ~/.config/devcontainer/warp-env, and on-create.sh loads that into /etc/environment. Seed it by running `devpod up .` from a Warp terminal at least once.",
 	"_comment_secrets": "Two-tier secrets — both files use KEY=value format (one per line, # for comments). (1) Common: ~/.config/devcontainer/secrets — loaded in every project; good for shared keys like GITHUB_TOKEN (raises proto/GitHub API rate limit from 60 to 5000 req/hr) and CONTEXT7_API_KEY. (2) Per-project: ~/.config/devcontainer/secrets.d/<DEVCONTAINER_PROJECT> — loaded only for this container; good for project-specific tokens. Per-project values override common ones when the same key appears in both. Update DEVCONTAINER_PROJECT to a short lowercase slug matching your project when creating a new project from this template. GITHUB_TOKEN is also auto-passed from the host shell via remoteEnv if already set there."
 }

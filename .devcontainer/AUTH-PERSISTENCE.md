@@ -62,6 +62,25 @@ Add a volume line to `devcontainer.json` → `mounts` for the tool's home dir:
   (`source=${localEnv:HOME}/.codex,...`) — every container would share one host
   dir, so all projects share one login and clobber each other's tokens.
 
+### Mechanism 3 — Host-captured terminal signals (Warp ACP)
+
+Some signals are injected by the host terminal **per session**, not stored
+anywhere persistent — Warp sets `TERM_PROGRAM=WarpTerminal`, `WARP_CLIENT_VERSION`,
+and `WARP_CLI_AGENT_PROTOCOL_VERSION` only inside the terminals it spawns. Claude
+Code reads them to switch to ACP structured output. Forwarding via `remoteEnv`
+`${localEnv:...}` does **not** work: DevPod re-resolves `localEnv` against its own
+(often GUI-launched) process env on every rebuild, finds the vars absent, and bakes
+in empty values — so detection silently reverts to plain ANSI.
+
+Instead, `initializeCommand` runs [`host/capture-warp-env.sh`](./host/capture-warp-env.sh)
+**on the host** before each `devpod up`. It writes whatever Warp vars are present
+to `~/.config/devcontainer/warp-env`, overwriting a key only when a fresh non-empty
+value exists (so a value seeded from one Warp-terminal launch survives later
+GUI-launched rebuilds). `on-create.sh` then loads that file into `/etc/environment`
+like the secrets files. **Seed it by running `devpod up .` from a Warp terminal at
+least once**; there's no way to obtain Warp's per-terminal vars without going
+through a Warp terminal once.
+
 ## What this container persists today
 
 | Path | Volume name | Holds | Status |
