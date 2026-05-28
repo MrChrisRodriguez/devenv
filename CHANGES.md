@@ -4,20 +4,6 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
-## 2026-05-28 — Chore: bump `@biomejs/biome` 2.4.15 → 2.4.16
-
-**What changed:** Patch-version bump of Biome (formatter/linter) from `2.4.15` to `2.4.16`. Picked up on a routine `bun install`; no API or rule changes affecting this repo's configuration. Also bumped `biome.jsonc`'s `$schema` from `2.4.15` → `2.4.16` to match the installed CLI (silences the "configuration schema version does not match" warning from `biome rage`).
-
-**How to adopt downstream:**
-```bash
-bun add -d @biomejs/biome@2.4.16
-```
-Then update the `$schema` URL at the top of `biome.jsonc` to `.../schemas/2.4.16/schema.json`.
-
-**Verification:** `bunx biome --version` → `2.4.16`. `bunx biome rage` no longer reports a schema-version mismatch. Existing `biome check` results unchanged on this codebase.
-
----
-
 ## 2026-05-27 — Feature: forward Warp ACP signals into the devcontainer + trust workspace for Gemini CLI
 
 **Goal:** Make Claude Code detect Warp when a devcontainer terminal is launched from the Warp app, and silence Gemini CLI's workspace-trust prompt inside the container.
@@ -106,38 +92,6 @@ The `!!` prefix (Biome v2 syntax) excludes the path from **all** Biome operation
 graphify query "where is bun configured" | head -30   # returns a scoped subgraph
 ls graphify-out/cache | head                          # cache directory populated
 ```
-
----
-
-## 2026-05-27 — Chore: bump `@biomejs/biome` 2.4.10 → 2.4.15
-
-**What changed:** Patch-version bump of Biome (formatter/linter) from `2.4.10` to `2.4.15`. Picked up on a routine `bun install`; no API or rule changes affecting this repo's configuration.
-
-**How to adopt downstream:**
-```bash
-bun add -d @biomejs/biome@2.4.15
-```
-
-**Verification:** `bunx biome --version` → `2.4.15`. Existing `biome check` results unchanged on this codebase.
-
----
-
-## 2026-05-27 — Chore: re-sync OpenSpec skills (generator 1.2.0 → 1.3.1) and rename `.opencode/command/` → `.opencode/commands/`
-
-**What changed:** Re-ran the OpenSpec skill generator and committed the resulting drift. `@fission-ai/openspec` is still pinned at `0.19.0` in `package.json`, but the generator's internal `generatedBy` version embedded in each `SKILL.md` bumped from `1.2.0` to `1.3.1`. Two visible effects:
-
-1. **All 16 OpenSpec skill/command files re-emitted** across `.claude/`, `.codex/`, `.cursor/`, `.opencode/` with minor whitespace/wording tidies (column-aligned markdown tables, ASCII diagram indentation, one wording clarification: `contextFiles: artifact ID -> array of concrete file paths` in `opsx/apply.md`). No functional behavior change.
-2. **Directory rename for OpenCode commands:** `.opencode/command/` → `.opencode/commands/` (plural). The new generator emits the plural form to match `.claude/commands/` / `.cursor/commands/` conventions. Files inside are byte-identical to the deleted ones.
-
-**How to adopt downstream:**
-```bash
-# Re-emit the skills from the same openspec version you already have installed:
-bunx openspec init --force   # or whichever flag your version uses; check `bunx openspec --help`
-# Then verify the new opencode directory name and remove the old singular one:
-[ -d .opencode/command ] && [ -d .opencode/commands ] && git rm -r .opencode/command
-```
-
-**Verification:** `grep -l 'generatedBy: "1.3.1"' .claude/skills/openspec-*/SKILL.md` should match all four skills (same in `.codex/`, `.cursor/`, `.opencode/`).
 
 ---
 
