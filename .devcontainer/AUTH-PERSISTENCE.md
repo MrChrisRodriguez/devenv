@@ -76,10 +76,14 @@ Instead, `initializeCommand` runs [`host/capture-warp-env.sh`](./host/capture-wa
 **on the host** before each `devpod up`. It writes whatever Warp vars are present
 to `~/.config/devcontainer/warp-env`, overwriting a key only when a fresh non-empty
 value exists (so a value seeded from one Warp-terminal launch survives later
-GUI-launched rebuilds). `on-create.sh` then loads that file into `/etc/environment`
-like the secrets files. **Seed it by running `devpod up .` from a Warp terminal at
-least once**; there's no way to obtain Warp's per-terminal vars without going
-through a Warp terminal once.
+GUI-launched rebuilds). `configs/.shell_common` then sources that file (via the
+read-only bind mount at `/run/devcontainer-config/warp-env`) with `set -a` in **every
+interactive shell**, so the vars are exported and Claude Code — a child of that shell
+— inherits them. This is scoped to interactive shells on purpose: it's the only place
+Warp detection matters, it needs no rebuild (a new shell picks up refreshed values
+immediately), and it never touches non-interactive contexts. **Seed it by running
+`devpod up .` from a Warp terminal at least once**; there's no way to obtain Warp's
+per-terminal vars without going through a Warp terminal once.
 
 ## What this container persists today
 

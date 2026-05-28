@@ -41,12 +41,6 @@ if [ -n "${DEVCONTAINER_PROJECT:-}" ]; then
         "/run/devcontainer-config/secrets.d/${DEVCONTAINER_PROJECT}" \
         "project (${DEVCONTAINER_PROJECT})"
 fi
-
-# 3. Warp ACP signals — captured on the host by initializeCommand
-#    (.devcontainer/host/capture-warp-env.sh) so Claude Code detects Warp and uses
-#    ACP structured output. Loaded the same way as secrets: into /etc/environment so
-#    every container process (incl. the terminal Claude Code runs in) inherits it.
-load_secrets_file "/run/devcontainer-config/warp-env" "Warp ACP"
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Claim volume-mounted home dirs ───────────────────────────────────────────

@@ -10,22 +10,22 @@ This file documents changes made to this template repository. Each entry provide
 
 **Root cause:** `${localEnv:VAR}` is resolved by whatever process brings the container up — here **DevPod** — against *its own* environment, fresh on every rebuild with no memory. But Warp injects those vars **only into the interactive terminals it spawns**; they are not persistent global host vars. DevPod is frequently launched from a GUI (Dock/Spotlight), whose env never had them (the same pitfall the README documents for secrets). So `localEnv` resolved to empty and nothing was ever persisted inside the container — `remoteEnv` simply recomputed the same empty result each rebuild.
 
-**Fix — capture on the host, persist to a file, load like secrets:**
+**Fix — capture on the host, source into interactive shells:**
 
 1. **`.devcontainer/host/capture-warp-env.sh`** (new, runs on the **host**): writes whatever `TERM_PROGRAM`/`WARP_*` vars are present to `~/.config/devcontainer/warp-env`, overwriting a key **only when a fresh non-empty value exists**. A value seeded from one Warp-terminal launch therefore survives later GUI-launched rebuilds instead of being clobbered.
 2. **`devcontainer.json`** — add `initializeCommand` to run that script before each `devpod up`; **remove** the three dead `${localEnv:WARP_*}` lines from `remoteEnv`; add a `_comment_warp` explaining why forwarding was dropped.
-3. **`on-create.sh`** — load `/run/devcontainer-config/warp-env` (the host file, via the existing read-only bind mount) into `/etc/environment` with the same `load_secrets_file` helper used for secrets, so every container process inherits it.
+3. **`configs/.shell_common`** (sourced by both `.bashrc` and `.zshrc`) — source `/run/devcontainer-config/warp-env` (the host file via the read-only bind mount) inside `set -a … set +a` so the vars are **exported** and Claude Code, a child of the shell, inherits them. Scoped to interactive shells on purpose — that's the only place Warp detection matters, it needs no rebuild (a new shell picks up refreshed values immediately), and it leaves non-interactive contexts untouched.
 
-**How to adopt downstream:** copy `host/capture-warp-env.sh`, add the `initializeCommand` line, drop any `${localEnv:WARP_*}`/`TERM_PROGRAM` entries from `remoteEnv`, and add the `load_secrets_file ".../warp-env" "Warp ACP"` call after the secrets loads. **Seed it once by running `devpod up .` from a Warp terminal** — there's no way to obtain Warp's per-terminal vars otherwise.
+**How to adopt downstream:** copy `host/capture-warp-env.sh`, add the `initializeCommand` line, drop any `${localEnv:WARP_*}`/`TERM_PROGRAM` entries from `remoteEnv`, and add the `set -a; source /run/devcontainer-config/warp-env; set +a` guard to `.shell_common` (or your shell rc). **Seed it once by running `devpod up .` from a Warp terminal** — there's no way to obtain Warp's per-terminal vars otherwise.
 
-**Verification (after rebuild):**
+**Verification:**
 ```bash
-cat ~/.config/devcontainer/warp-env                 # on host: three KEY=value lines
-env | grep -E 'WARP|TERM_PROGRAM'                    # in container: all three non-empty
-grep -E 'WARP|TERM_PROGRAM' /etc/environment         # loaded for all processes
+cat ~/.config/devcontainer/warp-env       # on host: three KEY=value lines
+# open a NEW interactive shell in the container, then:
+env | grep -E 'WARP|TERM_PROGRAM'          # all three non-empty (exported to children)
 ```
 
-**Caveat:** loading into `/etc/environment` makes `TERM_PROGRAM=WarpTerminal` global to every container shell, and the version strings refresh only when you next `devpod up` from Warp. Both are acceptable for a template whose premise is connecting via Warp.
+**Caveat:** values refresh only when you next `devpod up` from Warp (which re-runs the host capture); between ups the file holds the last captured versions. Acceptable for a template whose premise is connecting via Warp.
 
 ---
 

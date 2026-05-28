@@ -75,3 +75,15 @@ load_completions() {
 # 2. Per-project secrets — overrides common values for this container only
 [[ -n "${DEVCONTAINER_PROJECT:-}" && -f "/run/devcontainer-config/secrets.d/${DEVCONTAINER_PROJECT}" ]] \
     && source "/run/devcontainer-config/secrets.d/${DEVCONTAINER_PROJECT}"
+
+# 3. Warp ACP signals — captured on the host by initializeCommand
+#    (.devcontainer/host/capture-warp-env.sh), refreshed on every `devpod up`.
+#    `set -a` exports them so Claude Code (a child of this shell) inherits the
+#    Warp signals and switches to ACP structured output. Sourced here rather than
+#    written to /etc/environment because they're only needed in interactive shells,
+#    and this picks up refreshed values on every new shell with no rebuild.
+if [[ -f /run/devcontainer-config/warp-env ]]; then
+    set -a
+    source /run/devcontainer-config/warp-env
+    set +a
+fi
