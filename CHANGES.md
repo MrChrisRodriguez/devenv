@@ -4,6 +4,35 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-05-28 — Feature: Persist AI CLI logins across rebuilds, isolated per repo
+
+**Goal:** Make Claude Code, Codex, and Gemini CLI logins survive container rebuilds, while keeping multiple project repos isolated — each repo gets its own accounts/keys with no cross-repo collisions.
+
+**1. Named-volume mounts keyed by `${devcontainerId}` (`.devcontainer/devcontainer.json` → `mounts`):**
+Each AI CLI's home dir is backed by a Docker named volume whose name embeds `${devcontainerId}` (automatically unique per repo, so logins never collide):
+```jsonc
+"source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",  // pre-existing
+"source=codex-home-${devcontainerId},target=/home/vscode/.codex,type=volume",           // added
+"source=gemini-home-${devcontainerId},target=/home/vscode/.gemini,type=volume",          // added
+```
+`~/.claude` was already volume-backed; only `~/.codex` and `~/.gemini` needed adding. Verify each CLI's actual home dir before mounting — Codex defaults to `~/.codex` (`CODEX_HOME`, holds `config.toml` + `auth.json`), Gemini to `~/.gemini` (holds `oauth_creds.json`), Claude to `~/.claude` (`CLAUDE_CONFIG_DIR`). Do **not** bind-mount to a literal host path (e.g. `~/.codex`): that shares one login across every repo, defeating isolation. The `${devcontainerId}` form gives each repo its own volume.
+
+**2. Unique `DEVCONTAINER_PROJECT` slug (`.devcontainer/devcontainer.json` → `containerEnv`):**
+Set `DEVCONTAINER_PROJECT` to a distinct lowercase slug per repo (here: `devenv`, was the placeholder `my-project`). This is the namespace handle for per-project secrets (`~/.config/devcontainer/secrets.d/<slug>` on the host). Two repos sharing a slug would share per-project keys.
+
+**3. API key vs device login — pick one per tool per project:**
+The two-tier secrets loader writes any keys from the host secret files into `/etc/environment`, so a present `OPENAI_API_KEY` / `GEMINI_API_KEY` / `GOOGLE_API_KEY` **shadows** the corresponding CLI's device login. Choose one method per tool per project. Note Graphify's semantic extraction also reads those same Gemini/OpenAI keys, so a key set for Graphify will shadow a Gemini CLI device login.
+
+**One-time logins (after rebuild):**
+```bash
+claude         # /login (or use an API key)
+codex login    # device/OAuth — omit OPENAI_API_KEY to let this win
+gemini         # /auth → Google login — omit GEMINI_API_KEY/GOOGLE_API_KEY to let this win
+```
+These now persist on the per-repo volumes; subsequent rebuilds skip re-login.
+
+---
+
 ## 2026-05-27 — Feature: Warp integration (ACP detection signals + Claude Code Warp plugin) + trust workspace for Gemini CLI
 
 **Goal:** Integrate the Warp terminal with the devcontainer on two fronts — let Claude Code detect Warp and open its structured-output channel (ACP), and auto-install Warp's official Claude Code plugin — and separately silence Gemini CLI's workspace-trust prompt inside the container.

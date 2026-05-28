@@ -107,6 +107,8 @@
 	"mounts": [
 		"source=claude-code-shellhistory-${devcontainerId},target=/commandhistory,type=volume",
 		"source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
+		"source=codex-home-${devcontainerId},target=/home/vscode/.codex,type=volume",
+		"source=gemini-home-${devcontainerId},target=/home/vscode/.gemini,type=volume",
 		"source=proto-home-${devcontainerId},target=/home/vscode/.proto,type=volume",
 		"source=${localEnv:HOME}/.local/share/opencode,target=/mnt/opencode-mount,type=bind,consistency=cached",
 		"source=${localEnv:HOME}/.ssh,target=/mnt/host-ssh,type=bind,readonly,consistency=cached",
@@ -114,7 +116,7 @@
 	],
 	"containerEnv": {
 		"DEVCONTAINER": "true",
-		"DEVCONTAINER_PROJECT": "my-project",
+		"DEVCONTAINER_PROJECT": "devenv",
 		"SHELL": "/usr/bin/zsh",
 		"TERM": "xterm-256color",
 		"COLORTERM": "truecolor",
