@@ -9,9 +9,9 @@ source /workspace/.devcontainer/on-create/setup-common.sh
 # Setup Proto environment to access bun and the Claude Code binary
 setup_proto_env
 
-# Canonical clone location — shared by Codex and OpenCode via symlinks so we
-# only fetch the repo once per devcontainer rebuild. ~/.codex and ~/.opencode
-# are NOT volume-mounted, so we re-clone on every rebuild regardless.
+# Canonical clone location — shared by Codex via symlinks so we
+# only fetch the repo once per devcontainer rebuild. ~/.codex is
+# NOT volume-mounted, so we re-clone on every rebuild regardless.
 OCTOPUS_REPO="https://github.com/nyldn/claude-octopus.git"
 OCTOPUS_DIR="$HOME/.local/share/claude-octopus"
 
@@ -53,22 +53,7 @@ else
     echo "ℹ️  codex CLI not found, skipping Codex integration"
 fi
 
-# ─── OpenCode (skills only, via symlink) ─────────────────────────────────────
-if command -v opencode &> /dev/null; then
-    OPENCODE_LINK="$HOME/.opencode/claude-octopus"
-    if [ -L "$OPENCODE_LINK" ] || [ -e "$OPENCODE_LINK" ]; then
-        echo "ℹ️  $OPENCODE_LINK already exists, skipping"
-    else
-        echo "🔗 Linking claude-octopus into ~/.opencode..."
-        mkdir -p "$HOME/.opencode" || echo "⚠️   Could not create ~/.opencode; skipping OpenCode integration"
-        ln -s "$OCTOPUS_DIR" "$OPENCODE_LINK" \
-            || echo "⚠️   Could not link claude-octopus into ~/.opencode; skipping OpenCode integration"
-    fi
-else
-    echo "ℹ️  opencode CLI not found, skipping OpenCode integration"
-fi
-
-# ─── Shared skills discovery symlink (used by both Codex and OpenCode) ───────
+# ─── Shared skills discovery symlink (used by Codex) ─────────────────────────
 SKILLS_LINK="$HOME/.agents/skills/claude-octopus"
 if [ -L "$SKILLS_LINK" ] || [ -e "$SKILLS_LINK" ]; then
     echo "ℹ️  $SKILLS_LINK already exists, skipping"

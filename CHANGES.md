@@ -4,6 +4,42 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-06-01 — Remove: OpenCode and oh-my-opencode (installation + all references)
+
+**What changed:** OpenCode is no longer a provider this template ships. Its installers, committed config, devcontainer wiring, dependency, and docs are all removed. Historical CHANGES.md entries mentioning OpenCode are intentionally left intact — they remain accurate history.
+
+**Removed files:**
+- `.devcontainer/on-create/setup-opencode.sh` and `.devcontainer/on-create/setup-oh-my-opencode.sh` (installer scripts).
+- `.opencode/` (committed config dir: `command/`, `commands/`, `plugins/graphify.js`, `skills/`, `opencode.json`, `oh-my-opencode.jsonc`, plus its `package.json`/`bun.lock`/`node_modules`).
+- `opencode.jsonc` (repo-root OpenCode config).
+
+**Edited:**
+- `.devcontainer/on-create.sh` — drop the two `optional …setup-opencode.sh`/`setup-oh-my-opencode.sh` calls; remove "opencode" from the install-ordering comments and the sourced-script `set -e` warning comment.
+- `.devcontainer/devcontainer.json` — remove the `${localEnv:HOME}/.local/share/opencode → /mnt/opencode-mount` bind mount; change `OCTO_ALLOWED_PROVIDERS` from `"claude codex gemini opencode"` to `"claude codex gemini"`.
+- `.devcontainer/on-create/setup-claude-octopus.sh` — delete the "OpenCode (skills only, via symlink)" block; reword the canonical-clone and shared-skills-symlink comments to drop OpenCode.
+- `.devcontainer/on-create/setup-graphify.sh` — drop the `.opencode/plugins/graphify.js` example from the committed-files comment.
+- `.devcontainer/on-create/setup-openspec.sh` — `openspec init --tools` now `claude,codex,cursor` (was `…,opencode`).
+- `.devcontainer/secrets.example` — `OPENAI_API_KEY` comment now references the Codex CLI instead of the "Opencode Codex auth plugin".
+- `.devcontainer/AUTH-PERSISTENCE.md` — "this repo allows" line now lists three CLIs (`claude codex gemini`). The separate list of provider names Octopus *recognizes* is left unchanged (it documents Octopus's capabilities, not our install).
+- `init-host.sh` — remove `mkdir -p "$HOME/.local/share/opencode"`.
+- `.gitignore` — remove `**/opencode/auth.json`.
+- `package.json` — remove `opencode-ai` from both the workspace `catalog` and `devDependencies`; `bun install` refreshes `bun.lock` (1 package removed).
+- `README.md` — remove the `mkdir -p ~/.local/share/opencode` step, the "Authenticate Opencode" auth step (remaining auth steps renumbered), the Opencode + oh-my-opencode entries in the AI Tools list, and the OpenCode mention in the Context7 MCP line.
+- `AGENTS.md` — drop "Opencode" from the AI-coding-tools list.
+
+**How to adopt downstream:** delete the files listed above, apply the edits, run `bun install` to drop `opencode-ai` from the lockfile, and rebuild the container — `on-create` no longer attempts the OpenCode install.
+
+**Verification:**
+```bash
+grep -rni opencode . \
+  --exclude-dir=.git --exclude-dir=node_modules --exclude-dir=graphify-out \
+  --exclude=bun.lock --exclude=build-log.log --exclude=CHANGES.md
+# only .devcontainer/AUTH-PERSISTENCE.md (Octopus-recognized provider list) should match
+bun -e 'JSON.parse(require("fs").readFileSync("package.json","utf8"))'   # package.json still valid
+```
+
+---
+
 ## 2026-05-28 — Fix: make Warp ACP detection persist across rebuilds (host-captured env, not `${localEnv:...}` forwarding)
 
 **What broke:** The Warp ↔ Claude Code integration added on 2026-05-27 forwarded three host signals (`TERM_PROGRAM`, `WARP_CLIENT_VERSION`, `WARP_CLI_AGENT_PROTOCOL_VERSION`) into the container via `remoteEnv` using `${localEnv:...}`. After any rebuild, all three came back **empty** inside the container, so Claude Code fell back to plain ANSI instead of ACP structured output.

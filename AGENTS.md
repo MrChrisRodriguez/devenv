@@ -1,6 +1,6 @@
 # Agent Guidelines
 
-Shared conventions for all AI coding tools (Claude Code, Opencode, Cursor, etc.).
+Shared conventions for all AI coding tools (Claude Code, Cursor, etc.).
 
 ## Runtime
 

@@ -66,11 +66,10 @@ source /workspace/.devcontainer/on-create/setup-proto.sh
 
 # ── Optional installers ──────────────────────────────────────────────────────
 # Every script below is SOURCED into this `set -e` shell, so an unguarded
-# `return N` or failing command would abort the ENTIRE remaining chain. That bit
-# us before: a missing/old opencode makes setup-oh-my-opencode.sh `return 1`,
-# which would skip everything after it — including setup-shell.sh (the script
-# that installs the proto-activating ~/.zshrc). optional() degrades such a
-# failure to a warning so the chain continues.
+# `return N` or failing command would abort the ENTIRE remaining chain — it
+# would skip everything after it, including setup-shell.sh (the script that
+# installs the proto-activating ~/.zshrc). optional() degrades such a failure
+# to a warning so the chain continues.
 #
 # Caveat: `source X || …` disables `set -e` *inside* X for that call, so X runs
 # to completion and optional() reacts only to X's final/return status — not to a
@@ -91,12 +90,6 @@ optional /workspace/.devcontainer/on-create/setup-claude.sh
 # command in ~/.claude/settings.json and installs to the non-persistent ~/.bun/bin)
 optional /workspace/.devcontainer/on-create/setup-ccstatusline.sh
 
-# Install Opencode
-optional /workspace/.devcontainer/on-create/setup-opencode.sh
-
-# Install Oh-My-Opencode
-optional /workspace/.devcontainer/on-create/setup-oh-my-opencode.sh
-
 # Install Openspec
 optional /workspace/.devcontainer/on-create/setup-openspec.sh
 
@@ -106,13 +99,13 @@ optional /workspace/.devcontainer/on-create/setup-gemini.sh
 # Install Codex CLI
 optional /workspace/.devcontainer/on-create/setup-codex.sh
 
-# Install Claude Octopus (must run AFTER claude/codex/opencode so their CLIs are on PATH)
+# Install Claude Octopus (must run AFTER claude/codex so their CLIs are on PATH)
 optional /workspace/.devcontainer/on-create/setup-claude-octopus.sh
 
 # Install Claude Code Warp plugin (must run AFTER setup-claude.sh so claude CLI is on PATH)
 optional /workspace/.devcontainer/on-create/setup-claude-warp.sh
 
-# Install Graphify (must run AFTER setup-proto.sh for uv, and AFTER claude/codex/opencode/gemini so their CLIs are on PATH)
+# Install Graphify (must run AFTER setup-proto.sh for uv, and AFTER claude/codex/gemini so their CLIs are on PATH)
 optional /workspace/.devcontainer/on-create/setup-graphify.sh
 
 # Sync extensions.json from devcontainer.json (ensures it's always in sync)

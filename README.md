@@ -112,7 +112,6 @@ The container mounts a few directories from your host machine. Create them so Do
 
 ```bash
 mkdir -p ~/.config/devcontainer/secrets.d
-mkdir -p ~/.local/share/opencode
 chmod 700 ~/.config/devcontainer/secrets.d
 ```
 
@@ -194,12 +193,7 @@ You're all set! Continue to **Getting Started** below to create your first proje
    devpod up .
    ```
 
-5. **Authenticate Opencode**
-   ```bash
-   opencode auth
-   ```
-
-6. **Authenticate Gemini CLI**
+5. **Authenticate Gemini CLI**
 
    Gemini CLI requires a Google Gemini API key. On first run, it will prompt you to log in:
    ```bash
@@ -207,7 +201,7 @@ You're all set! Continue to **Getting Started** below to create your first proje
    ```
    Follow the prompts to authenticate with your Google account or provide an API key. You can also set the `GEMINI_API_KEY` environment variable in your secrets file.
 
-7. **Authenticate Codex CLI**
+6. **Authenticate Codex CLI**
 
    Codex CLI requires an OpenAI API key. Set it before first use:
    ```bash
@@ -226,12 +220,10 @@ You're now ready to start building your new project!
 
 AI Tools:
 - Openspec (https://github.com/fission-ai/openspec)
-- Opencode (https://opencode.ai/)
-- oh-my-opencode (https://github.com/danzilberdan/oh-my-opencode)
 - Claude Code
 - Gemini CLI (https://github.com/google-gemini/gemini-cli)
 - Codex CLI (https://github.com/openai/codex)
-- Context7 MCP (https://context7.com) — up-to-date library docs for Claude Code, Cursor, and OpenCode
+- Context7 MCP (https://context7.com) — up-to-date library docs for Claude Code and Cursor
 - Biome
 
 Toolchain:

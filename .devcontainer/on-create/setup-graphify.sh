@@ -11,7 +11,7 @@ setup_proto_env
 
 # Install the graphifyy CLI. All project-scoped skill files and hooks
 # (.claude/skills/graphify/, .codex/hooks.json, .gemini/settings.json,
-# .opencode/plugins/graphify.js, etc.) are committed to the repo — no
+# etc.) are committed to the repo — no
 # `graphify install --project` needed here.
 #
 # The CLI lives at ~/.local/bin/graphify (where .codex/hooks.json references it).

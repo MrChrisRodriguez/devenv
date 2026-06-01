@@ -120,7 +120,7 @@ comma-separated list of provider names; when **unset, every detected provider is
 allowed**. Anything omitted is treated as unavailable **even if installed** — so
 the allowlist is how you turn off a provider you don't want a given repo to use.
 
-This repo allows **`claude codex gemini opencode`** — the four CLIs it installs.
+This repo allows **`claude codex gemini`** — the three CLIs it installs.
 To disable one, drop it from the list; to enable another, add its name. The
 provider names Octopus recognizes are `codex`, `gemini`, `opencode`, `copilot`,
 `qwen`, `ollama`, `openrouter`, `perplexity`, plus `claude`. **Keep `claude` in

@@ -115,7 +115,6 @@
 		"source=gemini-home-${devcontainerId},target=/home/vscode/.gemini,type=volume",
 		"source=proto-home-${devcontainerId},target=/home/vscode/.proto,type=volume",
 		"source=config-home-${devcontainerId},target=/home/vscode/.config,type=volume",
-		"source=${localEnv:HOME}/.local/share/opencode,target=/mnt/opencode-mount,type=bind,consistency=cached",
 		"source=${localEnv:HOME}/.ssh,target=/mnt/host-ssh,type=bind,readonly,consistency=cached",
 		"source=${localEnv:HOME}/.config/devcontainer,target=/run/devcontainer-config,type=bind,readonly,consistency=cached"
 	],
@@ -127,7 +126,7 @@
 		"COLORTERM": "truecolor",
 		"POWERLEVEL9K_DISABLE_GITSTATUS": "true",
 		"GEMINI_CLI_TRUST_WORKSPACE": "true",
-		"OCTO_ALLOWED_PROVIDERS": "claude codex gemini opencode"
+		"OCTO_ALLOWED_PROVIDERS": "claude codex gemini"
 	},
 	"remoteEnv": {
 		"NODE_OPTIONS": "--max-old-space-size=4096",

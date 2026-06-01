@@ -48,7 +48,6 @@
 
 # Credentials
 .coda-credentials.json
-**/opencode/auth.json
 
 # One-time relay file for seeding ~/.config into the config-home volume
 # (see CHANGES.md 2026-05-28). Transient — delete after the post-rebuild restore.

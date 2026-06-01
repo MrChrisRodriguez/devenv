@@ -166,7 +166,6 @@ fi
 echo "Creating host directories for container mounts..."
 mkdir -p "$HOME/.config/devcontainer/secrets.d"
 chmod 700 "$HOME/.config/devcontainer/secrets.d"
-mkdir -p "$HOME/.local/share/opencode"
 echo "[ok] Host directories"
 
 # ── Summary ──────────────────────────────────────────────────────────────────
