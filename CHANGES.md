@@ -12,12 +12,12 @@ This file documents changes made to this template repository. Each entry provide
 - `scripts/sync-devcontainer.sh` — usage: `scripts/sync-devcontainer.sh <template-url-or-path> [--branch main] [--dry-run] [--yes]`.
 
 **Behavior / how downstream adopts it:**
-- `MIRROR_PATHS` (e.g. `.devcontainer`, `.moon`, `.husky`, `.codex/.cursor/.gemini/.agents`, `.claude/commands`+`skills`, `openspec`) are mirrored — template deletions propagate.
+- `MIRROR_PATHS` — only **pure-template** content dirs (`.devcontainer`, `.moon`, `.husky`, and the per-agent `skills`/`commands`/`rules` subdirs of `.agents/.claude/.codex/.cursor/.gemini`) are mirrored, so template deletions propagate. Before each wipe the script lists any local-only files it would delete and asks again.
 - `ADDITIVE_PATHS` (`.github`, `.vscode`) are written additively; template-deleted files are reported, not removed.
 - `SAFE_FILES` (tsconfigs, `biome.jsonc`, `.prototools`, `init-host.sh`, the sync script itself) are overwritten.
-- `REVIEW_PATHS` (`package.json`, `.gitignore`, `README.md`, `AGENTS.md`/`CLAUDE.md`/`GEMINI.md`, `.claude/settings.json`) are diffed with apply/skip per file.
+- `REVIEW_PATHS` — diffed with apply/skip per file: `package.json`, `.gitignore`, `README.md`, `AGENTS.md`/`CLAUDE.md`/`GEMINI.md`, `.claude/settings.json`, the agent configs (`.codex/hooks.json`, `.cursor/mcp.json`, `.gemini/settings.json`), and `openspec/config.yaml`.
+- **Never synced:** `openspec/changes/` and `openspec/specs/` (your project's spec content), plus `bun.lock`, `CHANGES.md`, `init-new-project.sh`. Whole agent dirs are NOT mirrored — only their template-owned subdirs — so per-project MCP/hook/settings files are preserved.
 - `PRUNE_PATHS` lists template-removed paths to delete downstream (prefilled with the OpenCode artifacts); edit per sync.
-- `bun.lock`, `CHANGES.md`, `init-new-project.sh` are intentionally never touched.
 
 ## 2026-06-01 — Remove: OpenCode and oh-my-opencode (installation + all references)
 

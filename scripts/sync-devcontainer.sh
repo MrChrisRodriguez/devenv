@@ -36,19 +36,27 @@ set -euo pipefail
 # What gets synced. Edit these lists to taste before/per run.
 # ----------------------------------------------------------------------------
 
-# Template-owned directories. Mirrored: local copy is removed, then restored
-# from the template, so files the template DELETED also disappear downstream.
+# Pure-template content directories. Mirrored: local copy is removed, then
+# restored from the template, so files the template DELETED also disappear
+# downstream. Before each wipe the script lists any local-only files about to be
+# lost and asks again — so a stray project file here is never silently deleted.
+#
+# IMPORTANT: only list dirs that are ENTIRELY template-owned. Do NOT mirror dirs
+# that mix template + project content (e.g. `openspec/`, whose changes/ + specs/
+# are your project's; or whole agent dirs that also hold per-project config).
+# Those go in REVIEW_PATHS (config files) or are left untouched (spec content).
 MIRROR_PATHS=(
   .devcontainer
   .moon
   .husky
-  .codex
-  .cursor
-  .gemini
-  .agents
+  .agents/skills
   .claude/commands
   .claude/skills
-  openspec
+  .codex/skills
+  .cursor/commands
+  .cursor/rules
+  .cursor/skills
+  .gemini/skills
 )
 
 # Directories that may legitimately hold downstream-only files (extra CI
@@ -76,6 +84,8 @@ SAFE_FILES=(
 
 # Files that commonly carry per-project customization. Never overwritten
 # blindly — you are shown the diff and decide apply / skip for each.
+# NOTE: openspec/config.yaml is here (it holds your project context/rules);
+# openspec/changes/ and openspec/specs/ are deliberately NOT synced at all.
 REVIEW_PATHS=(
   package.json
   .gitignore
@@ -84,6 +94,10 @@ REVIEW_PATHS=(
   CLAUDE.md
   GEMINI.md
   .claude/settings.json
+  .codex/hooks.json
+  .cursor/mcp.json
+  .gemini/settings.json
+  openspec/config.yaml
 )
 
 # Things the template has removed that a downstream repo should also delete.
@@ -158,14 +172,15 @@ show_diff() {  # show_diff <path> : current tree vs template version
   fi
 }
 
-# files present locally under a dir but absent from the template (reported, not deleted)
-report_orphans() {
+# files present locally under a dir but absent from the template (one per line)
+orphans_under() {
   local dir="$1" f
-  [ -d "$dir" ] || return 0
-  while IFS= read -r f; do
-    [ -z "$f" ] && continue
-    if [ -z "$(ref_type "$f")" ]; then c_warn "     orphan (template deleted it): $f"; fi
-  done < <(git ls-files -- "$dir"; git ls-files --others --exclude-standard -- "$dir")
+  [ -e "$dir" ] || return 0
+  { git ls-files -- "$dir"; git ls-files --others --exclude-standard -- "$dir"; } \
+    | sort -u | while IFS= read -r f; do
+    [ -n "$f" ] || continue
+    [ -z "$(ref_type "$f")" ] && printf '%s\n' "$f"
+  done
 }
 
 # ----------------------------------------------------------------------------
@@ -221,11 +236,17 @@ echo
 # ----------------------------------------------------------------------------
 # 3. mirrored dirs (template-owned; deletions propagate)
 # ----------------------------------------------------------------------------
-c_blue "==> 3. Mirror template-owned directories (local extras in these WILL be removed)"
+c_blue "==> 3. Mirror pure-template directories (template deletions propagate)"
 printf '   %s\n' "${MIRROR_PATHS[@]}"
 if confirm "   apply this group?"; then
   for p in "${MIRROR_PATHS[@]}"; do
     [ -n "$(ref_type "$p")" ] || { c_dim "   – absent in template, skip: $p"; continue; }
+    orphans="$(orphans_under "$p")"
+    if [ -n "$orphans" ]; then
+      c_warn "   local-only files under '$p' that mirroring will DELETE:"
+      printf '     %s\n' $orphans
+      confirm "   ok to wipe + restore '$p' from template?" || { c_dim "   skipped $p"; continue; }
+    fi
     run rm -rf -- "$p"
     run git checkout "$(ref)" -- "$p"
     echo "   ✓ $p"
@@ -243,7 +264,8 @@ if confirm "   apply this group?"; then
     [ -n "$(ref_type "$p")" ] || { c_dim "   – absent in template, skip: $p"; continue; }
     run git checkout "$(ref)" -- "$p"
     echo "   ✓ $p"
-    report_orphans "$p"
+    orphans="$(orphans_under "$p")"
+    [ -n "$orphans" ] && { c_warn "   orphans (template deleted these; left in place):"; printf '     %s\n' $orphans; }
   done
 fi
 echo
