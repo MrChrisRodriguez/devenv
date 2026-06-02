@@ -4,6 +4,21 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-06-02 — Add: `scripts/sync-devcontainer.sh` (catch a downstream repo up to this template)
+
+**What changed:** New review-first helper to sync this template's infra layer into another repo that has drifted behind. Run it from inside the target (apps) repo; it adds this template as a git remote, fetches, and copies template-owned paths over the tree while leaving `apps/`/`libs/`/`scripts/` project code alone (project discovery is glob-based, so app wiring is decoupled from the config). Nothing is committed automatically — every group is opt-in and `REVIEW_PATHS` files are diffed before being touched.
+
+**Added files:**
+- `scripts/sync-devcontainer.sh` — usage: `scripts/sync-devcontainer.sh <template-url-or-path> [--branch main] [--dry-run] [--yes]`.
+
+**Behavior / how downstream adopts it:**
+- `MIRROR_PATHS` (e.g. `.devcontainer`, `.moon`, `.husky`, `.codex/.cursor/.gemini/.agents`, `.claude/commands`+`skills`, `openspec`) are mirrored — template deletions propagate.
+- `ADDITIVE_PATHS` (`.github`, `.vscode`) are written additively; template-deleted files are reported, not removed.
+- `SAFE_FILES` (tsconfigs, `biome.jsonc`, `.prototools`, `init-host.sh`, the sync script itself) are overwritten.
+- `REVIEW_PATHS` (`package.json`, `.gitignore`, `README.md`, `AGENTS.md`/`CLAUDE.md`/`GEMINI.md`, `.claude/settings.json`) are diffed with apply/skip per file.
+- `PRUNE_PATHS` lists template-removed paths to delete downstream (prefilled with the OpenCode artifacts); edit per sync.
+- `bun.lock`, `CHANGES.md`, `init-new-project.sh` are intentionally never touched.
+
 ## 2026-06-01 — Remove: OpenCode and oh-my-opencode (installation + all references)
 
 **What changed:** OpenCode is no longer a provider this template ships. Its installers, committed config, devcontainer wiring, dependency, and docs are all removed. Historical CHANGES.md entries mentioning OpenCode are intentionally left intact — they remain accurate history.
