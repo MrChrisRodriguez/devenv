@@ -8,6 +8,15 @@ REPO_ARG="${1:-}"
 
 echo "🔄 Initializing new project from template..."
 
+# Capture the template baseline BEFORE wiping history, so downstream syncs can do
+# true 3-way merges (scripts/sync-devcontainer.sh reads .template-ref).
+TEMPLATE_REF=""
+TEMPLATE_URL=""
+if [ -d ".git" ]; then
+    TEMPLATE_REF="$(git rev-parse HEAD 2>/dev/null || echo "")"
+    TEMPLATE_URL="$(git remote get-url origin 2>/dev/null || echo "")"
+fi
+
 # Remove existing git history
 if [ -d ".git" ]; then
     echo "🗑️  Removing existing git history..."
@@ -26,6 +35,18 @@ git init
 # Determine default branch name (main or master)
 DEFAULT_BRANCH=$(git config --global init.defaultBranch 2>/dev/null || echo "main")
 git checkout -b "$DEFAULT_BRANCH" 2>/dev/null || git checkout -b main 2>/dev/null || true
+
+# Stamp the template baseline so future `scripts/sync-devcontainer.sh` runs can do
+# 3-way merges against the exact commit this project was created from.
+if [ -n "$TEMPLATE_REF" ]; then
+    echo "📌 Recording template baseline in .template-ref ($TEMPLATE_REF)..."
+    {
+        echo "# Template baseline for scripts/sync-devcontainer.sh — do not edit by hand."
+        echo "# The sync script updates 'ref' to the new template commit after each sync."
+        [ -n "$TEMPLATE_URL" ] && echo "url=$TEMPLATE_URL"
+        echo "ref=$TEMPLATE_REF"
+    } > .template-ref
+fi
 
 # Update DEVCONTAINER_PROJECT in devcontainer.json if a repo name was provided
 if [ -n "$REPO_ARG" ]; then

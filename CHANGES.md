@@ -6,18 +6,23 @@ This file documents changes made to this template repository. Each entry provide
 
 ## 2026-06-02 — Add: `scripts/sync-devcontainer.sh` (catch a downstream repo up to this template)
 
-**What changed:** New review-first helper to sync this template's infra layer into another repo that has drifted behind. Run it from inside the target (apps) repo; it adds this template as a git remote, fetches, and copies template-owned paths over the tree while leaving `apps/`/`libs/`/`scripts/` project code alone (project discovery is glob-based, so app wiring is decoupled from the config). Nothing is committed automatically — every group is opt-in and `REVIEW_PATHS` files are diffed before being touched.
+**What changed:** New helper to sync this template's infra layer into another repo that has drifted behind, using **content-aware, per-file classification** plus **true 3-way merges** — not a hardcoded path list. Run it from inside the target (apps) repo. It adds this template as a git remote, fetches, and decides each file's fate by comparing content. Project code (`apps/`/`libs/`/`scripts/`) is excluded, so app wiring (glob-discovered) is untouched. Nothing is committed automatically.
 
 **Added files:**
-- `scripts/sync-devcontainer.sh` — usage: `scripts/sync-devcontainer.sh <template-url-or-path> [--branch main] [--dry-run] [--yes]`.
+- `scripts/sync-devcontainer.sh` — usage: `scripts/sync-devcontainer.sh [<template-url-or-path>] [--branch main] [--no-merge] [--dry-run] [--yes]`. The URL is optional once `.template-ref` records one.
 
-**Behavior / how downstream adopts it:**
-- `MIRROR_PATHS` — only **pure-template** content dirs (`.devcontainer`, `.moon`, `.husky`, and the per-agent `skills`/`commands`/`rules` subdirs of `.agents/.claude/.codex/.cursor/.gemini`) are mirrored, so template deletions propagate. Before each wipe the script lists any local-only files it would delete and asks again.
-- `ADDITIVE_PATHS` (`.github`, `.vscode`) are written additively; template-deleted files are reported, not removed.
-- `SAFE_FILES` (tsconfigs, `biome.jsonc`, `.prototools`, `init-host.sh`, the sync script itself) are overwritten.
-- `REVIEW_PATHS` — diffed with apply/skip per file: `package.json`, `.gitignore`, `README.md`, `AGENTS.md`/`CLAUDE.md`/`GEMINI.md`, `.claude/settings.json`, the agent configs (`.codex/hooks.json`, `.cursor/mcp.json`, `.gemini/settings.json`), and `openspec/config.yaml`.
-- **Never synced:** `openspec/changes/` and `openspec/specs/` (your project's spec content), plus `bun.lock`, `CHANGES.md`, `init-new-project.sh`. Whole agent dirs are NOT mirrored — only their template-owned subdirs — so per-project MCP/hook/settings files are preserved.
-- `PRUNE_PATHS` lists template-removed paths to delete downstream (prefilled with the OpenCode artifacts); edit per sync.
+**Changed files:**
+- `init-new-project.sh` — now captures the template commit SHA + URL **before** wiping git history and writes them to `.template-ref` in the new project, so downstream syncs have a baseline for 3-way merges.
+
+**How classification works (per template-managed file):**
+- **identical** (your file == template's current) → nothing to do.
+- **new** (template added a file you lack) → add it.
+- **pristine/stale** (your file matches *some past* template version, i.e. never hand-edited) → replace wholesale, automatically.
+- **modified** (matches *no* template version, i.e. you customized it) → if a baseline is known, run `git merge-file` for a real 3-way merge (clean merges are staged; conflicts get standard markers for manual resolution); with no baseline, fall back to a diff + `keep/take/skip` prompt. Nothing is overwritten without confirmation.
+- **Deletions** the template made are auto-detected: a tracked file that was template-managed but is gone from the template, and still matches a historical template version, is pruned (pristine); if you'd modified it, you're asked. `PRUNE_PATHS` is an explicit safety list (prefilled with the OpenCode artifacts).
+- After a successful run, `.template-ref` is restamped to the new template commit so the next sync merges against the right baseline.
+
+**Never synced:** `openspec/changes/` + `openspec/specs/` (your project's spec content), `apps/`/`libs/`/`scripts/*` project code (except the sync script), `graphify-out/`, `bun.lock`, `CHANGES.md`, `init-new-project.sh`, `init-host.sh`, `.template-ref`. `openspec/config.yaml` *is* synced but, being customized, goes through the merge/review path rather than wholesale replace.
 
 ## 2026-06-01 — Remove: OpenCode and oh-my-opencode (installation + all references)
 
