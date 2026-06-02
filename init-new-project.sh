@@ -60,6 +60,15 @@ if [ -n "$REPO_ARG" ]; then
     fi
 fi
 
+# Replace the template's own README with a fresh project README
+if [ -f "README.template.md" ]; then
+    PROJECT_NAME="${REPO_ARG##*/}"; PROJECT_NAME="${PROJECT_NAME%.git}"
+    [ -n "$PROJECT_NAME" ] || PROJECT_NAME="$(basename "$PWD")"
+    echo "📄 Creating project README.md (\"$PROJECT_NAME\")..."
+    sed "s/{{PROJECT_NAME}}/$PROJECT_NAME/g" README.template.md > README.md
+    rm -f README.template.md
+fi
+
 # Self-delete — this is a one-time template bootstrap script
 echo "🧹 Removing init script (one-time use)..."
 rm -f "$0"

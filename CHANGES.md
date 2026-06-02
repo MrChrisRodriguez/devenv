@@ -4,6 +4,19 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-06-02 — Add: `README.template.md` (new repos get a project README, not the template's)
+
+**What changed:** New projects no longer inherit the template's own README. `init-new-project.sh` now renders `README.template.md` into the new repo's `README.md` (substituting `{{PROJECT_NAME}}`) and removes the template file. The sync excludes README files so a project's README is never overwritten.
+
+**Added files:**
+- `README.template.md` — minimal starter README with a `{{PROJECT_NAME}}` placeholder.
+
+**Changed files:**
+- `init-new-project.sh` — before self-deleting, if `README.template.md` exists: derive the project name (from the repo arg, else the directory name), `sed` the placeholder, write `README.md`, and `rm` the template file.
+- `scripts/sync-devcontainer.sh` — `is_excluded()` now skips `README.md` (project-owned) and `README.template.md` (template-only), so README content never flows downstream.
+
+**Downstream note:** repos created before this change still carry the old template README; replace it by hand (sync intentionally won't touch it).
+
 ## 2026-06-02 — Add: `scripts/sync-devcontainer.sh` (catch a downstream repo up to this template)
 
 **What changed:** New helper to sync this template's infra layer into another repo that has drifted behind, using **content-aware, per-file classification** plus **true 3-way merges** — not a hardcoded path list. Run it from inside the target (apps) repo. It adds this template as a git remote, fetches, and decides each file's fate by comparing content. Project code (`apps/`/`libs/`/`scripts/`) is excluded, so app wiring (glob-discovered) is untouched. Nothing is committed automatically.

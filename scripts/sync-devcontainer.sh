@@ -54,6 +54,7 @@ is_excluded() {
     scripts/sync-devcontainer.sh)              return 1 ;;  # always include
     apps/*|libs/*|scripts/*|graphify-out/*)    return 0 ;;
     openspec/changes/*|openspec/specs/*)       return 0 ;;
+    README.md|README.template.md)             return 0 ;;  # project-owned / template-only
     bun.lock|CHANGES.md|init-new-project.sh|init-host.sh|.template-ref) return 0 ;;
     *)                                         return 1 ;;
   esac
