@@ -4,6 +4,13 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-06-02 — Add: package.json infra-key warning in `sync-devcontainer.sh`
+
+**What changed:** Because `package.json` is project-owned (the sync keeps your version), template-managed config embedded in it — `lint-staged`, `commitlint`, and the husky `scripts.prepare` — can silently go missing downstream, which makes the husky `pre-commit`/`commit-msg` hooks fail (`lint-staged could not find any valid configuration`). The sync now checks your `package.json` against the template's for those keys after the file pass and prints a paste-ready warning for any that are missing, plus the `bun add -D …` line for the matching dev deps.
+
+**Changed files:**
+- `scripts/sync-devcontainer.sh` — new `check_pkg_infra()` (runs via `bun`/`node`, with a grep-only fallback) called at the end of the file-sync step; warns with the template's actual values for missing `lint-staged`/`commitlint`/`scripts.prepare`.
+
 ## 2026-06-02 — Add: `README.template.md` (new repos get a project README, not the template's)
 
 **What changed:** New projects no longer inherit the template's own README. `init-new-project.sh` now renders `README.template.md` into the new repo's `README.md` (substituting `{{PROJECT_NAME}}`) and removes the template file. The sync excludes README files so a project's README is never overwritten.

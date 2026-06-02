@@ -221,6 +221,58 @@ three_way() {
   [ "$rc" -eq 0 ] && echo "clean" || echo "conflict"
 }
 
+# Warn if the local package.json lacks template-managed infra keys that the husky
+# hooks depend on (lint-staged / commitlint config, the husky `prepare` script).
+# package.json is project-owned (kept-yours), so these can silently go missing.
+check_pkg_infra() {
+  git cat-file -e "$(ref):package.json" 2>/dev/null || return 0
+  [ -f package.json ] || return 0
+  local tmpl="$TMPD/pkg-theirs.json" js="$TMPD/check-pkg.js" runner=""
+  git show "$(ref):package.json" > "$tmpl"
+  command -v bun  >/dev/null 2>&1 && runner=bun
+  [ -z "$runner" ] && command -v node >/dev/null 2>&1 && runner=node
+
+  if [ -n "$runner" ]; then
+    cat > "$js" <<'JS'
+const fs = require('fs');
+const [, , tPath, lPath] = process.argv;
+const read = (p) => JSON.parse(fs.readFileSync(p, 'utf8'));
+let t, l;
+try { t = read(tPath); } catch { process.exit(0); }
+try { l = read(lPath); } catch { process.exit(0); }
+const out = [];
+const indent = (s) => s.split('\n').join('\n  ');
+for (const k of ['lint-staged', 'commitlint']) {
+  if (t[k] !== undefined && l[k] === undefined)
+    out.push('  ' + JSON.stringify(k) + ': ' + indent(JSON.stringify(t[k], null, 2)));
+}
+if (t.scripts && t.scripts.prepare && (!l.scripts || l.scripts.prepare !== t.scripts.prepare))
+  out.push('  "scripts": { ..., "prepare": ' + JSON.stringify(t.scripts.prepare) + ' }');
+if (out.length) { console.log(out.join(',\n')); process.exit(3); }
+JS
+    local missing rc
+    set +e
+    missing="$("$runner" "$js" "$tmpl" package.json 2>/dev/null)"
+    rc=$?
+    set -e
+    if [ "$rc" -eq 3 ] && [ -n "$missing" ]; then
+      c_warn "   package.json is missing template-managed infra keys — husky hooks will fail:"
+      printf '%s\n' "$missing" | sed 's/^/   /'
+      c_warn "   add the above to package.json, then:"
+      c_warn "     bun add -D lint-staged @commitlint/cli @commitlint/config-conventional"
+    fi
+  else
+    # no JS runtime: detection-only fallback
+    local miss=()
+    grep -qE '"lint-staged"[[:space:]]*:' package.json || miss+=("lint-staged")
+    grep -qE '"commitlint"[[:space:]]*:'  package.json || miss+=("commitlint")
+    if [ "${#miss[@]}" -gt 0 ]; then
+      c_warn "   package.json may be missing infra keys: ${miss[*]}"
+      c_warn "   compare against: git show $(ref):package.json"
+    fi
+  fi
+}
+
 # ----------------------------------------------------------------------------
 # 3. classify + apply every template-managed file
 # ----------------------------------------------------------------------------
@@ -268,6 +320,7 @@ while IFS= read -r f; do
     esac
   done
 done < <(git ls-tree -r --name-only "$(ref)")
+check_pkg_infra
 echo
 
 # ----------------------------------------------------------------------------
