@@ -80,6 +80,9 @@ optional() {
     source "$1" || echo "⚠️   $(basename "$1") failed; continuing setup without it"
 }
 
+# Configure GitHub credential routing (org → token), so `git push` just works per repo
+optional /workspace/.devcontainer/on-create/setup-git-credentials.sh
+
 # Install Biome
 optional /workspace/.devcontainer/on-create/setup-biome.sh
 
