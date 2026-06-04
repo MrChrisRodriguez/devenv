@@ -127,6 +127,31 @@ provider names Octopus recognizes are `codex`, `gemini`, `opencode`, `copilot`,
 the list — it's the orchestrator.** Recognized aliases: `claude`/`anthropic`/
 `sonnet`, `codex`/`openai`, `gemini`/`google`, `local`→`ollama`.
 
+## GitHub push auth (credential routing by org)
+
+`git push` over HTTPS needs a token, and different GitHub orgs need different ones
+(your personal `GITHUB_TOKEN` is read-only on org repos). Rather than configure each
+repo, a **global credential helper routes by org**:
+
+- `scripts/git-credential-org-router.sh` — reads the repo's org from the push request
+  (`credential.useHttpPath=true` passes the path) and emits the matching token from the
+  environment. Tokens are read at push time and **never written to disk** (not in
+  `.git/config`, the remote URL, or output).
+- `on-create/setup-git-credentials.sh` wires it into **global** git config. `~/.gitconfig`
+  isn't a persisted volume, so re-applying on each create is what makes it survive rebuilds.
+
+Routing (edit the `case` in the helper to change it):
+
+| Org | Token |
+|---|---|
+| `Blueprint-Talent/*` | `BTG_GITHUB_TOKEN` |
+| `confiador/*` | `CONFIADOR_GITHUB_TOKEN` |
+| everything else | `GITHUB_TOKEN` |
+
+**To add an org:** add one `case` line in the helper + put the matching `*_GITHUB_TOKEN`
+in your host secrets (common or per-project). Nothing repo-specific to maintain — routing
+is by the remote's org, and each repo's `/workspace` is its own bind mount.
+
 ## Where we track keys / tokens
 
 - **`secrets.example`** is the registry of every key the dev container expects,
