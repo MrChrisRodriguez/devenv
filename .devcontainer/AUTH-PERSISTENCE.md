@@ -136,21 +136,23 @@ repo, a **global credential helper routes by org**:
 - `scripts/git-credential-org-router.sh` — reads the repo's org from the push request
   (`credential.useHttpPath=true` passes the path) and emits the matching token from the
   environment. Tokens are read at push time and **never written to disk** (not in
-  `.git/config`, the remote URL, or output).
+  `.git/config`, the remote URL, or output). The helper contains **no org names** — it
+  resolves the token env var per org as: (1) the **host map file** below, else (2) the
+  `<ORG>_GITHUB_TOKEN` **convention** (org upper-cased, non-alphanumeric → `_`), else
+  (3) `GITHUB_TOKEN` fallback.
 - `on-create/setup-git-credentials.sh` wires it into **global** git config. `~/.gitconfig`
   isn't a persisted volume, so re-applying on each create is what makes it survive rebuilds.
 
-Routing (edit the `case` in the helper to change it):
+**The org list lives on the host, not in git.** The optional map file
+`~/.config/devcontainer/github-token-map` (mounted read-only at
+`/run/devcontainer-config/`) holds `org=ENV_VAR_NAME` lines — one per org whose token var
+doesn't match the convention. Keeping it on the host mount means client/org names never
+land in any repo's history.
 
-| Org | Token |
-|---|---|
-| `Blueprint-Talent/*` | `BTG_GITHUB_TOKEN` |
-| `confiador/*` | `CONFIADOR_GITHUB_TOKEN` |
-| everything else | `GITHUB_TOKEN` |
-
-**To add an org:** add one `case` line in the helper + put the matching `*_GITHUB_TOKEN`
-in your host secrets (common or per-project). Nothing repo-specific to maintain — routing
-is by the remote's org, and each repo's `/workspace` is its own bind mount.
+**To add an org:** define its PAT env var in host secrets, then either name it per the
+convention (no map entry needed) or add an `org=VAR` line to the host map file. Nothing
+repo-specific, and nothing to commit — routing is by the remote's org, and each repo's
+`/workspace` is its own bind mount.
 
 ## Where we track keys / tokens
 
