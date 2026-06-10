@@ -4,6 +4,17 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-06-10 — Fix: new repos get the ccstatusline status line automatically
+
+**What changed:** A freshly-created repo built its container with the `ccstatusline` binary installed but Claude Code still showed its default status line. Two gaps caused this: (1) **nothing wrote the `statusLine` block into the container's `~/.claude/settings.json`** — `setup-ccstatusline.sh` only installed the binary, and `~/.claude` is a fresh per-project Docker volume on a new repo, so the key was simply absent; (2) the layout seed was copied from `/workspace/.ccstatusline-settings.bak`, which is **`.gitignore`d and not committed**, so it never travelled with the template (it was a transient relay file, not a real seed). `setup-ccstatusline.sh` now (a) seeds the layout from a committed `.devcontainer/ccstatusline-settings.json`, and (b) merges the `statusLine` block into `~/.claude/settings.json` via `jq` — creating the file if absent, preserving any existing keys, and never clobbering a `statusLine` the user set by hand.
+
+**Why downstream cares:** Any repo already created from the template won't retroactively get the status line. To adopt manually: copy the two changed files below, then either rebuild the container or run `bash .devcontainer/on-create/setup-ccstatusline.sh`. Or just add this to `~/.claude/settings.json` inside the container: `"statusLine": {"type":"command","command":"ccstatusline","padding":0,"refreshInterval":10}` (and `bun add -g ccstatusline` if the binary is missing).
+
+**Changed files:**
+- `.devcontainer/on-create/setup-ccstatusline.sh` — seed layout from the committed config; merge `statusLine` into `~/.claude/settings.json` with `jq` (idempotent, non-clobbering).
+- `.devcontainer/ccstatusline-settings.json` — new committed layout seed (model · context · git branch · git changes), replacing the gitignored `.bak`.
+- `.devcontainer/on-create.sh` — corrected the comment above the ccstatusline step (it now actually writes the statusLine block).
+
 ## 2026-06-10 — Change: restructure `README.md` into setup-stage sections
 
 **What changed:** Removed the incomplete "Quick Start (Mac)" block (it was confusing because it duplicated and diverged from the fuller instructions below it). Reorganized the README into four clearly-labeled stages — **Host Machine Setup** (macOS automated via `init-host.sh` vs. Windows/Linux manual steps), **Repository Configuration** (clone + `init-new-project.sh`, with the arg behaviors in a table), **Secrets** (two-tier table + `secrets.example` copy flow + `GITHUB_TOKEN` rate-limit tip), and **Starting the Dev Container**. Documented that the **first build must use `devpod up . --recreate`** to provision cleanly, that you then `devpod ssh .` to connect, and that the first build should be run from a Warp terminal so the Warp env capture works. Replaced the raw trailing tool/toolchain lists with a linked "What's Included" section.

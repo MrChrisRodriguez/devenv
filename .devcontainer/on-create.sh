@@ -89,8 +89,8 @@ optional /workspace/.devcontainer/on-create/setup-biome.sh
 # Install Claude Code
 optional /workspace/.devcontainer/on-create/setup-claude.sh
 
-# Install ccstatusline (must run AFTER setup-claude.sh: it backs the statusLine
-# command in ~/.claude/settings.json and installs to the non-persistent ~/.bun/bin)
+# Install ccstatusline (must run AFTER setup-claude.sh: it writes the statusLine
+# block into ~/.claude/settings.json and installs to the non-persistent ~/.bun/bin)
 optional /workspace/.devcontainer/on-create/setup-ccstatusline.sh
 
 # Install Openspec
