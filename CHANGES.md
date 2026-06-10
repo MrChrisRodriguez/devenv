@@ -4,6 +4,15 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-06-10 — Change: drop the template graph when scaffolding a new project
+
+**What changed:** `init-new-project.sh` now `rm -rf graphify-out` in its template-only cleanup block (alongside `bun.lock`, `CHANGES.md`, `init-host.sh`). The committed graph describes the template's own scaffolding — `apps/` and `libs/` ship empty (`.gitkeep`), so every node is plumbing (`init-*.sh`, tsconfigs, `.husky/`, devcontainer scripts), none of it the code a child will write. Inherited into a child it's misleading (`graphify query` returns scaffolding nodes and omits the child's real code until a rebuild) and bloats the initial commit by ~1.3 MB. A graph-less child degrades cleanly — the agent rule files gate on "when `graphify-out/graph.json` exists" — and the first `/graphify` run builds a graph of the child's own code.
+
+**Why downstream cares:** Existing repos are unaffected (this only touches project *creation*). The `.gitattributes`/`.gitignore`/pre-commit guardrails added in the entry below stay inert until the child builds its first graph, then apply to *its* graph as intended.
+
+**Changed files:**
+- `init-new-project.sh` — `rm -rf graphify-out` in the template-only removal block.
+
 ## 2026-06-10 — Change: keep the committed graphify graph out of review diffs
 
 **What changed:** Three guardrails so `graphify-out/` ships to every clone (its original benefit) but can never bloat a diff or get committed by accident:

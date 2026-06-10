@@ -27,6 +27,10 @@ fi
 rm -f bun.lock
 rm -f CHANGES.md
 rm -f init-host.sh
+# The committed graph describes the TEMPLATE's scaffolding (apps/ and libs/ ship
+# empty), so it's misleading in a child and omits the code the child will write.
+# Drop it; the first `/graphify` run rebuilds a graph of the child's own code.
+rm -rf graphify-out
 
 # Initialize new git repository
 echo "📦 Initializing new git repository..."
