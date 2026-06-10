@@ -4,6 +4,13 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-06-10 — Change: restructure `README.md` into setup-stage sections
+
+**What changed:** Removed the incomplete "Quick Start (Mac)" block (it was confusing because it duplicated and diverged from the fuller instructions below it). Reorganized the README into four clearly-labeled stages — **Host Machine Setup** (macOS automated via `init-host.sh` vs. Windows/Linux manual steps), **Repository Configuration** (clone + `init-new-project.sh`, with the arg behaviors in a table), **Secrets** (two-tier table + `secrets.example` copy flow + `GITHUB_TOKEN` rate-limit tip), and **Starting the Dev Container**. Documented that the **first build must use `devpod up . --recreate`** to provision cleanly, that you then `devpod ssh .` to connect, and that the first build should be run from a Warp terminal so the Warp env capture works. Replaced the raw trailing tool/toolchain lists with a linked "What's Included" section.
+
+**Changed files:**
+- `README.md` — full rewrite of structure (content preserved/expanded; no behavior change to scripts).
+
 ## 2026-06-02 — Add: package.json infra-key warning in `sync-devcontainer.sh`
 
 **What changed:** Because `package.json` is project-owned (the sync keeps your version), template-managed config embedded in it — `lint-staged`, `commitlint`, and the husky `scripts.prepare` — can silently go missing downstream, which makes the husky `pre-commit`/`commit-msg` hooks fail (`lint-staged could not find any valid configuration`). The sync now checks your `package.json` against the template's for those keys after the file pass and prints a paste-ready warning for any that are missing, plus the `bun add -D …` line for the matching dev deps.
