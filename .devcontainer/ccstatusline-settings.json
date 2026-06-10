@@ -2,45 +2,31 @@
 	"version": 3,
 	"lines": [
 		[
+			{ "id": "1", "type": "model", "color": "cyan" },
+			{ "id": "6", "type": "separator" },
+			{ "id": "7", "type": "thinking-effort", "color": "yellow" },
+			{ "id": "4", "type": "separator" },
+			{ "id": "5", "type": "git-branch", "color": "magenta" },
+			{ "id": "c8bb9e52-75b1-4282-8e0a-6a671e345036", "type": "separator" },
 			{
-				"id": "1",
-				"type": "model",
-				"color": "cyan"
+				"id": "6a260f23-ea1d-44f8-b1be-254a65a35447",
+				"type": "context-percentage"
 			},
 			{
-				"id": "2",
-				"type": "separator"
+				"id": "b2287aca-6eec-41d2-a759-bd0c49fc558c",
+				"type": "flex-separator"
 			},
 			{
-				"id": "3",
-				"type": "context-length",
-				"color": "brightBlack"
-			},
-			{
-				"id": "4",
-				"type": "separator"
-			},
-			{
-				"id": "5",
-				"type": "git-branch",
-				"color": "magenta"
-			},
-			{
-				"id": "6",
-				"type": "separator"
-			},
-			{
-				"id": "7",
-				"type": "git-changes",
-				"color": "yellow"
+				"id": "10152f51-fdbd-4531-a737-b75780d48e87",
+				"type": "claude-session-id"
 			}
 		],
 		[],
 		[]
 	],
-	"flexMode": "full-minus-40",
+	"flexMode": "full-until-compact",
 	"compactThreshold": 60,
-	"colorLevel": 2,
+	"colorLevel": 3,
 	"inheritSeparatorColors": false,
 	"globalBold": false,
 	"gitCacheTtlSeconds": 5,

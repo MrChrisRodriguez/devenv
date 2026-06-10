@@ -4,6 +4,15 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-06-10 — Change: update default ccstatusline layout
+
+**What changed:** Reworked the seeded ccstatusline layout in `.devcontainer/ccstatusline-settings.json` to **model · thinking-effort · git-branch · context-percentage · (flex) · claude-session-id** (`flexMode: full-until-compact`, `colorLevel: 3`), replacing the previous model · context-length · git-branch · git-changes layout. This is the config new containers seed on a fresh `~/.config` volume. The committed seed intentionally omits ccstatusline's `installation` metadata block (`{method:"pinned", installedVersion:…}`) — it's per-install state ccstatusline writes itself, and pinning a version in the shared seed would fight the `bun add -g ccstatusline` (latest) install.
+
+**Why downstream cares:** Existing repos already have a seeded `~/.config/ccstatusline/settings.json` and won't be overwritten (the setup script never clobbers an existing config). To adopt the new layout in an existing container, copy `.devcontainer/ccstatusline-settings.json` over `~/.config/ccstatusline/settings.json`, or edit it via `ccstatusline` (the TUI configurator).
+
+**Changed files:**
+- `.devcontainer/ccstatusline-settings.json` — new default layout.
+
 ## 2026-06-10 — Fix: new repos get the ccstatusline status line automatically
 
 **What changed:** A freshly-created repo built its container with the `ccstatusline` binary installed but Claude Code still showed its default status line. Two gaps caused this: (1) **nothing wrote the `statusLine` block into the container's `~/.claude/settings.json`** — `setup-ccstatusline.sh` only installed the binary, and `~/.claude` is a fresh per-project Docker volume on a new repo, so the key was simply absent; (2) the layout seed was copied from `/workspace/.ccstatusline-settings.bak`, which is **`.gitignore`d and not committed**, so it never travelled with the template (it was a transient relay file, not a real seed). `setup-ccstatusline.sh` now (a) seeds the layout from a committed `.devcontainer/ccstatusline-settings.json`, and (b) merges the `statusLine` block into `~/.claude/settings.json` via `jq` — creating the file if absent, preserving any existing keys, and never clobbering a `statusLine` the user set by hand.
