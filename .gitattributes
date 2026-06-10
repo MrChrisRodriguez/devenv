@@ -1,0 +1,14 @@
+# Graphify knowledge-graph artifacts (graphify-out/) are generated, committed,
+# and periodically regenerated wholesale. Mark them so they never pollute review:
+#   -diff              → Git renders them as "Binary files differ" instead of
+#                        expanding 500k-line diffs.
+#   linguist-generated → GitHub collapses them in PRs and drops them from the
+#                        repository language statistics.
+# Safe to ship before graphify-out/ exists — the rules are inert until it does.
+graphify-out/graph.json        -diff linguist-generated
+graphify-out/graph.html        -diff linguist-generated
+graphify-out/manifest.json     -diff linguist-generated
+graphify-out/GRAPH_REPORT.md   -diff linguist-generated
+graphify-out/.graphify_*.json  -diff linguist-generated
+graphify-out/cache/**          -diff linguist-generated
+graphify-out/[0-9]*/**         -diff linguist-generated

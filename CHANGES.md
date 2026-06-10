@@ -4,6 +4,22 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-06-10 — Change: keep the committed graphify graph out of review diffs
+
+**What changed:** Three guardrails so `graphify-out/` ships to every clone (its original benefit) but can never bloat a diff or get committed by accident:
+
+1. **New root `.gitattributes`** marks every committed graphify artifact `-diff linguist-generated` — Git renders them as "Binary files differ" instead of expanding 500k-line diffs, and GitHub collapses them in PRs and excludes them from language stats. Beyond the four rules from the upstream source (graph.json, manifest.json, GRAPH_REPORT.md, .graphify_*.json), this repo also commits `graph.html` (~674 KB), `cache/**`, and dated snapshot dirs, so rules for those were added too. Inert until `graphify-out/` exists — safe to ship unconditionally.
+2. **`graphify-out/GRAPH_REPORT.md.tmp`** added to the root `.gitignore` graphify block (the transient temp written during report regeneration). The block's existing decision — `graph.json`/`graph.html`/`GRAPH_REPORT.md`/`cache/` stay **committed** — is unchanged; we did not adopt the upstream's "ignore cache/" stance.
+3. **A `pre-commit` guard** (in `.husky/pre-commit`, ahead of `lint-staged`) rejects a commit that stages `graphify-out/graph.json` alongside any non-graphify file. A pure `chore(graphify)` graph-refresh commit passes. A matching one-line rule was added to the graphify section of `AGENTS.md`, `CLAUDE.md`, and `GEMINI.md`.
+
+**Why downstream cares:** Projects created from this template are *born* with `graphify-out/` tracked (init-new-project copies it; sync-devcontainer excludes it). To adopt manually: copy the root `.gitattributes`, append the two `graphify-out/` lines to your `.gitignore` and the pre-commit guard block to `.husky/pre-commit`, and add the "never `git add graphify-out/` in a feature commit" bullet to your agent rule files. The guard runs under `sh`; it uses plain `grep` (no `-q`/`-v` combo) so it's portable across grep implementations.
+
+**Changed files:**
+- `.gitattributes` — new; `-diff linguist-generated` for graph.json, graph.html, manifest.json, GRAPH_REPORT.md, .graphify_*.json, cache/**, and snapshot dirs.
+- `.gitignore` — added `graphify-out/GRAPH_REPORT.md.tmp`.
+- `.husky/pre-commit` — guard rejecting mixed graph+feature commits, before `lint-staged`.
+- `AGENTS.md`, `CLAUDE.md`, `GEMINI.md` — one-line graphify-commit-hygiene rule.
+
 ## 2026-06-10 — Change: update default ccstatusline layout
 
 **What changed:** Reworked the seeded ccstatusline layout in `.devcontainer/ccstatusline-settings.json` to **model · thinking-effort · git-branch · context-percentage · (flex) · claude-session-id** (`flexMode: full-until-compact`, `colorLevel: 3`), replacing the previous model · context-length · git-branch · git-changes layout. This is the config new containers seed on a fresh `~/.config` volume. The committed seed intentionally omits ccstatusline's `installation` metadata block (`{method:"pinned", installedVersion:…}`) — it's per-install state ccstatusline writes itself, and pinning a version in the shared seed would fight the `bun add -g ccstatusline` (latest) install.

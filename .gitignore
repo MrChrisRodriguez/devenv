@@ -81,4 +81,6 @@ graphify-out/cost.json
 graphify-out/.graphify_root
 graphify-out/.graphify_python
 graphify-out/.rebuild.lock
+# Transient temp written while GRAPH_REPORT.md is regenerated.
+graphify-out/GRAPH_REPORT.md.tmp
 

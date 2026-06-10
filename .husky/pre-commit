@@ -1,1 +1,14 @@
+# Guard: a graphify graph regen must land in its own commit, never mixed with
+# feature changes — that keeps graphify-out/ out of review diffs. A pure
+# graphify-out/ commit (e.g. `chore(graphify): refresh graph`) passes; staging
+# graphify-out/graph.json alongside any non-graphify file is rejected.
+staged=$(git diff --cached --name-only)
+graph_staged=$(printf '%s\n' "$staged" | grep -xE 'graphify-out/graph\.json' || true)
+other_staged=$(printf '%s\n' "$staged" | grep -vE '^graphify-out/' || true)
+if [ -n "$graph_staged" ] && [ -n "$other_staged" ]; then
+  echo "✋ graphify-out/graph.json is staged alongside non-graphify files." >&2
+  echo "   Refresh the graph in its own commit (chore(graphify): …), then commit your changes." >&2
+  exit 1
+fi
+
 bunx lint-staged
