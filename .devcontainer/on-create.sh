@@ -8,39 +8,14 @@ set -e
 echo "🚀 Setting up ${DEVCONTAINER_PROJECT:-development} development environment with Proto..."
 
 # ── Secrets ──────────────────────────────────────────────────────────────────
-# Two-tier secrets loaded from the host bind-mount at /run/devcontainer-config.
-# Each file uses KEY=value format (one per line; # lines are ignored).
-# Both are written to /etc/environment so ALL container processes inherit them:
-# VS Code/Cursor extension hosts, MCP server subprocesses, and terminals.
-# Per-project values override common ones when the same key appears in both.
-
-load_secrets_file() {
-    local file="$1" label="$2"
-    if [ -f "$file" ]; then
-        echo "🔐 Loading $label secrets..."
-        set -a
-        # shellcheck source=/dev/null
-        source "$file"
-        set +a
-        grep -v '^[[:space:]]*#' "$file" \
-            | grep -v '^[[:space:]]*$' \
-            | sed 's/^[[:space:]]*export[[:space:]]*//' \
-            | sudo tee -a /etc/environment > /dev/null
-        echo "✅ $label secrets loaded"
-    else
-        echo "ℹ️  No $label secrets file found ($file)"
-    fi
-}
-
-# 1. Common secrets — shared across all projects
-load_secrets_file "/run/devcontainer-config/secrets" "common"
-
-# 2. Per-project secrets — overrides common values for this container only
-if [ -n "${DEVCONTAINER_PROJECT:-}" ]; then
-    load_secrets_file \
-        "/run/devcontainer-config/secrets.d/${DEVCONTAINER_PROJECT}" \
-        "project (${DEVCONTAINER_PROJECT})"
-fi
+# Two-tier secrets from the host bind-mount at /run/devcontainer-config (common +
+# per-project, KEY=value, # lines ignored). setup-secrets.sh exports them into
+# THIS shell (so the tool installers below inherit API keys like GEMINI_API_KEY)
+# and idempotently mirrors them into /etc/environment for non-shell readers (VS
+# Code/Cursor extension hosts, MCP subprocesses). It is SOURCED here — not run via
+# optional() — so the exports land in this process; the same script re-runs on
+# postStartCommand to re-sync keys added after create. Per-project overrides common.
+source /workspace/.devcontainer/on-create/setup-secrets.sh
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Claim volume-mounted home dirs ───────────────────────────────────────────

@@ -83,7 +83,7 @@
 	"postStartCommand": [
 		"bash",
 		"-c",
-		"export PATH=\"$HOME/.proto/shims:$HOME/.proto/bin:$PATH\" && bun install"
+		"bash /workspace/.devcontainer/on-create/setup-secrets.sh; export PATH=\"$HOME/.proto/shims:$HOME/.proto/bin:$PATH\" && bun install"
 	],
 	"waitFor": "postStartCommand",
 	"forwardPorts": [3000, 4000, 8080, 8787],

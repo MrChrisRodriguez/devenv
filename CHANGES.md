@@ -4,6 +4,22 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-06-10 — Change: export devcontainer secrets to children + re-sync /etc/environment on start
+
+**Problem:** Secrets had two load paths and a late-added key (one appended to the host secrets file *after* the container was created) fell through both. (1) `/etc/environment`, written by `on-create.sh`, is captured once at create and goes stale — new keys never land there until a rebuild. (2) `configs/.shell_common` re-sourced the file every interactive shell (so it *saw* late keys) but used a plain `source`, so the values stayed local to that one zsh and child processes (Claude Code, `wrangler`, `!`-bash, tool subshells) didn't inherit them. Net: the persistent exported copy was missing the key and the per-shell copy that had it never exported it.
+
+**What changed:**
+1. **`configs/.shell_common`** now wraps the two secrets `source` lines in `set -a` / `set +a` — identical to the warp-env block just below it (whose comment already documented this exact pitfall). Any new shell now exports all secrets, including ones added after create, to its children. Takes effect in new shells, no rebuild.
+2. **New `.devcontainer/on-create/setup-secrets.sh`** owns secrets loading: it exports the host-mounted common + per-project secrets into the current process **and** mirrors them into `/etc/environment` idempotently — it replaces a marker-delimited block (`# >>> devcontainer-secrets >>>` … `<<<`) instead of appending, so re-runs never accumulate duplicates. `on-create.sh` now **sources** it (so create-time tool installers still inherit API keys like `GEMINI_API_KEY`), and it also runs from **`postStartCommand`**, so keys added after create re-sync to `/etc/environment` on the next container start (no rebuild). It stays in onCreate *and* postStart — not "instead of" — because the installers need secrets present during setup.
+
+**Why downstream cares:** To adopt manually — wrap your `.shell_common` secrets `source` lines in `set -a`/`set +a`; copy `setup-secrets.sh`; replace the inline secrets block in `on-create.sh` with `source .../setup-secrets.sh`; and prepend `bash /workspace/.devcontainer/on-create/setup-secrets.sh;` to your `postStartCommand`. After adding a key to the host secrets file: open a **new shell** for terminal processes, and **restart** the container (or run `bash .devcontainer/on-create/setup-secrets.sh`) to refresh `/etc/environment` for the extension host.
+
+**Changed files:**
+- `.devcontainer/configs/.shell_common` — `set -a`/`set +a` around the secrets source lines.
+- `.devcontainer/on-create/setup-secrets.sh` — new; idempotent export + `/etc/environment` block sync.
+- `.devcontainer/on-create.sh` — inline secrets block replaced by `source`-ing the new script.
+- `.devcontainer/devcontainer.json` — `postStartCommand` re-syncs secrets before `bun install`.
+
 ## 2026-06-10 — Change: drop the template graph when scaffolding a new project
 
 **What changed:** `init-new-project.sh` now `rm -rf graphify-out` in its template-only cleanup block (alongside `bun.lock`, `CHANGES.md`, `init-host.sh`). The committed graph describes the template's own scaffolding — `apps/` and `libs/` ship empty (`.gitkeep`), so every node is plumbing (`init-*.sh`, tsconfigs, `.husky/`, devcontainer scripts), none of it the code a child will write. Inherited into a child it's misleading (`graphify query` returns scaffolding nodes and omits the child's real code until a rebuild) and bloats the initial commit by ~1.3 MB. A graph-less child degrades cleanly — the agent rule files gate on "when `graphify-out/graph.json` exists" — and the first `/graphify` run builds a graph of the child's own code.

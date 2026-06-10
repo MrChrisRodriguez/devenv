@@ -70,11 +70,18 @@ load_completions() {
 
 # Load devcontainer secrets (host-mounted at /run/devcontainer-config).
 # Belt-and-suspenders for terminal sessions; /etc/environment covers extension hosts.
+# `set -a` exports them — exactly like the warp-env block below — so child
+# processes (Claude Code, wrangler, `!`-bash shells, tool subshells) inherit them.
+# A plain `source` would keep the values local to this one interactive shell. This
+# also picks up keys added to the secrets file AFTER container create, which the
+# create-time /etc/environment copy misses until a re-sync (see setup-secrets.sh).
+set -a
 # 1. Common secrets — shared across all projects
 [[ -f /run/devcontainer-config/secrets ]] && source /run/devcontainer-config/secrets
 # 2. Per-project secrets — overrides common values for this container only
 [[ -n "${DEVCONTAINER_PROJECT:-}" && -f "/run/devcontainer-config/secrets.d/${DEVCONTAINER_PROJECT}" ]] \
     && source "/run/devcontainer-config/secrets.d/${DEVCONTAINER_PROJECT}"
+set +a
 
 # 3. Warp ACP signals — captured on the host by initializeCommand
 #    (.devcontainer/host/capture-warp-env.sh), refreshed on every `devpod up`.
