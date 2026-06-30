@@ -4,9 +4,14 @@ Shared conventions for all AI coding tools (Claude Code, Cursor, etc.).
 
 ## Runtime
 
-**Always use Bun — never Node.js, npm, pnpm, or Vite.**
+**Prefer Bun.** It's the runtime and package manager that ship with this container, so
+reach for it first — it's fast and already configured. It isn't mandatory, though: use
+Node, npm/pnpm, Vite, or whatever a given tool or framework expects when that's the
+better fit.
 
-| Instead of | Use |
+When Bun does the job, these are the common equivalents:
+
+| Common task | Bun equivalent |
 |---|---|
 | `node <file>` / `ts-node <file>` | `bun <file>` |
 | `npm install` / `yarn` / `pnpm install` | `bun install` |
@@ -18,15 +23,15 @@ Shared conventions for all AI coding tools (Claude Code, Cursor, etc.).
 
 ## Bun APIs
 
-Prefer Bun-native APIs over third-party equivalents:
+When you're already on Bun, prefer its native APIs over adding a third-party dependency:
 
-- `Bun.serve()` — HTTP server with WebSocket support. Don't use `express`.
-- `bun:sqlite` — SQLite. Don't use `better-sqlite3`.
-- `Bun.redis` — Redis. Don't use `ioredis`.
-- `Bun.sql` — Postgres. Don't use `pg` or `postgres.js`.
-- `WebSocket` — built-in. Don't use `ws`.
-- `Bun.file()` — file I/O. Don't use `node:fs` readFile/writeFile.
-- `Bun.$` — shell commands. Don't use `execa`.
+- `Bun.serve()` — HTTP server with WebSocket support (over `express`)
+- `bun:sqlite` — SQLite (over `better-sqlite3`)
+- `Bun.redis` — Redis (over `ioredis`)
+- `Bun.sql` — Postgres (over `pg` or `postgres.js`)
+- `WebSocket` — built-in (over `ws`)
+- `Bun.file()` — file I/O (over `node:fs` readFile/writeFile)
+- `Bun.$` — shell commands (over `execa`)
 
 ## Monorepo Structure
 
