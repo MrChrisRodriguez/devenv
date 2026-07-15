@@ -10,6 +10,8 @@ This file documents changes made to this template repository. Each entry provide
 
 **How to implement:** Resolve Proto and Bun through absolute image-owned paths before computing the mounted checkout fingerprint, pass that Bun explicitly to the fingerprint helper, and reject any tool path that escapes the baked Proto root. Prove the boundary with a changed devcontainer definition plus a malicious `/workspace/node_modules/.bin/bun` that prints the baked marker. Run each supported-architecture evidence build with cache disabled and require the architecture-sensitive base, Proto, Claude, and final stages to execute. Deep-bind JSON probe records to their hashed raw logs, recompute cache counts and storage arithmetic, compare the Stage 0 storage baseline, use deterministic synthetic-merge metadata, and derive rollback trees and parent order from the real Git boundary.
 
+The immutable remediated implementation boundary is `672701c1029a702b6a6e819608298c725ce8cdf5`; evidence-only commits follow it without changing image inputs.
+
 **Changed files:**
 - `.devcontainer/devcontainer-fingerprint.sh`, `.devcontainer/on-create/setup-proto.sh` — absolute image-owned fingerprint execution and realpath enforcement.
 - `scripts/template/image-evidence.ts`, `scripts/template/collect-stage-two-evidence.ts`, evidence schema/tests — uncached architecture proof and non-vacuous log/Git/metric validation.
