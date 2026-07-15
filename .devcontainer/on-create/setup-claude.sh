@@ -6,38 +6,36 @@ echo "🤖 Setting up Claude Code environment..."
 # Source common setup functions
 source /workspace/.devcontainer/on-create/setup-common.sh
 
-# Setup Proto environment to access bun
+# Setup the image tool environment before executing the baked CLI.
 setup_proto_env
 
-# Install node-gyp globally so Claude Code plugins with native deps can build
-# (devcontainer node feature sets nodeGypDependencies:false; some plugins —
-# e.g. claude-mem's tree-sitter post-installs — invoke node-gyp during their
-# first bun/npm install and otherwise fail with ENOENT, silently breaking
-# SessionStart hooks).
-if command -v npm &> /dev/null && ! command -v node-gyp &> /dev/null; then
-    echo "🔧 Installing node-gyp globally for plugin native deps..."
-    npm install -g node-gyp >/dev/null 2>&1 || \
-        echo "⚠️   Could not install node-gyp; some Claude Code plugins may fail their first install"
+claude_binary="$HOME/.local/bin/claude"
+node_gyp_binary="$HOME/.local/bin/node-gyp"
+
+if [ ! -x "$claude_binary" ] || ! "$claude_binary" --version >/dev/null 2>&1; then
+	echo "ERROR: Claude is missing or invalid in the image-owned payload; rebuild/recreate the devcontainer" >&2
+	return 1
+fi
+if [ ! -x "$node_gyp_binary" ]; then
+	echo "ERROR: node-gyp is missing from the image-owned Claude tools; rebuild/recreate the devcontainer" >&2
+	return 1
+fi
+case "$(readlink -f "$node_gyp_binary")" in
+	"$HOME/.payloads/claude-tools/"*) ;;
+	*)
+		echo "ERROR: node-gyp does not resolve inside the image-owned Claude tools" >&2
+		return 1
+		;;
+esac
+if ! "$node_gyp_binary" --version >/dev/null 2>&1; then
+	echo "ERROR: the image-owned node-gyp payload is not executable; rebuild/recreate the devcontainer" >&2
+	return 1
 fi
 
-# Remove bun-installed claude-code if present (we use the native binary instead)
-if bun pm ls -g 2>/dev/null | grep -q '@anthropic-ai/claude-code'; then
-    echo "🧹 Removing bun-installed @anthropic-ai/claude-code (replaced by native binary)..."
-    bun remove -g @anthropic-ai/claude-code
-fi
-
-# Install Claude Code native binary if not present
-if [ ! -f "$HOME/.local/bin/claude" ]; then
-    echo "📦 Installing Claude Code native binary..."
-    curl -fsSL https://claude.ai/install.sh | bash
-    export PATH="$HOME/.local/bin:$PATH"
-fi
-
-# Ensure the Claude Code IDE directory exists with proper permissions
+# Ensure the mutable Claude Code IDE directory exists. Ownership is claimed once
+# by on-create.sh; do not recursively chmod authentication or settings files.
 echo "🔧 Setting up Claude Code IDE directory..."
-sudo mkdir -p /home/vscode/.claude/ide
-sudo chown -R vscode:vscode /home/vscode/.claude
-sudo chmod -R 755 /home/vscode/.claude
+mkdir -p "$HOME/.claude/ide"
 
 # Register Context7 MCP server at user scope (writes to CLAUDE_CONFIG_DIR volume)
 echo "🔌 Registering Context7 MCP server..."

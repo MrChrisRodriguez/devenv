@@ -1,0 +1,33 @@
+{
+  "commandId": "stale-image-refusal",
+  "mutation": "shadow-workspace-startup-tools-overrides-and-edit-definition",
+  "originalDefinitionFingerprint": "a0353fdea3947eb3cf089947a3ca6c5e4d7753189dc98356492473cbb8a1219d",
+  "mutatedDefinitionFingerprint": "28086a7ced05be15e465b2a263b4ec267c49d8cbffb0ac4932864c7cbb9b2f1b",
+  "shadowBunPath": "/workspace/node_modules/.bin/bun",
+  "shadowBashPath": "/workspace/node_modules/.bin/bash",
+  "shadowUtilityPaths": [
+    "/workspace/node_modules/.bin/readlink",
+    "/workspace/node_modules/.bin/sha256sum",
+    "/workspace/node_modules/.bin/awk",
+    "/workspace/node_modules/.bin/tr"
+  ],
+  "trustedRepoMount": "/trusted",
+  "overrideMarkerPath": "/workspace/contract-marker-override",
+  "environmentOverrides": {
+    "DEVCONTAINER_REPO_ROOT": "/trusted",
+    "DEVCONTAINER_IMAGE_CONTRACT_DIR": "/workspace/contract-marker-override",
+    "BASH_ENV": "/workspace/preverify-bash-env.sh",
+    "BASH_FUNC_source%%": "() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }",
+    "BUN_OPTIONS": "--preload=/workspace/preverify-bun-options.ts"
+  },
+  "preVerificationShadowExecution": false,
+  "preVerificationBashEnvExecution": false,
+  "preVerificationExportedFunctionExecution": false,
+  "preVerificationBunOptionsExecution": false,
+  "preVerificationOnCreateExecution": false,
+  "preVerificationSetupCommonExecution": false,
+  "preVerificationFingerprintScriptExecution": false,
+  "containerExitCode": 1,
+  "refused": true,
+  "diagnostic": "ERROR: the devcontainer definition differs from the image fingerprint\nRebuild/recreate the devcontainer; image-owned tools are never repaired at runtime."
+}

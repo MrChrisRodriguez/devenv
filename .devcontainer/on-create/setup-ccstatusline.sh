@@ -6,25 +6,22 @@ echo "📊 Setting up ccstatusline (Claude Code status line)..."
 # Source common setup functions
 source /workspace/.devcontainer/on-create/setup-common.sh
 
-# Setup Proto environment to access bun/jq (and put ~/.bun/bin on PATH)
+# Setup the image tool environment to access the baked binary and Proto jq.
 setup_proto_env
 
-# The `ccstatusline` binary installs to ~/.bun/bin, which is NOT volume-mounted,
-# so it is wiped on every rebuild — re-install it here so the status line keeps
-# working. bun is required for the install; jq (proto-managed) is used below to
-# merge the statusLine block into ~/.claude/settings.json.
-if ! command -v bun &> /dev/null; then
-    echo "⚠️   bun not found on PATH (expected via Proto); skipping ccstatusline setup"
-    return 0
+ccstatusline_binary="$HOME/.local/bin/ccstatusline"
+ccstatusline_payload="$HOME/.payloads/ccstatusline/"
+if [ ! -x "$ccstatusline_binary" ]; then
+	echo "ERROR: ccstatusline is missing from the image-owned payload; rebuild/recreate the devcontainer" >&2
+	return 1
 fi
-
-if command -v ccstatusline &> /dev/null; then
-    echo "ℹ️  ccstatusline already installed at $(command -v ccstatusline), skipping install"
-else
-    echo "📦 Installing ccstatusline via bun..."
-    bun add -g ccstatusline \
-        || echo "⚠️   Could not install ccstatusline (run 'bun add -g ccstatusline' manually)"
-fi
+case "$(readlink -f "$ccstatusline_binary")" in
+	"$ccstatusline_payload"*) ;;
+	*)
+		echo "ERROR: ccstatusline does not resolve inside $ccstatusline_payload" >&2
+		return 1
+		;;
+esac
 
 # Seed the ccstatusline layout on a fresh ~/.config volume from the committed
 # config so the intended status line (model · context · git branch · git

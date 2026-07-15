@@ -128,6 +128,20 @@
 			"sourceOfTruth": "repository toolchain contract"
 		},
 		{
+			"pattern": "scripts/template/validate-image.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "devcontainer image contract entrypoint"
+		},
+		{
+			"pattern": "scripts/template/image-contract.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "devcontainer image contract"
+		},
+		{
 			"pattern": "scripts/template/**",
 			"classification": "template-tooling",
 			"syncPolicy": "merge",

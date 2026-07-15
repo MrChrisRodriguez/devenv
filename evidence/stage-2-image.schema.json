@@ -1,0 +1,456 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"stage",
+		"capturedAt",
+		"run",
+		"source",
+		"image",
+		"commands",
+		"builds",
+		"layerInvalidation",
+		"architectures",
+		"staleImageRefusal",
+		"partitionMutation",
+		"shellPaths",
+		"secondWorktreeStorage",
+		"rollback"
+	],
+	"properties": {
+		"schemaVersion": { "const": 1 },
+		"stage": { "const": "stage-2-image-architecture" },
+		"capturedAt": { "type": "string", "format": "date-time" },
+		"run": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "temporaryRoot", "nativeArchitecture", "logRoot"],
+			"properties": {
+				"id": {
+					"type": "string",
+					"pattern": "^stage2-[0-9]{8}t[0-9]{6}z-[0-9a-f]{8}$"
+				},
+				"temporaryRoot": {
+					"type": "string",
+					"pattern": "^/tmp/devenv-stage2-stage2-[0-9a-z-]+$"
+				},
+				"nativeArchitecture": { "enum": ["amd64", "arm64"] },
+				"logRoot": { "const": "evidence/stage-2-image-run" }
+			}
+		},
+		"source": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["baseSha", "implementationSha", "featureTreeClean"],
+			"properties": {
+				"baseSha": { "$ref": "#/$defs/gitSha" },
+				"implementationSha": { "$ref": "#/$defs/gitSha" },
+				"featureTreeClean": { "const": true }
+			}
+		},
+		"image": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"tag",
+				"imageId",
+				"definitionFingerprint",
+				"definitionMarker",
+				"protoManifestSha256",
+				"protoManifestMarker",
+				"codexVersion",
+				"alternateCodexVersion"
+			],
+			"properties": {
+				"tag": {
+					"type": "string",
+					"pattern": "^devenv-stage2-stage2-[0-9a-z-]+$"
+				},
+				"imageId": {
+					"type": "string",
+					"pattern": "^sha256:[0-9a-f]{64}$"
+				},
+				"definitionFingerprint": { "$ref": "#/$defs/sha256" },
+				"definitionMarker": { "$ref": "#/$defs/sha256" },
+				"protoManifestSha256": { "$ref": "#/$defs/sha256" },
+				"protoManifestMarker": { "$ref": "#/$defs/sha256" },
+				"codexVersion": { "$ref": "#/$defs/version" },
+				"alternateCodexVersion": { "$ref": "#/$defs/version" }
+			}
+		},
+		"commands": {
+			"type": "array",
+			"minItems": 16,
+			"items": { "$ref": "#/$defs/commandResult" }
+		},
+		"builds": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["clean", "warm"],
+			"properties": {
+				"clean": { "$ref": "#/$defs/buildObservation" },
+				"warm": { "$ref": "#/$defs/buildObservation" }
+			}
+		},
+		"layerInvalidation": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"commandId",
+				"changedOwner",
+				"cachedStages",
+				"rebuiltStages"
+			],
+			"properties": {
+				"commandId": { "const": "layer-invalidation" },
+				"changedOwner": { "const": "CODEX_VERSION" },
+				"cachedStages": {
+					"type": "array",
+					"minItems": 4,
+					"uniqueItems": true,
+					"items": { "$ref": "#/$defs/stageName" }
+				},
+				"rebuiltStages": {
+					"type": "array",
+					"minItems": 1,
+					"uniqueItems": true,
+					"items": { "$ref": "#/$defs/stageName" }
+				}
+			}
+		},
+		"architectures": {
+			"type": "array",
+			"minItems": 2,
+			"items": { "$ref": "#/$defs/architecture" }
+		},
+		"staleImageRefusal": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"commandId",
+				"mutation",
+				"originalDefinitionFingerprint",
+				"mutatedDefinitionFingerprint",
+				"shadowBunPath",
+				"shadowBashPath",
+				"shadowUtilityPaths",
+				"trustedRepoMount",
+				"overrideMarkerPath",
+				"environmentOverrides",
+				"preVerificationShadowExecution",
+				"preVerificationBashEnvExecution",
+				"preVerificationExportedFunctionExecution",
+				"preVerificationBunOptionsExecution",
+				"preVerificationOnCreateExecution",
+				"preVerificationSetupCommonExecution",
+				"preVerificationFingerprintScriptExecution",
+				"containerExitCode",
+				"refused",
+				"diagnostic"
+			],
+			"properties": {
+				"commandId": { "const": "stale-image-refusal" },
+				"mutation": {
+					"const": "shadow-workspace-startup-tools-overrides-and-edit-definition"
+				},
+				"originalDefinitionFingerprint": { "$ref": "#/$defs/sha256" },
+				"mutatedDefinitionFingerprint": { "$ref": "#/$defs/sha256" },
+				"shadowBunPath": { "const": "/workspace/node_modules/.bin/bun" },
+				"shadowBashPath": { "const": "/workspace/node_modules/.bin/bash" },
+				"shadowUtilityPaths": {
+					"type": "array",
+					"minItems": 4,
+					"uniqueItems": true,
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"trustedRepoMount": { "const": "/trusted" },
+				"overrideMarkerPath": {
+					"const": "/workspace/contract-marker-override"
+				},
+				"environmentOverrides": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"DEVCONTAINER_REPO_ROOT",
+						"DEVCONTAINER_IMAGE_CONTRACT_DIR",
+						"BASH_ENV",
+						"BASH_FUNC_source%%",
+						"BUN_OPTIONS"
+					],
+					"properties": {
+						"DEVCONTAINER_REPO_ROOT": { "const": "/trusted" },
+						"DEVCONTAINER_IMAGE_CONTRACT_DIR": {
+							"const": "/workspace/contract-marker-override"
+						},
+						"BASH_ENV": {
+							"const": "/workspace/preverify-bash-env.sh"
+						},
+						"BASH_FUNC_source%%": {
+							"const": "() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }"
+						},
+						"BUN_OPTIONS": {
+							"const": "--preload=/workspace/preverify-bun-options.ts"
+						}
+					}
+				},
+				"preVerificationShadowExecution": { "const": false },
+				"preVerificationBashEnvExecution": { "const": false },
+				"preVerificationExportedFunctionExecution": { "const": false },
+				"preVerificationBunOptionsExecution": { "const": false },
+				"preVerificationOnCreateExecution": { "const": false },
+				"preVerificationSetupCommonExecution": { "const": false },
+				"preVerificationFingerprintScriptExecution": { "const": false },
+				"containerExitCode": { "type": "integer", "minimum": 1 },
+				"refused": { "const": true },
+				"diagnostic": { "type": "string", "minLength": 20 }
+			}
+		},
+		"partitionMutation": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "mutation", "rejected", "diagnostic"],
+			"properties": {
+				"commandId": { "const": "partition-mutation" },
+				"mutation": { "const": "drop-foundation-uv" },
+				"rejected": { "const": true },
+				"diagnostic": { "type": "string", "minLength": 20 }
+			}
+		},
+		"shellPaths": {
+			"type": "array",
+			"minItems": 4,
+			"items": { "$ref": "#/$defs/shellPath" }
+		},
+		"secondWorktreeStorage": { "$ref": "#/$defs/storage" },
+		"rollback": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["mode", "command", "runtimeCleanup", "scope", "proof"],
+			"properties": {
+				"mode": { "const": "atomic" },
+				"command": { "$ref": "#/$defs/command" },
+				"runtimeCleanup": {
+					"type": "array",
+					"minItems": 4,
+					"items": { "$ref": "#/$defs/command" }
+				},
+				"scope": { "type": "string", "minLength": 20 },
+				"proof": { "$ref": "#/$defs/rollbackProof" }
+			}
+		}
+	},
+	"$defs": {
+		"gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+		"sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+		"version": {
+			"type": "string",
+			"pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+		},
+		"command": {
+			"type": "array",
+			"minItems": 1,
+			"items": { "type": "string", "minLength": 1 }
+		},
+		"logPath": {
+			"type": "string",
+			"pattern": "^evidence/stage-2-image-run/[a-z0-9-]+\\.(?:stdout|stderr)$"
+		},
+		"commandResult": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"command",
+				"runId",
+				"startedAt",
+				"completedAt",
+				"durationMs",
+				"stdoutPath",
+				"stderrPath",
+				"stdoutSha256",
+				"stderrSha256",
+				"exitCode",
+				"status"
+			],
+			"properties": {
+				"id": {
+					"enum": [
+						"clean-build",
+						"warm-build",
+						"definition-fingerprint",
+						"image-inspect",
+						"image-contract",
+						"layer-invalidation",
+						"architecture-amd64",
+						"architecture-arm64",
+						"stale-image-refusal",
+						"partition-mutation",
+						"shell-bash-login",
+						"shell-bash-non-login",
+						"shell-zsh-login",
+						"shell-zsh-non-login",
+						"second-worktree-storage",
+						"rollback-proof"
+					]
+				},
+				"command": { "$ref": "#/$defs/command" },
+				"runId": { "type": "string", "minLength": 1 },
+				"startedAt": { "type": "string", "format": "date-time" },
+				"completedAt": { "type": "string", "format": "date-time" },
+				"durationMs": { "type": "integer", "minimum": 0 },
+				"stdoutPath": { "$ref": "#/$defs/logPath" },
+				"stderrPath": { "$ref": "#/$defs/logPath" },
+				"stdoutSha256": { "$ref": "#/$defs/sha256" },
+				"stderrSha256": { "$ref": "#/$defs/sha256" },
+				"exitCode": { "const": 0 },
+				"status": { "const": "pass" }
+			}
+		},
+		"buildObservation": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "durationMs", "cachedSteps", "noCache"],
+			"properties": {
+				"commandId": { "enum": ["clean-build", "warm-build"] },
+				"durationMs": { "type": "integer", "minimum": 1 },
+				"cachedSteps": { "type": "integer", "minimum": 0 },
+				"noCache": { "type": "boolean" }
+			}
+		},
+		"stageName": {
+			"type": "string",
+			"pattern": "^[a-z][a-z0-9_]*$"
+		},
+		"architecture": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["architecture", "commandId", "status", "rebuiltStages"],
+			"properties": {
+				"architecture": { "enum": ["amd64", "arm64"] },
+				"commandId": { "enum": ["architecture-amd64", "architecture-arm64"] },
+				"status": { "const": "pass" },
+				"rebuiltStages": {
+					"type": "array",
+					"minItems": 4,
+					"uniqueItems": true,
+					"items": { "$ref": "#/$defs/stageName" }
+				}
+			}
+		},
+		"shellPath": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"shell",
+				"mode",
+				"commandId",
+				"bunPath",
+				"protoPath",
+				"path"
+			],
+			"properties": {
+				"shell": { "enum": ["bash", "zsh"] },
+				"mode": { "enum": ["login", "non-login"] },
+				"commandId": {
+					"enum": [
+						"shell-bash-login",
+						"shell-bash-non-login",
+						"shell-zsh-login",
+						"shell-zsh-non-login"
+					]
+				},
+				"bunPath": { "type": "string", "minLength": 1 },
+				"protoPath": { "type": "string", "minLength": 1 },
+				"path": { "type": "string", "minLength": 1 }
+			}
+		},
+		"storage": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"commandId",
+				"primaryContainerId",
+				"secondContainerId",
+				"primaryImageId",
+				"secondImageId",
+				"primaryContainerWritableBytes",
+				"secondContainerWritableBytes",
+				"secondCheckoutBytes",
+				"volumeBytes",
+				"observedBytes",
+				"stageZeroBaselineBytes",
+				"imageProtoBytes",
+				"protoVolumeCount",
+				"protoMountCount",
+				"operations"
+			],
+			"properties": {
+				"commandId": { "const": "second-worktree-storage" },
+				"primaryContainerId": { "$ref": "#/$defs/containerId" },
+				"secondContainerId": { "$ref": "#/$defs/containerId" },
+				"primaryImageId": {
+					"type": "string",
+					"pattern": "^sha256:[0-9a-f]{64}$"
+				},
+				"secondImageId": {
+					"type": "string",
+					"pattern": "^sha256:[0-9a-f]{64}$"
+				},
+				"primaryContainerWritableBytes": { "$ref": "#/$defs/bytes" },
+				"secondContainerWritableBytes": { "$ref": "#/$defs/bytes" },
+				"secondCheckoutBytes": { "$ref": "#/$defs/bytes" },
+				"volumeBytes": { "$ref": "#/$defs/bytes" },
+				"observedBytes": { "$ref": "#/$defs/bytes" },
+				"stageZeroBaselineBytes": { "type": "integer", "minimum": 1 },
+				"imageProtoBytes": { "type": "integer", "minimum": 1 },
+				"protoVolumeCount": { "const": 0 },
+				"protoMountCount": { "const": 0 },
+				"operations": {
+					"type": "array",
+					"minItems": 6,
+					"items": { "$ref": "#/$defs/command" }
+				}
+			}
+		},
+		"rollbackProof": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"commandId",
+				"predecessorSha",
+				"implementationSha",
+				"syntheticMergeSha",
+				"syntheticMergeTree",
+				"syntheticMergeParents",
+				"predecessorTree",
+				"revertedTree",
+				"treeMatchesPredecessor",
+				"operations"
+			],
+			"properties": {
+				"commandId": { "const": "rollback-proof" },
+				"predecessorSha": { "$ref": "#/$defs/gitSha" },
+				"implementationSha": { "$ref": "#/$defs/gitSha" },
+				"syntheticMergeSha": { "$ref": "#/$defs/gitSha" },
+				"syntheticMergeTree": { "$ref": "#/$defs/gitSha" },
+				"syntheticMergeParents": {
+					"type": "array",
+					"minItems": 2,
+					"items": { "$ref": "#/$defs/gitSha" }
+				},
+				"predecessorTree": { "$ref": "#/$defs/gitSha" },
+				"revertedTree": { "$ref": "#/$defs/gitSha" },
+				"treeMatchesPredecessor": { "const": true },
+				"operations": {
+					"type": "array",
+					"minItems": 5,
+					"items": { "$ref": "#/$defs/command" }
+				}
+			}
+		},
+		"containerId": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+		"bytes": { "type": "integer", "minimum": 0 }
+	}
+}

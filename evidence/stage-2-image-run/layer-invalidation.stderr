@@ -1,0 +1,156 @@
+#0 building with "default" instance using docker driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 11.56kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#2 DONE 0.0s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+#3 DONE 0.1s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 CACHED
+
+#4 [internal] load metadata for mcr.microsoft.com/vscode/devcontainers/base:trixie@sha256:1a00517e89d3075f8c9dc8d9911404de0ff8991a4d71c62068573e9b016a89da
+#4 DONE 0.0s
+
+#5 [internal] load .dockerignore
+#5 transferring context: 105B done
+#5 DONE 0.0s
+
+#6 [internal] load build context
+#6 DONE 0.0s
+
+#7 [stable_base 1/5] FROM mcr.microsoft.com/vscode/devcontainers/base:trixie@sha256:1a00517e89d3075f8c9dc8d9911404de0ff8991a4d71c62068573e9b016a89da
+#7 resolve mcr.microsoft.com/vscode/devcontainers/base:trixie@sha256:1a00517e89d3075f8c9dc8d9911404de0ff8991a4d71c62068573e9b016a89da 0.0s done
+#7 DONE 0.0s
+
+#8 [stable_base 2/5] RUN apt-get update 	&& apt-get install -y --no-install-recommends 		bat 		build-essential 		ca-certificates 		curl 		dnsutils 		fd-find 		fzf 		git 		gzip 		less 		nano 		procps 		ripgrep 		sudo 		tree 		unzip 		vim 		wget 		xz-utils 	&& rm -rf /var/lib/apt/lists/* 	&& ln -sf /usr/bin/fdfind /usr/local/bin/fd 	&& ln -sf /usr/bin/batcat /usr/local/bin/bat
+#8 CACHED
+
+#9 [stable_base 3/5] RUN case "arm64" in 		amd64) DELTA_SHA256="1658c7b61825d411b50734f34016101309e4b6e7f5799944cf8e4ac542cebd7f" ;; 		arm64) DELTA_SHA256="937781aa7788e1510858743fff6c9a8b4a69fe0a22a7c8a69493e633227939a9" ;; 		*) echo "Unsupported git-delta architecture: arm64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		--output /tmp/delta.deb 		"https://github.com/dandavison/delta/releases/download/0.18.2/git-delta_0.18.2_arm64.deb" 	&& printf '%s  %s\n' "$DELTA_SHA256" /tmp/delta.deb | sha256sum --check --status - 	&& dpkg -i /tmp/delta.deb 	&& rm /tmp/delta.deb
+#9 CACHED
+
+#10 [stable_base 4/5] RUN case "arm64" in 		amd64) RTK_TARGET="x86_64-unknown-linux-musl"; RTK_SHA256="ff8a1e7766496e175291a85aeca1dc97c9ff6df33e51e5893d1fbc78fea2a609" ;; 		arm64) RTK_TARGET="aarch64-unknown-linux-gnu"; RTK_SHA256="5519f7ca12e5c143a609f0d28a0a77b97413a8dce31c2681f1a41c24519a8731" ;; 		*) echo "Unsupported RTK architecture: arm64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		--output /tmp/rtk.tar.gz 		"https://github.com/rtk-ai/rtk/releases/download/v0.43.0/rtk-${RTK_TARGET}.tar.gz" 	&& printf '%s  %s\n' "$RTK_SHA256" /tmp/rtk.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/rtk.tar.gz -C /usr/local/bin/ 	&& chmod +x /usr/local/bin/rtk 	&& rm /tmp/rtk.tar.gz 	&& chsh -s /usr/bin/zsh vscode 	&& printf '%s\n' 		'export PROTO_HOME="$HOME/.proto"' 		'export PATH="/workspace/node_modules/.bin:$HOME/.local/bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH"' 		> /etc/profile.d/devenv-path.sh 	&& chmod 0644 /etc/profile.d/devenv-path.sh
+#10 CACHED
+
+#11 [stable_base 5/5] RUN mkdir -p 	"/home/vscode/.proto" 	"${HOME}/.bun/install/cache" 	"${HOME}/.cache/uv" 	"${HOME}/.local/bin" 	"${HOME}/.payloads"
+#11 CACHED
+
+#12 [shell_payload 1/1] RUN mkdir -p "${HOME}/.local/share/zinit/zinit.git" 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 120 		"https://github.com/zdharma-continuum/zinit/archive/e347224fb5fe77308cff9f59fbe2acca70d0a6db.tar.gz" 		-o /tmp/zinit.tar.gz 	&& printf '%s  %s\n' "96380971046cf82765dc02822dd6acf993bfce3e3a4eaf46a3f42eafdac37434" /tmp/zinit.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/zinit.tar.gz --strip-components=1 -C "${HOME}/.local/share/zinit/zinit.git" 	&& rm /tmp/zinit.tar.gz
+#12 CACHED
+
+#6 [internal] load build context
+#6 transferring context: 2.28kB done
+#6 DONE 0.0s
+
+#13 [proto_foundation 2/3] COPY --chown=vscode:vscode 	.devcontainer/install-proto.sh 	.devcontainer/proto-checksums.txt 	/tmp/devenv-proto-foundation/.devcontainer/
+#13 CACHED
+
+#14 [proto_auxiliary 1/2] COPY --chown=vscode:vscode .devcontainer/prototools.auxiliary /tmp/devenv-proto-auxiliary/.prototools
+#14 CACHED
+
+#15 [proto_foundation 1/3] COPY --chown=vscode:vscode .devcontainer/prototools.foundation /tmp/devenv-proto-foundation/.prototools
+#15 CACHED
+
+#16 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
+#16 CACHED
+
+#17 [claude_payload 1/1] RUN case "arm64" in 		amd64) CLAUDE_PLATFORM="linux-x64"; CLAUDE_SHA256="e7d2ceb53ed4c2ced1fe7fc1c6331c98dc5f7b4c9b2722d9c5fa3dd5dff6f719" ;; 		arm64) CLAUDE_PLATFORM="linux-arm64"; CLAUDE_SHA256="84feb193c1d91f3b5eba836ed47c0e4dee953195abba950917c3e101eff174e8" ;; 		*) echo "Unsupported Claude architecture: arm64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		"https://downloads.claude.ai/claude-code-releases/2.1.210/${CLAUDE_PLATFORM}/claude" 		-o "${HOME}/.local/bin/claude" 	&& printf '%s  %s\n' "$CLAUDE_SHA256" "${HOME}/.local/bin/claude" | sha256sum --check --status - 	&& chmod +x "${HOME}/.local/bin/claude" 	&& BUN_INSTALL="${HOME}/.payloads/claude-tools" bun install -g "node-gyp@13.0.1"
+#17 CACHED
+
+#18 [ccstatusline_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/ccstatusline" 	bun install -g "ccstatusline@2.2.23"
+#18 CACHED
+
+#19 [gemini_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/gemini" 	bun install -g "@google/gemini-cli@0.50.0"
+#19 CACHED
+
+#20 [graphify_payload 1/1] RUN UV_TOOL_DIR="${HOME}/.payloads/graphify" 	UV_TOOL_BIN_DIR="${HOME}/.payloads/graphify/bin" 	CC="$(command -v gcc)" 	CXX="$(command -v g++)" 	uv tool install "graphifyy[gemini,sql]==0.9.16"
+#20 CACHED
+
+#21 [proto_foundation 3/3] RUN bash /tmp/devenv-proto-foundation/.devcontainer/install-proto.sh 	&& cd /tmp/devenv-proto-foundation 	&& proto install --yes --config-mode local
+#21 CACHED
+
+#22 [codex_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/codex" 	bun install -g "@openai/codex@0.144.3"
+#22 0.498 bun add v1.3.13 (bf2e2cec)
+#22 0.506 Resolving dependencies
+#22 ...
+
+#23 [development  1/19] COPY --link --from=graphify_payload --chown=1000:1000 /home/vscode/.payloads/graphify /home/vscode/.payloads/graphify
+#23 DONE 1.5s
+
+#22 [codex_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/codex" 	bun install -g "@openai/codex@0.144.3"
+#22 3.605 Resolved, downloaded and extracted [5]
+#22 3.606 Saved lockfile
+#22 3.606 
+#22 3.606 installed @openai/codex@0.144.3 with binaries:
+#22 3.606  - codex
+#22 3.606 
+#22 3.606 2 packages installed [3.15s]
+#22 3.607 
+#22 3.607 warn: To run "codex", add the global bin folder to $PATH:
+#22 3.607 
+#22 3.607 /home/vscode/.payloads/codex/bin
+#22 DONE 4.7s
+
+#24 [development  2/19] COPY --link --from=codex_payload --chown=1000:1000 /home/vscode/.payloads/codex /home/vscode/.payloads/codex
+#24 DONE 0.2s
+
+#25 [development  3/19] COPY --link --from=gemini_payload --chown=1000:1000 /home/vscode/.payloads/gemini /home/vscode/.payloads/gemini
+#25 DONE 0.9s
+
+#26 [development  4/19] COPY --link --from=ccstatusline_payload --chown=1000:1000 /home/vscode/.payloads/ccstatusline /home/vscode/.payloads/ccstatusline
+#26 DONE 0.2s
+
+#27 [development  5/19] COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.payloads/claude-tools /home/vscode/.payloads/claude-tools
+#27 DONE 0.6s
+
+#28 [development  6/19] COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.local/bin/claude /home/vscode/.local/bin/claude
+#28 DONE 0.9s
+
+#29 [development  7/19] COPY --link --from=shell_payload --chown=1000:1000 /home/vscode/.local/share/zinit /home/vscode/.local/share/zinit
+#29 DONE 0.1s
+
+#29 [development  7/19] COPY --link --from=shell_payload --chown=1000:1000 /home/vscode/.local/share/zinit /home/vscode/.local/share/zinit
+#29 merging
+#29 merging 0.8s done
+#29 DONE 0.9s
+
+#30 [development  8/19] RUN ln -s ../../.payloads/graphify/bin/graphify "${HOME}/.local/bin/graphify" 	&& ln -s ../../.payloads/graphify/bin/graphify-mcp "${HOME}/.local/bin/graphify-mcp"
+#30 DONE 0.5s
+
+#31 [development  9/19] RUN ln -s ../../.payloads/codex/bin/codex "${HOME}/.local/bin/codex"
+#31 DONE 0.2s
+
+#32 [development 10/19] RUN ln -s ../../.payloads/gemini/bin/gemini "${HOME}/.local/bin/gemini"
+#32 DONE 0.2s
+
+#33 [development 11/19] RUN ln -s ../../.payloads/ccstatusline/bin/ccstatusline "${HOME}/.local/bin/ccstatusline"
+#33 DONE 0.2s
+
+#34 [development 12/19] RUN ln -s ../../.payloads/claude-tools/bin/node-gyp "${HOME}/.local/bin/node-gyp"
+#34 DONE 0.1s
+
+#35 [development 13/19] RUN printf '%s\n' 		'if [ -n "${BASH_VERSION:-}" ] && [ -f "$HOME/.bashrc" ]; then . "$HOME/.bashrc"; fi' 		'export PROTO_HOME="$HOME/.proto"' 		'export PATH="/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH"' 		> "${HOME}/.profile" 	&& printf '%s\n' 'source "$HOME/.profile"' > "${HOME}/.zprofile"
+#35 DONE 0.2s
+
+#36 [development 14/19] COPY --chown=vscode:vscode .prototools /home/vscode/.prototools
+#36 DONE 0.1s
+
+#37 [development 15/19] COPY .dockerignore /tmp/devenv-definition/.dockerignore
+#37 DONE 0.1s
+
+#38 [development 16/19] COPY .prototools /tmp/devenv-definition/.prototools
+#38 DONE 0.1s
+
+#39 [development 17/19] COPY .devcontainer /tmp/devenv-definition/.devcontainer
+#39 DONE 0.1s
+
+#40 [development 18/19] RUN mkdir -p /usr/local/share/devenv-image 	&& install -m 0555 /tmp/devenv-definition/.devcontainer/devcontainer-fingerprint.sh /usr/local/share/devenv-image/devcontainer-fingerprint.sh 	&& install -m 0555 /tmp/devenv-definition/.devcontainer/on-create/setup-proto.sh /usr/local/share/devenv-image/setup-proto.sh 	&& sha256sum /tmp/devenv-definition/.prototools | awk '{print $1}' > /usr/local/share/devenv-image/prototools.sha256 	&& bash /usr/local/share/devenv-image/devcontainer-fingerprint.sh /tmp/devenv-definition > /usr/local/share/devenv-image/definition.sha256 	&& chmod 0444 /usr/local/share/devenv-image/*.sha256 	&& rm -rf /tmp/devenv-definition
+#40 DONE 0.9s
+
+#41 [development 19/19] WORKDIR /workspace
+#41 DONE 0.1s

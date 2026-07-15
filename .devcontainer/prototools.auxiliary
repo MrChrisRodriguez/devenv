@@ -1,0 +1,16 @@
+node = "24.18.0"
+moon = "2.3.5"
+direnv = "2.37.1"
+fly = "0.3.231"
+infisical = "0.41.90"
+jq = "1.8.1"
+yq = "4.49.2"
+dagger = "0.19.8"
+
+[plugins]
+direnv = "https://raw.githubusercontent.com/appthrust/proto-toml-plugins/786005a6ef2371ae1c7893610d065ac5612d61a9/direnv/plugin.toml"
+fly = "https://raw.githubusercontent.com/Phault/proto-toml-plugins/9808cc412785ac59ec1b0d61bd1bee152f6f6b56/flyctl/plugin.toml"
+infisical = "https://raw.githubusercontent.com/Phault/proto-toml-plugins/9808cc412785ac59ec1b0d61bd1bee152f6f6b56/infisical/plugin.toml"
+jq = "https://raw.githubusercontent.com/appthrust/proto-toml-plugins/786005a6ef2371ae1c7893610d065ac5612d61a9/jq/plugin.toml"
+yq = "https://raw.githubusercontent.com/appthrust/proto-toml-plugins/786005a6ef2371ae1c7893610d065ac5612d61a9/yq/plugin.toml"
+dagger = "https://raw.githubusercontent.com/Phault/proto-toml-plugins/9808cc412785ac59ec1b0d61bd1bee152f6f6b56/dagger/plugin.toml"

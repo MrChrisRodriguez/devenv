@@ -305,6 +305,7 @@ describe("deterministic fixture renderer", () => {
 			const devcontainer = await Bun.file(
 				resolve(output, ".devcontainer/devcontainer.json"),
 			).json();
+			expect(devcontainer.build.target).toBe("development");
 			expect(devcontainer.forwardPorts).toEqual([3000, 4000, 8080]);
 			expect(
 				devcontainer.customizations.vscode.extensions.includes(
@@ -376,6 +377,15 @@ describe("deterministic fixture renderer", () => {
 				"zod",
 			])
 				expect(generatedGuard).not.toContain(token);
+			const generatedDockerfile = await Bun.file(
+				resolve(output, ".devcontainer/Dockerfile"),
+			).text();
+			for (const token of [
+				"capability:start",
+				"playwright_browser",
+				"development_browser",
+			])
+				expect(generatedDockerfile).not.toContain(token);
 			for (const packageName of [
 				"@cloudflare/vite-plugin",
 				"@cloudflare/vitest-pool-workers",
@@ -513,6 +523,19 @@ describe("deterministic fixture renderer", () => {
 			const fullPackage = await Bun.file(
 				resolve(temporary, "full/package.json"),
 			).json();
+			const fullDevcontainer = await Bun.file(
+				resolve(temporary, "full/.devcontainer/devcontainer.json"),
+			).json();
+			expect(fullDevcontainer.build.target).toBe("development_browser");
+			const fullDockerfile = await Bun.file(
+				resolve(temporary, "full/.devcontainer/Dockerfile"),
+			).text();
+			expect(fullDockerfile).toContain(
+				"FROM development AS development_browser",
+			);
+			expect(fullDockerfile).toContain(
+				"FROM proto_foundation AS playwright_browser",
+			);
 			for (const packageName of [
 				"@cloudflare/vite-plugin",
 				"@cloudflare/vitest-pool-workers",

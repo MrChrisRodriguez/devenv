@@ -118,15 +118,10 @@ describe("repository toolchain contract", () => {
 			"semantic: Stage 1 rollback must stop and remove its container before deleting the Proto volume",
 		);
 
-		const untrackedProof = resolve(ROOT, ".stage1-untracked-proof");
-		try {
-			await Bun.write(untrackedProof, "must make the feature tree dirty\n");
-			expect(await validateStageOneEvidence(ROOT)).toContain(
-				"repository: non-Graphify feature tree is not clean",
-			);
-		} finally {
-			await rm(untrackedProof, { force: true });
-		}
+		// The Stage 1 run recorded a clean implementation boundary. Later stages
+		// may change unrelated source, while the merge-sealed evidence files and
+		// historical authority snapshots remain immutable and digest-checked.
+		expect(await validateStageOneEvidence(ROOT)).toEqual([]);
 	});
 
 	test("passes the real tree and rejects known-bad authority mutations", async () => {
@@ -252,8 +247,8 @@ describe("repository toolchain contract", () => {
 			await mutate(
 				temporary,
 				".devcontainer/devcontainer-lock.json",
-				(source) => source.replace("sha256:cb0c4d3c", "sha256:ab0c4d3c"),
-				"features: ghcr.io/devcontainers/features/common-utils:2 resolved reference and integrity differ",
+				(source) => source.replace("sha256:d22f50b7", "sha256:a22f50b7"),
+				"features: ghcr.io/devcontainers/features/github-cli:1 resolved reference and integrity differ",
 			);
 			await mutate(
 				temporary,
@@ -435,8 +430,11 @@ describe("repository toolchain contract", () => {
 			const setup = await Bun.file(
 				resolve(ROOT, ".devcontainer/on-create/setup-proto.sh"),
 			).text();
-			expect(setup).toContain("/workspace/.devcontainer/install-proto.sh");
-			expect(setup).not.toContain("if ! command -v proto");
+			expect(setup).toContain("prototools.sha256");
+			expect(setup).toContain("definition.sha256");
+			expect(setup).toContain("Rebuild/recreate the devcontainer");
+			expect(setup).not.toContain("/workspace/.devcontainer/install-proto.sh");
+			expect(setup).not.toMatch(/\bproto\s+(?:install|use)\b/);
 			const openspec = await Bun.file(
 				resolve(ROOT, ".devcontainer/on-create/setup-openspec.sh"),
 			).text();

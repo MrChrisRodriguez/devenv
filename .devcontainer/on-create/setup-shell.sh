@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 set -e
 
+ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
+if [ ! -r "$ZINIT_HOME/zinit.zsh" ]; then
+	echo "ERROR: the pinned image-owned Zinit payload is missing" >&2
+	echo "Rebuild/recreate the devcontainer; shell payloads are never repaired at runtime." >&2
+	return 1
+fi
+
 # Function to setup completions for a tool
 setup_completions() {
     local tool="$1"
@@ -27,7 +34,7 @@ fi
 echo "📝 Installing our .bashrc template..."
 cp "/workspace/.devcontainer/configs/.bashrc" "$HOME/.bashrc"
 
-# Setup Zsh (Zinit is pre-installed in the Docker image)
+# Setup Zsh (the exact Zinit payload is baked into the image)
 echo "🔧 Setting up Zsh configuration..."
 
 # Configure zsh

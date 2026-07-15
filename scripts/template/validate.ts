@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { validateStageZeroEvidence } from "./evidence";
+import { validateStageTwoEvidence } from "./image-evidence";
 import { validateJsonSchema } from "./json-schema";
 import {
 	loadFixtureDefinition,
@@ -20,6 +21,8 @@ export interface ValidationReport {
 	evidenceSchemaFile: string;
 	toolchainEvidenceFile: string;
 	toolchainEvidenceSchemaFile: string;
+	imageEvidenceFile: string;
+	imageEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -36,6 +39,8 @@ export async function validateAll(
 		evidenceSchemaFile: "evidence/stage-0-baseline.schema.json",
 		toolchainEvidenceFile: "evidence/stage-1-toolchain.json",
 		toolchainEvidenceSchemaFile: "evidence/stage-1-toolchain.schema.json",
+		imageEvidenceFile: "evidence/stage-2-image.json",
+		imageEvidenceSchemaFile: "evidence/stage-2-image.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -92,6 +97,13 @@ export async function validateAll(
 				...toolchainEvidenceErrors.map((error) => `stage-1 evidence: ${error}`),
 			);
 		}
+		const imageEvidenceErrors = await validateStageTwoEvidence(root);
+		if (imageEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...imageEvidenceErrors.map((error) => `stage-2 evidence: ${error}`),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -110,7 +122,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(

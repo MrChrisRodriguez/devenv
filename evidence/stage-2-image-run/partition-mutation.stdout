@@ -1,0 +1,6 @@
+{
+  "commandId": "partition-mutation",
+  "mutation": "drop-foundation-uv",
+  "rejected": true,
+  "diagnostic": "partition: root tool uv is missing from derived manifests"
+}

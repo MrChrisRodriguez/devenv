@@ -1,0 +1,112 @@
+{
+  "commandId": "second-worktree-storage",
+  "primaryContainerId": "16c2bc651a464e411170096ef439a080c5f6f48733df08e71be3076105acebb9",
+  "secondContainerId": "1915f77b50a5446853890da9c28df5b7d1bd71990a816980f586c14e20809dbf",
+  "primaryImageId": "sha256:75c7d1c23c7cb24c1649dd4e94884a9a4bb27a75fbc8a860e71fa11b85cbe175",
+  "secondImageId": "sha256:75c7d1c23c7cb24c1649dd4e94884a9a4bb27a75fbc8a860e71fa11b85cbe175",
+  "primaryContainerWritableBytes": 274432,
+  "secondContainerWritableBytes": 274432,
+  "secondCheckoutBytes": 4198400,
+  "volumeBytes": 0,
+  "observedBytes": 4472832,
+  "stageZeroBaselineBytes": 96111608,
+  "imageProtoBytes": 1366372352,
+  "protoVolumeCount": 0,
+  "protoMountCount": 0,
+  "operations": [
+    [
+      "git",
+      "worktree",
+      "add",
+      "--detach",
+      "/tmp/devenv-stage2-stage2-20260715t142339z-b2e18c63/second-worktree",
+      "69a97d84e2591242265887a7c062bbb0853b5ca9"
+    ],
+    [
+      "docker",
+      "image",
+      "inspect",
+      "--format",
+      "{{.Id}}",
+      "devenv-stage2-stage2-20260715t142339z-b2e18c63"
+    ],
+    [
+      "docker",
+      "run",
+      "--rm",
+      "--label",
+      "com.devenv.evidence.run=stage2-20260715t142339z-b2e18c63",
+      "devenv-stage2-stage2-20260715t142339z-b2e18c63",
+      "sh",
+      "-c",
+      "du -sk /home/vscode/.proto | cut -f1"
+    ],
+    [
+      "docker",
+      "create",
+      "--label",
+      "com.devenv.evidence.run=stage2-20260715t142339z-b2e18c63",
+      "--label",
+      "com.devenv.evidence.slot=primary",
+      "--mount",
+      "type=bind,src=/Users/mrcr/.codex/worktrees/stage2-image/devenv,dst=/workspace,readonly",
+      "devenv-stage2-stage2-20260715t142339z-b2e18c63",
+      "sleep",
+      "infinity"
+    ],
+    [
+      "docker",
+      "create",
+      "--label",
+      "com.devenv.evidence.run=stage2-20260715t142339z-b2e18c63",
+      "--label",
+      "com.devenv.evidence.slot=second",
+      "--mount",
+      "type=bind,src=/tmp/devenv-stage2-stage2-20260715t142339z-b2e18c63/second-worktree,dst=/workspace,readonly",
+      "devenv-stage2-stage2-20260715t142339z-b2e18c63",
+      "sleep",
+      "infinity"
+    ],
+    [
+      "docker",
+      "start",
+      "16c2bc651a464e411170096ef439a080c5f6f48733df08e71be3076105acebb9"
+    ],
+    [
+      "docker",
+      "start",
+      "1915f77b50a5446853890da9c28df5b7d1bd71990a816980f586c14e20809dbf"
+    ],
+    [
+      "docker",
+      "inspect",
+      "--size",
+      "16c2bc651a464e411170096ef439a080c5f6f48733df08e71be3076105acebb9"
+    ],
+    [
+      "docker",
+      "inspect",
+      "--size",
+      "1915f77b50a5446853890da9c28df5b7d1bd71990a816980f586c14e20809dbf"
+    ],
+    [
+      "du",
+      "-sk",
+      "/tmp/devenv-stage2-stage2-20260715t142339z-b2e18c63/second-worktree"
+    ],
+    [
+      "docker",
+      "rm",
+      "-f",
+      "16c2bc651a464e411170096ef439a080c5f6f48733df08e71be3076105acebb9",
+      "1915f77b50a5446853890da9c28df5b7d1bd71990a816980f586c14e20809dbf"
+    ],
+    [
+      "git",
+      "worktree",
+      "remove",
+      "--force",
+      "/tmp/devenv-stage2-stage2-20260715t142339z-b2e18c63/second-worktree"
+    ]
+  ]
+}

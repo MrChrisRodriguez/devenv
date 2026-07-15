@@ -1,0 +1,764 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-2-image-architecture",
+	"capturedAt": "2026-07-15T14:27:32.897Z",
+	"run": {
+		"id": "stage2-20260715t142339z-b2e18c63",
+		"temporaryRoot": "/tmp/devenv-stage2-stage2-20260715t142339z-b2e18c63",
+		"nativeArchitecture": "arm64",
+		"logRoot": "evidence/stage-2-image-run"
+	},
+	"source": {
+		"baseSha": "4367bad6e2cb49e4c969a61b892634347ed0bf24",
+		"implementationSha": "69a97d84e2591242265887a7c062bbb0853b5ca9",
+		"featureTreeClean": true
+	},
+	"image": {
+		"tag": "devenv-stage2-stage2-20260715t142339z-b2e18c63",
+		"imageId": "sha256:75c7d1c23c7cb24c1649dd4e94884a9a4bb27a75fbc8a860e71fa11b85cbe175",
+		"definitionFingerprint": "a0353fdea3947eb3cf089947a3ca6c5e4d7753189dc98356492473cbb8a1219d",
+		"definitionMarker": "a0353fdea3947eb3cf089947a3ca6c5e4d7753189dc98356492473cbb8a1219d",
+		"protoManifestSha256": "eeab37d6991758f99b981747281120296a655d676bf2c6e30ed4786bdc42d6a7",
+		"protoManifestMarker": "eeab37d6991758f99b981747281120296a655d676bf2c6e30ed4786bdc42d6a7",
+		"codexVersion": "0.144.4",
+		"alternateCodexVersion": "0.144.3"
+	},
+	"commands": [
+		{
+			"id": "clean-build",
+			"command": [
+				"docker",
+				"buildx",
+				"build",
+				"--file",
+				".devcontainer/Dockerfile",
+				"--platform",
+				"linux/arm64",
+				"--target",
+				"development",
+				"--tag",
+				"devenv-stage2-stage2-20260715t142339z-b2e18c63",
+				"--progress",
+				"plain",
+				"--load",
+				"--no-cache",
+				"."
+			],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:23:39.511Z",
+			"completedAt": "2026-07-15T14:25:06.178Z",
+			"durationMs": 86666,
+			"stdoutPath": "evidence/stage-2-image-run/clean-build.stdout",
+			"stderrPath": "evidence/stage-2-image-run/clean-build.stderr",
+			"stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"stderrSha256": "d763c3cbcaa7c8161b59b4c23857657786fec24f54efe8090d36b59ef041aedd",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "warm-build",
+			"command": [
+				"docker",
+				"buildx",
+				"build",
+				"--file",
+				".devcontainer/Dockerfile",
+				"--platform",
+				"linux/arm64",
+				"--target",
+				"development",
+				"--tag",
+				"devenv-stage2-stage2-20260715t142339z-b2e18c63",
+				"--progress",
+				"plain",
+				"--load",
+				"."
+			],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:25:06.210Z",
+			"completedAt": "2026-07-15T14:25:09.679Z",
+			"durationMs": 3469,
+			"stdoutPath": "evidence/stage-2-image-run/warm-build.stdout",
+			"stderrPath": "evidence/stage-2-image-run/warm-build.stderr",
+			"stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"stderrSha256": "9da6f97d9f2d32ecb67dd383331509ffd1a703be9ba2d899dc211649ffc7a2a8",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "definition-fingerprint",
+			"command": ["bash", ".devcontainer/devcontainer-fingerprint.sh", "."],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:25:09.680Z",
+			"completedAt": "2026-07-15T14:25:09.769Z",
+			"durationMs": 90,
+			"stdoutPath": "evidence/stage-2-image-run/definition-fingerprint.stdout",
+			"stderrPath": "evidence/stage-2-image-run/definition-fingerprint.stderr",
+			"stdoutSha256": "de0cca37f86e75e035d2bb313af07a176d6b4c441c90315bfc7dfcbb26aa5055",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "image-inspect",
+			"command": [
+				"docker",
+				"image",
+				"inspect",
+				"--format",
+				"{{.Id}}",
+				"devenv-stage2-stage2-20260715t142339z-b2e18c63"
+			],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:25:09.769Z",
+			"completedAt": "2026-07-15T14:25:10.020Z",
+			"durationMs": 250,
+			"stdoutPath": "evidence/stage-2-image-run/image-inspect.stdout",
+			"stderrPath": "evidence/stage-2-image-run/image-inspect.stderr",
+			"stdoutSha256": "52e574a3442144ca37cce4ef1bab082f5971d282cf3afca21402a7bfa0e06f48",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "image-contract",
+			"command": [
+				"docker",
+				"run",
+				"--rm",
+				"devenv-stage2-stage2-20260715t142339z-b2e18c63",
+				"bash",
+				"-lc",
+				"printf \"definition=%s\\n\" \"$(cat /usr/local/share/devenv-image/definition.sha256)\"; printf \"manifest=%s\\n\" \"$(cat /usr/local/share/devenv-image/prototools.sha256)\""
+			],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:25:10.020Z",
+			"completedAt": "2026-07-15T14:25:10.662Z",
+			"durationMs": 642,
+			"stdoutPath": "evidence/stage-2-image-run/image-contract.stdout",
+			"stderrPath": "evidence/stage-2-image-run/image-contract.stderr",
+			"stdoutSha256": "f788d02b548ed47f57a6433d42ff5ba06c111626ecf49930cf15e1abb8016325",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "layer-invalidation",
+			"command": [
+				"docker",
+				"buildx",
+				"build",
+				"--file",
+				".devcontainer/Dockerfile",
+				"--platform",
+				"linux/arm64",
+				"--target",
+				"development",
+				"--build-arg",
+				"CODEX_VERSION=0.144.3",
+				"--no-cache-filter",
+				"codex_payload",
+				"--no-cache-filter",
+				"development",
+				"--progress",
+				"plain",
+				"--output",
+				"type=cacheonly",
+				"."
+			],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:25:10.663Z",
+			"completedAt": "2026-07-15T14:25:20.492Z",
+			"durationMs": 9829,
+			"stdoutPath": "evidence/stage-2-image-run/layer-invalidation.stdout",
+			"stderrPath": "evidence/stage-2-image-run/layer-invalidation.stderr",
+			"stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"stderrSha256": "543ad2690cd18c6c713a254485e00dff566d726c66685d4746a944cfc2a82fe5",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "architecture-amd64",
+			"command": [
+				"docker",
+				"buildx",
+				"build",
+				"--file",
+				".devcontainer/Dockerfile",
+				"--platform",
+				"linux/amd64",
+				"--target",
+				"development",
+				"--no-cache",
+				"--progress",
+				"plain",
+				"--output",
+				"type=cacheonly",
+				"."
+			],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:25:20.492Z",
+			"completedAt": "2026-07-15T14:26:29.199Z",
+			"durationMs": 68707,
+			"stdoutPath": "evidence/stage-2-image-run/architecture-amd64.stdout",
+			"stderrPath": "evidence/stage-2-image-run/architecture-amd64.stderr",
+			"stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"stderrSha256": "3061682dcc6f658fb7349e3dd334f92336b12317ca11b95160a9e5fd50a9beb1",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "architecture-arm64",
+			"command": [
+				"docker",
+				"buildx",
+				"build",
+				"--file",
+				".devcontainer/Dockerfile",
+				"--platform",
+				"linux/arm64",
+				"--target",
+				"development",
+				"--no-cache",
+				"--progress",
+				"plain",
+				"--output",
+				"type=cacheonly",
+				"."
+			],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:26:29.202Z",
+			"completedAt": "2026-07-15T14:27:25.294Z",
+			"durationMs": 56092,
+			"stdoutPath": "evidence/stage-2-image-run/architecture-arm64.stdout",
+			"stderrPath": "evidence/stage-2-image-run/architecture-arm64.stderr",
+			"stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"stderrSha256": "a8f13132e3055cb55f5c480a0d45b40835cd24d8908a004d5c0a2c08b253759c",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "stale-image-refusal",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-two-evidence.ts",
+				"probe-stale",
+				"--image",
+				"devenv-stage2-stage2-20260715t142339z-b2e18c63",
+				"--workspace",
+				"/tmp/devenv-stage2-stage2-20260715t142339z-b2e18c63/stale-workspace"
+			],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:27:25.299Z",
+			"completedAt": "2026-07-15T14:27:28.216Z",
+			"durationMs": 2917,
+			"stdoutPath": "evidence/stage-2-image-run/stale-image-refusal.stdout",
+			"stderrPath": "evidence/stage-2-image-run/stale-image-refusal.stderr",
+			"stdoutSha256": "902fd173658ab2aa41d8505661261096709308a7f0d46ef1b11a8134c2831ac7",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "partition-mutation",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-two-evidence.ts",
+				"probe-partition",
+				"--root",
+				".",
+				"--mutation",
+				"drop-foundation-uv"
+			],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:27:28.216Z",
+			"completedAt": "2026-07-15T14:27:28.238Z",
+			"durationMs": 21,
+			"stdoutPath": "evidence/stage-2-image-run/partition-mutation.stdout",
+			"stderrPath": "evidence/stage-2-image-run/partition-mutation.stderr",
+			"stdoutSha256": "b346b7fc44ffcc03b8737fdd245a829924b33c0e11d89713a31aa683545fba40",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "shell-bash-login",
+			"command": [
+				"docker",
+				"run",
+				"--rm",
+				"devenv-stage2-stage2-20260715t142339z-b2e18c63",
+				"bash",
+				"-lc",
+				"command -v bun; command -v proto; printf \"%s\\n\" \"$PATH\""
+			],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:27:28.238Z",
+			"completedAt": "2026-07-15T14:27:28.764Z",
+			"durationMs": 526,
+			"stdoutPath": "evidence/stage-2-image-run/shell-bash-login.stdout",
+			"stderrPath": "evidence/stage-2-image-run/shell-bash-login.stderr",
+			"stdoutSha256": "39eee7652f9bf0b9d59a3aa8164b2268bfebededf8158aa0348e3b2a658d94d3",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "shell-bash-non-login",
+			"command": [
+				"docker",
+				"run",
+				"--rm",
+				"devenv-stage2-stage2-20260715t142339z-b2e18c63",
+				"bash",
+				"-c",
+				"command -v bun; command -v proto; printf \"%s\\n\" \"$PATH\""
+			],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:27:28.765Z",
+			"completedAt": "2026-07-15T14:27:29.180Z",
+			"durationMs": 415,
+			"stdoutPath": "evidence/stage-2-image-run/shell-bash-non-login.stdout",
+			"stderrPath": "evidence/stage-2-image-run/shell-bash-non-login.stderr",
+			"stdoutSha256": "b0a6d7ff84a8bb730146bbf441624271c385d9e721745ae5a5f486b2537ca61a",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "shell-zsh-login",
+			"command": [
+				"docker",
+				"run",
+				"--rm",
+				"devenv-stage2-stage2-20260715t142339z-b2e18c63",
+				"zsh",
+				"-lc",
+				"command -v bun; command -v proto; printf \"%s\\n\" \"$PATH\""
+			],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:27:29.180Z",
+			"completedAt": "2026-07-15T14:27:29.618Z",
+			"durationMs": 438,
+			"stdoutPath": "evidence/stage-2-image-run/shell-zsh-login.stdout",
+			"stderrPath": "evidence/stage-2-image-run/shell-zsh-login.stderr",
+			"stdoutSha256": "00b99d22f840ea6a5e9ae6e200a5a31a71be8abe9c8f0de4fdd4e2eb6c636f9b",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "shell-zsh-non-login",
+			"command": [
+				"docker",
+				"run",
+				"--rm",
+				"devenv-stage2-stage2-20260715t142339z-b2e18c63",
+				"zsh",
+				"-c",
+				"command -v bun; command -v proto; printf \"%s\\n\" \"$PATH\""
+			],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:27:29.619Z",
+			"completedAt": "2026-07-15T14:27:30.063Z",
+			"durationMs": 444,
+			"stdoutPath": "evidence/stage-2-image-run/shell-zsh-non-login.stdout",
+			"stderrPath": "evidence/stage-2-image-run/shell-zsh-non-login.stderr",
+			"stdoutSha256": "b0a6d7ff84a8bb730146bbf441624271c385d9e721745ae5a5f486b2537ca61a",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "second-worktree-storage",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-two-evidence.ts",
+				"probe-storage",
+				"--image",
+				"devenv-stage2-stage2-20260715t142339z-b2e18c63",
+				"--run-id",
+				"stage2-20260715t142339z-b2e18c63",
+				"--implementation",
+				"69a97d84e2591242265887a7c062bbb0853b5ca9",
+				"--workspace",
+				"/tmp/devenv-stage2-stage2-20260715t142339z-b2e18c63/second-worktree"
+			],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:27:30.064Z",
+			"completedAt": "2026-07-15T14:27:32.417Z",
+			"durationMs": 2353,
+			"stdoutPath": "evidence/stage-2-image-run/second-worktree-storage.stdout",
+			"stderrPath": "evidence/stage-2-image-run/second-worktree-storage.stderr",
+			"stdoutSha256": "74fd9a6d336c0e1357c68899772a55032f1000e64d9252b1574cb9456d8881c6",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rollback-proof",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-two-evidence.ts",
+				"probe-rollback",
+				"--base",
+				"4367bad6e2cb49e4c969a61b892634347ed0bf24",
+				"--implementation",
+				"69a97d84e2591242265887a7c062bbb0853b5ca9",
+				"--workspace",
+				"/tmp/devenv-stage2-stage2-20260715t142339z-b2e18c63/rollback-worktree"
+			],
+			"runId": "stage2-20260715t142339z-b2e18c63",
+			"startedAt": "2026-07-15T14:27:32.417Z",
+			"completedAt": "2026-07-15T14:27:32.891Z",
+			"durationMs": 474,
+			"stdoutPath": "evidence/stage-2-image-run/rollback-proof.stdout",
+			"stderrPath": "evidence/stage-2-image-run/rollback-proof.stderr",
+			"stdoutSha256": "330cdf259031e08cd330b0868a39ff3157b7882de5f712145747b1b62ac304e5",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		}
+	],
+	"builds": {
+		"clean": {
+			"commandId": "clean-build",
+			"durationMs": 86666,
+			"cachedSteps": 2,
+			"noCache": true
+		},
+		"warm": {
+			"commandId": "warm-build",
+			"durationMs": 3469,
+			"cachedSteps": 35,
+			"noCache": false
+		}
+	},
+	"layerInvalidation": {
+		"commandId": "layer-invalidation",
+		"changedOwner": "CODEX_VERSION",
+		"cachedStages": [
+			"ccstatusline_payload",
+			"claude_payload",
+			"gemini_payload",
+			"graphify_payload",
+			"proto_auxiliary",
+			"proto_foundation",
+			"shell_payload",
+			"stable_base"
+		],
+		"rebuiltStages": ["codex_payload", "development"]
+	},
+	"architectures": [
+		{
+			"architecture": "amd64",
+			"commandId": "architecture-amd64",
+			"status": "pass",
+			"rebuiltStages": [
+				"ccstatusline_payload",
+				"claude_payload",
+				"codex_payload",
+				"development",
+				"gemini_payload",
+				"graphify_payload",
+				"proto_auxiliary",
+				"proto_foundation",
+				"shell_payload",
+				"stable_base"
+			]
+		},
+		{
+			"architecture": "arm64",
+			"commandId": "architecture-arm64",
+			"status": "pass",
+			"rebuiltStages": [
+				"ccstatusline_payload",
+				"claude_payload",
+				"codex_payload",
+				"development",
+				"gemini_payload",
+				"graphify_payload",
+				"proto_auxiliary",
+				"proto_foundation",
+				"shell_payload",
+				"stable_base"
+			]
+		}
+	],
+	"staleImageRefusal": {
+		"commandId": "stale-image-refusal",
+		"mutation": "shadow-workspace-startup-tools-overrides-and-edit-definition",
+		"originalDefinitionFingerprint": "a0353fdea3947eb3cf089947a3ca6c5e4d7753189dc98356492473cbb8a1219d",
+		"mutatedDefinitionFingerprint": "28086a7ced05be15e465b2a263b4ec267c49d8cbffb0ac4932864c7cbb9b2f1b",
+		"shadowBunPath": "/workspace/node_modules/.bin/bun",
+		"shadowBashPath": "/workspace/node_modules/.bin/bash",
+		"shadowUtilityPaths": [
+			"/workspace/node_modules/.bin/readlink",
+			"/workspace/node_modules/.bin/sha256sum",
+			"/workspace/node_modules/.bin/awk",
+			"/workspace/node_modules/.bin/tr"
+		],
+		"trustedRepoMount": "/trusted",
+		"overrideMarkerPath": "/workspace/contract-marker-override",
+		"environmentOverrides": {
+			"DEVCONTAINER_REPO_ROOT": "/trusted",
+			"DEVCONTAINER_IMAGE_CONTRACT_DIR": "/workspace/contract-marker-override",
+			"BASH_ENV": "/workspace/preverify-bash-env.sh",
+			"BASH_FUNC_source%%": "() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }",
+			"BUN_OPTIONS": "--preload=/workspace/preverify-bun-options.ts"
+		},
+		"preVerificationShadowExecution": false,
+		"preVerificationBashEnvExecution": false,
+		"preVerificationExportedFunctionExecution": false,
+		"preVerificationBunOptionsExecution": false,
+		"preVerificationOnCreateExecution": false,
+		"preVerificationSetupCommonExecution": false,
+		"preVerificationFingerprintScriptExecution": false,
+		"containerExitCode": 1,
+		"refused": true,
+		"diagnostic": "ERROR: the devcontainer definition differs from the image fingerprint\nRebuild/recreate the devcontainer; image-owned tools are never repaired at runtime."
+	},
+	"partitionMutation": {
+		"commandId": "partition-mutation",
+		"mutation": "drop-foundation-uv",
+		"rejected": true,
+		"diagnostic": "partition: root tool uv is missing from derived manifests"
+	},
+	"shellPaths": [
+		{
+			"shell": "bash",
+			"mode": "login",
+			"commandId": "shell-bash-login",
+			"bunPath": "/home/vscode/.proto/shims/bun",
+			"protoPath": "/home/vscode/.proto/bin/proto",
+			"path": "/workspace/node_modules/.bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/workspace/node_modules/.bin:/home/vscode/.local/bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games"
+		},
+		{
+			"shell": "bash",
+			"mode": "non-login",
+			"commandId": "shell-bash-non-login",
+			"bunPath": "/home/vscode/.proto/shims/bun",
+			"protoPath": "/home/vscode/.proto/bin/proto",
+			"path": "/workspace/node_modules/.bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+		},
+		{
+			"shell": "zsh",
+			"mode": "login",
+			"commandId": "shell-zsh-login",
+			"bunPath": "/home/vscode/.proto/shims/bun",
+			"protoPath": "/home/vscode/.proto/bin/proto",
+			"path": "/workspace/node_modules/.bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/workspace/node_modules/.bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+		},
+		{
+			"shell": "zsh",
+			"mode": "non-login",
+			"commandId": "shell-zsh-non-login",
+			"bunPath": "/home/vscode/.proto/shims/bun",
+			"protoPath": "/home/vscode/.proto/bin/proto",
+			"path": "/workspace/node_modules/.bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+		}
+	],
+	"secondWorktreeStorage": {
+		"commandId": "second-worktree-storage",
+		"primaryContainerId": "16c2bc651a464e411170096ef439a080c5f6f48733df08e71be3076105acebb9",
+		"secondContainerId": "1915f77b50a5446853890da9c28df5b7d1bd71990a816980f586c14e20809dbf",
+		"primaryImageId": "sha256:75c7d1c23c7cb24c1649dd4e94884a9a4bb27a75fbc8a860e71fa11b85cbe175",
+		"secondImageId": "sha256:75c7d1c23c7cb24c1649dd4e94884a9a4bb27a75fbc8a860e71fa11b85cbe175",
+		"primaryContainerWritableBytes": 274432,
+		"secondContainerWritableBytes": 274432,
+		"secondCheckoutBytes": 4198400,
+		"volumeBytes": 0,
+		"observedBytes": 4472832,
+		"stageZeroBaselineBytes": 96111608,
+		"imageProtoBytes": 1366372352,
+		"protoVolumeCount": 0,
+		"protoMountCount": 0,
+		"operations": [
+			[
+				"git",
+				"worktree",
+				"add",
+				"--detach",
+				"/tmp/devenv-stage2-stage2-20260715t142339z-b2e18c63/second-worktree",
+				"69a97d84e2591242265887a7c062bbb0853b5ca9"
+			],
+			[
+				"docker",
+				"image",
+				"inspect",
+				"--format",
+				"{{.Id}}",
+				"devenv-stage2-stage2-20260715t142339z-b2e18c63"
+			],
+			[
+				"docker",
+				"run",
+				"--rm",
+				"--label",
+				"com.devenv.evidence.run=stage2-20260715t142339z-b2e18c63",
+				"devenv-stage2-stage2-20260715t142339z-b2e18c63",
+				"sh",
+				"-c",
+				"du -sk /home/vscode/.proto | cut -f1"
+			],
+			[
+				"docker",
+				"create",
+				"--label",
+				"com.devenv.evidence.run=stage2-20260715t142339z-b2e18c63",
+				"--label",
+				"com.devenv.evidence.slot=primary",
+				"--mount",
+				"type=bind,src=/Users/mrcr/.codex/worktrees/stage2-image/devenv,dst=/workspace,readonly",
+				"devenv-stage2-stage2-20260715t142339z-b2e18c63",
+				"sleep",
+				"infinity"
+			],
+			[
+				"docker",
+				"create",
+				"--label",
+				"com.devenv.evidence.run=stage2-20260715t142339z-b2e18c63",
+				"--label",
+				"com.devenv.evidence.slot=second",
+				"--mount",
+				"type=bind,src=/tmp/devenv-stage2-stage2-20260715t142339z-b2e18c63/second-worktree,dst=/workspace,readonly",
+				"devenv-stage2-stage2-20260715t142339z-b2e18c63",
+				"sleep",
+				"infinity"
+			],
+			[
+				"docker",
+				"start",
+				"16c2bc651a464e411170096ef439a080c5f6f48733df08e71be3076105acebb9"
+			],
+			[
+				"docker",
+				"start",
+				"1915f77b50a5446853890da9c28df5b7d1bd71990a816980f586c14e20809dbf"
+			],
+			[
+				"docker",
+				"inspect",
+				"--size",
+				"16c2bc651a464e411170096ef439a080c5f6f48733df08e71be3076105acebb9"
+			],
+			[
+				"docker",
+				"inspect",
+				"--size",
+				"1915f77b50a5446853890da9c28df5b7d1bd71990a816980f586c14e20809dbf"
+			],
+			[
+				"du",
+				"-sk",
+				"/tmp/devenv-stage2-stage2-20260715t142339z-b2e18c63/second-worktree"
+			],
+			[
+				"docker",
+				"rm",
+				"-f",
+				"16c2bc651a464e411170096ef439a080c5f6f48733df08e71be3076105acebb9",
+				"1915f77b50a5446853890da9c28df5b7d1bd71990a816980f586c14e20809dbf"
+			],
+			[
+				"git",
+				"worktree",
+				"remove",
+				"--force",
+				"/tmp/devenv-stage2-stage2-20260715t142339z-b2e18c63/second-worktree"
+			]
+		]
+	},
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-2-pr-merge-commit>"],
+		"runtimeCleanup": [
+			[
+				"docker",
+				"ps",
+				"-aq",
+				"--filter",
+				"label=com.devenv.evidence.run=stage2-20260715t142339z-b2e18c63"
+			],
+			["docker", "rm", "-f", "<run-labeled-container-ids>"],
+			[
+				"docker",
+				"volume",
+				"ls",
+				"-q",
+				"--filter",
+				"label=com.devenv.evidence.run=stage2-20260715t142339z-b2e18c63"
+			],
+			["docker", "volume", "rm", "<run-labeled-volume-names>"],
+			[
+				"docker",
+				"image",
+				"rm",
+				"devenv-stage2-stage2-20260715t142339z-b2e18c63"
+			],
+			["git", "worktree", "remove", "--force", "<stage-2-temporary-worktrees>"]
+		],
+		"scope": "Revert the atomic Stage 2 merge and remove only resources selected by the captured run label and image tag.",
+		"proof": {
+			"commandId": "rollback-proof",
+			"predecessorSha": "4367bad6e2cb49e4c969a61b892634347ed0bf24",
+			"implementationSha": "69a97d84e2591242265887a7c062bbb0853b5ca9",
+			"syntheticMergeSha": "a83e2fe5957ecd04c475eef819181b0420ed98b9",
+			"syntheticMergeTree": "1bdbcec1369f1b3a0291b8f44718e1cf98af36aa",
+			"syntheticMergeParents": [
+				"4367bad6e2cb49e4c969a61b892634347ed0bf24",
+				"69a97d84e2591242265887a7c062bbb0853b5ca9"
+			],
+			"predecessorTree": "80081f0096eedaab06acd255c163b9f987477554",
+			"revertedTree": "80081f0096eedaab06acd255c163b9f987477554",
+			"treeMatchesPredecessor": true,
+			"operations": [
+				["git", "rev-parse", "4367bad6e2cb49e4c969a61b892634347ed0bf24^{tree}"],
+				["git", "rev-parse", "69a97d84e2591242265887a7c062bbb0853b5ca9^{tree}"],
+				[
+					"git",
+					"worktree",
+					"add",
+					"--detach",
+					"/tmp/devenv-stage2-stage2-20260715t142339z-b2e18c63/rollback-worktree",
+					"4367bad6e2cb49e4c969a61b892634347ed0bf24"
+				],
+				[
+					"git",
+					"commit-tree",
+					"1bdbcec1369f1b3a0291b8f44718e1cf98af36aa",
+					"-p",
+					"4367bad6e2cb49e4c969a61b892634347ed0bf24",
+					"-p",
+					"69a97d84e2591242265887a7c062bbb0853b5ca9",
+					"-m",
+					"Stage 2 synthetic merge"
+				],
+				["git", "rev-parse", "a83e2fe5957ecd04c475eef819181b0420ed98b9^{tree}"],
+				[
+					"git",
+					"show",
+					"-s",
+					"--format=%P",
+					"a83e2fe5957ecd04c475eef819181b0420ed98b9"
+				],
+				[
+					"git",
+					"checkout",
+					"--detach",
+					"a83e2fe5957ecd04c475eef819181b0420ed98b9"
+				],
+				[
+					"git",
+					"revert",
+					"--no-edit",
+					"-m",
+					"1",
+					"a83e2fe5957ecd04c475eef819181b0420ed98b9"
+				],
+				["git", "rev-parse", "HEAD^{tree}"]
+			]
+		}
+	}
+}

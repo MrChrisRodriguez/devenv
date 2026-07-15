@@ -337,6 +337,10 @@ async function renderDevcontainer(
 		parameters.paths.container_workspace,
 	) as Record<string, unknown>;
 	transformed["name"] = parameters.project.display_name;
+	const build = transformed["build"] as Record<string, unknown>;
+	build["target"] = parameters.capabilities.defaults["playwright"]
+		? "development_browser"
+		: "development";
 	const containerEnv = transformed["containerEnv"] as Record<string, unknown>;
 	containerEnv["DEVCONTAINER_PROJECT"] = parameters.project.slug;
 	const ports = parameters.advertised_ports
@@ -457,8 +461,8 @@ export function filterCapabilityBlocks(
 	let block: string | undefined;
 	let retain = false;
 	for (const line of source.split("\n")) {
-		const start = /^\s*\/\/ capability:start ([a-z0-9_]+)$/.exec(line);
-		const end = /^\s*\/\/ capability:end ([a-z0-9_]+)$/.exec(line);
+		const start = /^\s*(?:\/\/|#) capability:start ([a-z0-9_]+)$/.exec(line);
+		const end = /^\s*(?:\/\/|#) capability:end ([a-z0-9_]+)$/.exec(line);
 		if (start?.[1]) {
 			if (block) throw new Error(`Nested capability block ${start[1]}`);
 			block = start[1];
@@ -675,7 +679,11 @@ async function renderContent(
 	content = stripTemplateOnlyBlocks(content)
 		.replaceAll("/workspace", parameters.paths.container_workspace)
 		.replaceAll("@confiador/", `@${parameters.project.slug}/`);
-	if (entry.path === "scripts/template/toolchain.ts")
+	if (
+		entry.path === "scripts/template/toolchain.ts" ||
+		entry.path === "scripts/template/image-contract.ts" ||
+		entry.path === ".devcontainer/Dockerfile"
+	)
 		content = filterCapabilityBlocks(content, parameters.capabilities.defaults);
 	if (entry.path === "AGENTS.md")
 		content = filterAgentRuleLines(content, parameters);

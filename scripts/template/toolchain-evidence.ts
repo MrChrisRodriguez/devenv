@@ -4,6 +4,8 @@ import { validateJsonSchema } from "./json-schema";
 import { syntheticMergeMetadata } from "./prove-stage-one-revert";
 import { resolvedVersions } from "./toolchain";
 
+const STAGE_ONE_MERGE_SHA = "4367bad6e2cb49e4c969a61b892634347ed0bf24";
+
 const REQUIRED_MUTATIONS = [
 	"catalog-floating",
 	"catalog-bypass",
@@ -224,6 +226,29 @@ function gitOutput(
 	};
 }
 
+function gitFile(
+	root: string,
+	commit: string,
+	path: string,
+): Uint8Array | undefined {
+	const result = Bun.spawnSync({
+		cmd: ["git", "show", `${commit}:${path}`],
+		cwd: root,
+		stdout: "pipe",
+		stderr: "ignore",
+	});
+	return result.exitCode === 0 ? new Uint8Array(result.stdout) : undefined;
+}
+
+function gitFileText(
+	root: string,
+	commit: string,
+	path: string,
+): string | undefined {
+	const bytes = gitFile(root, commit, path);
+	return bytes === undefined ? undefined : new TextDecoder().decode(bytes);
+}
+
 async function validateBoundLogs(
 	root: string,
 	entry: JsonRecord,
@@ -427,6 +452,19 @@ export async function validateStageOneEvidence(
 	const schema = (await Bun.file(schemaPath).json()) as JsonRecord;
 	const errors = validateStageOneEvidenceValue(value, schema);
 	if (!isRecord(value)) return errors;
+	const implementationSha = recordAt(value, "source")["implementationSha"];
+	const snapshot = (path: string): string => {
+		if (typeof implementationSha !== "string") {
+			errors.push("repository: Stage 1 implementation commit is unavailable");
+			return "";
+		}
+		const text = gitFileText(root, implementationSha, path);
+		if (text === undefined) {
+			errors.push(`repository: Stage 1 snapshot ${path} is unavailable`);
+			return "";
+		}
+		return text;
+	};
 
 	const run = recordAt(value, "run");
 	const resultsReference = recordAt(run, "results");
@@ -557,9 +595,7 @@ export async function validateStageOneEvidence(
 			errors.push(`repository: rollback captured output omits ${required}`);
 	}
 
-	const packageValue = (await Bun.file(
-		resolve(root, "package.json"),
-	).json()) as JsonRecord;
+	const packageValue = JSON.parse(snapshot("package.json")) as JsonRecord;
 	const catalog = recordAt(recordAt(packageValue, "workspaces"), "catalog");
 	const evidenceCatalog = recordAt(recordAt(value, "catalog"), "packages");
 	if (!sameValue(evidenceCatalog, catalog))
@@ -569,9 +605,7 @@ export async function validateStageOneEvidence(
 	)
 		errors.push("repository: evidence catalog count is inconsistent");
 
-	const protoValue = Bun.TOML.parse(
-		await Bun.file(resolve(root, ".prototools")).text(),
-	) as JsonRecord;
+	const protoValue = Bun.TOML.parse(snapshot(".prototools")) as JsonRecord;
 	const selectedTools = Object.fromEntries(
 		Object.entries(protoValue).filter(
 			([name, version]) =>
@@ -602,9 +636,7 @@ export async function validateStageOneEvidence(
 			"repository: evidence Proto plugin commits differ from .prototools",
 		);
 
-	const checksumText = await Bun.file(
-		resolve(root, ".devcontainer/proto-checksums.txt"),
-	).text();
+	const checksumText = snapshot(".devcontainer/proto-checksums.txt");
 	const checksumMap: JsonRecord = {};
 	for (const line of checksumText.trim().split("\n")) {
 		const match = /^([0-9a-f]{64}) {2}proto_cli-(x86_64|aarch64)-/.exec(line);
@@ -616,7 +648,7 @@ export async function validateStageOneEvidence(
 			"repository: evidence Proto checksums differ from checksum metadata",
 		);
 
-	const lockText = await Bun.file(resolve(root, "bun.lock")).text();
+	const lockText = snapshot("bun.lock");
 	const locked = (packageName: string): string =>
 		resolvedVersions(lockText, packageName)[0] ?? "";
 	const coupledFamilies = {
@@ -656,25 +688,41 @@ export async function validateStageOneEvidence(
 		const lock = recordAt(locks, name);
 		if (lock["path"] !== expectedPath)
 			errors.push(`repository: evidence ${name} lock path is incorrect`);
-		else {
-			const bytes = new Uint8Array(
-				await Bun.file(resolve(root, expectedPath)).arrayBuffer(),
+		else if (typeof implementationSha !== "string")
+			errors.push(
+				`repository: evidence ${name} lock implementation is unavailable`,
 			);
-			if (lock["sha256"] !== sha256(bytes))
+		else {
+			const bytes = gitFile(root, implementationSha, expectedPath);
+			if (bytes === undefined)
+				errors.push(
+					`repository: evidence ${name} lock snapshot is unavailable`,
+				);
+			else if (lock["sha256"] !== sha256(bytes))
 				errors.push(`repository: evidence ${name} lock digest drifted`);
 		}
 	}
-	const featureLock = (await Bun.file(
-		resolve(root, ".devcontainer/devcontainer-lock.json"),
-	).json()) as JsonRecord;
-	if (
-		recordAt(locks, "features")["count"] !==
-		Object.keys(recordAt(featureLock, "features")).length
-	)
-		errors.push("repository: evidence feature lock count is inconsistent");
+	if (typeof implementationSha === "string") {
+		const featureLockBytes = gitFile(
+			root,
+			implementationSha,
+			".devcontainer/devcontainer-lock.json",
+		);
+		if (featureLockBytes === undefined)
+			errors.push("repository: evidence feature lock snapshot is unavailable");
+		else {
+			const featureLock = JSON.parse(
+				new TextDecoder().decode(featureLockBytes),
+			) as JsonRecord;
+			if (
+				recordAt(locks, "features")["count"] !==
+				Object.keys(recordAt(featureLock, "features")).length
+			)
+				errors.push("repository: evidence feature lock count is inconsistent");
+		}
+	}
 
 	const baseSha = recordAt(value, "source")["baseSha"];
-	const implementationSha = recordAt(value, "source")["implementationSha"];
 	if (typeof baseSha !== "string")
 		errors.push("repository: Stage 1 base commit is unavailable");
 	else {
@@ -759,42 +807,39 @@ export async function validateStageOneEvidence(
 						);
 				}
 			}
-			const boundaryDiff = gitOutput(root, [
+			if (
+				git(root, ["cat-file", "-e", `${STAGE_ONE_MERGE_SHA}^{commit}`]) !== 0
+			)
+				errors.push("repository: Stage 1 merge seal is unavailable");
+			else if (
+				git(root, [
+					"merge-base",
+					"--is-ancestor",
+					STAGE_ONE_MERGE_SHA,
+					"HEAD",
+				]) !== 0
+			)
+				errors.push(
+					"repository: Stage 1 merge seal is not an ancestor of HEAD",
+				);
+			const evidenceDiff = gitOutput(root, [
 				"diff",
 				"--name-only",
-				implementationSha,
+				STAGE_ONE_MERGE_SHA,
 				"HEAD",
+				"--",
+				"evidence/stage-1-toolchain.json",
+				"evidence/stage-1-toolchain-results.json",
+				"evidence/stage-1-toolchain.schema.json",
+				"evidence/stage-1-toolchain-run",
 			]);
-			if (boundaryDiff.exitCode !== 0)
+			if (evidenceDiff.exitCode !== 0)
+				errors.push("repository: Stage 1 merge seal could not be inspected");
+			else if (evidenceDiff.stdout !== "")
 				errors.push(
-					"repository: Stage 1 evidence boundary could not be inspected",
+					`repository: Stage 1 sealed evidence changed: ${evidenceDiff.stdout.replaceAll("\n", ", ")}`,
 				);
-			else {
-				for (const path of boundaryDiff.stdout.split("\n").filter(Boolean)) {
-					if (
-						path !== "evidence/stage-1-toolchain.json" &&
-						path !== "evidence/stage-1-toolchain-results.json" &&
-						!path.startsWith("evidence/stage-1-toolchain-run/")
-					)
-						errors.push(
-							`repository: post-implementation boundary changes non-evidence path ${path}`,
-						);
-				}
-			}
 		}
 	}
-	if (recordAt(value, "source")["featureTreeClean"] === true) {
-		const status = gitOutput(root, [
-			"status",
-			"--porcelain=v1",
-			"--untracked-files=all",
-			"--",
-			".",
-			":(exclude)graphify-out/**",
-		]);
-		if (status.exitCode !== 0 || status.stdout !== "")
-			errors.push("repository: non-Graphify feature tree is not clean");
-	}
-
 	return [...new Set(errors)].sort();
 }

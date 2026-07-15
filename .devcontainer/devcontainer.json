@@ -1,32 +1,46 @@
 {
 	"name": "Development",
 	"build": {
-		"dockerfile": "Dockerfile"
+		"dockerfile": "Dockerfile",
+		"context": "..",
+		"target": "development"
 	},
 	"features": {
-		"ghcr.io/devcontainers/features/docker-in-docker:2": {
-			"moby": false
-		},
-		"ghcr.io/devcontainers/features/git:1": {},
-		"ghcr.io/devcontainers/features/github-cli:1": {},
-		"ghcr.io/devcontainers/features/common-utils:2": {
-			"installZsh": true,
-			"configureZshAsDefaultShell": true,
-			"installOhMyZsh": false,
-			"username": "vscode",
-			"userUid": "automatic",
-			"userGid": "automatic"
-		}
+		"ghcr.io/devcontainers/features/github-cli:1": {}
 	},
 	"initializeCommand": [
 		"bash",
 		"${localWorkspaceFolder}/.devcontainer/host/capture-warp-env.sh"
 	],
-	"onCreateCommand": ["bash", "/workspace/.devcontainer/on-create.sh"],
-	"postCreateCommand": [
-		"bash",
+	"onCreateCommand": [
+		"/usr/bin/env",
+		"-u",
+		"BASH_ENV",
+		"-u",
+		"ENV",
+		"-u",
+		"BUN_OPTIONS",
+		"-u",
+		"NODE_OPTIONS",
+		"/bin/bash",
+		"-p",
 		"-c",
-		"export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
+		"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && exec /bin/bash -p /workspace/.devcontainer/on-create.sh"
+	],
+	"postCreateCommand": [
+		"/usr/bin/env",
+		"-u",
+		"BASH_ENV",
+		"-u",
+		"ENV",
+		"-u",
+		"BUN_OPTIONS",
+		"-u",
+		"NODE_OPTIONS",
+		"/bin/bash",
+		"-p",
+		"-c",
+		"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
 	],
 	"customizations": {
 		"vscode": {
@@ -77,9 +91,19 @@
 		}
 	},
 	"postStartCommand": [
-		"bash",
+		"/usr/bin/env",
+		"-u",
+		"BASH_ENV",
+		"-u",
+		"ENV",
+		"-u",
+		"BUN_OPTIONS",
+		"-u",
+		"NODE_OPTIONS",
+		"/bin/bash",
+		"-p",
 		"-c",
-		"bash /workspace/.devcontainer/on-create/setup-secrets.sh; export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
+		"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && /bin/bash /workspace/.devcontainer/on-create/setup-secrets.sh; export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
 	],
 	"waitFor": "postStartCommand",
 	"forwardPorts": [3000, 4000, 8080, 8787],
@@ -109,7 +133,6 @@
 		"source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
 		"source=codex-home-${devcontainerId},target=/home/vscode/.codex,type=volume",
 		"source=gemini-home-${devcontainerId},target=/home/vscode/.gemini,type=volume",
-		"source=proto-home-${devcontainerId},target=/home/vscode/.proto,type=volume",
 		"source=config-home-${devcontainerId},target=/home/vscode/.config,type=volume",
 		"source=${localEnv:HOME}/.ssh,target=/mnt/host-ssh,type=bind,readonly,consistency=cached",
 		"source=${localEnv:HOME}/.config/devcontainer,target=/run/devcontainer-config,type=bind,readonly,consistency=cached"

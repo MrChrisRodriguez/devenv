@@ -33,6 +33,9 @@ jobs:
       - name: Validate toolchain contract
         run: bun run toolchain:check
 
+      - name: Validate image contract
+        run: bun run image:check
+
       - name: Lint
         run: bunx biome check --no-errors-on-unmatched .
 
@@ -52,3 +55,16 @@ jobs:
           bun run template:typecheck
           bun run template:fixtures "${RUNNER_TEMP}/template-fixtures"
       # template-only:end stage-zero-baseline
+
+  image:
+    name: Build devcontainer image
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build selected image target
+        run: |
+          target="$(jq -r '.build.target' .devcontainer/devcontainer.json)"
+          docker build --progress=plain --target "$target" -f .devcontainer/Dockerfile .
