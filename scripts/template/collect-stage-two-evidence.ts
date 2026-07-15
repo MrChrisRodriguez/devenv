@@ -772,7 +772,9 @@ function activeStatusPaths(root: string): string[] {
 		.filter(Boolean)
 		.filter((line) => {
 			const path = line.slice(3);
-			return !path.startsWith("graphify-out/");
+			return (
+				!path.startsWith("graphify-out/") && !path.startsWith(`${LOG_ROOT}/`)
+			);
 		});
 }
 
