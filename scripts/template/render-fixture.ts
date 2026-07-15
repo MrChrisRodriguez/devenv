@@ -42,6 +42,7 @@ export interface PackageRule {
 	capability: string;
 	sections: string[];
 	packages: string[];
+	scripts?: string[];
 }
 
 export interface CapabilitySignature {
@@ -338,9 +339,21 @@ async function renderDevcontainer(
 	) as Record<string, unknown>;
 	transformed["name"] = parameters.project.display_name;
 	const build = transformed["build"] as Record<string, unknown>;
-	build["target"] = parameters.capabilities.defaults["playwright"]
-		? "development_browser"
-		: "development";
+	const playwrightEnabled = parameters.capabilities.defaults["playwright"];
+	build["target"] = playwrightEnabled ? "development_browser" : "development";
+	if (playwrightEnabled) {
+		const postCreate = transformed["postCreateCommand"];
+		if (
+			!Array.isArray(postCreate) ||
+			postCreate.length < 3 ||
+			typeof postCreate[2] !== "string"
+		) {
+			throw new Error(
+				"Browser-enabled fixture requires a shell postCreateCommand",
+			);
+		}
+		postCreate[2] = `${postCreate[2]}; bun run browser:preflight`;
+	}
 	const containerEnv = transformed["containerEnv"] as Record<string, unknown>;
 	containerEnv["DEVCONTAINER_PROJECT"] = parameters.project.slug;
 	if (!parameters.capabilities.defaults["claude_octopus"])
@@ -410,6 +423,14 @@ async function renderPackage(
 	}
 	for (const rule of ownership.packageRules) {
 		if (parameters.capabilities.defaults[rule.capability] === true) continue;
+		if (
+			typeof scripts === "object" &&
+			scripts !== null &&
+			!Array.isArray(scripts)
+		) {
+			for (const script of rule.scripts ?? [])
+				delete (scripts as Record<string, unknown>)[script];
+		}
 		for (const sectionPath of rule.sections) {
 			let section: unknown = value;
 			for (const segment of sectionPath.split(".")) {
@@ -551,6 +572,15 @@ function filterAgentRuleLines(
 	return source
 		.split("\n")
 		.filter((line) => {
+			if (
+				!parameters.capabilities.defaults["playwright"] &&
+				(line.includes("Browser Runtime Ownership") ||
+					line.includes("Playwright") ||
+					line.includes("browser-enabled") ||
+					line.includes("browser:check"))
+			) {
+				return false;
+			}
 			if (
 				!parameters.capabilities.defaults["cloudflare_workers"] &&
 				line.includes("Cloudflare package family")

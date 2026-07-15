@@ -41,6 +41,18 @@ The replacement run `stage2-20260715t142339z-b2e18c63` executed both supported a
 - `.codex/skills/graphify`, `.claude/skills/graphify`, `.gemini/skills/graphify` — agent-specific Graphify discovery without the duplicate shared root.
 - `scripts/template/agent-payload-contract.ts`, image contract/tests, fixture/ownership renderer — structural, mutation, skill-discovery, PATH, and capability omission proof.
 - `docs/devcontainer-upgrade/stage-3/agent-payloads.md`, `AGENTS.md`, `README.md` — maintenance, verification, and rollback contract.
+## 2026-07-15 — Add: capability-owned Playwright browser runtime
+
+**Goal:** Make the optional browser profile reproducible and executable instead of treating an installed package or downloaded browser directory as proof of health. The Playwright package family, Docker payload, system libraries, generated profile, and runtime launch now form one capability-owned contract while browser-disabled projects contain no related residue.
+
+**How to implement:** Keep `@playwright/test`, `playwright`, and `playwright-core` at one exact catalog/lock version and require the Docker `PLAYWRIGHT_VERSION` to match it. Build only Chromium's headless shell plus Playwright's matching FFmpeg in the isolated browser payload, assert both executables exist, and assemble them with the complete Debian runtime/font library set only in `development_browser`. Use the repository-local `browser:preflight` command to resolve the image-owned executable, launch headlessly, load and verify a network-free data page, and close the page and browser. Render the guard, dependencies, scripts, Docker stages, generated post-create invocation, and CI browser-build/launch job only when Playwright is selected. The template source keeps its non-browser default but CI renders the full fixture and launches its baked payload. Run `browser:check`, the known-bad mutation tests, and a real `development_browser` container preflight. Roll back the package/lock/Docker/runtime/rendering bundle together; never install a system browser or unpinned fallback. The implementation was adapted from the reviewed Trading Games browser contract at commit `772996964cea7b2ac812e99ec3f8f9d490124630`.
+
+**Changed files:**
+- `.devcontainer/Dockerfile` — isolated exact browser/FFmpeg payload verification and complete runtime libraries.
+- `scripts/browser-preflight.ts`, `scripts/template/browser-contract.ts`, `scripts/template/validate-browser.ts` — real launch check and dedicated coherence guard.
+- `package.json`, `.github/workflows/ci.yml`, renderer/ownership/tests — capability-complete scripts, post-create/CI wiring, omission, and mutation proof.
+- `AGENTS.md` — ongoing atomic Playwright ownership and validation rules.
+
 ## 2026-07-14 — Add: reproducible payload-oriented devcontainer image
 
 **Goal:** Move the complete development toolchain out of per-container mutation and into independently cached, capability-rendered image payloads. Every image download, Proto partition, retained feature, marker, and runtime verification path now has one exact owner, while stale definitions fail closed instead of silently repairing themselves.

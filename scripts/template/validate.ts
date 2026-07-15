@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { validateBrowserContract } from "./browser-contract";
 import { validateStageZeroEvidence } from "./evidence";
 import { validateStageTwoEvidence } from "./image-evidence";
 import { validateJsonSchema } from "./json-schema";
@@ -89,6 +90,11 @@ export async function validateAll(
 			report.errors.push(
 				...toolchainErrors.map((error) => `toolchain: ${error}`),
 			);
+		}
+		const browserErrors = await validateBrowserContract(root);
+		if (browserErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...browserErrors.map((error) => `browser: ${error}`));
 		}
 		const toolchainEvidenceErrors = await validateStageOneEvidence(root);
 		if (toolchainEvidenceErrors.length > 0) {

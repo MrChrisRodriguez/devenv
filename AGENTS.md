@@ -86,6 +86,13 @@ scripts/   # one-off tooling scripts
 <!-- capability:end claude_warp -->
 - Skill names must be unique across each agent's effective project/shared discovery roots. Graphify is agent-specific at `.codex/skills/graphify`, `.claude/skills/graphify`, and `.gemini/skills/graphify`; do not restore `.agents/skills/graphify`.
 
+## Browser Runtime Ownership
+
+- The Playwright catalog pin, `@playwright/test`/`playwright`/`playwright-core` lock resolutions, Docker `PLAYWRIGHT_VERSION`, baked headless shell, and FFmpeg payload are one atomic version family.
+- Browser-enabled profiles use only `scripts/browser-preflight.ts` for launch verification. It must load and verify a repository-local page, close the page and browser, and resolve the executable from `PLAYWRIGHT_BROWSERS_PATH` when the image owns the payload.
+- Playwright dependencies, image stages, package scripts, preflight, CI job, post-create wiring, documentation, and agent rules must all be omitted when the capability is disabled.
+- Run `bun run browser:check` and the real `development_browser` image preflight after changing any Playwright authority, browser library, renderer rule, or browser-profile command.
+
 ## Commit Policy
 
 ALWAYS commit and push after completing each significant change. Do NOT wait for the user to ask. Before committing, update `/workspace/CHANGES.md` with a dated entry (Goal + How to implement).

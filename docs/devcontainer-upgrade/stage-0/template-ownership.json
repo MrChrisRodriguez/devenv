@@ -149,6 +149,20 @@
 			"sourceOfTruth": "agent payload and skill-discovery contract"
 		},
 		{
+			"pattern": "scripts/template/validate-browser.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "browser runtime contract entrypoint"
+		},
+		{
+			"pattern": "scripts/template/browser-contract.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "browser runtime contract"
+		},
+		{
 			"pattern": "scripts/template/**",
 			"classification": "template-tooling",
 			"syncPolicy": "merge",
@@ -276,6 +290,18 @@
 			"pattern": "tsconfig.stagehand.base.json",
 			"requiresAll": ["playwright"]
 		},
+		{
+			"pattern": "scripts/browser-preflight.ts",
+			"requiresAll": ["playwright"]
+		},
+		{
+			"pattern": "scripts/template/browser-contract.ts",
+			"requiresAll": ["playwright"]
+		},
+		{
+			"pattern": "scripts/template/validate-browser.ts",
+			"requiresAll": ["playwright"]
+		},
 		{ "pattern": ".codex/**", "requiresAll": ["codex"] },
 		{
 			"pattern": ".codex/skills/graphify/**",
@@ -370,7 +396,8 @@
 		{
 			"capability": "playwright",
 			"sections": ["workspaces.catalog", "devDependencies"],
-			"packages": ["@playwright/test"]
+			"packages": ["@playwright/test"],
+			"scripts": ["browser:check", "browser:preflight"]
 		},
 		{
 			"capability": "rhf_zod",
@@ -419,7 +446,12 @@
 		},
 		"openspec": { "paths": [], "tokens": ["@fission-ai/openspec"] },
 		"playwright": {
-			"paths": ["tsconfig.stagehand.base.json", "scripts/browser-preflight.ts"],
+			"paths": [
+				"tsconfig.stagehand.base.json",
+				"scripts/browser-preflight.ts",
+				"scripts/template/browser-contract.ts",
+				"scripts/template/validate-browser.ts"
+			],
 			"tokens": ["playwright"]
 		},
 		"rhf_zod": {
