@@ -576,10 +576,12 @@ export function validateStageTwoEvidenceValue(
 			BASH_ENV: "/workspace/preverify-bash-env.sh",
 			"BASH_FUNC_source%%":
 				"() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }",
+			BUN_OPTIONS: "--preload=/workspace/preverify-bun-options.ts",
 		}) ||
 		stale["preVerificationShadowExecution"] !== false ||
 		stale["preVerificationBashEnvExecution"] !== false ||
 		stale["preVerificationExportedFunctionExecution"] !== false ||
+		stale["preVerificationBunOptionsExecution"] !== false ||
 		!sameValue(stale["shadowUtilityPaths"], [
 			"/workspace/node_modules/.bin/readlink",
 			"/workspace/node_modules/.bin/sha256sum",

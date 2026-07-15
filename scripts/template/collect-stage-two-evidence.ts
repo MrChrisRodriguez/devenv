@@ -71,10 +71,12 @@ interface StaleProbe {
 		DEVCONTAINER_IMAGE_CONTRACT_DIR: "/workspace/contract-marker-override";
 		BASH_ENV: "/workspace/preverify-bash-env.sh";
 		"BASH_FUNC_source%%": "() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }";
+		BUN_OPTIONS: "--preload=/workspace/preverify-bun-options.ts";
 	};
 	preVerificationShadowExecution: false;
 	preVerificationBashEnvExecution: false;
 	preVerificationExportedFunctionExecution: false;
+	preVerificationBunOptionsExecution: false;
 	containerExitCode: number;
 	refused: true;
 	diagnostic: string;
@@ -306,6 +308,10 @@ export async function probeStale(options_: {
 			resolve(workspace, "preverify-bash-env.sh"),
 			"/bin/echo PREVERIFY_BASH_ENV_EXECUTED >&2\n",
 		);
+		await Bun.write(
+			resolve(workspace, "preverify-bun-options.ts"),
+			'console.error("PREVERIFY_BUN_OPTIONS_EXECUTED");\n',
+		);
 		const shadowTools = ["bun", "bash", "readlink", "sha256sum", "awk", "tr"];
 		const shadowUtilityPaths = shadowTools
 			.filter((tool) => !["bun", "bash"].includes(tool))
@@ -335,6 +341,8 @@ export async function probeStale(options_: {
 			"BASH_ENV=/workspace/preverify-bash-env.sh",
 			"--env",
 			"BASH_FUNC_source%%=() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }",
+			"--env",
+			"BUN_OPTIONS=--preload=/workspace/preverify-bun-options.ts",
 			"--workdir",
 			"/workspace",
 			options_.image,
@@ -343,6 +351,10 @@ export async function probeStale(options_: {
 			"BASH_ENV",
 			"-u",
 			"ENV",
+			"-u",
+			"BUN_OPTIONS",
+			"-u",
+			"NODE_OPTIONS",
 			"/bin/bash",
 			"-p",
 			"/workspace/.devcontainer/on-create.sh",
@@ -370,6 +382,10 @@ export async function probeStale(options_: {
 			throw new Error(
 				`Exported shell function executed before stale-image refusal:\n${diagnostic}`,
 			);
+		if (diagnostic.includes("PREVERIFY_BUN_OPTIONS_EXECUTED"))
+			throw new Error(
+				`BUN_OPTIONS preload executed before stale-image refusal:\n${diagnostic}`,
+			);
 		return {
 			commandId: "stale-image-refusal",
 			mutation:
@@ -387,10 +403,12 @@ export async function probeStale(options_: {
 				BASH_ENV: "/workspace/preverify-bash-env.sh",
 				"BASH_FUNC_source%%":
 					"() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }",
+				BUN_OPTIONS: "--preload=/workspace/preverify-bun-options.ts",
 			},
 			preVerificationShadowExecution: false,
 			preVerificationBashEnvExecution: false,
 			preVerificationExportedFunctionExecution: false,
+			preVerificationBunOptionsExecution: false,
 			containerExitCode: result.exitCode,
 			refused: true,
 			diagnostic,

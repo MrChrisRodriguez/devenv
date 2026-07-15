@@ -156,10 +156,12 @@ function validEvidence(): JsonRecord {
 				BASH_ENV: "/workspace/preverify-bash-env.sh",
 				"BASH_FUNC_source%%":
 					"() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }",
+				BUN_OPTIONS: "--preload=/workspace/preverify-bun-options.ts",
 			},
 			preVerificationShadowExecution: false,
 			preVerificationBashEnvExecution: false,
 			preVerificationExportedFunctionExecution: false,
+			preVerificationBunOptionsExecution: false,
 			containerExitCode: 1,
 			refused: true,
 			diagnostic:

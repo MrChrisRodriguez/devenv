@@ -142,6 +142,7 @@
 				"preVerificationShadowExecution",
 				"preVerificationBashEnvExecution",
 				"preVerificationExportedFunctionExecution",
+				"preVerificationBunOptionsExecution",
 				"containerExitCode",
 				"refused",
 				"diagnostic"
@@ -172,7 +173,8 @@
 						"DEVCONTAINER_REPO_ROOT",
 						"DEVCONTAINER_IMAGE_CONTRACT_DIR",
 						"BASH_ENV",
-						"BASH_FUNC_source%%"
+						"BASH_FUNC_source%%",
+						"BUN_OPTIONS"
 					],
 					"properties": {
 						"DEVCONTAINER_REPO_ROOT": { "const": "/trusted" },
@@ -184,12 +186,16 @@
 						},
 						"BASH_FUNC_source%%": {
 							"const": "() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }"
+						},
+						"BUN_OPTIONS": {
+							"const": "--preload=/workspace/preverify-bun-options.ts"
 						}
 					}
 				},
 				"preVerificationShadowExecution": { "const": false },
 				"preVerificationBashEnvExecution": { "const": false },
 				"preVerificationExportedFunctionExecution": { "const": false },
+				"preVerificationBunOptionsExecution": { "const": false },
 				"containerExitCode": { "type": "integer", "minimum": 1 },
 				"refused": { "const": true },
 				"diagnostic": { "type": "string", "minLength": 20 }

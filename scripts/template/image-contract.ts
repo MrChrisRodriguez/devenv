@@ -328,6 +328,10 @@ export async function validateImageContract(
 		"BASH_ENV",
 		"-u",
 		"ENV",
+		"-u",
+		"BUN_OPTIONS",
+		"-u",
+		"NODE_OPTIONS",
 		"/bin/bash",
 		"-p",
 	];
@@ -390,6 +394,12 @@ export async function validateImageContract(
 	}
 	if (/image_bun=.*\/shims\/bun/.test(setupProto))
 		errors.push("image: setup-proto must not fingerprint through a Proto shim");
+	if (
+		!setupProto.includes(
+			'/usr/bin/env -i DEVCONTAINER_FINGERPRINT_BUN="$image_bun"',
+		)
+	)
+		errors.push("image: setup-proto must isolate the fingerprint environment");
 	for (const override of [
 		"DEVCONTAINER_REPO_ROOT",
 		"DEVCONTAINER_IMAGE_CONTRACT_DIR",

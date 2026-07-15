@@ -72,7 +72,7 @@ for tool_path in "$image_bun" "$image_proto"; do
 	fi
 done
 
-if ! expected_definition="$(DEVCONTAINER_FINGERPRINT_BUN="$image_bun" /bin/bash "$fingerprint_script" "$repo_root")"; then
+if ! expected_definition="$(/usr/bin/env -i DEVCONTAINER_FINGERPRINT_BUN="$image_bun" /bin/bash -p "$fingerprint_script" "$repo_root")"; then
 	rebuild_required "the devcontainer definition fingerprint could not be computed with image-owned Bun"
 	return 1
 fi
@@ -83,7 +83,11 @@ if ! is_sha256 "$actual_definition" || [ "$actual_definition" != "$expected_defi
 fi
 
 for tool_path in "$image_proto" "$image_bun"; do
-	if ! "$tool_path" --version >/dev/null 2>&1; then
+	if ! /usr/bin/env -i \
+		HOME=/home/vscode \
+		PROTO_HOME="$image_proto_home" \
+		PATH=/usr/bin:/bin \
+		"$tool_path" --version >/dev/null 2>&1; then
 		rebuild_required "$tool_path is not executable in the image-owned Proto toolchain"
 		return 1
 	fi

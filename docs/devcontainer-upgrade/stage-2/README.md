@@ -88,7 +88,7 @@ the first nonzero exit:
    print the baked marker and poisoned environment overrides point at a
    pristine decoy checkout plus attacker-controlled markers. The probe invokes
    the real startup-scrubbed on-create lifecycle and rejects pre-verification
-   tool, `BASH_ENV`, and exported-function sentinels.
+   tool, `BASH_ENV`, exported-function, and Bun-preload sentinels.
 6. A real missing-foundation-uv partition mutation.
 7. Bash and Zsh login/non-login PATH probes.
 8. Two real containers over two worktrees, with image identity, writable-layer,

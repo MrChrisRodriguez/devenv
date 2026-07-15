@@ -135,6 +135,16 @@ describe("devcontainer image contract", () => {
 				".devcontainer/on-create/setup-proto.sh",
 				(source) =>
 					source.replace(
+						'/usr/bin/env -i DEVCONTAINER_FINGERPRINT_BUN="$image_bun"',
+						'DEVCONTAINER_FINGERPRINT_BUN="$image_bun"',
+					),
+				"image: setup-proto must isolate the fingerprint environment",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/on-create/setup-proto.sh",
+				(source) =>
+					source.replace(
 						'repo_root="/workspace"',
 						String.raw`repo_root="\${DEVCONTAINER_REPO_ROOT:-/workspace}"`,
 					),
@@ -155,6 +165,13 @@ describe("devcontainer image contract", () => {
 				".devcontainer/devcontainer.json",
 				(source) =>
 					source.replace('"-u",\n\t\t"BASH_ENV",', '"BASH_ENV_NOT_SCRUBBED",'),
+				"image: onCreateCommand must scrub shell startup code before privileged Bash",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/devcontainer.json",
+				(source) =>
+					source.replace('"BUN_OPTIONS"', '"BUN_OPTIONS_NOT_SCRUBBED"'),
 				"image: onCreateCommand must scrub shell startup code before privileged Bash",
 			);
 			await mutate(
