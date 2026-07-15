@@ -335,6 +335,10 @@
 			"requiresAll": ["gemini"]
 		},
 		{
+			"pattern": ".devcontainer/configs/gemini-watchdog",
+			"requiresAll": ["gemini"]
+		},
+		{
 			"pattern": ".devcontainer/on-create/setup-graphify.sh",
 			"requiresAll": ["graphify"]
 		},
@@ -391,6 +395,15 @@
 		"context7": {
 			"paths": [],
 			"tokens": ["context7", "CONTEXT7_API_KEY", "@upstash/context7-mcp"]
+		},
+		"gemini": {
+			"paths": [
+				".devcontainer/configs/gemini-watchdog",
+				".devcontainer/on-create/setup-gemini.sh",
+				".gemini/**",
+				"GEMINI.md"
+			],
+			"tokens": ["gemini_payload", "GEMINI_VERSION", "GEMINI_WATCHDOG"]
 		},
 		"claude_octopus": {
 			"paths": [".devcontainer/on-create/setup-claude-octopus.sh"],
@@ -497,10 +510,10 @@
 			"runtimeMutation": true
 		},
 		{
-			"source": "Gemini package authority",
-			"destination": "$HOME/.bun global package state and $HOME/.bun/bin/gemini",
+			"source": "Dockerfile#GEMINI_VERSION and .devcontainer/configs/gemini-watchdog",
+			"destination": "$HOME/.payloads/gemini/bin/gemini and $HOME/.local/bin/gemini",
 			"generator": ".devcontainer/on-create/setup-gemini.sh",
-			"runtimeMutation": true
+			"runtimeMutation": false
 		},
 		{
 			"source": "Codex package authority",

@@ -72,6 +72,9 @@ scripts/   # one-off tooling scripts
 - Run `bun run image:check` plus the clean image build after changing Docker stages, payload pins, derived Proto manifests, mounts, or on-create ownership.
 - Stage 2 evidence is command-bound to its immutable implementation boundary. Do not hand-edit `evidence/stage-2-image.json` or its raw logs; rerun the documented collector so schema, semantic, digest, architecture, storage, and rollback proofs remain aligned.
 - Agent CLIs are exact image payloads. Runtime setup may verify them but must never download or repair a global agent tool.
+<!-- capability:start gemini -->
+- Gemini's real CLI remains `/home/vscode/.payloads/gemini/bin/gemini`; `/home/vscode/.local/bin/gemini` is the image-owned watchdog. Keep interactive, version, explicit-output-format, and bypass calls pass-through, and run only headless prompts under its bounded streaming process-group contract.
+<!-- capability:end gemini -->
 <!-- capability:start context7 -->
 - Context7 is an exact image payload; MCP settings invoke its launcher directly instead of a floating `bunx` package.
 <!-- capability:end context7 -->

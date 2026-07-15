@@ -137,6 +137,104 @@ function oneArg(
 	return values[0] ?? "";
 }
 
+async function validateGeminiWatchdogContract(
+	root: string,
+	dockerfile: string,
+): Promise<string[]> {
+	const errors: string[] = [];
+	const setupPath = resolve(root, ".devcontainer/on-create/setup-gemini.sh");
+	const watchdogPath = resolve(root, ".devcontainer/configs/gemini-watchdog");
+	const enabled = await Bun.file(setupPath).exists();
+	const watchdogExists = await Bun.file(watchdogPath).exists();
+	if (!enabled) {
+		if (watchdogExists)
+			errors.push("agents: disabled Gemini leaves its watchdog source");
+		return errors;
+	}
+	if (!watchdogExists) {
+		errors.push("agents: enabled Gemini omits its watchdog source");
+		return errors;
+	}
+
+	const watchdog = await Bun.file(watchdogPath).text();
+	if (!watchdog.startsWith("#!/home/vscode/.proto/shims/bun\n"))
+		errors.push("agents: Gemini watchdog must use the Proto-managed Bun shim");
+	for (const [token, label] of [
+		["/home/vscode/.payloads/gemini/bin/gemini", "absolute real payload"],
+		["GEMINI_WATCHDOG_BYPASS", "explicit bypass"],
+		["GEMINI_WATCHDOG_IDLE_SECONDS", "configurable idle bound"],
+		["GEMINI_WATCHDOG_TERM_GRACE_SECONDS", "configurable TERM grace bound"],
+		["GEMINI_WATCHDOG_MAX_PARTIAL_BYTES", "bounded partial-line memory"],
+		['"--output-format", "stream-json"', "stream-json headless mode"],
+		["detached: true", "dedicated child process group"],
+		["process.kill(-pid", "full process-group signalling"],
+		['"SIGTERM"', "TERM escalation"],
+		['"SIGKILL"', "KILL escalation"],
+		["return 124", "timeout exit 124"],
+		["errorCode: 127", "missing-binary exit 127"],
+		["pending.length >= maxPartialBytes", "bounded partial-line decoder"],
+	] as const) {
+		if (!watchdog.includes(token))
+			errors.push(`agents: Gemini watchdog omits ${label}`);
+	}
+	if (
+		!watchdog.includes("hasExplicitOutputFormat") ||
+		!watchdog.includes("hasInteractivePrompt") ||
+		!watchdog.includes("hasHeadlessPrompt")
+	)
+		errors.push("agents: Gemini watchdog omits pass-through classification");
+	if (!watchdog.includes('sanitizeText(event["content"]'))
+		errors.push("agents: Gemini watchdog omits assistant-output sanitization");
+
+	const wrapperCopy =
+		"COPY --link --chown=1000:1000 --chmod=0755 .devcontainer/configs/gemini-watchdog /home/vscode/.local/bin/gemini";
+	if (!dockerfile.split("\n").includes(wrapperCopy))
+		errors.push(
+			"agents: Dockerfile must install the Gemini watchdog at /home/vscode/.local/bin/gemini",
+		);
+	if (
+		/ln\s+-s[^\n]*\.payloads\/gemini\/bin\/gemini[^\n]*\.local\/bin\/gemini/.test(
+			dockerfile,
+		)
+	)
+		errors.push("agents: real Gemini payload must not shadow its watchdog");
+
+	const setup = await Bun.file(setupPath).text();
+	for (const token of [
+		'gemini_wrapper="$HOME/.local/bin/gemini"',
+		'gemini_binary="$HOME/.payloads/gemini/bin/gemini"',
+		'cmp -s "$gemini_wrapper_source" "$gemini_wrapper"',
+		'"$gemini_wrapper" --version',
+	]) {
+		if (!setup.includes(token))
+			errors.push("agents: setup-gemini must verify watchdog and real payload");
+	}
+
+	const ownershipPath = resolve(
+		root,
+		"docs/devcontainer-upgrade/stage-0/template-ownership.json",
+	);
+	if (await Bun.file(ownershipPath).exists()) {
+		const ownership = await readJson(ownershipPath);
+		const artifactRules = Array.isArray(ownership["artifactRules"])
+			? ownership["artifactRules"]
+			: [];
+		const watchdogRule = artifactRules.find(
+			(rule) =>
+				isRecord(rule) &&
+				rule["pattern"] === ".devcontainer/configs/gemini-watchdog",
+		);
+		if (
+			!isRecord(watchdogRule) ||
+			!Array.isArray(watchdogRule["requiresAll"]) ||
+			JSON.stringify(watchdogRule["requiresAll"]) !== '["gemini"]'
+		)
+			errors.push("agents: Gemini watchdog ownership must require Gemini");
+	}
+
+	return errors;
+}
+
 // capability:start context7
 async function validateMcpConfig(
 	root: string,
@@ -222,6 +320,7 @@ export async function validateAgentPayloadContract(
 		resolve(root, ".devcontainer/Dockerfile"),
 	).text();
 	const args = argValues(dockerfile);
+	errors.push(...(await validateGeminiWatchdogContract(root, dockerfile)));
 	const capabilities = [
 		{
 			capability: "codex",

@@ -7,7 +7,12 @@ import {
 	selectArchitectureChecksums,
 	validateImageContract,
 } from "../image-contract";
-import { renderFixture } from "../render-fixture";
+import { loadTemplateParameters } from "../parameters";
+import {
+	filterCapabilityBlocks,
+	loadTemplateOwnership,
+	renderFixture,
+} from "../render-fixture";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 
@@ -17,6 +22,7 @@ const CONTRACT_FILES = [
 	"package.json",
 	"renovate.json",
 	"template-parameters.toml",
+	"docs/devcontainer-upgrade/stage-0/template-ownership.json",
 	".claude/settings.json",
 	".cursor/mcp.json",
 	".claude/skills/graphify/SKILL.md",
@@ -24,6 +30,7 @@ const CONTRACT_FILES = [
 	".gemini/skills/graphify/SKILL.md",
 	".devcontainer/Dockerfile",
 	".devcontainer/configs/.shell_common",
+	".devcontainer/configs/gemini-watchdog",
 	".devcontainer/devcontainer-fingerprint.sh",
 	".devcontainer/devcontainer-lock.json",
 	".devcontainer/devcontainer.json",
@@ -280,6 +287,52 @@ describe("devcontainer image contract", () => {
 					),
 				"agents: bash non-login PATH must prefer workspace and Proto before image launchers",
 			);
+			await mutate(
+				temporary,
+				".devcontainer/configs/gemini-watchdog",
+				(source) =>
+					source.replace(
+						"/home/vscode/.payloads/gemini/bin/gemini",
+						"/home/vscode/.local/bin/gemini-real",
+					),
+				"agents: Gemini watchdog omits absolute real payload",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/configs/gemini-watchdog",
+				(source) => source.replace("detached: true", "detached: false"),
+				"agents: Gemini watchdog omits dedicated child process group",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/Dockerfile",
+				(source) =>
+					source.replace(
+						"/home/vscode/.local/bin/gemini",
+						"/home/vscode/.local/bin/gemini-watchdog",
+					),
+				"agents: Dockerfile must install the Gemini watchdog at /home/vscode/.local/bin/gemini",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/on-create/setup-gemini.sh",
+				(source) =>
+					source.replace(
+						'cmp -s "$gemini_wrapper_source" "$gemini_wrapper"',
+						'test -x "$gemini_wrapper"',
+					),
+				"agents: setup-gemini must verify watchdog and real payload",
+			);
+			await mutate(
+				temporary,
+				"docs/devcontainer-upgrade/stage-0/template-ownership.json",
+				(source) =>
+					source.replace(
+						'"pattern": ".devcontainer/configs/gemini-watchdog",\n\t\t\t"requiresAll": ["gemini"]',
+						'"pattern": ".devcontainer/configs/gemini-watchdog",\n\t\t\t"requiresAll": []',
+					),
+				"agents: Gemini watchdog ownership must require Gemini",
+			);
 
 			const sharedGraphify = resolve(
 				temporary,
@@ -361,6 +414,24 @@ describe("devcontainer image contract", () => {
 		}
 	});
 
+	test("Gemini capability owns and renders the watchdog atomically", async () => {
+		const parameters = await loadTemplateParameters(ROOT);
+		const capabilities = structuredClone(parameters.capabilities.defaults);
+		capabilities["gemini"] = false;
+		const dockerfile = await Bun.file(
+			resolve(ROOT, ".devcontainer/Dockerfile"),
+		).text();
+		const disabled = filterCapabilityBlocks(dockerfile, capabilities);
+		expect(disabled).not.toContain("gemini_payload");
+		expect(disabled).not.toContain("gemini-watchdog");
+
+		const ownership = await loadTemplateOwnership(ROOT);
+		expect(ownership.artifactRules).toContainEqual({
+			pattern: ".devcontainer/configs/gemini-watchdog",
+			requiresAll: ["gemini"],
+		});
+	});
+
 	test("rendered minimal and full images match capability selection", async () => {
 		const temporary = await mkdtemp(resolve(tmpdir(), "devenv-image-render-"));
 		try {
@@ -381,6 +452,14 @@ describe("devcontainer image contract", () => {
 			expect(minimalDockerfile).not.toContain("context7_payload");
 			expect(minimalDockerfile).not.toContain("octopus_payload");
 			expect(minimalDockerfile).not.toContain("warp_payload");
+			expect(minimalDockerfile).toContain(
+				".devcontainer/configs/gemini-watchdog /home/vscode/.local/bin/gemini",
+			);
+			expect(
+				await Bun.file(
+					resolve(minimal, ".devcontainer/configs/gemini-watchdog"),
+				).exists(),
+			).toBe(true);
 			expect(
 				await Bun.file(
 					resolve(minimal, ".devcontainer/on-create/setup-context7.sh"),
@@ -403,6 +482,9 @@ describe("devcontainer image contract", () => {
 			expect(fullDockerfile).toContain("context7_payload");
 			expect(fullDockerfile).toContain("octopus_payload");
 			expect(fullDockerfile).toContain("warp_payload");
+			expect(fullDockerfile).toContain(
+				".devcontainer/configs/gemini-watchdog /home/vscode/.local/bin/gemini",
+			);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}

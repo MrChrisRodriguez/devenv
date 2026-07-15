@@ -18,6 +18,17 @@ The replacement run `stage2-20260715t142339z-b2e18c63` executed both supported a
 - `.devcontainer/Dockerfile`, `.devcontainer/devcontainer.json`, `.devcontainer/devcontainer-fingerprint.sh`, `.devcontainer/on-create/setup-proto.sh` — image-owned verification before mounted checkout setup, absolute fingerprint execution, and realpath enforcement.
 - `scripts/template/image-evidence.ts`, `scripts/template/collect-stage-two-evidence.ts`, evidence schema/tests — uncached architecture proof and non-vacuous log/Git/metric validation.
 - `docs/devcontainer-upgrade/stage-2/README.md`, `scripts/template/image-contract.ts`, image tests — operator contract and regression guards.
+## 2026-07-15 — Add: bounded Gemini headless watchdog
+
+**Goal:** Prevent unattended Gemini prompts from hanging indefinitely without changing interactive behavior, caller-selected output formats, or the exact-pinned Gemini payload. Idle or signalled runs must terminate every process in the child group, report stable exit codes, and never treat malformed output as progress.
+
+**How to implement:** Keep the real CLI at `/home/vscode/.payloads/gemini/bin/gemini` and copy the Proto-Bun watchdog from `.devcontainer/configs/gemini-watchdog` to `/home/vscode/.local/bin/gemini`, where the existing PATH contract shadows the payload. Pass interactive, help/version, prompt-interactive, explicit-format, and `GEMINI_WATCHDOG_BYPASS=1` calls through unchanged. Add `stream-json` only to `-p`/`--prompt` runs; decode JSONL with a bounded partial line, sanitize assistant text, and reset the configurable idle deadline only for valid assistant or tool activity. Run the real CLI in a dedicated process group; on timeout, forwarded signal, or a leader that leaves descendants, signal the group, wait the bounded grace period, escalate to KILL, and reap it. Preserve timeout `124`, missing-binary `127`, configuration `2`, normal child, and `128 + signal` exits. Capability-own the wrapper source, verify both wrapper and payload during on-create, guard the Docker destination and process semantics, and cover pass-through, output, activity, malformed/oversized streams, TERM resistance, signals, and orphan cleanup with a hermetic fake Gemini. Roll back the eventual Stage 3 merge atomically; a temporary operational bypass may set `GEMINI_WATCHDOG_BYPASS=1` while retaining the exact image payload.
+
+**Changed files:**
+- `.devcontainer/configs/gemini-watchdog`, `.devcontainer/Dockerfile`, `.devcontainer/on-create/setup-gemini.sh` — bounded stream watchdog, image shadow path, and fail-closed verification.
+- `scripts/template/agent-payload-contract.ts`, image/watchdog tests and fake Gemini fixture, ownership inventory — structural, capability, mutation, process-group, and exit-code proof.
+- `docs/devcontainer-upgrade/stage-3/agent-payloads.md`, `AGENTS.md` — operator variables, runtime boundary, maintenance rule, and rollback.
+
 ## 2026-07-15 — Add: exact agent and local plugin payload contract
 
 **Goal:** Finish the agent-runtime portion of the Stage 3 image without mutable first-run downloads, duplicate skill discovery, or shell-dependent launcher selection. Codex, Gemini, Claude, Graphify, ccstatusline, Context7, Claude Octopus, and Warp must each have one exact image authority and remain capability-complete when rendered.

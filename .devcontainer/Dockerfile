@@ -255,6 +255,7 @@ COPY --link --from=codex_payload --chown=1000:1000 /home/vscode/.payloads/codex 
 # capability:end codex
 # capability:start gemini
 COPY --link --from=gemini_payload --chown=1000:1000 /home/vscode/.payloads/gemini /home/vscode/.payloads/gemini
+COPY --link --chown=1000:1000 --chmod=0755 .devcontainer/configs/gemini-watchdog /home/vscode/.local/bin/gemini
 # capability:end gemini
 # capability:start ccstatusline
 COPY --link --from=ccstatusline_payload --chown=1000:1000 /home/vscode/.payloads/ccstatusline /home/vscode/.payloads/ccstatusline
@@ -281,9 +282,6 @@ RUN ln -s ../../.payloads/graphify/bin/graphify "${HOME}/.local/bin/graphify" \
 # capability:start codex
 RUN ln -s ../../.payloads/codex/bin/codex "${HOME}/.local/bin/codex"
 # capability:end codex
-# capability:start gemini
-RUN ln -s ../../.payloads/gemini/bin/gemini "${HOME}/.local/bin/gemini"
-# capability:end gemini
 # capability:start ccstatusline
 RUN ln -s ../../.payloads/ccstatusline/bin/ccstatusline "${HOME}/.local/bin/ccstatusline"
 # capability:end ccstatusline

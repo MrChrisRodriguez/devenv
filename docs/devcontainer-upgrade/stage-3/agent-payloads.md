@@ -24,6 +24,42 @@ Docker arguments are the only version/source authorities. Renovate discovers
 package versions and immutable Git commits in isolated, non-automerge changes;
 the image build intentionally fails until every affected checksum is reviewed.
 
+## Gemini headless watchdog
+
+The real exact-pinned Gemini launcher stays at
+`/home/vscode/.payloads/gemini/bin/gemini`. The image copies
+`.devcontainer/configs/gemini-watchdog` to
+`/home/vscode/.local/bin/gemini`, so the normal image PATH selects the
+watchdog without renaming or modifying the payload.
+
+Interactive calls, help/version queries, `--prompt-interactive`, calls with an
+explicit `--output-format`/`-o`, and calls with
+`GEMINI_WATCHDOG_BYPASS=1` pass their arguments and standard streams through
+unchanged. Only `-p`/`--prompt` headless calls gain
+`--output-format stream-json`. The watchdog validates complete bounded JSONL
+events, prints only sanitized assistant text, and resets its idle deadline only
+for non-empty assistant text or structurally valid `tool_use`/`tool_result`
+activity. Malformed, unknown, user, init, result, and error events do not keep a
+stalled process alive. Partial lines are capped before decoding, and repeated
+diagnostics are suppressed after a small fixed count.
+
+The watchdog starts the real CLI as a dedicated process group. Idle timeout or
+a wrapper signal addresses the whole group, waits a bounded grace interval,
+and escalates to `SIGKILL`; normal leader exit also cleans any remaining group
+members. Timeout exits `124`, a missing real binary exits `127`, configuration
+errors exit `2`, and normal or signal child status propagates (`128 + signal`
+for signalled children). Defaults and bounded overrides are:
+
+| Variable | Default | Purpose |
+|---|---:|---|
+| `GEMINI_WATCHDOG_IDLE_SECONDS` | `300` | Maximum gap between valid text/tool events |
+| `GEMINI_WATCHDOG_TERM_GRACE_SECONDS` | `5` | Grace after the first group signal |
+| `GEMINI_WATCHDOG_MAX_PARTIAL_BYTES` | `65536` | Maximum incomplete JSONL line |
+| `GEMINI_WATCHDOG_BYPASS` | unset | Set to `1` only for explicit pass-through |
+
+`GEMINI_WATCHDOG_REAL_BINARY` is an internal hermetic-test seam; image
+verification requires the default absolute payload path and wrapper copy.
+
 ## Runtime boundary
 
 On-create scripts verify launchers and payload markers. Octopus and Warp use
@@ -57,6 +93,7 @@ forms against the selected image.
 ```bash
 bun install --frozen-lockfile
 bun run image:check
+bun test scripts/template/__tests__/gemini-watchdog.test.ts
 bun test scripts/template/__tests__/image.test.ts
 bun run template:test
 bun run template:typecheck
@@ -67,7 +104,13 @@ docker build --target development --tag devenv-stage3-agents .
 
 Mutation coverage rejects a floating Context7 version, mutable Octopus commit,
 bad Warp checksum, runtime Git fetch, floating MCP launcher, non-login PATH
-reordering, stale installed-plugin authority, and duplicate Graphify discovery.
+reordering, stale installed-plugin authority, a shadowed/moved Gemini wrapper,
+missing process-group controls, missing capability ownership, and duplicate
+Graphify discovery. Hermetic fake-Gemini tests cover all pass-through classes,
+stream argument selection, sanitization, valid activity, malformed streams,
+oversized partial lines, timeout escalation, missing binaries, normal/signal
+status propagation, wrapper signals, and descendant cleanup.
+
 A runtime image smoke must verify all enabled launchers, four shell modes, local
 plugin manifests, persisted source repair, and the absence of shared Graphify
 skill residue.
