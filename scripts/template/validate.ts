@@ -10,6 +10,7 @@ import {
 	parseToml,
 	resolveFixtureParameters,
 } from "./parameters";
+import { validateStageThreeEvidence } from "./stage-three-evidence";
 import { validateToolchainContract } from "./toolchain";
 import { validateStageOneEvidence } from "./toolchain-evidence";
 
@@ -24,6 +25,8 @@ export interface ValidationReport {
 	toolchainEvidenceSchemaFile: string;
 	imageEvidenceFile: string;
 	imageEvidenceSchemaFile: string;
+	runtimeEvidenceFile: string;
+	runtimeEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -42,6 +45,8 @@ export async function validateAll(
 		toolchainEvidenceSchemaFile: "evidence/stage-1-toolchain.schema.json",
 		imageEvidenceFile: "evidence/stage-2-image.json",
 		imageEvidenceSchemaFile: "evidence/stage-2-image.schema.json",
+		runtimeEvidenceFile: "evidence/stage-3-runtimes.json",
+		runtimeEvidenceSchemaFile: "evidence/stage-3-runtimes.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -110,6 +115,13 @@ export async function validateAll(
 				...imageEvidenceErrors.map((error) => `stage-2 evidence: ${error}`),
 			);
 		}
+		const runtimeEvidenceErrors = await validateStageThreeEvidence(root);
+		if (runtimeEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...runtimeEvidenceErrors.map((error) => `stage-3 evidence: ${error}`),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -128,7 +140,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(

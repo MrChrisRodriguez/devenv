@@ -45,6 +45,15 @@ function sameValue(left: unknown, right: unknown): boolean {
 	return JSON.stringify(left) === JSON.stringify(right);
 }
 
+function keyValues(value: string): JsonRecord {
+	return Object.fromEntries(
+		value.split("\n").flatMap((line) => {
+			const match = /^([A-Za-z][A-Za-z0-9-]*)=(.*)$/.exec(line);
+			return match?.[1] ? [[match[1], match[2] ?? ""]] : [];
+		}),
+	);
+}
+
 export function sha256(value: Uint8Array | string): string {
 	return new Bun.CryptoHasher("sha256").update(value).digest("hex");
 }
@@ -241,6 +250,14 @@ export async function validateStageThreeEvidenceValue(
 	const image = recordAt(value, "image");
 	const expected = expectedStageThreeCommands(value);
 	const commands = arrayAt(value, "commands");
+	const commandById = new Map(
+		commands.flatMap((entry) =>
+			isRecord(entry) && typeof entry["id"] === "string"
+				? [[entry["id"] as string, entry] as const]
+				: [],
+		),
+	);
+	const logs = new Map<string, string>();
 	const ids = commands.flatMap((entry) =>
 		isRecord(entry) && typeof entry["id"] === "string"
 			? [entry["id"] as string]
@@ -266,8 +283,12 @@ export async function validateStageThreeEvidenceValue(
 			const file = Bun.file(resolve(root, path));
 			if (!(await file.exists()))
 				errors.push(`repository: command ${id} ${stream} log is missing`);
-			else if (entry[`${stream}Sha256`] !== sha256(await file.bytes()))
-				errors.push(`repository: command ${id} ${stream} digest drifted`);
+			else {
+				const bytes = await file.bytes();
+				logs.set(`${id}.${stream}`, new TextDecoder().decode(bytes));
+				if (entry[`${stream}Sha256`] !== sha256(bytes))
+					errors.push(`repository: command ${id} ${stream} digest drifted`);
+			}
 		}
 	}
 
@@ -305,6 +326,7 @@ export async function validateStageThreeEvidenceValue(
 		);
 
 	const launchers = recordAt(value, "launchers");
+	const launcherLog = keyValues(logs.get("launcher-smoke.stdout") ?? "");
 	for (const tool of [
 		"codex",
 		"gemini",
@@ -313,7 +335,10 @@ export async function validateStageThreeEvidenceValue(
 		"ccstatusline",
 		"context7-mcp",
 	])
-		if (launchers[tool] !== `/home/vscode/.local/bin/${tool}`)
+		if (
+			launchers[tool] !== `/home/vscode/.local/bin/${tool}` ||
+			launchers[tool] !== launcherLog[tool]
+		)
 			errors.push(`semantic: ${tool} launcher path drifted`);
 	for (const shell of arrayAt(value, "shellPaths")) {
 		if (!isRecord(shell)) continue;
@@ -330,6 +355,20 @@ export async function validateStageThreeEvidenceValue(
 			)
 		)
 			errors.push("semantic: shell PATH ownership drifted");
+		const observed = (logs.get(`${String(shell["commandId"])}.stdout`) ?? "")
+			.trim()
+			.split("\n");
+		if (
+			!sameValue(observed, [
+				shell["bun"],
+				shell["proto"],
+				shell["codex"],
+				shell["path"],
+			])
+		)
+			errors.push(
+				`repository: ${String(shell["commandId"])} evidence differs from its log`,
+			);
 	}
 
 	const browser = recordAt(value, "browser");
@@ -341,13 +380,31 @@ export async function validateStageThreeEvidenceValue(
 		browser["launchPassed"] !== true
 	)
 		errors.push("semantic: browser launch evidence drifted");
+	if (
+		browser["markerVersion"] !== launcherLog["playwright"] ||
+		browser["executablePath"] !== launcherLog["browserExecutable"] ||
+		!(logs.get("browser-preflight.stdout") ?? "").includes(
+			"Browser preflight passed with the repository-pinned headless shell",
+		)
+	)
+		errors.push("repository: browser evidence differs from its bound logs");
 	const plugins = recordAt(value, "plugins");
+	const pluginLog = keyValues(logs.get("plugin-repair-smoke.stdout") ?? "");
 	if (
 		plugins["commandId"] !== "plugin-repair-smoke" ||
 		plugins["persistedSourceRepair"] !== true ||
 		plugins["sharedGraphifyResidue"] !== false
 	)
 		errors.push("semantic: plugin repair evidence drifted");
+	if (
+		plugins["octopusInstallPath"] !== pluginLog["octopusInstallPath"] ||
+		plugins["warpInstallPath"] !== pluginLog["warpInstallPath"] ||
+		pluginLog["persistedSourceRepair"] !== "pass" ||
+		pluginLog["sharedGraphifyResidue"] !== "absent"
+	)
+		errors.push(
+			"repository: plugin repair evidence differs from its bound log",
+		);
 	const knownBad = recordAt(value, "knownBadFixtures");
 	if (
 		knownBad["browser"] !== "browser-known-bad-fixtures" ||
@@ -355,6 +412,14 @@ export async function validateStageThreeEvidenceValue(
 		knownBad["watchdog"] !== "watchdog-known-bad-fixtures"
 	)
 		errors.push("semantic: known-bad fixture binding drifted");
+	const watchdogLog = logs.get("watchdog-known-bad-fixtures.stderr") ?? "";
+	for (const required of [
+		"14 pass",
+		"idle timeout TERM/grace/KILL removes a resistant process group",
+		"normal leader exit still leaves no descendant behind",
+	])
+		if (!watchdogLog.includes(required))
+			errors.push(`repository: watchdog log omits ${required}`);
 	const cloud = recordAt(value, "cloudHandoff");
 	if (
 		cloud["ownerStage"] !== "stage-4-codex-cloud-parity" ||
@@ -383,6 +448,24 @@ export async function validateStageThreeEvidenceValue(
 		Number(comparison["secondWorktreeObservedBytes"] ?? -1) < 0
 	)
 		errors.push("semantic: Stage 3 performance/storage comparison drifted");
+	let storageLog: JsonRecord = {};
+	try {
+		storageLog = JSON.parse(
+			logs.get("second-worktree-storage.stdout") ?? "{}",
+		) as JsonRecord;
+	} catch {
+		errors.push("repository: second-worktree storage log is not JSON");
+	}
+	if (
+		comparison["warmBuildDurationMs"] !==
+			commandById.get("warm-browser-build")?.["durationMs"] ||
+		comparison["secondWorktreeObservedBytes"] !== storageLog["observedBytes"] ||
+		comparison["stageZeroSecondWorktreeBaselineBytes"] !==
+			storageLog["stageZeroBaselineBytes"]
+	)
+		errors.push(
+			"repository: performance/storage evidence differs from its bound logs",
+		);
 	const proof = recordAt(rollback, "proof");
 	if (
 		proof["commandId"] !== "rollback-proof" ||
@@ -391,6 +474,20 @@ export async function validateStageThreeEvidenceValue(
 		proof["treeMatchesPredecessor"] !== true
 	)
 		errors.push("semantic: Stage 3 rollback proof drifted");
+	try {
+		if (
+			!sameValue(proof, JSON.parse(logs.get("rollback-proof.stdout") ?? "{}"))
+		)
+			errors.push("repository: rollback proof differs from its bound log");
+	} catch {
+		errors.push("repository: rollback proof log is not JSON");
+	}
+	const observedInspect = logs.get("image-inspect.stdout")?.trim() ?? "";
+	if (
+		observedInspect !==
+		`${JSON.stringify(image["imageId"])}|${JSON.stringify(image["architecture"])}|${JSON.stringify(image["os"])}`
+	)
+		errors.push("repository: image identity differs from its bound log");
 
 	for (const [label, sha] of [
 		["base", source["baseSha"]],

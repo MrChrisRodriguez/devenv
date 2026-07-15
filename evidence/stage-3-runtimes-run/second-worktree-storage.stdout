@@ -1,0 +1,112 @@
+{
+  "commandId": "second-worktree-storage",
+  "primaryContainerId": "2b329dd7efa4f4526b2f3001f89d7662f9a5053a39a1ee1b75b549e037e151c8",
+  "secondContainerId": "f785442864ea6b0ea4447c80022e9a7d4d58023a9e555e070b0e77782574cd8b",
+  "primaryImageId": "sha256:bb422e3850410d8bd0ac31aa2cb31f7d7a9b7468fc0a1b46e9ae4ce514b26d79",
+  "secondImageId": "sha256:bb422e3850410d8bd0ac31aa2cb31f7d7a9b7468fc0a1b46e9ae4ce514b26d79",
+  "primaryContainerWritableBytes": 274432,
+  "secondContainerWritableBytes": 274432,
+  "secondCheckoutBytes": 4382720,
+  "volumeBytes": 0,
+  "observedBytes": 4657152,
+  "stageZeroBaselineBytes": 96111608,
+  "imageProtoBytes": 1366372352,
+  "protoVolumeCount": 0,
+  "protoMountCount": 0,
+  "operations": [
+    [
+      "git",
+      "worktree",
+      "add",
+      "--detach",
+      "/tmp/devenv-stage2-stage3-20260715t145706z-3665de55-storage",
+      "3665de558333f4920c81b042514961129900ad8c"
+    ],
+    [
+      "docker",
+      "image",
+      "inspect",
+      "--format",
+      "{{.Id}}",
+      "devenv-stage3-edaa9dd"
+    ],
+    [
+      "docker",
+      "run",
+      "--rm",
+      "--label",
+      "com.devenv.evidence.run=stage3-20260715t145706z-3665de55",
+      "devenv-stage3-edaa9dd",
+      "sh",
+      "-c",
+      "du -sk /home/vscode/.proto | cut -f1"
+    ],
+    [
+      "docker",
+      "create",
+      "--label",
+      "com.devenv.evidence.run=stage3-20260715t145706z-3665de55",
+      "--label",
+      "com.devenv.evidence.slot=primary",
+      "--mount",
+      "type=bind,src=/Users/mrcr/.codex/worktrees/stage3-integration/devenv,dst=/workspace,readonly",
+      "devenv-stage3-edaa9dd",
+      "sleep",
+      "infinity"
+    ],
+    [
+      "docker",
+      "create",
+      "--label",
+      "com.devenv.evidence.run=stage3-20260715t145706z-3665de55",
+      "--label",
+      "com.devenv.evidence.slot=second",
+      "--mount",
+      "type=bind,src=/tmp/devenv-stage2-stage3-20260715t145706z-3665de55-storage,dst=/workspace,readonly",
+      "devenv-stage3-edaa9dd",
+      "sleep",
+      "infinity"
+    ],
+    [
+      "docker",
+      "start",
+      "2b329dd7efa4f4526b2f3001f89d7662f9a5053a39a1ee1b75b549e037e151c8"
+    ],
+    [
+      "docker",
+      "start",
+      "f785442864ea6b0ea4447c80022e9a7d4d58023a9e555e070b0e77782574cd8b"
+    ],
+    [
+      "docker",
+      "inspect",
+      "--size",
+      "2b329dd7efa4f4526b2f3001f89d7662f9a5053a39a1ee1b75b549e037e151c8"
+    ],
+    [
+      "docker",
+      "inspect",
+      "--size",
+      "f785442864ea6b0ea4447c80022e9a7d4d58023a9e555e070b0e77782574cd8b"
+    ],
+    [
+      "du",
+      "-sk",
+      "/tmp/devenv-stage2-stage3-20260715t145706z-3665de55-storage"
+    ],
+    [
+      "docker",
+      "rm",
+      "-f",
+      "2b329dd7efa4f4526b2f3001f89d7662f9a5053a39a1ee1b75b549e037e151c8",
+      "f785442864ea6b0ea4447c80022e9a7d4d58023a9e555e070b0e77782574cd8b"
+    ],
+    [
+      "git",
+      "worktree",
+      "remove",
+      "--force",
+      "/tmp/devenv-stage2-stage3-20260715t145706z-3665de55-storage"
+    ]
+  ]
+}

@@ -118,6 +118,50 @@ A runtime image smoke must verify all enabled launchers, four shell modes, local
 plugin manifests, persisted source repair, and the absence of shared Graphify
 skill residue.
 
+## Acceptance evidence
+
+The reviewed implementation boundary is
+`3665de558333f4920c81b042514961129900ad8c`, based on the merged Stage 2
+commit `2a2d4ab71723a608e7170d93a47622b6d92d2fac`. The committed run
+`stage3-20260715t145706z-3665de55` exercised ARM64 image
+`sha256:540356e0a64f9b8386396e6e701a0c9bd66957f7bba9baf0f38167334ca9f40a`
+with 14 exact commands:
+
+1. A cached `development_browser` build and exact image inspection.
+2. The image-owned Stage 2 verifier followed by a real Playwright page launch,
+   assertion, and clean close using the baked `1.59.1` headless shell.
+3. All six enabled launcher paths and both local Claude plugin sources.
+4. A deliberate stale Octopus/Warp installed-source mutation followed by
+   local-only repair, plus shared Graphify residue absence.
+5. Bash and Zsh login/non-login PATH probes.
+6. The existing browser, agent, and 14-case Gemini watchdog known-bad suites.
+7. Second-worktree storage measurement and a synthetic mainline-revert proof
+   whose final tree equals the Stage 2 predecessor.
+
+The warm browser build took 3,335 ms versus the Stage 2 warm build's 3,469 ms.
+Second-worktree observed growth was 4,657,152 bytes versus Stage 2's 4,472,832
+bytes and the Stage 0 baseline of 96,111,608 bytes. The browser preflight took
+2,610 ms end-to-end, including container startup and image verification.
+
+The machine-readable record is `evidence/stage-3-runtimes.json`; its strict
+schema is `evidence/stage-3-runtimes.schema.json`, and every exact argv,
+timestamp, result, and stdout/stderr SHA-256 is bound to the raw files under
+`evidence/stage-3-runtimes-run/`. Reproduce the capture from a clean descendant
+of the boundary with:
+
+```sh
+bun scripts/template/collect-stage-three-evidence.ts capture \
+  --image devenv-stage3-edaa9dd \
+  --implementation 3665de558333f4920c81b042514961129900ad8c
+```
+
+Stage 3 proves the local devcontainer and required CI browser profile. Stage 4
+owns cloud parity: its browser profile must install the same Playwright pin,
+set `PLAYWRIGHT_BROWSERS_PATH`, write the same
+`.devenv-playwright-version` marker under that payload root, and run the
+repository's unchanged `bun run browser:preflight`. The core cloud profile must
+not install a browser.
+
 Rollback is atomic: revert the eventual Stage 3 merge commit with
 `git revert -m 1 <stage-3-pr-merge-commit>`, rebuild, and recreate the
 devcontainer. Do not roll back only a package pin, source commit, checksum,

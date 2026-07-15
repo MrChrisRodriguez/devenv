@@ -1,0 +1,11 @@
+
+scripts/template/__tests__/browser.test.ts:
+(pass) browser runtime contract > passes the source tree and rejects pin, payload, library, and preflight drift [26.33ms]
+(pass) browser runtime contract > renders browser implementation and wiring only for the selected capability [438.84ms]
+(pass) browser runtime contract > rejects unsupported preflight arguments before launching [291.12ms]
+(pass) browser runtime contract > rejects a missing browser payload authority before launching [213.48ms]
+
+ 4 pass
+ 0 fail
+ 35 expect() calls
+Ran 4 tests across 1 file. [995.00ms]

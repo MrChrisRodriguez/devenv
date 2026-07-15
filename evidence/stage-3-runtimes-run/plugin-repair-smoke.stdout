@@ -1,0 +1,21 @@
+✅ Image-owned Proto contract verified (eeab37d69917; 7b07fca29e99)
+🐙 Verifying the image-owned Claude Octopus payload...
+Adding marketplace…✔ Successfully added marketplace: nyldn-plugins (declared in user settings)
+Installing plugin "octo@nyldn-plugins"...✔ Successfully installed plugin: octo@nyldn-plugins (scope: user)
+✅ Image-owned Claude Octopus payload verified and registered
+⚡ Verifying the image-owned Claude Code Warp payload...
+Adding marketplace…✔ Successfully added marketplace: claude-code-warp (declared in user settings)
+Installing plugin "warp@claude-code-warp"...✔ Successfully installed plugin: warp@claude-code-warp (scope: user)
+✅ Image-owned Claude Code Warp payload verified and registered
+🐙 Verifying the image-owned Claude Octopus payload...
+✔ Successfully uninstalled plugin: octo (scope: user)
+Installing plugin "octo@nyldn-plugins"...✔ Successfully installed plugin: octo@nyldn-plugins (scope: user)
+✅ Image-owned Claude Octopus payload verified and registered
+⚡ Verifying the image-owned Claude Code Warp payload...
+✔ Successfully uninstalled plugin: warp (scope: user)
+Installing plugin "warp@claude-code-warp"...✔ Successfully installed plugin: warp@claude-code-warp (scope: user)
+✅ Image-owned Claude Code Warp payload verified and registered
+octopusInstallPath=/home/vscode/.claude/plugins/cache/nyldn-plugins/octo/9.52.0
+warpInstallPath=/home/vscode/.claude/plugins/cache/claude-code-warp/warp/2.1.0
+persistedSourceRepair=pass
+sharedGraphifyResidue=absent
