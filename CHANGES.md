@@ -4,6 +4,16 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-07-15 — Docs: clarify portable upgrade stage status and outcomes
+
+**Goal:** Make the active portable devcontainer upgrade plan readable at a glance and accurately report the implementation already merged.
+
+**How to implement:** Add a plain-language outcome directly below every stage heading in the OpenSpec task plan, record that 20 of 82 tasks across Stages 0–3 are complete and merged, and identify Stage 4 as the next stage. Normalize the four completed Stage 3 checklist items so OpenSpec counts them instead of treating their extra indentation as nested content.
+
+**Changed files:**
+- `openspec/changes/portable-devcontainer-upgrade/tasks.md` — current status, stage outcomes, and normalized Stage 3 checklist formatting.
+- `CHANGES.md` — downstream-facing documentation of the task-plan correction.
+
 ## 2026-07-15 — Add: reproducible Stage 3 acceptance evidence
 
 **Goal:** Bind the Stage 3 browser, agent payload, watchdog, shell, plugin-repair, performance, storage, and rollback acceptance results to exact commands and raw logs from the reviewed image.
