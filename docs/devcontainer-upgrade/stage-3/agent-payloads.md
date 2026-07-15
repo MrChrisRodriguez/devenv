@@ -150,6 +150,13 @@ timestamp, result, and stdout/stderr SHA-256 is bound to the raw files under
 of the boundary with:
 
 ```sh
+docker buildx build \
+  --file .devcontainer/Dockerfile \
+  --platform linux/arm64 \
+  --target development_browser \
+  --tag devenv-stage3-edaa9dd \
+  --progress plain \
+  --load .
 bun scripts/template/collect-stage-three-evidence.ts capture \
   --image devenv-stage3-edaa9dd \
   --implementation af2ac5b288c226e8ee5c86e30325ecb2ae46b45c

@@ -340,6 +340,16 @@ export async function validateStageThreeEvidenceValue(
 			launchers[tool] !== launcherLog[tool]
 		)
 			errors.push(`semantic: ${tool} launcher path drifted`);
+	for (const field of [
+		"octopusCommit",
+		"octopusSha256",
+		"warpCommit",
+		"warpSha256",
+	])
+		if (launcherLog[field] !== pins[field])
+			errors.push(
+				`repository: ${field} runtime marker differs from its Docker pin`,
+			);
 	for (const shell of arrayAt(value, "shellPaths")) {
 		if (!isRecord(shell)) continue;
 		if (shell["bun"] !== "/home/vscode/.proto/shims/bun")
@@ -466,6 +476,22 @@ export async function validateStageThreeEvidenceValue(
 		errors.push(
 			"repository: performance/storage evidence differs from its bound logs",
 		);
+	try {
+		const stageTwo = (await Bun.file(
+			resolve(root, "evidence/stage-2-image.json"),
+		).json()) as JsonRecord;
+		if (
+			comparison["stageTwoWarmBuildDurationMs"] !==
+				recordAt(recordAt(stageTwo, "builds"), "warm")["durationMs"] ||
+			comparison["stageTwoSecondWorktreeObservedBytes"] !==
+				recordAt(stageTwo, "secondWorktreeStorage")["observedBytes"]
+		)
+			errors.push("repository: Stage 2 comparison baseline drifted");
+	} catch (error) {
+		errors.push(
+			`repository: Stage 2 comparison evidence is unreadable: ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
 	const proof = recordAt(rollback, "proof");
 	if (
 		proof["commandId"] !== "rollback-proof" ||
@@ -510,6 +536,18 @@ export async function validateStageThreeEvidenceValue(
 	)
 		errors.push(
 			"repository: Stage 3 base is not an ancestor of implementation",
+		);
+	if (
+		typeof source["implementationSha"] === "string" &&
+		git(root, [
+			"merge-base",
+			"--is-ancestor",
+			source["implementationSha"] as string,
+			"HEAD",
+		]).exitCode !== 0
+	)
+		errors.push(
+			"repository: Stage 3 implementation is not an ancestor of HEAD",
 		);
 	return errors;
 }
