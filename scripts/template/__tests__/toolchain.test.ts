@@ -118,15 +118,10 @@ describe("repository toolchain contract", () => {
 			"semantic: Stage 1 rollback must stop and remove its container before deleting the Proto volume",
 		);
 
-		const untrackedProof = resolve(ROOT, ".stage1-untracked-proof");
-		try {
-			await Bun.write(untrackedProof, "must make the feature tree dirty\n");
-			expect(await validateStageOneEvidence(ROOT)).toContain(
-				"repository: non-Graphify feature tree is not clean",
-			);
-		} finally {
-			await rm(untrackedProof, { force: true });
-		}
+		// The Stage 1 run recorded a clean implementation boundary. Later stages
+		// may change unrelated source, while the merge-sealed evidence files and
+		// historical authority snapshots remain immutable and digest-checked.
+		expect(await validateStageOneEvidence(ROOT)).toEqual([]);
 	});
 
 	test("passes the real tree and rejects known-bad authority mutations", async () => {

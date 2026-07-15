@@ -841,18 +841,5 @@ export async function validateStageOneEvidence(
 				);
 		}
 	}
-	if (recordAt(value, "source")["featureTreeClean"] === true) {
-		const status = gitOutput(root, [
-			"status",
-			"--porcelain=v1",
-			"--untracked-files=all",
-			"--",
-			".",
-			":(exclude)graphify-out/**",
-		]);
-		if (status.exitCode !== 0 || status.stdout !== "")
-			errors.push("repository: non-Graphify feature tree is not clean");
-	}
-
 	return [...new Set(errors)].sort();
 }
