@@ -1,0 +1,9 @@
+{
+  "commandId": "stale-image-refusal",
+  "mutation": "append-stage2-stale-tool",
+  "originalManifestSha256": "eeab37d6991758f99b981747281120296a655d676bf2c6e30ed4786bdc42d6a7",
+  "mutatedManifestSha256": "818603dbc3ef51d72ba11c52761013913c72525b67bb028c7b3993c45b0e8a9d",
+  "containerExitCode": 1,
+  "refused": true,
+  "diagnostic": "ERROR: .prototools differs from the manifest baked into this image\nRebuild/recreate the devcontainer; image-owned tools are never repaired at runtime."
+}

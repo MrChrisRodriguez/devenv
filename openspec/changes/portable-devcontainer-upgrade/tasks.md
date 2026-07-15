@@ -16,11 +16,11 @@
 
 ## 3. Stage 2 PR — Devcontainer Image Architecture
 
-- [ ] 3.1 Split the Dockerfile into stable base, Proto foundation, Proto auxiliary, Graphify, browser, agent CLI, Claude, shell, and final assembly payloads selected by capabilities
-- [ ] 3.2 Generate foundation/auxiliary Proto partitions from the root manifest and add a union-equality drift guard with negative fixtures
-- [ ] 3.3 Make `~/.proto` image-owned, add the manifest marker and complete devcontainer-definition fingerprint, remove the active Proto volume, and retain scoped legacy-volume cleanup
-- [ ] 3.4 Exact-pin every direct download through Docker ARG plus per-architecture checksum, make fallbacks read the owner pin, add isolated Renovate rules, and remove Docker-in-Docker/redundant features/unused installers
-- [ ] 3.5 Validate clean/warm builds, layer invalidation, stale-image refusal, supported architectures, shell PATHs, and second-worktree storage; record rollback/evidence and update rules/docs/`CHANGES.md`
+- [x] 3.1 Split the Dockerfile into stable base, Proto foundation, Proto auxiliary, Graphify, browser, agent CLI, Claude, shell, and final assembly payloads selected by capabilities
+- [x] 3.2 Generate foundation/auxiliary Proto partitions from the root manifest and add a union-equality drift guard with negative fixtures
+- [x] 3.3 Make `~/.proto` image-owned, add the manifest marker and complete devcontainer-definition fingerprint, remove the active Proto volume, and retain scoped legacy-volume cleanup
+- [x] 3.4 Exact-pin every direct download through Docker ARG plus per-architecture checksum, make fallbacks read the owner pin, add isolated Renovate rules, and remove Docker-in-Docker/redundant features/unused installers
+- [x] 3.5 Validate clean/warm builds, layer invalidation, stale-image refusal, supported architectures, shell PATHs, and second-worktree storage; record rollback/evidence and update rules/docs/`CHANGES.md`
 
 ## 4. Stage 3 PR — Browser and Agent Runtime Payloads
 

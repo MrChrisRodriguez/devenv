@@ -70,6 +70,7 @@ scripts/   # one-off tooling scripts
 - `.dockerignore`, `.prototools`, and every `.devcontainer` file are definition-fingerprint inputs. Update the fingerprint contract when build inputs move.
 - The active devcontainer must not mount `~/.proto`; use only `.devcontainer/host/cleanup-legacy-proto-volume.sh` with an exact devcontainer ID for old volumes.
 - Run `bun run image:check` plus the clean image build after changing Docker stages, payload pins, derived Proto manifests, mounts, or on-create ownership.
+- Stage 2 evidence is command-bound to its immutable implementation boundary. Do not hand-edit `evidence/stage-2-image.json` or its raw logs; rerun the documented collector so schema, semantic, digest, architecture, storage, and rollback proofs remain aligned.
 
 ## Commit Policy
 
