@@ -73,7 +73,7 @@ scripts/   # one-off tooling scripts
 - Stage 2 evidence is command-bound to its immutable implementation boundary. Do not hand-edit `evidence/stage-2-image.json` or its raw logs; rerun the documented collector so schema, semantic, digest, architecture, storage, and rollback proofs remain aligned.
 - Agent CLIs are exact image payloads. Runtime setup may verify them but must never download or repair a global agent tool.
 <!-- capability:start gemini -->
-- Gemini's real CLI remains `/home/vscode/.payloads/gemini/bin/gemini`; `/home/vscode/.local/bin/gemini` is the image-owned watchdog. Keep interactive, version, explicit-output-format, and bypass calls pass-through, and run only headless prompts under its bounded streaming process-group contract.
+- Gemini's real CLI remains `/home/vscode/.payloads/gemini/bin/gemini`; `/home/vscode/.local/bin/gemini` is the image-owned watchdog. Keep TTY-interactive, version, explicit-output-format, and bypass calls pass-through, and treat non-TTY stdin plus explicit prompts as bounded headless runs.
 <!-- capability:end gemini -->
 <!-- capability:start context7 -->
 - Context7 is an exact image payload; MCP settings invoke its launcher directly instead of a floating `bunx` package.
@@ -89,7 +89,7 @@ scripts/   # one-off tooling scripts
 ## Browser Runtime Ownership
 
 - The Playwright catalog pin, `@playwright/test`/`playwright`/`playwright-core` lock resolutions, Docker `PLAYWRIGHT_VERSION`, baked headless shell, and FFmpeg payload are one atomic version family.
-- Browser-enabled profiles use only `scripts/browser-preflight.ts` for launch verification. It must load and verify a repository-local page, close the page and browser, and resolve the executable from `PLAYWRIGHT_BROWSERS_PATH` when the image owns the payload.
+- Browser-enabled profiles use only `scripts/browser-preflight.ts` for launch verification. It must require `PLAYWRIGHT_BROWSERS_PATH`, match its payload marker to the repository package pin, launch the one baked headless shell, verify a repository-local page, and close the page and browser.
 - Playwright dependencies, image stages, package scripts, preflight, CI job, post-create wiring, documentation, and agent rules must all be omitted when the capability is disabled.
 - Run `bun run browser:check` and the real `development_browser` image preflight after changing any Playwright authority, browser library, renderer rule, or browser-profile command.
 

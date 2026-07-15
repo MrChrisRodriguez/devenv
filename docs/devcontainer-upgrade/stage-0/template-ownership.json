@@ -317,7 +317,6 @@
 		{ "pattern": ".claude/skills/graphify/**", "requiresAll": ["graphify"] },
 		{ "pattern": ".cursor/commands/opsx-*.md", "requiresAll": ["openspec"] },
 		{ "pattern": ".cursor/skills/openspec-*/**", "requiresAll": ["openspec"] },
-		{ "pattern": ".cursor/skills/graphify/**", "requiresAll": ["graphify"] },
 		{ "pattern": "CLAUDE.md", "requiresAll": ["claude"] },
 		{
 			"pattern": ".cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc",

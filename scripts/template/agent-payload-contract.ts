@@ -10,7 +10,6 @@ const SHA256 = /^[0-9a-f]{64}$/;
 export const EFFECTIVE_SKILL_ROOTS = {
 	claude: [".claude/skills", ".agents/skills"],
 	codex: [".codex/skills", ".agents/skills"],
-	cursor: [".cursor/skills", ".agents/skills"],
 	gemini: [".gemini/skills", ".agents/skills"],
 } as const;
 
@@ -68,7 +67,10 @@ export async function discoverEffectiveSkills(
 	);
 }
 
-export async function validateSkillDiscovery(root: string): Promise<string[]> {
+export async function validateSkillDiscovery(
+	root: string,
+	graphifyEnabled: boolean,
+): Promise<string[]> {
 	const errors: string[] = [];
 	const discovered = await discoverEffectiveSkills(root);
 	for (const agent of Object.keys(EFFECTIVE_SKILL_ROOTS) as Array<
@@ -91,14 +93,17 @@ export async function validateSkillDiscovery(root: string): Promise<string[]> {
 			.filter((skill) => skill.name.toLowerCase() === "graphify")
 			.map((skill) => [`${skill.agent}:${skill.path}`, skill]),
 	);
-	for (const [agent, path] of [
-		["claude", ".claude/skills/graphify/SKILL.md"],
-		["codex", ".codex/skills/graphify/SKILL.md"],
-		["gemini", ".gemini/skills/graphify/SKILL.md"],
-	] as const) {
-		if (!graphifyOwners.has(`${agent}:${path}`))
-			errors.push(`agents: ${agent} Graphify skill must be owned by ${path}`);
-	}
+	if (graphifyEnabled)
+		for (const [agent, path] of [
+			["claude", ".claude/skills/graphify/SKILL.md"],
+			["codex", ".codex/skills/graphify/SKILL.md"],
+			["gemini", ".gemini/skills/graphify/SKILL.md"],
+		] as const) {
+			if (!graphifyOwners.has(`${agent}:${path}`))
+				errors.push(`agents: ${agent} Graphify skill must be owned by ${path}`);
+		}
+	else if (graphifyOwners.size > 0)
+		errors.push("agents: disabled Graphify leaves skill discovery residue");
 	if (
 		discovered.some((skill) =>
 			skill.path.startsWith(".agents/skills/graphify/"),
@@ -180,9 +185,12 @@ async function validateGeminiWatchdogContract(
 	if (
 		!watchdog.includes("hasExplicitOutputFormat") ||
 		!watchdog.includes("hasInteractivePrompt") ||
-		!watchdog.includes("hasHeadlessPrompt")
+		!watchdog.includes("hasHeadlessPrompt") ||
+		!watchdog.includes("process.stdin.isTTY === true")
 	)
 		errors.push("agents: Gemini watchdog omits pass-through classification");
+	if (watchdog.includes("GEMINI_WATCHDOG_REAL_BINARY"))
+		errors.push("agents: Gemini watchdog must not permit payload substitution");
 	if (!watchdog.includes('sanitizeText(event["content"]'))
 		errors.push("agents: Gemini watchdog omits assistant-output sanitization");
 
@@ -314,11 +322,14 @@ export async function validateAgentShellPaths(root: string): Promise<string[]> {
 export async function validateAgentPayloadContract(
 	root: string,
 ): Promise<string[]> {
-	const errors = await validateSkillDiscovery(root);
-	errors.push(...(await validateAgentShellPaths(root)));
 	const dockerfile = await Bun.file(
 		resolve(root, ".devcontainer/Dockerfile"),
 	).text();
+	const graphifyEnabled = await Bun.file(
+		resolve(root, ".devcontainer/on-create/setup-graphify.sh"),
+	).exists();
+	const errors = await validateSkillDiscovery(root, graphifyEnabled);
+	errors.push(...(await validateAgentShellPaths(root)));
 	const args = argValues(dockerfile);
 	errors.push(...(await validateGeminiWatchdogContract(root, dockerfile)));
 	const capabilities = [
@@ -458,11 +469,24 @@ export async function validateAgentPayloadContract(
 		if (
 			sourcePayload.requiresSkillCollisionGuard &&
 			(!setup.includes("/workspace/.codex/skills") ||
-				!setup.includes("/workspace/.agents/skills"))
+				!setup.includes("/workspace/.agents/skills") ||
+				!setup.includes("$HOME/.agents/skills"))
 		)
 			errors.push(
 				`agents: ${sourcePayload.setup} must reject project/shared skill collisions`,
 			);
+		if (sourcePayload.requiresSkillCollisionGuard) {
+			const legacyIndex = setup.indexOf(
+				'legacy_skills="$HOME/.agents/skills/claude-octopus"',
+			);
+			const collisionIndex = setup.indexOf(
+				'for skill_file in "$OCTOPUS_DIR"/skills/*/SKILL.md',
+			);
+			if (legacyIndex < 0 || collisionIndex < 0 || legacyIndex > collisionIndex)
+				errors.push(
+					`agents: ${sourcePayload.setup} must remove the exact legacy link before collision checks`,
+				);
+		}
 	}
 
 	// capability:start context7

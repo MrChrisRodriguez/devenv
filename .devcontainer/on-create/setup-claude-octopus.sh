@@ -69,6 +69,20 @@ else
 	fi
 fi
 
+# Remove only the exact legacy shared-root link created by older templates
+# before evaluating current per-skill collisions.
+legacy_skills="$HOME/.agents/skills/claude-octopus"
+if [ -L "$legacy_skills" ]; then
+	case "$(readlink -f "$legacy_skills")" in
+		"$OCTOPUS_DIR/skills"|"$HOME/.local/share/claude-octopus/skills")
+			if ! rm "$legacy_skills"; then
+				echo "ERROR: Claude Octopus could not remove its legacy shared skill link" >&2
+				return 1
+			fi
+			;;
+	esac
+fi
+
 # Codex discovers one symlink per skill from its own effective root. Refuse a
 # pre-existing name instead of silently creating a duplicate or shadowed skill.
 CODEX_SKILLS="$HOME/.codex/skills"
@@ -82,7 +96,7 @@ for skill_file in "$OCTOPUS_DIR"/skills/*/SKILL.md; do
 	source_dir="$(dirname "$skill_file")"
 	skill_name="$(basename "$source_dir")"
 	target="$CODEX_SKILLS/$skill_name"
-	for competing_root in /workspace/.codex/skills /workspace/.agents/skills; do
+	for competing_root in /workspace/.codex/skills /workspace/.agents/skills "$HOME/.agents/skills"; do
 		if [ -e "$competing_root/$skill_name" ] || [ -L "$competing_root/$skill_name" ]; then
 			echo "ERROR: Codex skill name collision at $competing_root/$skill_name" >&2
 			return 1
@@ -104,19 +118,6 @@ done
 if [ "$skill_count" -eq 0 ]; then
 	echo "ERROR: the image-owned Claude Octopus payload exposes no Codex skills" >&2
 	return 1
-fi
-
-# Remove only the exact legacy shared-root link created by older templates.
-legacy_skills="$HOME/.agents/skills/claude-octopus"
-if [ -L "$legacy_skills" ]; then
-	case "$(readlink -f "$legacy_skills")" in
-		"$OCTOPUS_DIR/skills"|"$HOME/.local/share/claude-octopus/skills")
-			if ! rm "$legacy_skills"; then
-				echo "ERROR: Claude Octopus could not remove its legacy shared skill link" >&2
-				return 1
-			fi
-			;;
-	esac
 fi
 
 echo "✅ Image-owned Claude Octopus payload verified and registered"

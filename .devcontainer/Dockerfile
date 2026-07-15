@@ -125,6 +125,7 @@ FROM proto_foundation AS playwright_browser
 ARG PLAYWRIGHT_VERSION=1.59.1
 RUN --mount=type=cache,target=/home/vscode/.bun/install/cache,uid=1000,gid=1000 \
 	bunx "playwright@${PLAYWRIGHT_VERSION}" install --only-shell chromium \
+	&& printf '%s\n' "${PLAYWRIGHT_VERSION}" > "${PLAYWRIGHT_BROWSERS_PATH}/.devenv-playwright-version" \
 	&& find "${PLAYWRIGHT_BROWSERS_PATH}" -type f \
 		\( -name headless_shell -o -name chrome-headless-shell \) \
 		-perm /111 -print -quit | grep -q . \

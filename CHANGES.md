@@ -4,6 +4,12 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-07-15 — Fix: integrate Stage 3 runtimes with the verified lifecycle
+
+**Goal:** Preserve Stage 2 lifecycle verification while making browser and agent payload behavior capability-complete and reliable in generated environments.
+
+**How to implement:** Append browser preflight to the final `-c` lifecycle body with `&&`, retaining the complete startup-scrub and image-verifier prefix. Mark the baked Playwright payload with its exact package version and require preflight to match that marker before launching the single headless shell, with no package-default fallback. Treat non-TTY Gemini stdin as headless, keep the shipped real-binary path fixed, and patch only temporary wrapper copies in hermetic tests. Omit Graphify stages, setup, and all three agent-specific skill copies when disabled; do not model an unowned Cursor Graphify root. Remove only Octopus's exact legacy shared link before rejecting project and user shared-root skill collisions. Prove each integration rule with a known-bad mutation, the Graphify-disabled minimal fixture, focused runtime tests, and the combined browser image smoke.
+
 ## 2026-07-14 — Fix: close Stage 2 adversarial evidence gaps
 
 **Goal:** Prevent a workspace binary from forging the image-definition check and make the recorded architecture, storage, cache, and rollback evidence reject cached or fabricated observations.

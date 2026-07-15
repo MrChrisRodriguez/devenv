@@ -82,6 +82,16 @@ describe("browser runtime contract", () => {
 			await mutate(
 				temporary,
 				".devcontainer/Dockerfile",
+				(source) =>
+					source.replace(
+						".devenv-playwright-version",
+						".missing-version-marker",
+					),
+				"browser: image payload omits its version marker",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/Dockerfile",
 				(source) => source.replace("\n\t\tlibnss3 \\", ""),
 				"browser: runtime stage omits libnss3",
 			);
@@ -91,6 +101,16 @@ describe("browser runtime contract", () => {
 				(source) =>
 					source.replace("await browser.close();", "await Promise.resolve();"),
 				"browser: preflight omits browser close",
+			);
+			await mutate(
+				temporary,
+				"scripts/browser-preflight.ts",
+				(source) =>
+					source.replace(
+						"const executablePath = candidates[0];",
+						"const executablePath = chromium.executablePath();",
+					),
+				"browser: preflight retains an unverified browser fallback",
 			);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
@@ -160,6 +180,23 @@ describe("browser runtime contract", () => {
 		expect(process.exitCode).toBe(2);
 		expect(process.stderr.toString()).toContain(
 			"Usage: bun scripts/browser-preflight.ts [--quiet]",
+		);
+	});
+
+	test("rejects a missing browser payload authority before launching", () => {
+		const { PLAYWRIGHT_BROWSERS_PATH: _omitted, ...environment } = process.env;
+		const process_ = Bun.spawnSync(
+			[process.execPath, "scripts/browser-preflight.ts", "--quiet"],
+			{
+				cwd: ROOT,
+				env: environment as Record<string, string>,
+				stdout: "pipe",
+				stderr: "pipe",
+			},
+		);
+		expect(process_.exitCode).toBe(1);
+		expect(process_.stderr.toString()).toContain(
+			"PLAYWRIGHT_BROWSERS_PATH is required",
 		);
 	});
 });

@@ -343,16 +343,21 @@ async function renderDevcontainer(
 	build["target"] = playwrightEnabled ? "development_browser" : "development";
 	if (playwrightEnabled) {
 		const postCreate = transformed["postCreateCommand"];
+		const shellBodyIndex = Array.isArray(postCreate)
+			? postCreate.lastIndexOf("-c") + 1
+			: -1;
 		if (
 			!Array.isArray(postCreate) ||
-			postCreate.length < 3 ||
-			typeof postCreate[2] !== "string"
+			shellBodyIndex <= 0 ||
+			shellBodyIndex !== postCreate.length - 1 ||
+			typeof postCreate[shellBodyIndex] !== "string"
 		) {
 			throw new Error(
 				"Browser-enabled fixture requires a shell postCreateCommand",
 			);
 		}
-		postCreate[2] = `${postCreate[2]}; bun run browser:preflight`;
+		postCreate[shellBodyIndex] =
+			`${postCreate[shellBodyIndex]} && bun run browser:preflight`;
 	}
 	const containerEnv = transformed["containerEnv"] as Record<string, unknown>;
 	containerEnv["DEVCONTAINER_PROJECT"] = parameters.project.slug;

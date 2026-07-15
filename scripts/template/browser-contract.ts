@@ -180,6 +180,8 @@ export async function validateBrowserContract(
 		errors.push("browser: image payload does not verify baked FFmpeg");
 	if (!payloadStage.includes("headless_shell"))
 		errors.push("browser: image payload does not verify the headless shell");
+	if (!payloadStage.includes(".devenv-playwright-version"))
+		errors.push("browser: image payload omits its version marker");
 	if (!runtimeStage.includes("--from=playwright_browser"))
 		errors.push("browser: runtime stage does not assemble the pinned payload");
 	for (const library of REQUIRED_BROWSER_LIBRARIES) {
@@ -199,6 +201,8 @@ export async function validateBrowserContract(
 			["page.close", "page close"],
 			["browser.close", "browser close"],
 			["PLAYWRIGHT_BROWSERS_PATH", "payload ownership"],
+			[".devenv-playwright-version", "payload version marker"],
+			["Bun.resolveSync", "package version authority"],
 		] as const) {
 			if (!preflight.includes(token))
 				errors.push(`browser: preflight omits ${label}`);
@@ -207,6 +211,8 @@ export async function validateBrowserContract(
 			errors.push(
 				"browser: preflight must not require external network access",
 			);
+		if (preflight.includes("chromium.executablePath()"))
+			errors.push("browser: preflight retains an unverified browser fallback");
 	}
 
 	const expectedTarget = selected ? "development_browser" : "development";

@@ -260,6 +260,16 @@ describe("devcontainer image contract", () => {
 			);
 			await mutate(
 				temporary,
+				".devcontainer/on-create/setup-claude-octopus.sh",
+				(source) =>
+					source.replaceAll(
+						"$HOME/.agents/skills",
+						"$HOME/.missing-agent-skills",
+					),
+				"agents: setup-claude-octopus.sh must reject project/shared skill collisions",
+			);
+			await mutate(
+				temporary,
 				".devcontainer/on-create/setup-claude-warp.sh",
 				(source) => source.replace("cmp -s", "test -r"),
 				"agents: setup-claude-warp.sh must verify local marketplace and installed source authorities",
@@ -302,6 +312,22 @@ describe("devcontainer image contract", () => {
 				".devcontainer/configs/gemini-watchdog",
 				(source) => source.replace("detached: true", "detached: false"),
 				"agents: Gemini watchdog omits dedicated child process group",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/configs/gemini-watchdog",
+				(source) =>
+					source.replace(
+						"process.stdin.isTTY === true",
+						"process.stdin.isTTY !== true",
+					),
+				"agents: Gemini watchdog omits pass-through classification",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/configs/gemini-watchdog",
+				(source) => `${source}\n// GEMINI_WATCHDOG_REAL_BINARY\n`,
+				"agents: Gemini watchdog must not permit payload substitution",
 			);
 			await mutate(
 				temporary,
@@ -449,6 +475,7 @@ describe("devcontainer image contract", () => {
 				resolve(minimal, ".devcontainer/Dockerfile"),
 			).text();
 			expect(minimalDockerfile).not.toContain("playwright_browser");
+			expect(minimalDockerfile).not.toContain("graphify_payload");
 			expect(minimalDockerfile).not.toContain("context7_payload");
 			expect(minimalDockerfile).not.toContain("octopus_payload");
 			expect(minimalDockerfile).not.toContain("warp_payload");
@@ -475,6 +502,13 @@ describe("devcontainer image contract", () => {
 					resolve(minimal, ".devcontainer/on-create/setup-claude-warp.sh"),
 				).exists(),
 			).toBe(false);
+			for (const path of [
+				".codex/skills/graphify/SKILL.md",
+				".claude/skills/graphify/SKILL.md",
+				".gemini/skills/graphify/SKILL.md",
+				".devcontainer/on-create/setup-graphify.sh",
+			])
+				expect(await Bun.file(resolve(minimal, path)).exists()).toBe(false);
 			const fullDockerfile = await Bun.file(
 				resolve(full, ".devcontainer/Dockerfile"),
 			).text();

@@ -35,8 +35,9 @@ watchdog without renaming or modifying the payload.
 Interactive calls, help/version queries, `--prompt-interactive`, calls with an
 explicit `--output-format`/`-o`, and calls with
 `GEMINI_WATCHDOG_BYPASS=1` pass their arguments and standard streams through
-unchanged. Only `-p`/`--prompt` headless calls gain
-`--output-format stream-json`. The watchdog validates complete bounded JSONL
+unchanged. Explicit `-p`/`--prompt` calls and non-TTY stdin prompts gain
+`--output-format stream-json`; a bare call passes through only when stdin is a
+TTY. The watchdog validates complete bounded JSONL
 events, prints only sanitized assistant text, and resets its idle deadline only
 for non-empty assistant text or structurally valid `tool_use`/`tool_result`
 activity. Malformed, unknown, user, init, result, and error events do not keep a
@@ -57,8 +58,9 @@ for signalled children). Defaults and bounded overrides are:
 | `GEMINI_WATCHDOG_MAX_PARTIAL_BYTES` | `65536` | Maximum incomplete JSONL line |
 | `GEMINI_WATCHDOG_BYPASS` | unset | Set to `1` only for explicit pass-through |
 
-`GEMINI_WATCHDOG_REAL_BINARY` is an internal hermetic-test seam; image
-verification requires the default absolute payload path and wrapper copy.
+The shipped wrapper always invokes the default absolute payload path. Hermetic
+tests patch a temporary wrapper copy instead of exposing payload substitution
+through the runtime environment.
 
 ## Runtime boundary
 
@@ -73,9 +75,10 @@ caches from the local payload without contacting the network.
 
 Codex discovers Graphify only from `.codex/skills/graphify`; Claude and Gemini
 retain their agent-specific copies. `.agents/skills/graphify` is forbidden.
-Octopus exposes each skill through one collision-checked symlink in the Codex
-user skill root, and setup refuses an existing different owner instead of
-shadowing it.
+When Graphify is disabled, all three copies and its image/setup payload are
+omitted. Octopus removes only its exact legacy shared-root link before exposing
+each skill through one collision-checked symlink in the Codex user skill root;
+setup refuses project or user shared-root collisions instead of shadowing them.
 
 Every shell mode uses the same precedence:
 
@@ -105,8 +108,8 @@ docker build --target development --tag devenv-stage3-agents .
 Mutation coverage rejects a floating Context7 version, mutable Octopus commit,
 bad Warp checksum, runtime Git fetch, floating MCP launcher, non-login PATH
 reordering, stale installed-plugin authority, a shadowed/moved Gemini wrapper,
-missing process-group controls, missing capability ownership, and duplicate
-Graphify discovery. Hermetic fake-Gemini tests cover all pass-through classes,
+runtime payload substitution, missing non-TTY/process-group controls, missing
+capability ownership, and duplicate or disabled Graphify discovery. Hermetic fake-Gemini tests cover all pass-through classes,
 stream argument selection, sanitization, valid activity, malformed streams,
 oversized partial lines, timeout escalation, missing binaries, normal/signal
 status propagation, wrapper signals, and descendant cleanup.

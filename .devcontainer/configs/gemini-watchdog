@@ -103,7 +103,7 @@ function shouldPassThrough(args: string[]): boolean {
 		hasVersionOrHelpQuery(args) ||
 		hasExplicitOutputFormat(args) ||
 		hasInteractivePrompt(args) ||
-		!hasHeadlessPrompt(args)
+		(!hasHeadlessPrompt(args) && process.stdin.isTTY === true)
 	);
 }
 
@@ -489,11 +489,9 @@ async function runWatchdog(realBinary: string, args: string[]): Promise<number> 
 
 async function main(): Promise<number> {
 	const args = process.argv.slice(2);
-	const realBinary =
-		process.env["GEMINI_WATCHDOG_REAL_BINARY"] || DEFAULT_REAL_BINARY;
 	return shouldPassThrough(args)
-		? runPassThrough(realBinary, args)
-		: runWatchdog(realBinary, args);
+		? runPassThrough(DEFAULT_REAL_BINARY, args)
+		: runWatchdog(DEFAULT_REAL_BINARY, args);
 }
 
 process.exit(await main());

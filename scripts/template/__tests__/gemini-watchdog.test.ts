@@ -14,9 +14,29 @@ interface RunResult {
 }
 
 let temporary = "";
+let testWatchdog = "";
+
+async function watchdogForBinary(
+	binary: string,
+	name: string,
+): Promise<string> {
+	const path = resolve(temporary, name);
+	const source = await Bun.file(WATCHDOG).text();
+	const changed = source.replace(
+		'const DEFAULT_REAL_BINARY = "/home/vscode/.payloads/gemini/bin/gemini";',
+		`const DEFAULT_REAL_BINARY = ${JSON.stringify(binary)};`,
+	);
+	if (changed === source) throw new Error("watchdog binary seam drifted");
+	await Bun.write(path, changed);
+	return path;
+}
 
 beforeAll(async () => {
 	temporary = await mkdtemp(resolve(tmpdir(), "devenv-gemini-watchdog-"));
+	testWatchdog = await watchdogForBinary(
+		FAKE_GEMINI,
+		"gemini-watchdog-test.ts",
+	);
 });
 
 afterAll(async () => {
@@ -30,7 +50,6 @@ function environment(
 	return {
 		...process.env,
 		FAKE_GEMINI_MODE: mode,
-		GEMINI_WATCHDOG_REAL_BINARY: FAKE_GEMINI,
 		GEMINI_WATCHDOG_IDLE_SECONDS: "0.22",
 		GEMINI_WATCHDOG_TERM_GRACE_SECONDS: "0.05",
 		GEMINI_WATCHDOG_MAX_PARTIAL_BYTES: "1024",
@@ -42,9 +61,10 @@ function spawnWatchdog(
 	args: string[],
 	mode: string,
 	overrides: Record<string, string> = {},
+	watchdog = testWatchdog,
 ): ReturnType<typeof Bun.spawn> {
 	return Bun.spawn({
-		cmd: [process.execPath, WATCHDOG, ...args],
+		cmd: [process.execPath, watchdog, ...args],
 		stdin: "ignore",
 		stdout: "pipe",
 		stderr: "pipe",
@@ -81,8 +101,9 @@ async function run(
 	args: string[],
 	mode: string,
 	overrides: Record<string, string> = {},
+	watchdog = testWatchdog,
 ): Promise<RunResult> {
-	return collect(spawnWatchdog(args, mode, overrides));
+	return collect(spawnWatchdog(args, mode, overrides, watchdog));
 }
 
 async function waitForPid(path: string): Promise<number> {
@@ -116,9 +137,8 @@ async function expectProcessGone(pid: number): Promise<void> {
 }
 
 describe("Gemini headless watchdog", () => {
-	test("passes interactive, version, interactive-prompt, explicit-format, and bypass calls through unchanged", async () => {
+	test("passes explicit interactive, version, output-format, and bypass calls through unchanged", async () => {
 		for (const [args, overrides] of [
-			[[], {}],
 			[["--version"], {}],
 			[["--prompt-interactive", "hello"], {}],
 			[["-p", "hello", "--output-format", "json"], {}],
@@ -129,6 +149,15 @@ describe("Gemini headless watchdog", () => {
 			expect(JSON.parse(result.stdout)).toEqual(args);
 			expect(result.stderr).toBe("");
 		}
+	});
+
+	test("applies the watchdog to a non-TTY stdin prompt without -p", async () => {
+		const result = await run([], "stream-args");
+		expect(result.exitCode).toBe(0);
+		expect(JSON.parse(result.stdout)).toEqual([
+			"--output-format",
+			"stream-json",
+		]);
 	});
 
 	test("adds stream-json only for a headless prompt", async () => {
@@ -204,9 +233,11 @@ describe("Gemini headless watchdog", () => {
 
 	test("a missing real binary exits 127", async () => {
 		const missing = resolve(temporary, "missing-gemini");
-		const result = await run(["-p", "work"], "success", {
-			GEMINI_WATCHDOG_REAL_BINARY: missing,
-		});
+		const wrapper = await watchdogForBinary(
+			missing,
+			"gemini-watchdog-missing.ts",
+		);
+		const result = await run(["-p", "work"], "success", {}, wrapper);
 		expect(result.exitCode).toBe(127);
 		expect(result.stderr).toContain("real Gemini binary is missing");
 	});

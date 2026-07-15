@@ -1,3 +1,4 @@
+import { isAbsolute } from "node:path";
 import { chromium } from "@playwright/test";
 
 const unknownArgument = process.argv
@@ -17,28 +18,42 @@ const documentUrl = `data:text/html;charset=utf-8,${encodeURIComponent(
 )}`;
 
 try {
-	const payloadRoot = process.env.PLAYWRIGHT_BROWSERS_PATH?.replace(/\/+$/, "");
-	let executablePath = chromium.executablePath();
-	if (payloadRoot) {
-		const candidates: string[] = [];
-		for (const pattern of [
-			"chromium_headless_shell-*/**/headless_shell",
-			"chromium_headless_shell-*/**/chrome-headless-shell",
-		]) {
-			for await (const path of new Bun.Glob(pattern).scan({
-				cwd: payloadRoot,
-				onlyFiles: true,
-			})) {
-				candidates.push(`${payloadRoot}/${path}`);
-			}
+	const payloadRootSource = process.env.PLAYWRIGHT_BROWSERS_PATH;
+	if (!payloadRootSource)
+		throw new Error("PLAYWRIGHT_BROWSERS_PATH is required");
+	const payloadRoot = payloadRootSource.replace(/\/+$/, "");
+	if (!isAbsolute(payloadRoot))
+		throw new Error("PLAYWRIGHT_BROWSERS_PATH must be absolute");
+	const packageManifest = (await Bun.file(
+		Bun.resolveSync("@playwright/test/package.json", import.meta.dir),
+	).json()) as { version?: unknown };
+	if (typeof packageManifest.version !== "string")
+		throw new Error("@playwright/test package version is unavailable");
+	const payloadVersion = (
+		await Bun.file(`${payloadRoot}/.devenv-playwright-version`).text()
+	).trim();
+	if (payloadVersion !== packageManifest.version)
+		throw new Error(
+			`browser payload marker ${JSON.stringify(payloadVersion)} does not match @playwright/test ${packageManifest.version}`,
+		);
+
+	const candidates: string[] = [];
+	for (const pattern of [
+		"chromium_headless_shell-*/**/headless_shell",
+		"chromium_headless_shell-*/**/chrome-headless-shell",
+	]) {
+		for await (const path of new Bun.Glob(pattern).scan({
+			cwd: payloadRoot,
+			onlyFiles: true,
+		})) {
+			candidates.push(`${payloadRoot}/${path}`);
 		}
-		if (candidates.length !== 1 || !candidates[0]) {
-			throw new Error(
-				`expected one image-owned headless shell in ${payloadRoot}, found ${candidates.length}`,
-			);
-		}
-		executablePath = candidates[0];
 	}
+	if (candidates.length !== 1 || !candidates[0])
+		throw new Error(
+			`expected one image-owned headless shell in ${payloadRoot}, found ${candidates.length}`,
+		);
+	const executablePath = candidates[0];
 	if (!(await Bun.file(executablePath).exists())) {
 		throw new Error(
 			`Playwright browser executable is missing: ${executablePath}`,
