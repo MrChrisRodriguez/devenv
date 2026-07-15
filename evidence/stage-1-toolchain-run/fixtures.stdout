@@ -4,19 +4,19 @@
     {
       "fixture": "minimal",
       "files": 90,
-      "omitted": 130,
+      "omitted": 149,
       "residue": "pass"
     },
     {
       "fixture": "cloud",
       "files": 69,
-      "omitted": 151,
+      "omitted": 170,
       "residue": "pass"
     },
     {
       "fixture": "full",
       "files": 93,
-      "omitted": 127,
+      "omitted": 146,
       "residue": "pass"
     }
   ]
