@@ -564,8 +564,16 @@ export function validateStageTwoEvidenceValue(
 	)
 		errors.push("semantic: stale image refusal was not observed");
 	if (
-		stale["mutation"] !== "shadow-workspace-bun-and-edit-definition" ||
-		stale["shadowBunPath"] !== "/workspace/node_modules/.bin/bun"
+		stale["mutation"] !==
+			"shadow-workspace-contract-tools-and-edit-definition" ||
+		stale["shadowBunPath"] !== "/workspace/node_modules/.bin/bun" ||
+		stale["shadowBashPath"] !== "/workspace/node_modules/.bin/bash" ||
+		!sameValue(stale["shadowUtilityPaths"], [
+			"/workspace/node_modules/.bin/readlink",
+			"/workspace/node_modules/.bin/sha256sum",
+			"/workspace/node_modules/.bin/awk",
+			"/workspace/node_modules/.bin/tr",
+		])
 	)
 		errors.push("semantic: stale image shadow-Bun mutation drifted");
 	if (

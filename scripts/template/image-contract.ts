@@ -322,6 +322,17 @@ export async function validateImageContract(
 		: [];
 	if (mounts.some((mount) => String(mount).includes(".proto")))
 		errors.push("image: active devcontainer must not mount Proto storage");
+	for (const lifecycle of [
+		"onCreateCommand",
+		"postCreateCommand",
+		"postStartCommand",
+	]) {
+		const command = devcontainer[lifecycle];
+		if (!Array.isArray(command) || command[0] !== "/bin/bash")
+			errors.push(`image: ${lifecycle} must use absolute system Bash`);
+	}
+	if (!JSON.stringify(devcontainer["postStartCommand"]).includes("/bin/bash"))
+		errors.push("image: postStartCommand inner shell must use absolute Bash");
 	const featureLock = recordAt(
 		await readJson(resolve(root, ".devcontainer/devcontainer-lock.json")),
 		"features",
@@ -352,7 +363,11 @@ export async function validateImageContract(
 		"DEVCONTAINER_FINGERPRINT_BUN",
 		"/shims/bun",
 		"/bin/proto",
-		"readlink -f",
+		"/bin/bash",
+		"/usr/bin/readlink -f",
+		"/usr/bin/sha256sum",
+		"/usr/bin/awk",
+		"/usr/bin/tr",
 		"Rebuild/recreate the devcontainer",
 	]) {
 		if (!setupProto.includes(marker))

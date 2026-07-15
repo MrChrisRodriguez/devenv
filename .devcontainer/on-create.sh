@@ -88,7 +88,7 @@ optional /workspace/.devcontainer/on-create/setup-graphify.sh
 # Sync extensions.json from devcontainer.json (ensures it's always in sync)
 if [ -f "/workspace/.devcontainer/scripts/sync-extensions-json.sh" ]; then
 	echo "🔄 Syncing .vscode/extensions.json from devcontainer.json..."
-	bash /workspace/.devcontainer/scripts/sync-extensions-json.sh || echo "⚠️  Could not sync extensions.json (this is okay)"
+	/bin/bash /workspace/.devcontainer/scripts/sync-extensions-json.sh || echo "⚠️  Could not sync extensions.json (this is okay)"
 fi
 
 # Configure bash, zsh, persistent history, and completions. HARD source because

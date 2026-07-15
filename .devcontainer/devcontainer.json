@@ -12,9 +12,9 @@
 		"bash",
 		"${localWorkspaceFolder}/.devcontainer/host/capture-warp-env.sh"
 	],
-	"onCreateCommand": ["bash", "/workspace/.devcontainer/on-create.sh"],
+	"onCreateCommand": ["/bin/bash", "/workspace/.devcontainer/on-create.sh"],
 	"postCreateCommand": [
-		"bash",
+		"/bin/bash",
 		"-c",
 		"export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
 	],
@@ -67,9 +67,9 @@
 		}
 	},
 	"postStartCommand": [
-		"bash",
+		"/bin/bash",
 		"-c",
-		"bash /workspace/.devcontainer/on-create/setup-secrets.sh; export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
+		"/bin/bash /workspace/.devcontainer/on-create/setup-secrets.sh; export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
 	],
 	"waitFor": "postStartCommand",
 	"forwardPorts": [3000, 4000, 8080, 8787],

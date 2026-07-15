@@ -134,16 +134,27 @@
 				"originalDefinitionFingerprint",
 				"mutatedDefinitionFingerprint",
 				"shadowBunPath",
+				"shadowBashPath",
+				"shadowUtilityPaths",
 				"containerExitCode",
 				"refused",
 				"diagnostic"
 			],
 			"properties": {
 				"commandId": { "const": "stale-image-refusal" },
-				"mutation": { "const": "shadow-workspace-bun-and-edit-definition" },
+				"mutation": {
+					"const": "shadow-workspace-contract-tools-and-edit-definition"
+				},
 				"originalDefinitionFingerprint": { "$ref": "#/$defs/sha256" },
 				"mutatedDefinitionFingerprint": { "$ref": "#/$defs/sha256" },
 				"shadowBunPath": { "const": "/workspace/node_modules/.bin/bun" },
+				"shadowBashPath": { "const": "/workspace/node_modules/.bin/bash" },
+				"shadowUtilityPaths": {
+					"type": "array",
+					"minItems": 4,
+					"uniqueItems": true,
+					"items": { "type": "string", "minLength": 1 }
+				},
 				"containerExitCode": { "type": "integer", "minimum": 1 },
 				"refused": { "const": true },
 				"diagnostic": { "type": "string", "minLength": 20 }

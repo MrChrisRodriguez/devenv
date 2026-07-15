@@ -15,7 +15,7 @@ root_manifest="$repo_root/.prototools"
 manifest_marker="$image_contract_dir/prototools.sha256"
 definition_marker="$image_contract_dir/definition.sha256"
 fingerprint_script="$repo_root/.devcontainer/devcontainer-fingerprint.sh"
-proto_root="$(readlink -f "${PROTO_HOME:-$HOME/.proto}")"
+proto_root="$(/usr/bin/readlink -f "${PROTO_HOME:-$HOME/.proto}")"
 image_bun="${PROTO_HOME:-$HOME/.proto}/shims/bun"
 image_proto="${PROTO_HOME:-$HOME/.proto}/bin/proto"
 
@@ -44,7 +44,7 @@ for required_file in \
 done
 
 for tool_path in "$image_bun" "$image_proto"; do
-	resolved_tool="$(readlink -f "$tool_path" 2>/dev/null || true)"
+	resolved_tool="$(/usr/bin/readlink -f "$tool_path" 2>/dev/null || true)"
 	case "$resolved_tool" in
 		"$proto_root"/*) ;;
 		*)
@@ -58,18 +58,18 @@ for tool_path in "$image_bun" "$image_proto"; do
 	fi
 done
 
-expected_manifest="$(sha256sum "$root_manifest" | awk '{print $1}')"
-actual_manifest="$(tr -d '[:space:]' < "$manifest_marker")"
+expected_manifest="$(/usr/bin/sha256sum "$root_manifest" | /usr/bin/awk '{print $1}')"
+actual_manifest="$(/usr/bin/tr -d '[:space:]' < "$manifest_marker")"
 if ! is_sha256 "$actual_manifest" || [ "$actual_manifest" != "$expected_manifest" ]; then
 	rebuild_required ".prototools differs from the manifest baked into this image"
 	return 1
 fi
 
-if ! expected_definition="$(DEVCONTAINER_FINGERPRINT_BUN="$image_bun" bash "$fingerprint_script" "$repo_root")"; then
+if ! expected_definition="$(DEVCONTAINER_FINGERPRINT_BUN="$image_bun" /bin/bash "$fingerprint_script" "$repo_root")"; then
 	rebuild_required "the devcontainer definition fingerprint could not be computed with image-owned Bun"
 	return 1
 fi
-actual_definition="$(tr -d '[:space:]' < "$definition_marker")"
+actual_definition="$(/usr/bin/tr -d '[:space:]' < "$definition_marker")"
 if ! is_sha256 "$actual_definition" || [ "$actual_definition" != "$expected_definition" ]; then
 	rebuild_required "the devcontainer definition differs from the image fingerprint"
 	return 1

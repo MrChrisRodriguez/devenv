@@ -123,6 +123,12 @@ describe("devcontainer image contract", () => {
 			await mutate(
 				temporary,
 				".devcontainer/devcontainer.json",
+				(source) => source.replace('"/bin/bash"', '"bash"'),
+				"image: onCreateCommand must use absolute system Bash",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/devcontainer.json",
 				(source) =>
 					source.replace(
 						'"mounts": [',

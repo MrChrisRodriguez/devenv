@@ -58,10 +58,12 @@ interface CapturedCommand {
 
 interface StaleProbe {
 	commandId: "stale-image-refusal";
-	mutation: "shadow-workspace-bun-and-edit-definition";
+	mutation: "shadow-workspace-contract-tools-and-edit-definition";
 	originalDefinitionFingerprint: string;
 	mutatedDefinitionFingerprint: string;
 	shadowBunPath: "/workspace/node_modules/.bin/bun";
+	shadowBashPath: "/workspace/node_modules/.bin/bash";
+	shadowUtilityPaths: string[];
 	containerExitCode: number;
 	refused: true;
 	diagnostic: string;
@@ -276,13 +278,19 @@ export async function probeStale(options_: {
 		const mutatedDefinitionFingerprint = fingerprint();
 		if (originalDefinitionFingerprint === mutatedDefinitionFingerprint)
 			throw new Error("Definition mutation did not change the fingerprint");
-		const shadowBun = resolve(workspace, "node_modules/.bin/bun");
-		await mkdir(dirname(shadowBun), { recursive: true });
-		await Bun.write(
-			shadowBun,
-			"#!/usr/bin/env bash\ncat /usr/local/share/devenv-image/definition.sha256\n",
-		);
-		await chmod(shadowBun, 0o755);
+		const shadowTools = ["bun", "bash", "readlink", "sha256sum", "awk", "tr"];
+		const shadowUtilityPaths = shadowTools
+			.filter((tool) => !["bun", "bash"].includes(tool))
+			.map((tool) => `/workspace/node_modules/.bin/${tool}`);
+		for (const tool of shadowTools) {
+			const shadowTool = resolve(workspace, `node_modules/.bin/${tool}`);
+			await mkdir(dirname(shadowTool), { recursive: true });
+			await Bun.write(
+				shadowTool,
+				"#!/bin/sh\ncat /usr/local/share/devenv-image/definition.sha256\n",
+			);
+			await chmod(shadowTool, 0o755);
+		}
 		const command = [
 			"docker",
 			"run",
@@ -309,10 +317,12 @@ export async function probeStale(options_: {
 			throw new Error(`Stale refusal diagnostic drifted:\n${diagnostic}`);
 		return {
 			commandId: "stale-image-refusal",
-			mutation: "shadow-workspace-bun-and-edit-definition",
+			mutation: "shadow-workspace-contract-tools-and-edit-definition",
 			originalDefinitionFingerprint,
 			mutatedDefinitionFingerprint,
 			shadowBunPath: "/workspace/node_modules/.bin/bun",
+			shadowBashPath: "/workspace/node_modules/.bin/bash",
+			shadowUtilityPaths,
 			containerExitCode: result.exitCode,
 			refused: true,
 			diagnostic,

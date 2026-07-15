@@ -136,10 +136,17 @@ function validEvidence(): JsonRecord {
 		],
 		staleImageRefusal: {
 			commandId: "stale-image-refusal",
-			mutation: "shadow-workspace-bun-and-edit-definition",
+			mutation: "shadow-workspace-contract-tools-and-edit-definition",
 			originalDefinitionFingerprint: "5".repeat(64),
 			mutatedDefinitionFingerprint: "6".repeat(64),
 			shadowBunPath: "/workspace/node_modules/.bin/bun",
+			shadowBashPath: "/workspace/node_modules/.bin/bash",
+			shadowUtilityPaths: [
+				"/workspace/node_modules/.bin/readlink",
+				"/workspace/node_modules/.bin/sha256sum",
+				"/workspace/node_modules/.bin/awk",
+				"/workspace/node_modules/.bin/tr",
+			],
 			containerExitCode: 1,
 			refused: true,
 			diagnostic:

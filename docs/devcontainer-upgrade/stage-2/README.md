@@ -26,8 +26,9 @@ Proto at runtime.
 `.devcontainer/on-create/setup-proto.sh` compares both markers with the mounted
 checkout and verifies image-owned Proto and Bun by absolute path and resolved
 location. It passes the image-owned Proto Bun explicitly to the fingerprint
-helper, so a workspace-local binary cannot forge the definition marker. Any
-mismatch fails with a rebuild/recreate diagnostic. The scoped host cleanup
+helper and invokes lifecycle/verification shells and utilities by absolute
+system path, so workspace-local contract binaries cannot forge the definition
+marker. Any mismatch fails with a rebuild/recreate diagnostic. The scoped host cleanup
 helper removes only an exact, unattached legacy
 `proto-home-<devcontainer-id>` volume.
 
@@ -82,8 +83,9 @@ the first nonzero exit:
 3. A one-owner Codex-pin cache invalidation build.
 4. Complete cache-disabled amd64 and arm64 builds that execute the
    architecture-sensitive base, Proto, Claude, and final stages.
-5. A real stale-definition refusal in a disposable worktree/container while a
-   malicious workspace-local Bun attempts to print the baked marker.
+5. A real stale-definition refusal in a disposable worktree/container while
+   malicious workspace-local Bun, Bash, and checksum utilities attempt to
+   print the baked marker.
 6. A real missing-foundation-uv partition mutation.
 7. Bash and Zsh login/non-login PATH probes.
 8. Two real containers over two worktrees, with image identity, writable-layer,
