@@ -1,9 +1,16 @@
 {
   "commandId": "stale-image-refusal",
-  "mutation": "shadow-workspace-bun-and-edit-definition",
-  "originalDefinitionFingerprint": "017cb751f6ccbafbc56dbb631d7b4b7cad3cd8a69940ad0e03fa3ec621ae9a38",
-  "mutatedDefinitionFingerprint": "e8897037d6103f0937f90639d687e9b5c7a63d06919a34d6c63a205eb9de2aa8",
+  "mutation": "shadow-workspace-contract-tools-and-edit-definition",
+  "originalDefinitionFingerprint": "1f3873deb06b83882c51571c8b078cc5633116808e86c2c18b9bc507cfd8fa06",
+  "mutatedDefinitionFingerprint": "a3f51bd2d5ce7895b9b03d80040608af57f7c6c53f02e96f6afc362e69339230",
   "shadowBunPath": "/workspace/node_modules/.bin/bun",
+  "shadowBashPath": "/workspace/node_modules/.bin/bash",
+  "shadowUtilityPaths": [
+    "/workspace/node_modules/.bin/readlink",
+    "/workspace/node_modules/.bin/sha256sum",
+    "/workspace/node_modules/.bin/awk",
+    "/workspace/node_modules/.bin/tr"
+  ],
   "containerExitCode": 1,
   "refused": true,
   "diagnostic": "ERROR: the devcontainer definition differs from the image fingerprint\nRebuild/recreate the devcontainer; image-owned tools are never repaired at runtime."

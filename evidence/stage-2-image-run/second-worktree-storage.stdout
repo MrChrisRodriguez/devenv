@@ -1,14 +1,14 @@
 {
   "commandId": "second-worktree-storage",
-  "primaryContainerId": "8783d19458b4d9a30974abcf857119c88a4551212660329099b5fa36b51d6814",
-  "secondContainerId": "66aad9ad5fbd60bae1ef8878257cd7ab646d3f1c0fe2f7a2f063a9c927e3b590",
-  "primaryImageId": "sha256:7dfaed692f8347bd11e55e53f9d7327301abcacc129928e4df449f4d0354cdf4",
-  "secondImageId": "sha256:7dfaed692f8347bd11e55e53f9d7327301abcacc129928e4df449f4d0354cdf4",
+  "primaryContainerId": "4673bc851c33a0013a33c8721f663e027e63ec7b276bcf031ba100ab93a38901",
+  "secondContainerId": "7c9feebc117bd884ffd4521a4fa6d3b85db1bce497d87760dbf5efea826f1a4b",
+  "primaryImageId": "sha256:38a99967e4c70640da9b19a2a92eae528464791ee57b3b62e8d4f65acffaa4e3",
+  "secondImageId": "sha256:38a99967e4c70640da9b19a2a92eae528464791ee57b3b62e8d4f65acffaa4e3",
   "primaryContainerWritableBytes": 274432,
   "secondContainerWritableBytes": 274432,
-  "secondCheckoutBytes": 4128768,
+  "secondCheckoutBytes": 4186112,
   "volumeBytes": 0,
-  "observedBytes": 4403200,
+  "observedBytes": 4460544,
   "stageZeroBaselineBytes": 96111608,
   "imageProtoBytes": 1366372352,
   "protoVolumeCount": 0,
@@ -19,8 +19,8 @@
       "worktree",
       "add",
       "--detach",
-      "/tmp/devenv-stage2-stage2-20260715t080439z-9f48b8ee/second-worktree",
-      "672701c1029a702b6a6e819608298c725ce8cdf5"
+      "/tmp/devenv-stage2-stage2-20260715t082607z-51b81f06/second-worktree",
+      "55a1e75c60ed622ac5eaf097284b93b95b0147d6"
     ],
     [
       "docker",
@@ -28,15 +28,15 @@
       "inspect",
       "--format",
       "{{.Id}}",
-      "devenv-stage2-stage2-20260715t080439z-9f48b8ee"
+      "devenv-stage2-stage2-20260715t082607z-51b81f06"
     ],
     [
       "docker",
       "run",
       "--rm",
       "--label",
-      "com.devenv.evidence.run=stage2-20260715t080439z-9f48b8ee",
-      "devenv-stage2-stage2-20260715t080439z-9f48b8ee",
+      "com.devenv.evidence.run=stage2-20260715t082607z-51b81f06",
+      "devenv-stage2-stage2-20260715t082607z-51b81f06",
       "sh",
       "-c",
       "du -sk /home/vscode/.proto | cut -f1"
@@ -45,12 +45,12 @@
       "docker",
       "create",
       "--label",
-      "com.devenv.evidence.run=stage2-20260715t080439z-9f48b8ee",
+      "com.devenv.evidence.run=stage2-20260715t082607z-51b81f06",
       "--label",
       "com.devenv.evidence.slot=primary",
       "--mount",
       "type=bind,src=/Users/mrcr/.codex/worktrees/stage2-image/devenv,dst=/workspace,readonly",
-      "devenv-stage2-stage2-20260715t080439z-9f48b8ee",
+      "devenv-stage2-stage2-20260715t082607z-51b81f06",
       "sleep",
       "infinity"
     ],
@@ -58,55 +58,55 @@
       "docker",
       "create",
       "--label",
-      "com.devenv.evidence.run=stage2-20260715t080439z-9f48b8ee",
+      "com.devenv.evidence.run=stage2-20260715t082607z-51b81f06",
       "--label",
       "com.devenv.evidence.slot=second",
       "--mount",
-      "type=bind,src=/tmp/devenv-stage2-stage2-20260715t080439z-9f48b8ee/second-worktree,dst=/workspace,readonly",
-      "devenv-stage2-stage2-20260715t080439z-9f48b8ee",
+      "type=bind,src=/tmp/devenv-stage2-stage2-20260715t082607z-51b81f06/second-worktree,dst=/workspace,readonly",
+      "devenv-stage2-stage2-20260715t082607z-51b81f06",
       "sleep",
       "infinity"
     ],
     [
       "docker",
       "start",
-      "8783d19458b4d9a30974abcf857119c88a4551212660329099b5fa36b51d6814"
+      "4673bc851c33a0013a33c8721f663e027e63ec7b276bcf031ba100ab93a38901"
     ],
     [
       "docker",
       "start",
-      "66aad9ad5fbd60bae1ef8878257cd7ab646d3f1c0fe2f7a2f063a9c927e3b590"
+      "7c9feebc117bd884ffd4521a4fa6d3b85db1bce497d87760dbf5efea826f1a4b"
     ],
     [
       "docker",
       "inspect",
       "--size",
-      "8783d19458b4d9a30974abcf857119c88a4551212660329099b5fa36b51d6814"
+      "4673bc851c33a0013a33c8721f663e027e63ec7b276bcf031ba100ab93a38901"
     ],
     [
       "docker",
       "inspect",
       "--size",
-      "66aad9ad5fbd60bae1ef8878257cd7ab646d3f1c0fe2f7a2f063a9c927e3b590"
+      "7c9feebc117bd884ffd4521a4fa6d3b85db1bce497d87760dbf5efea826f1a4b"
     ],
     [
       "du",
       "-sk",
-      "/tmp/devenv-stage2-stage2-20260715t080439z-9f48b8ee/second-worktree"
+      "/tmp/devenv-stage2-stage2-20260715t082607z-51b81f06/second-worktree"
     ],
     [
       "docker",
       "rm",
       "-f",
-      "8783d19458b4d9a30974abcf857119c88a4551212660329099b5fa36b51d6814",
-      "66aad9ad5fbd60bae1ef8878257cd7ab646d3f1c0fe2f7a2f063a9c927e3b590"
+      "4673bc851c33a0013a33c8721f663e027e63ec7b276bcf031ba100ab93a38901",
+      "7c9feebc117bd884ffd4521a4fa6d3b85db1bce497d87760dbf5efea826f1a4b"
     ],
     [
       "git",
       "worktree",
       "remove",
       "--force",
-      "/tmp/devenv-stage2-stage2-20260715t080439z-9f48b8ee/second-worktree"
+      "/tmp/devenv-stage2-stage2-20260715t082607z-51b81f06/second-worktree"
     ]
   ]
 }
