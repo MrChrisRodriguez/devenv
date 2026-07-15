@@ -1,0 +1,1 @@
+$ bunx tsc -p scripts/template/tsconfig.json

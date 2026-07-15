@@ -113,14 +113,16 @@
 				"proto_manifest",
 				"package_manifest",
 				"package_lock",
-				"feature_lock"
+				"feature_lock",
+				"proto_checksums"
 			],
 			"properties": {
 				"package_manager": { "const": "bun" },
 				"proto_manifest": { "const": ".prototools" },
 				"package_manifest": { "const": "package.json" },
 				"package_lock": { "const": "bun.lock" },
-				"feature_lock": { "const": ".devcontainer/devcontainer-lock.json" }
+				"feature_lock": { "const": ".devcontainer/devcontainer-lock.json" },
+				"proto_checksums": { "const": ".devcontainer/proto-checksums.txt" }
 			}
 		},
 		"capabilities": {

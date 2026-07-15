@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "fixture": "minimal",
+      "files": 90,
+      "omitted": 149,
+      "residue": "pass"
+    },
+    {
+      "fixture": "cloud",
+      "files": 69,
+      "omitted": 170,
+      "residue": "pass"
+    },
+    {
+      "fixture": "full",
+      "files": 93,
+      "omitted": 146,
+      "residue": "pass"
+    }
+  ]
+}

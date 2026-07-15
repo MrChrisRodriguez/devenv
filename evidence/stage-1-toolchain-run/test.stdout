@@ -1,0 +1,20 @@
+bun test v1.3.13 (bf2e2cec)
+[stage1-observed] minimal fixture guard and artifact scan contain no disabled family residue
+[stage1-observed] catalog: @biomejs/biome must use an exact version
+[stage1-observed] catalog: root consumer @biomejs/biome must use catalog:
+[stage1-observed] lock: wrangler does not resolve to catalog 4.108.0
+[stage1-observed] proto: plugin direnv must use an immutable commit URL
+[stage1-observed] lock: wrangler must resolve exactly once, found 2 entries (4.107.0, 4.108.0)
+[stage1-observed] lock: wrangler must resolve exactly once, found 2 entries (4.107.0)
+[stage1-observed] catalog: package.json devDependencies.synthetic-floating-cli is not catalog-owned
+[stage1-observed] proto: .github/workflows/ci.yml Bun 1.3.14 differs from .prototools
+[stage1-observed] proto: .github/workflows/ci.yml setup-bun omits bun-version
+[stage1-observed] proto: .github/actions/bootstrap/action.yml setup-bun omits bun-version
+[stage1-observed] catalog: Cloudflare transitive miniflare must remain lock-owned
+[stage1-observed] features: ghcr.io/devcontainers/features/common-utils:2 resolved reference and integrity differ
+[stage1-observed] proto: checksum architectures drift from template parameters
+[stage1-observed] typescript: tsconfig.base.json reintroduces baseUrl
+[stage1-observed] typescript: tsconfig.base.json contains an absolute path alias
+[stage1-observed] path: .shell_common resolves Proto before workspace binaries
+[stage1-observed] lock: secondary package lock tests/e2e/bun.lock is forbidden
+[stage1-observed] invalid checksum fixture exited nonzero in verify-only mode

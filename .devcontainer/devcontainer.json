@@ -9,10 +9,6 @@
 		},
 		"ghcr.io/devcontainers/features/git:1": {},
 		"ghcr.io/devcontainers/features/github-cli:1": {},
-		"ghcr.io/devcontainers/features/node:1": {
-			"version": "lts",
-			"nodeGypDependencies": false
-		},
 		"ghcr.io/devcontainers/features/common-utils:2": {
 			"installZsh": true,
 			"configureZshAsDefaultShell": true,
@@ -30,7 +26,7 @@
 	"postCreateCommand": [
 		"bash",
 		"-c",
-		"export PATH=\"$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
+		"export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
 	],
 	"customizations": {
 		"vscode": {
@@ -83,7 +79,7 @@
 	"postStartCommand": [
 		"bash",
 		"-c",
-		"bash /workspace/.devcontainer/on-create/setup-secrets.sh; export PATH=\"$HOME/.proto/shims:$HOME/.proto/bin:$PATH\" && bun install"
+		"bash /workspace/.devcontainer/on-create/setup-secrets.sh; export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
 	],
 	"waitFor": "postStartCommand",
 	"forwardPorts": [3000, 4000, 8080, 8787],
@@ -129,6 +125,7 @@
 		"OCTO_ALLOWED_PROVIDERS": "claude codex gemini"
 	},
 	"remoteEnv": {
+		"PATH": "/workspace/node_modules/.bin:/home/vscode/.local/bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:${containerEnv:PATH}",
 		"NODE_OPTIONS": "--max-old-space-size=4096",
 		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
 		"GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"

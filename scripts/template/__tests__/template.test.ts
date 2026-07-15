@@ -286,6 +286,9 @@ describe("deterministic fixture renderer", () => {
 			expect(first.residue.status).toBe("pass");
 			expect(first.residue.scannedFiles).toBeGreaterThan(0);
 			expect(first.residue.scannedDisabledCapabilities).toBeGreaterThan(0);
+			console.log(
+				"[stage1-observed] minimal fixture guard and artifact scan contain no disabled family residue",
+			);
 
 			const output = resolve(temporary, "first");
 			expect(
@@ -341,9 +344,51 @@ describe("deterministic fixture renderer", () => {
 				resolve(output, "tsconfig.base.json"),
 			).json();
 			expect(tsconfig.compilerOptions.paths["@fixture-minimal/*"]).toEqual([
-				"libs/*/src",
+				"$" + "{configDir}/../../libs/*/src",
 			]);
 			expect(tsconfig.compilerOptions.paths["@confiador/*"]).toBeUndefined();
+			const minimalPackage = await Bun.file(
+				resolve(output, "package.json"),
+			).json();
+			expect(minimalPackage.scripts["toolchain:check"]).toBe(
+				"bun scripts/template/validate-toolchain.ts",
+			);
+			expect(
+				await Bun.file(
+					resolve(output, "scripts/template/validate-toolchain.ts"),
+				).exists(),
+			).toBe(true);
+			expect(
+				await Bun.file(
+					resolve(output, "scripts/template/toolchain.ts"),
+				).exists(),
+			).toBe(true);
+			const generatedGuard = await Bun.file(
+				resolve(output, "scripts/template/toolchain.ts"),
+			).text();
+			for (const token of [
+				"capability:start",
+				"@cloudflare/",
+				"Cloudflare",
+				"better-auth",
+				"playwright",
+				"react-hook-form",
+				"zod",
+			])
+				expect(generatedGuard).not.toContain(token);
+			for (const packageName of [
+				"@cloudflare/vite-plugin",
+				"@cloudflare/vitest-pool-workers",
+				"@playwright/test",
+				"@hookform/resolvers",
+				"better-auth",
+				"react-hook-form",
+				"wrangler",
+				"zod",
+			]) {
+				expect(minimalPackage.workspaces.catalog[packageName]).toBeUndefined();
+				expect(minimalPackage.devDependencies[packageName]).toBeUndefined();
+			}
 			const link = resolve(
 				output,
 				".cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc",
@@ -353,6 +398,49 @@ describe("deterministic fixture renderer", () => {
 			await rm(temporary, { recursive: true, force: true });
 		}
 	});
+
+	test("fresh generated CI creates its first lock before running the guard", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const output = resolve(temporary, "minimal");
+			await renderFixture({
+				root: ROOT,
+				fixtureName: "minimal",
+				output,
+			});
+			expect(await Bun.file(resolve(output, "bun.lock")).exists()).toBe(false);
+			const install = Bun.spawnSync({
+				cmd: [
+					"bash",
+					"-euo",
+					"pipefail",
+					"-c",
+					"if [ -f bun.lock ]; then bun install --frozen-lockfile; else bun install; test -f bun.lock; fi",
+				],
+				cwd: output,
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+			expect(install.exitCode).toBe(0);
+			expect(await Bun.file(resolve(output, "bun.lock")).exists()).toBe(true);
+			const guard = Bun.spawnSync({
+				cmd: ["bun", "run", "toolchain:check"],
+				cwd: output,
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+			expect(guard.exitCode).toBe(0);
+			const lint = Bun.spawnSync({
+				cmd: ["bunx", "biome", "check", "--no-errors-on-unmatched", "."],
+				cwd: output,
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+			expect(lint.exitCode).toBe(0);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 120_000);
 
 	test("renders cloud and full profiles with only their selected artifacts", async () => {
 		const temporary = await temporaryDirectory();
@@ -390,6 +478,24 @@ describe("deterministic fixture renderer", () => {
 			expect(
 				cloudPackage.devDependencies["@fission-ai/openspec"],
 			).toBeUndefined();
+			for (const packageName of [
+				"@cloudflare/vite-plugin",
+				"@cloudflare/vitest-pool-workers",
+				"wrangler",
+			]) {
+				expect(cloudPackage.workspaces.catalog[packageName]).toBeDefined();
+				expect(cloudPackage.devDependencies[packageName]).toBe("catalog:");
+			}
+			for (const packageName of [
+				"@playwright/test",
+				"@hookform/resolvers",
+				"better-auth",
+				"react-hook-form",
+				"zod",
+			]) {
+				expect(cloudPackage.workspaces.catalog[packageName]).toBeUndefined();
+				expect(cloudPackage.devDependencies[packageName]).toBeUndefined();
+			}
 			expect(
 				await Bun.file(
 					resolve(temporary, "cloud/openspec/config.yaml"),
@@ -403,6 +509,22 @@ describe("deterministic fixture renderer", () => {
 				expect(await Bun.file(resolve(temporary, "full", file)).exists()).toBe(
 					true,
 				);
+			}
+			const fullPackage = await Bun.file(
+				resolve(temporary, "full/package.json"),
+			).json();
+			for (const packageName of [
+				"@cloudflare/vite-plugin",
+				"@cloudflare/vitest-pool-workers",
+				"@playwright/test",
+				"@hookform/resolvers",
+				"better-auth",
+				"react-hook-form",
+				"wrangler",
+				"zod",
+			]) {
+				expect(fullPackage.workspaces.catalog[packageName]).toBeDefined();
+				expect(fullPackage.devDependencies[packageName]).toBe("catalog:");
 			}
 		} finally {
 			await rm(temporary, { recursive: true, force: true });

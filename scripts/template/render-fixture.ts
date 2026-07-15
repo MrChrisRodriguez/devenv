@@ -449,6 +449,35 @@ export function stripTemplateOnlyBlocks(source: string): string {
 	return output.join("\n");
 }
 
+export function filterCapabilityBlocks(
+	source: string,
+	capabilities: CapabilityMap,
+): string {
+	const output: string[] = [];
+	let block: string | undefined;
+	let retain = false;
+	for (const line of source.split("\n")) {
+		const start = /^\s*\/\/ capability:start ([a-z0-9_]+)$/.exec(line);
+		const end = /^\s*\/\/ capability:end ([a-z0-9_]+)$/.exec(line);
+		if (start?.[1]) {
+			if (block) throw new Error(`Nested capability block ${start[1]}`);
+			block = start[1];
+			retain = capabilities[block] === true;
+			continue;
+		}
+		if (end?.[1]) {
+			if (block !== end[1])
+				throw new Error(`Mismatched capability block ${end[1]}`);
+			block = undefined;
+			retain = false;
+			continue;
+		}
+		if (!block || retain) output.push(line);
+	}
+	if (block) throw new Error(`Unterminated capability block ${block}`);
+	return output.join("\n");
+}
+
 async function renderMcpSettings(
 	source: string,
 	parameters: TemplateParameters,
@@ -474,7 +503,9 @@ async function renderTsconfig(
 	const compilerOptions = value["compilerOptions"] as Record<string, unknown>;
 	const paths = compilerOptions["paths"] as Record<string, unknown>;
 	delete paths["@confiador/*"];
-	paths[`@${parameters.project.slug}/*`] = ["libs/*/src"];
+	paths[`@${parameters.project.slug}/*`] = [
+		"$" + "{configDir}/../../libs/*/src",
+	];
 	return json(value);
 }
 
@@ -502,6 +533,30 @@ function filterAgentRuleLines(
 	return source
 		.split("\n")
 		.filter((line) => {
+			if (
+				!parameters.capabilities.defaults["cloudflare_workers"] &&
+				line.includes("Cloudflare package family")
+			) {
+				return false;
+			}
+			if (
+				!parameters.capabilities.defaults["better_auth"] &&
+				line.includes("Better Auth package family")
+			) {
+				return false;
+			}
+			if (
+				!parameters.capabilities.defaults["rhf_zod"] &&
+				line.includes("RHF/Zod package family")
+			) {
+				return false;
+			}
+			if (
+				!parameters.capabilities.defaults["playwright"] &&
+				line.includes("Playwright package family")
+			) {
+				return false;
+			}
 			if (
 				!parameters.capabilities.defaults["cloudflare_workers"] &&
 				line.includes("Cloudflare Workers")
@@ -620,6 +675,8 @@ async function renderContent(
 	content = stripTemplateOnlyBlocks(content)
 		.replaceAll("/workspace", parameters.paths.container_workspace)
 		.replaceAll("@confiador/", `@${parameters.project.slug}/`);
+	if (entry.path === "scripts/template/toolchain.ts")
+		content = filterCapabilityBlocks(content, parameters.capabilities.defaults);
 	if (entry.path === "AGENTS.md")
 		content = filterAgentRuleLines(content, parameters);
 	if (entry.path === ".devcontainer/on-create.sh") {
@@ -750,6 +807,32 @@ async function atomicPublish(
 	}
 }
 
+function formatRenderedFiles(
+	root: string,
+	output: string,
+	paths: string[],
+): void {
+	const formatter = resolve(root, "node_modules/.bin/biome");
+	const result = Bun.spawnSync({
+		cmd: [
+			process.execPath,
+			formatter,
+			"format",
+			"--write",
+			"--no-errors-on-unmatched",
+			...paths,
+		],
+		cwd: output,
+		stdout: "pipe",
+		stderr: "pipe",
+	});
+	if (result.exitCode !== 0) {
+		throw new Error(
+			`Rendered fixture formatting failed:\n${result.stdout.toString()}${result.stderr.toString()}`,
+		);
+	}
+}
+
 export async function renderFixture(options: {
 	root: string;
 	fixtureName: string;
@@ -819,11 +902,7 @@ export async function renderFixture(options: {
 			.filter(([, enabled]) => !enabled)
 			.map(([capability]) => capability)
 			.sort(),
-		files: rendered.map(({ entry, content }) => ({
-			path: entry.target,
-			mode: entry.mode,
-			sha256: sha256(content),
-		})),
+		files: [],
 		omittedCount: plan.omitted.length,
 	};
 	let residue: ResidueReport | undefined;
@@ -843,10 +922,26 @@ export async function renderFixture(options: {
 				await chmod(destination, entry.mode === "0755" ? 0o755 : 0o644);
 			}
 		}
+		formatRenderedFiles(root, temporary, ["."]);
+		manifest.files = [];
+		for (const { entry, content } of rendered) {
+			const formatted =
+				entry.mode === "120000"
+					? content
+					: new Uint8Array(
+							await Bun.file(resolve(temporary, entry.target)).arrayBuffer(),
+						);
+			manifest.files.push({
+				path: entry.target,
+				mode: entry.mode,
+				sha256: sha256(formatted),
+			});
+		}
 		await Bun.write(
 			resolve(temporary, "fixture-manifest.json"),
 			json(manifest),
 		);
+		formatRenderedFiles(root, temporary, ["fixture-manifest.json"]);
 		residue = await scanDisabledResidue(
 			temporary,
 			resolvedParameters,

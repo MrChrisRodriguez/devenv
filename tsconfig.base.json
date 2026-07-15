@@ -27,8 +27,8 @@
 		"noPropertyAccessFromIndexSignature": true,
 		"noUncheckedIndexedAccess": true,
 		"paths": {
-			"@/*": ["src/*"],
-			"@confiador/*": ["/workspace/libs/*/src"]
+			"@/*": ["./src/*"],
+			"@confiador/*": ["${configDir}/../../libs/*/src"]
 		},
 		"resolveJsonModule": true,
 		"skipLibCheck": true,

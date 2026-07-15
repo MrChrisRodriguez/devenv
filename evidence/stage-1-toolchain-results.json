@@ -1,0 +1,293 @@
+{
+	"schemaVersion": 1,
+	"runId": "stage1-20260715T052419Z-darwin-arm64",
+	"mutationProof": [
+		{
+			"name": "catalog-floating",
+			"expected": "Reject a latest catalog selector",
+			"observed": "catalog: @biomejs/biome must use an exact version",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"status": "pass"
+		},
+		{
+			"name": "catalog-bypass",
+			"expected": "Reject a direct version for a catalog-owned consumer",
+			"observed": "catalog: root consumer @biomejs/biome must use catalog:",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"status": "pass"
+		},
+		{
+			"name": "coupled-family-drift",
+			"expected": "Reject a Cloudflare catalog pin that differs from the lock",
+			"observed": "lock: wrangler does not resolve to catalog 4.108.0",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"status": "pass"
+		},
+		{
+			"name": "second-resolution",
+			"expected": "Reject a second runtime-sensitive lock resolution",
+			"observed": "lock: wrangler must resolve exactly once, found 2 entries (4.107.0, 4.108.0)",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"status": "pass"
+		},
+		{
+			"name": "mutable-proto-plugin",
+			"expected": "Reject a mutable Proto plugin branch",
+			"observed": "proto: plugin direnv must use an immutable commit URL",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"status": "pass"
+		},
+		{
+			"name": "feature-lock-drift",
+			"expected": "Reject differing feature resolution and integrity digests",
+			"observed": "features: ghcr.io/devcontainers/features/common-utils:2 resolved reference and integrity differ",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"status": "pass"
+		},
+		{
+			"name": "proto-checksum-format",
+			"expected": "Reject malformed architecture checksum metadata",
+			"observed": "proto: checksum architectures drift from template parameters",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"status": "pass"
+		},
+		{
+			"name": "proto-checksum-mismatch",
+			"expected": "Reject a valid-looking checksum that does not match the archive",
+			"observed": "invalid checksum fixture exited nonzero in verify-only mode",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"status": "pass"
+		},
+		{
+			"name": "typescript-baseurl",
+			"expected": "Reject an active TypeScript baseUrl",
+			"observed": "typescript: tsconfig.base.json reintroduces baseUrl",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"status": "pass"
+		},
+		{
+			"name": "typescript-absolute-alias",
+			"expected": "Reject an absolute TypeScript path target",
+			"observed": "typescript: tsconfig.base.json contains an absolute path alias",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"status": "pass"
+		},
+		{
+			"name": "workspace-path-priority",
+			"expected": "Reject Proto resolution before workspace-local binaries",
+			"observed": "path: .shell_common resolves Proto before workspace binaries",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"status": "pass"
+		},
+		{
+			"name": "secondary-lockfile",
+			"expected": "Reject a nested workspace package lock",
+			"observed": "lock: secondary package lock tests/e2e/bun.lock is forbidden",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"status": "pass"
+		},
+		{
+			"name": "disabled-family-omission",
+			"expected": "Omit disabled package authorities and consumers from rendered fixtures",
+			"observed": "minimal fixture guard and artifact scan contain no disabled family residue",
+			"test": "scripts/template/__tests__/template.test.ts",
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"status": "pass"
+		},
+		{
+			"name": "composite-action-bun-pin",
+			"expected": "Reject an unpinned setup-bun action in local composite metadata",
+			"observed": "proto: .github/actions/bootstrap/action.yml setup-bun omits bun-version",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"status": "pass"
+		}
+	],
+	"mutationProofSha256": "a905a31b9a2f0bb099fe7f5fd21d890402a5a97bdbe31a06b65d7495f3c87d03",
+	"mutationResult": {
+		"command": [
+			"bun",
+			"test",
+			"scripts/template/__tests__/toolchain.test.ts",
+			"scripts/template/__tests__/template.test.ts",
+			"-t",
+			"passes the real tree and rejects known-bad authority mutations|checksum verifier fails closed before archive extraction|renders minimal twice with identical manifests and no disabled residue"
+		],
+		"runId": "stage1-20260715T052419Z-darwin-arm64",
+		"startedAt": "2026-07-15T06:17:43.658Z",
+		"completedAt": "2026-07-15T06:17:44.890Z",
+		"stdoutPath": "evidence/stage-1-toolchain-run/mutation.stdout",
+		"stderrPath": "evidence/stage-1-toolchain-run/mutation.stderr",
+		"stdoutSha256": "0c80abc01a2d8375c50a90ab08e86b1f06050d89e86349209b60dd7ba9c950a9",
+		"stderrSha256": "aa839a63136da5b73730d25f64e042bd4295a7e9001faadd11a793064a2ac3a5",
+		"status": "pass",
+		"exitCode": 0
+	},
+	"validation": [
+		{
+			"command": ["bun", "install", "--frozen-lockfile"],
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"startedAt": "2026-07-15T06:20:17.787Z",
+			"completedAt": "2026-07-15T06:20:18.014Z",
+			"stdoutPath": "evidence/stage-1-toolchain-run/install.stdout",
+			"stderrPath": "evidence/stage-1-toolchain-run/install.stderr",
+			"stdoutSha256": "4aa93f16a025d77285ef1dcf2b59cc562a281fe4766eb323ad78a4536a8f9f81",
+			"stderrSha256": "1549e9b8128b223662d253210e73f7e29e9494049b92b239101a926f6f5b3d95",
+			"status": "pass",
+			"exitCode": 0
+		},
+		{
+			"command": ["bun", "run", "toolchain:check"],
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"startedAt": "2026-07-15T06:20:18.059Z",
+			"completedAt": "2026-07-15T06:20:18.506Z",
+			"stdoutPath": "evidence/stage-1-toolchain-run/toolchain.stdout",
+			"stderrPath": "evidence/stage-1-toolchain-run/toolchain.stderr",
+			"stdoutSha256": "3fd2b95593a7482b057943f927e5ee77dda508eadd485ee0574ed41fb20518e6",
+			"stderrSha256": "7b673fdb2eaf9541313beae59744635aeb03a86d30a1277bd3a71da3a1fe7193",
+			"status": "pass",
+			"exitCode": 0
+		},
+		{
+			"command": ["bun", "run", "template:validate"],
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"startedAt": "2026-07-15T06:20:18.552Z",
+			"completedAt": "2026-07-15T06:20:19.092Z",
+			"stdoutPath": "evidence/stage-1-toolchain-run/validate.stdout",
+			"stderrPath": "evidence/stage-1-toolchain-run/validate.stderr",
+			"stdoutSha256": "0d62ae9bbb9a76963e342ddf8a76680a2ef35d4a75e835c4b1e0b7dc7f0e9041",
+			"stderrSha256": "92e643170278cb7a9971ea975d44bb39ad263ed3d5c13d66b89d133e4a415582",
+			"status": "pass",
+			"exitCode": 0
+		},
+		{
+			"command": ["bun", "run", "template:test"],
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"startedAt": "2026-07-15T06:20:19.126Z",
+			"completedAt": "2026-07-15T06:20:28.930Z",
+			"stdoutPath": "evidence/stage-1-toolchain-run/test.stdout",
+			"stderrPath": "evidence/stage-1-toolchain-run/test.stderr",
+			"stdoutSha256": "0c80abc01a2d8375c50a90ab08e86b1f06050d89e86349209b60dd7ba9c950a9",
+			"stderrSha256": "b84c0d79074380acd9dc2a453de0608fe15dd9ff5ad0d792f5124972c0962f50",
+			"status": "pass",
+			"exitCode": 0
+		},
+		{
+			"command": ["bun", "run", "template:typecheck"],
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"startedAt": "2026-07-15T06:20:28.970Z",
+			"completedAt": "2026-07-15T06:20:29.889Z",
+			"stdoutPath": "evidence/stage-1-toolchain-run/typecheck.stdout",
+			"stderrPath": "evidence/stage-1-toolchain-run/typecheck.stderr",
+			"stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"stderrSha256": "c6a84a7998bd5d0979310ea5d24ee452402a4c64e4aeb935f44fbb432fd2f7d1",
+			"status": "pass",
+			"exitCode": 0
+		},
+		{
+			"command": ["bun", "run", "template:fixtures", "tmp/stage1-fixtures"],
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"startedAt": "2026-07-15T06:20:29.934Z",
+			"completedAt": "2026-07-15T06:20:30.358Z",
+			"stdoutPath": "evidence/stage-1-toolchain-run/fixtures.stdout",
+			"stderrPath": "evidence/stage-1-toolchain-run/fixtures.stderr",
+			"stdoutSha256": "3f58fc109e749534e9193a8f2d21011c168ff9fff05585ef507b698c1852229d",
+			"stderrSha256": "85568057463dd26fa8641b0dc99f7dcb82a707fff935e891f645a130f4027dfa",
+			"status": "pass",
+			"exitCode": 0
+		},
+		{
+			"command": ["bunx", "biome", "check", "--no-errors-on-unmatched", "."],
+			"runId": "stage1-20260715T052419Z-darwin-arm64",
+			"startedAt": "2026-07-15T06:20:30.397Z",
+			"completedAt": "2026-07-15T06:20:30.582Z",
+			"stdoutPath": "evidence/stage-1-toolchain-run/biome.stdout",
+			"stderrPath": "evidence/stage-1-toolchain-run/biome.stderr",
+			"stdoutSha256": "71f8b0a99c74d40821ec106a054b6f047c32d3c030f0efe5309abeb78edb52db",
+			"stderrSha256": "03433971ed0104e974ee453bd477fb981d6bb593e0006e164957c40273db3256",
+			"status": "pass",
+			"exitCode": 0
+		}
+	],
+	"validationSha256": "e3ac8aa0c4a59fdbe0807b589dbdfe9136f41526c3c818de1c0b61de3bc1ee44",
+	"rollbackProof": {
+		"runId": "stage1-20260715T052419Z-darwin-arm64",
+		"mode": "isolated-devpod",
+		"workspaceId": "devenv-stage1-rollback-20260715",
+		"containerId": "d8c24c5becc46273b10674e72876d05096b7433ef4bedc0eb0b373c64fa0561b",
+		"volumeName": "proto-home-default-de-e1f07",
+		"attachedRemovalExitCode": 1,
+		"containerRemovalExitCode": 0,
+		"volumeRemovalExitCode": 0,
+		"recreateExitCode": 0,
+		"healthCheckExitCode": 0,
+		"cleanupExitCode": 0,
+		"predecessorSha": "94863ed1b12d261e432702a76848916d92f89450",
+		"syntheticMergeSha": "a20d1f1140bf2d5ab71123df2ea91a65d39d096c",
+		"syntheticMergeTree": "e24557220fb2a7d799bf2777ce85f5df60226a06",
+		"syntheticMergeParents": [
+			"94863ed1b12d261e432702a76848916d92f89450",
+			"85c549990268bbda576fc510e03a6a93800425e8"
+		],
+		"revertExitCode": 0,
+		"predecessorTree": "d71ad71a9e77df2acea32c5562aadafda4199f32",
+		"revertedTree": "d71ad71a9e77df2acea32c5562aadafda4199f32",
+		"treeMatchesPredecessor": true,
+		"predecessorBun": "1.3.4",
+		"predecessorProtoNodeSelected": false,
+		"predecessorNodeFeature": "ghcr.io/devcontainers/features/node:1",
+		"imageBuildExitCode": 0,
+		"nodePath": "/usr/local/share/nvm/current/bin/node",
+		"nodeVersion": "v24.18.0",
+		"protoNodeShim": "absent",
+		"imageCleanupExitCode": 0,
+		"observations": [
+			"initialContainer=d8c24c5becc46273b10674e72876d05096b7433ef4bedc0eb0b373c64fa0561b",
+			"volume=proto-home-default-de-e1f07",
+			"initialHealth=node:v24.18.0 bun:1.3.13 proto:0.55.4 guard:pass",
+			"attachedVolumeRemoval=exit:1 volume-is-in-use",
+			"containerRemoval=exit:0",
+			"volumeRemoval=exit:0",
+			"replacementContainer=20bafa4526fa866083709e65245bf0dbc128d213f760f2b86b9d07bd82a7b4ec",
+			"recreate=exit:0",
+			"replacementHealth=node:v24.18.0 bun:1.3.13 proto:0.55.4 guard:pass",
+			"workspaceDelete=exit:0",
+			"scopedVolumeCleanup=exit:0",
+			"headSha=85c549990268bbda576fc510e03a6a93800425e8",
+			"predecessorSha=94863ed1b12d261e432702a76848916d92f89450",
+			"syntheticMergeSha=a20d1f1140bf2d5ab71123df2ea91a65d39d096c",
+			"syntheticMergeTree=e24557220fb2a7d799bf2777ce85f5df60226a06",
+			"syntheticMergeParents=94863ed1b12d261e432702a76848916d92f89450,85c549990268bbda576fc510e03a6a93800425e8",
+			"revertExitCode=0",
+			"predecessorTree=d71ad71a9e77df2acea32c5562aadafda4199f32",
+			"revertedTree=d71ad71a9e77df2acea32c5562aadafda4199f32",
+			"treeMatchesPredecessor=true",
+			"predecessorBun=1.3.4",
+			"predecessorProtoNodeSelected=false",
+			"predecessorNodeFeature=ghcr.io/devcontainers/features/node:1",
+			"imageBuildExitCode=0",
+			"nodePath=/usr/local/share/nvm/current/bin/node",
+			"nodeVersion=v24.18.0",
+			"protoNodeShim=absent",
+			"imageCleanupExitCode=0"
+		],
+		"stdoutPath": "evidence/stage-1-toolchain-run/rollback.stdout",
+		"stderrPath": "evidence/stage-1-toolchain-run/rollback.stderr",
+		"stdoutSha256": "e97aaacb58bb65056a714772ec2d1fb6fd5a8d775a145f51c6aff95808e8217d",
+		"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+		"status": "pass"
+	},
+	"rollbackProofSha256": "370264840487448a0fe2314bf05c1a622974412c53e95f1b1293aa892274b1c6"
+}

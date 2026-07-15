@@ -1,0 +1,314 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"stage",
+		"capturedAt",
+		"run",
+		"source",
+		"proto",
+		"catalog",
+		"coupledFamilies",
+		"locks",
+		"mutationProof",
+		"validation",
+		"performance",
+		"rollback"
+	],
+	"properties": {
+		"schemaVersion": { "const": 1 },
+		"stage": { "const": "stage-1-toolchain-contract" },
+		"capturedAt": { "type": "string", "format": "date-time" },
+		"run": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "results", "mutationResult"],
+			"properties": {
+				"id": { "type": "string", "pattern": "^stage1-[0-9TZ-]+-[a-z0-9-]+$" },
+				"results": { "$ref": "#/$defs/resultArtifact" },
+				"mutationResult": { "$ref": "#/$defs/validation" }
+			}
+		},
+		"source": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["baseSha", "implementationSha", "featureTreeClean"],
+			"properties": {
+				"baseSha": { "$ref": "#/$defs/sha" },
+				"implementationSha": { "$ref": "#/$defs/sha" },
+				"featureTreeClean": { "const": true }
+			}
+		},
+		"proto": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["version", "selectedTools", "pluginCommits", "checksums"],
+			"properties": {
+				"version": { "$ref": "#/$defs/version" },
+				"selectedTools": { "$ref": "#/$defs/versionMap" },
+				"pluginCommits": {
+					"type": "array",
+					"minItems": 2,
+					"uniqueItems": true,
+					"items": { "$ref": "#/$defs/sha" }
+				},
+				"checksums": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["amd64", "arm64"],
+					"properties": {
+						"amd64": { "$ref": "#/$defs/sha" },
+						"arm64": { "$ref": "#/$defs/sha" }
+					}
+				}
+			}
+		},
+		"catalog": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["consumerPolicy", "packageCount", "packages"],
+			"properties": {
+				"consumerPolicy": { "const": "catalog:" },
+				"packageCount": { "type": "integer", "minimum": 1 },
+				"packages": { "$ref": "#/$defs/versionMap" }
+			}
+		},
+		"coupledFamilies": {
+			"type": "object",
+			"minProperties": 4,
+			"additionalProperties": { "$ref": "#/$defs/versionMap" }
+		},
+		"locks": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["package", "features", "protoChecksums"],
+			"properties": {
+				"package": { "$ref": "#/$defs/lock" },
+				"features": { "$ref": "#/$defs/featureLock" },
+				"protoChecksums": { "$ref": "#/$defs/lock" }
+			}
+		},
+		"mutationProof": {
+			"type": "array",
+			"minItems": 14,
+			"items": { "$ref": "#/$defs/mutation" }
+		},
+		"validation": {
+			"type": "array",
+			"minItems": 7,
+			"items": { "$ref": "#/$defs/validation" }
+		},
+		"performance": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["status", "reason"],
+			"properties": {
+				"status": { "const": "not-measured" },
+				"reason": { "type": "string", "minLength": 1 }
+			}
+		},
+		"rollback": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["mode", "command", "runtimeCleanup", "scope", "proof"],
+			"properties": {
+				"mode": { "const": "atomic" },
+				"command": { "$ref": "#/$defs/command" },
+				"runtimeCleanup": {
+					"type": "array",
+					"minItems": 5,
+					"items": { "$ref": "#/$defs/command" }
+				},
+				"scope": { "type": "string", "minLength": 1 },
+				"proof": { "$ref": "#/$defs/rollbackProof" }
+			}
+		}
+	},
+	"$defs": {
+		"sha": { "type": "string", "pattern": "^[0-9a-f]{40,64}$" },
+		"version": {
+			"type": "string",
+			"pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+		},
+		"versionMap": {
+			"type": "object",
+			"minProperties": 1,
+			"additionalProperties": { "$ref": "#/$defs/version" }
+		},
+		"command": {
+			"type": "array",
+			"minItems": 1,
+			"items": { "type": "string", "minLength": 1 }
+		},
+		"lock": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["path", "sha256"],
+			"properties": {
+				"path": { "type": "string", "minLength": 1 },
+				"sha256": { "$ref": "#/$defs/sha" },
+				"count": { "type": "integer", "minimum": 1 }
+			}
+		},
+		"featureLock": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["path", "sha256", "count"],
+			"properties": {
+				"path": { "type": "string", "minLength": 1 },
+				"sha256": { "$ref": "#/$defs/sha" },
+				"count": { "type": "integer", "minimum": 1 }
+			}
+		},
+		"mutation": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["name", "expected", "observed", "test", "runId", "status"],
+			"properties": {
+				"name": { "type": "string", "minLength": 1 },
+				"expected": { "type": "string", "minLength": 1 },
+				"observed": { "type": "string", "minLength": 1 },
+				"test": {
+					"enum": [
+						"scripts/template/__tests__/toolchain.test.ts",
+						"scripts/template/__tests__/template.test.ts"
+					]
+				},
+				"runId": { "type": "string", "minLength": 1 },
+				"status": { "const": "pass" }
+			}
+		},
+		"validation": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"command",
+				"runId",
+				"startedAt",
+				"completedAt",
+				"stdoutPath",
+				"stderrPath",
+				"stdoutSha256",
+				"stderrSha256",
+				"status",
+				"exitCode"
+			],
+			"properties": {
+				"command": { "$ref": "#/$defs/command" },
+				"runId": { "type": "string", "minLength": 1 },
+				"startedAt": { "type": "string", "format": "date-time" },
+				"completedAt": { "type": "string", "format": "date-time" },
+				"stdoutPath": { "$ref": "#/$defs/logPath" },
+				"stderrPath": { "$ref": "#/$defs/logPath" },
+				"stdoutSha256": { "$ref": "#/$defs/sha256" },
+				"stderrSha256": { "$ref": "#/$defs/sha256" },
+				"status": { "const": "pass" },
+				"exitCode": { "const": 0 }
+			}
+		},
+		"sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+		"logPath": {
+			"type": "string",
+			"pattern": "^evidence/stage-1-toolchain-run/[a-z0-9-]+\\.(?:stdout|stderr)$"
+		},
+		"resultArtifact": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["path", "sha256"],
+			"properties": {
+				"path": { "const": "evidence/stage-1-toolchain-results.json" },
+				"sha256": { "$ref": "#/$defs/sha256" }
+			}
+		},
+		"rollbackProof": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"runId",
+				"mode",
+				"workspaceId",
+				"containerId",
+				"volumeName",
+				"attachedRemovalExitCode",
+				"containerRemovalExitCode",
+				"volumeRemovalExitCode",
+				"recreateExitCode",
+				"healthCheckExitCode",
+				"cleanupExitCode",
+				"predecessorSha",
+				"syntheticMergeSha",
+				"syntheticMergeTree",
+				"syntheticMergeParents",
+				"revertExitCode",
+				"predecessorTree",
+				"revertedTree",
+				"treeMatchesPredecessor",
+				"predecessorBun",
+				"predecessorProtoNodeSelected",
+				"predecessorNodeFeature",
+				"imageBuildExitCode",
+				"nodePath",
+				"nodeVersion",
+				"protoNodeShim",
+				"imageCleanupExitCode",
+				"observations",
+				"stdoutPath",
+				"stderrPath",
+				"stdoutSha256",
+				"stderrSha256",
+				"status"
+			],
+			"properties": {
+				"runId": { "type": "string", "minLength": 1 },
+				"mode": { "const": "isolated-devpod" },
+				"workspaceId": { "type": "string", "minLength": 1 },
+				"containerId": { "$ref": "#/$defs/sha" },
+				"volumeName": { "type": "string", "minLength": 1 },
+				"attachedRemovalExitCode": { "type": "integer", "minimum": 1 },
+				"containerRemovalExitCode": { "const": 0 },
+				"volumeRemovalExitCode": { "const": 0 },
+				"recreateExitCode": { "const": 0 },
+				"healthCheckExitCode": { "const": 0 },
+				"cleanupExitCode": { "const": 0 },
+				"predecessorSha": { "$ref": "#/$defs/sha" },
+				"syntheticMergeSha": { "$ref": "#/$defs/sha" },
+				"syntheticMergeTree": { "$ref": "#/$defs/sha" },
+				"syntheticMergeParents": {
+					"type": "array",
+					"minItems": 2,
+					"maxItems": 2,
+					"items": { "$ref": "#/$defs/sha" }
+				},
+				"revertExitCode": { "const": 0 },
+				"predecessorTree": { "$ref": "#/$defs/sha" },
+				"revertedTree": { "$ref": "#/$defs/sha" },
+				"treeMatchesPredecessor": { "const": true },
+				"predecessorBun": { "const": "1.3.4" },
+				"predecessorProtoNodeSelected": { "const": false },
+				"predecessorNodeFeature": {
+					"const": "ghcr.io/devcontainers/features/node:1"
+				},
+				"imageBuildExitCode": { "const": 0 },
+				"nodePath": { "type": "string", "minLength": 1 },
+				"nodeVersion": {
+					"type": "string",
+					"pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+				},
+				"protoNodeShim": { "const": "absent" },
+				"imageCleanupExitCode": { "const": 0 },
+				"observations": {
+					"type": "array",
+					"minItems": 10,
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"stdoutPath": { "$ref": "#/$defs/logPath" },
+				"stderrPath": { "$ref": "#/$defs/logPath" },
+				"stdoutSha256": { "$ref": "#/$defs/sha256" },
+				"stderrSha256": { "$ref": "#/$defs/sha256" },
+				"status": { "const": "pass" }
+			}
+		}
+	}
+}

@@ -1,0 +1,1 @@
+$ bun scripts/template/render-all-fixtures.ts "tmp/stage1-fixtures"

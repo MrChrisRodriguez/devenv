@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -e
 
-echo "🤖 Installing Biome..."
+echo "🤖 Verifying repository-local Biome..."
 
 # Source common setup functions
 source /workspace/.devcontainer/on-create/setup-common.sh
@@ -9,9 +9,10 @@ source /workspace/.devcontainer/on-create/setup-common.sh
 # Setup Proto environment to access bun
 setup_proto_env
 
-# Install Biome
-# bun install -g biomejs/biome
-bun add -D -E @biomejs/biome
+if [ ! -x /workspace/node_modules/.bin/biome ]; then
+    echo "Repository-local Biome is missing after dependency installation" >&2
+    return 1
+fi
 
 # Note: there's an alias to biome in the .shell_common file
-echo "✅ Biome installed!" 
+echo "✅ Repository-local Biome is ready!"

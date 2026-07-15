@@ -7,37 +7,57 @@
 			"scripts/*"
 		],
 		"catalog": {
-			"@biomejs/biome": "^2.4.7",
-			"@fission-ai/openspec": "latest",
-			"@types/bun": "latest",
-			"@types/node": "latest",
-			"dotenv": "latest",
-			"husky": "latest",
-			"tsx": "latest",
-			"typescript": "latest"
+			"@biomejs/biome": "2.4.16",
+			"@cloudflare/vite-plugin": "1.43.0",
+			"@cloudflare/vitest-pool-workers": "0.18.0",
+			"@commitlint/cli": "20.5.0",
+			"@commitlint/config-conventional": "20.5.0",
+			"@fission-ai/openspec": "0.19.0",
+			"@hookform/resolvers": "5.4.0",
+			"@playwright/test": "1.59.1",
+			"@types/bun": "1.3.10",
+			"@types/node": "25.5.0",
+			"better-auth": "1.6.23",
+			"husky": "9.1.7",
+			"lint-staged": "16.4.0",
+			"react-hook-form": "7.81.0",
+			"typescript": "5.9.3",
+			"wrangler": "4.107.0",
+			"zod": "4.3.6"
 		}
 	},
+	"overrides": {
+		"zod": "4.3.6"
+	},
 	"engines": {
-		"bun": ">=1.3.4"
+		"bun": "1.3.13"
 	},
 	"devDependencies": {
-		"@biomejs/biome": "2.4.16",
-		"@commitlint/cli": "latest",
-		"@commitlint/config-conventional": "latest",
-		"@fission-ai/openspec": "^0.19.0",
-		"@types/bun": "latest",
+		"@biomejs/biome": "catalog:",
+		"@cloudflare/vite-plugin": "catalog:",
+		"@cloudflare/vitest-pool-workers": "catalog:",
+		"@commitlint/cli": "catalog:",
+		"@commitlint/config-conventional": "catalog:",
+		"@fission-ai/openspec": "catalog:",
+		"@hookform/resolvers": "catalog:",
+		"@playwright/test": "catalog:",
+		"@types/bun": "catalog:",
+		"@types/node": "catalog:",
+		"better-auth": "catalog:",
 		"husky": "catalog:",
-		"lint-staged": "latest"
-	},
-	"peerDependencies": {
-		"typescript": "^5"
+		"lint-staged": "catalog:",
+		"react-hook-form": "catalog:",
+		"typescript": "catalog:",
+		"wrangler": "catalog:",
+		"zod": "catalog:"
 	},
 	"scripts": {
 		"prepare": "husky",
 		"template:validate": "bun scripts/template/validate.ts",
 		"template:fixtures": "bun scripts/template/render-all-fixtures.ts",
 		"template:test": "bun test scripts/template/__tests__",
-		"template:typecheck": "bunx tsc -p scripts/template/tsconfig.json"
+		"template:typecheck": "bunx tsc -p scripts/template/tsconfig.json",
+		"toolchain:check": "bun scripts/template/validate-toolchain.ts"
 	},
 	"lint-staged": {
 		"*": [

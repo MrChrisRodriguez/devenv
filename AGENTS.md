@@ -36,7 +36,7 @@ libs/      # shared packages imported via @<project>/* path alias
 scripts/   # one-off tooling scripts
 ```
 
-- Path alias: `@<project>/*` → `/workspace/libs/*/src`
+- Path alias: `@<project>/*` → `${configDir}/../../libs/*/src` from each consuming project config
 - Monorepo tasks (lint, typecheck, test, build) are defined in `.moon/tasks.yml` and run via `moon`
 
 ## Code Quality
@@ -48,6 +48,19 @@ scripts/   # one-off tooling scripts
   - `tsconfig.lib.base.json` — shared libraries
   - `tsconfig.next.base.json` — Next.js apps
   - `tsconfig.worker.base.json` — Cloudflare Workers
+
+## Toolchain Ownership
+
+- `.prototools` is the only authority for Proto-managed tools and plugin locators; versions are exact and community plugins use immutable commit URLs.
+- `.devcontainer/proto-checksums.txt` owns the supported-architecture Proto archive digests. Checksum mismatches and unsupported architectures fail closed.
+- The root `package.json` catalog plus `bun.lock` own project CLIs and shared dependencies. Consumers use `catalog:` and workspace-local binaries resolve before global tools.
+- `.devcontainer/devcontainer-lock.json` pins every configured feature by release and digest. Do not let Proto and a feature own the same tool.
+- Cloudflare package family versions are coupled; update the family and its lock resolutions atomically.
+- Better Auth package family versions are coupled; update the family and its lock resolutions atomically.
+- RHF/Zod package family versions are coupled; update the family and its lock resolutions atomically.
+- Playwright package family versions are coupled; update the family and its lock resolutions atomically.
+- TypeScript paths must be config-relative with `${configDir}`. Do not add `baseUrl` or absolute source-project aliases.
+- Run `bun run toolchain:check` after changing any tool, package, feature, checksum, TypeScript path, or PATH authority.
 
 ## Commit Policy
 

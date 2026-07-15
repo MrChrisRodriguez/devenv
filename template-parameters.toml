@@ -61,6 +61,7 @@ proto_manifest = ".prototools"
 package_manifest = "package.json"
 package_lock = "bun.lock"
 feature_lock = ".devcontainer/devcontainer-lock.json"
+proto_checksums = ".devcontainer/proto-checksums.txt"
 
 [capabilities.supported]
 devcontainer = true
