@@ -1,13 +1,13 @@
 
 scripts/template/__tests__/template.test.ts:
-(pass) deterministic fixture renderer > renders minimal twice with identical manifests and no disabled residue [431.59ms]
+(pass) deterministic fixture renderer > renders minimal twice with identical manifests and no disabled residue [597.64ms]
 
 scripts/template/__tests__/toolchain.test.ts:
-(pass) repository toolchain contract > passes the real tree and rejects known-bad authority mutations [460.96ms]
-(pass) repository toolchain contract > checksum verifier fails closed before archive extraction [23.71ms]
+(pass) repository toolchain contract > passes the real tree and rejects known-bad authority mutations [535.36ms]
+(pass) repository toolchain contract > checksum verifier fails closed before archive extraction [27.82ms]
 
  3 pass
  21 filtered out
  0 fail
  95 expect() calls
-Ran 3 tests across 2 files. [1063.00ms]
+Ran 3 tests across 2 files. [1219.00ms]
