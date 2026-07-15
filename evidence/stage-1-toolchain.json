@@ -1,9 +1,11 @@
 {
 	"schemaVersion": 1,
 	"stage": "stage-1-toolchain-contract",
-	"capturedAt": "2026-07-15T04:29:40Z",
+	"capturedAt": "2026-07-15T04:57:54Z",
 	"source": {
-		"baseSha": "94863ed1b12d261e432702a76848916d92f89450"
+		"baseSha": "94863ed1b12d261e432702a76848916d92f89450",
+		"implementationSha": "a7c06919e8483d970eb213537c2d8a670e7922bd",
+		"featureTreeClean": true
 	},
 	"proto": {
 		"version": "0.55.4",
@@ -208,6 +210,10 @@
 			"exitCode": 0
 		}
 	],
+	"performance": {
+		"status": "not-measured",
+		"reason": "Stage 1 changes repository authorities and creation-time validation, not the image architecture or worktree runtime; Stage 0 remains the comparison baseline for the later image and final release stages."
+	},
 	"rollback": {
 		"mode": "atomic",
 		"command": ["git", "revert", "-m", "1", "<stage-1-pr-merge-commit>"],

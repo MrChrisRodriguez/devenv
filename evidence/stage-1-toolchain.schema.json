@@ -13,6 +13,7 @@
 		"locks",
 		"mutationProof",
 		"validation",
+		"performance",
 		"rollback"
 	],
 	"properties": {
@@ -22,8 +23,12 @@
 		"source": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["baseSha"],
-			"properties": { "baseSha": { "$ref": "#/$defs/sha" } }
+			"required": ["baseSha", "implementationSha", "featureTreeClean"],
+			"properties": {
+				"baseSha": { "$ref": "#/$defs/sha" },
+				"implementationSha": { "$ref": "#/$defs/sha" },
+				"featureTreeClean": { "const": true }
+			}
 		},
 		"proto": {
 			"type": "object",
@@ -83,6 +88,15 @@
 			"type": "array",
 			"minItems": 7,
 			"items": { "$ref": "#/$defs/validation" }
+		},
+		"performance": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["status", "reason"],
+			"properties": {
+				"status": { "const": "not-measured" },
+				"reason": { "type": "string", "minLength": 1 }
+			}
 		},
 		"rollback": {
 			"type": "object",
