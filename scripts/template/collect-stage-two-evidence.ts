@@ -30,7 +30,7 @@ const SHA256 = /^[0-9a-f]{64}$/;
 
 export const STAGE_TWO_BASE_SHA = "4367bad6e2cb49e4c969a61b892634347ed0bf24";
 export const STAGE_TWO_IMPLEMENTATION_SHA =
-	"47ed0f3f8b6a978dfdb803856c3d5a01fa6e83e0";
+	"aade3151cc8559ff59860d0b427f74361b8dffcb";
 
 type Command = string[];
 

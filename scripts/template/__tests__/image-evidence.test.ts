@@ -398,7 +398,7 @@ describe("Stage 2 image evidence", () => {
 	test("derives all sixteen collector commands from the validator authority", () => {
 		expect(STAGE_TWO_BASE_SHA).toBe("4367bad6e2cb49e4c969a61b892634347ed0bf24");
 		expect(STAGE_TWO_IMPLEMENTATION_SHA).toBe(
-			"47ed0f3f8b6a978dfdb803856c3d5a01fa6e83e0",
+			"aade3151cc8559ff59860d0b427f74361b8dffcb",
 		);
 		const evidence = validEvidence();
 		const commands = collectionCommands(evidence);
