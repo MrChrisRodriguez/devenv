@@ -51,8 +51,11 @@ bun run template:fixtures tmp/stage-0-fixtures
 ```
 
 The test suite includes known-bad mutations for unknown registry fields,
-escaping paths, capability dependency drift, service cycles, and disabled
-capability residue. Invalid fixture input must fail before publishing output.
+escaping and symlink-aliased output paths, fixture identity drift, capability
+dependency drift, service cycles, disabled artifact/package residue, dead
+generated workflow commands, incomplete lifecycle-generator inventory, and
+active-runtime diff drift. Invalid fixture input must fail before publishing
+output.
 
 ## Rollback
 

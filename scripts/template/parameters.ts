@@ -957,12 +957,18 @@ export async function loadFixtureDefinition(
 	if (!parameters.generation.fixture_names.includes(fixtureName)) {
 		throw new ParameterValidationError([`unknown fixture ${fixtureName}`]);
 	}
-	return validateFixtureDefinition(
+	const fixture = validateFixtureDefinition(
 		await parseToml(
 			resolve(root, "fixtures", "template", `${fixtureName}.toml`),
 		),
 		parameters,
 	);
+	if (fixture.fixture.name !== fixtureName) {
+		throw new ParameterValidationError([
+			`fixture ${fixtureName} declares mismatched name ${fixture.fixture.name}`,
+		]);
+	}
+	return fixture;
 }
 
 export function resolveFixtureParameters(

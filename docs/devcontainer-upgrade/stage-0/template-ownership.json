@@ -297,6 +297,13 @@
 			"requiresAll": ["openspec"]
 		}
 	],
+	"packageRules": [
+		{
+			"capability": "openspec",
+			"sections": ["workspaces.catalog", "devDependencies"],
+			"packages": ["@fission-ai/openspec"]
+		}
+	],
 	"capabilitySignatures": {
 		"better_auth": { "paths": ["libs/auth/**"], "tokens": ["better-auth"] },
 		"cloudflare_workers": {
@@ -317,6 +324,7 @@
 			"paths": ["ci-matrix-universes.json", "scripts/ci/affected-matrices.sh"],
 			"tokens": ["MOON_AFFECTED_MODE"]
 		},
+		"openspec": { "paths": [], "tokens": ["@fission-ai/openspec"] },
 		"playwright": {
 			"paths": ["tsconfig.stagehand.base.json", "scripts/browser-preflight.ts"],
 			"tokens": ["@playwright/test"]
@@ -379,6 +387,60 @@
 			"runtimeMutation": true
 		},
 		{
+			"source": ".devcontainer/scripts/git-credential-org-router.sh",
+			"destination": "$HOME/.gitconfig credential routing",
+			"generator": ".devcontainer/on-create/setup-git-credentials.sh",
+			"runtimeMutation": true
+		},
+		{
+			"source": "package.json#devDependencies.@biomejs/biome",
+			"destination": "package.json and bun.lock",
+			"generator": ".devcontainer/on-create/setup-biome.sh",
+			"runtimeMutation": true
+		},
+		{
+			"source": "Claude native installer and committed agent configuration",
+			"destination": "$HOME/.local/bin/claude and $HOME/.claude/**",
+			"generator": ".devcontainer/on-create/setup-claude.sh",
+			"runtimeMutation": true
+		},
+		{
+			"source": ".devcontainer/ccstatusline-settings.json",
+			"destination": "$HOME/.config/ccstatusline/settings.json and $HOME/.claude/settings.json",
+			"generator": ".devcontainer/on-create/setup-ccstatusline.sh",
+			"runtimeMutation": true
+		},
+		{
+			"source": "Gemini package authority",
+			"destination": "$HOME/.bun global package state and $HOME/.bun/bin/gemini",
+			"generator": ".devcontainer/on-create/setup-gemini.sh",
+			"runtimeMutation": true
+		},
+		{
+			"source": "Codex package authority",
+			"destination": "$HOME/.bun global package state and $HOME/.bun/bin/codex",
+			"generator": ".devcontainer/on-create/setup-codex.sh",
+			"runtimeMutation": true
+		},
+		{
+			"source": "nyldn/plugins.git and Claude Octopus integration",
+			"destination": "$HOME/.local/share/claude-octopus, $HOME/.codex/claude-octopus, $HOME/.agents/skills/claude-octopus, and Claude plugin state",
+			"generator": ".devcontainer/on-create/setup-claude-octopus.sh",
+			"runtimeMutation": true
+		},
+		{
+			"source": "warpdotdev/claude-code-warp",
+			"destination": "$HOME/.claude plugin marketplace and cache state",
+			"generator": ".devcontainer/on-create/setup-claude-warp.sh",
+			"runtimeMutation": true
+		},
+		{
+			"source": "graphifyy[gemini] package authority",
+			"destination": "$HOME/.local/bin/graphify and uv tool state",
+			"generator": ".devcontainer/on-create/setup-graphify.sh",
+			"runtimeMutation": true
+		},
+		{
 			"source": ".devcontainer/configs",
 			"destination": "$HOME shell configuration",
 			"generator": ".devcontainer/on-create/setup-shell.sh",
@@ -394,6 +456,18 @@
 			"source": "OpenSpec package",
 			"destination": "agent-specific OpenSpec skills and commands",
 			"generator": ".devcontainer/on-create/setup-openspec.sh",
+			"runtimeMutation": true
+		},
+		{
+			"source": ".devcontainer/devcontainer.json#customizations.vscode.extensions",
+			"destination": "VS Code remote extension store",
+			"generator": ".devcontainer/on-create/setup-vscode-extensions.sh",
+			"runtimeMutation": true
+		},
+		{
+			"source": "Warp terminal environment",
+			"destination": "$HOME/.config/devcontainer/warp-env on the host",
+			"generator": ".devcontainer/host/capture-warp-env.sh",
 			"runtimeMutation": true
 		}
 	],

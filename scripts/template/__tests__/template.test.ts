@@ -1,8 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { lstat, mkdtemp, rm } from "node:fs/promises";
+import { lstat, mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
-import { validateStageZeroEvidenceValue } from "../evidence";
+import {
+	activeRuntimePathChanges,
+	validateStageZeroEvidenceValue,
+} from "../evidence";
 import { validateJsonSchema } from "../json-schema";
 import {
 	loadFixtureDefinition,
@@ -188,6 +191,26 @@ describe("template parameter registry", () => {
 			"dependency api is unavailable in profile minimal",
 		);
 	});
+
+	test("rejects a fixture whose embedded identity differs from its filename", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			await mkdir(resolve(temporary, "fixtures/template"), { recursive: true });
+			const source = await Bun.file(
+				resolve(ROOT, "fixtures/template/minimal.toml"),
+			).text();
+			await Bun.write(
+				resolve(temporary, "fixtures/template/minimal.toml"),
+				source.replace('name = "minimal"', 'name = "full"'),
+			);
+			const parameters = await loadTemplateParameters(ROOT);
+			await expect(
+				loadFixtureDefinition(temporary, "minimal", parameters),
+			).rejects.toThrow("fixture minimal declares mismatched name full");
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	});
 });
 
 describe("stage zero evidence", () => {
@@ -225,6 +248,13 @@ describe("stage zero evidence", () => {
 		expect(validateStageZeroEvidenceValue(emptyLatency, schema)).toContain(
 			"semantic: failed-lifecycle latency samples are vacuous",
 		);
+		expect(
+			activeRuntimePathChanges([
+				"scripts/template/evidence.ts",
+				".devcontainer/Dockerfile",
+				".prototools",
+			]),
+		).toEqual([".devcontainer/Dockerfile", ".prototools"]);
 	});
 });
 
@@ -277,6 +307,15 @@ describe("deterministic fixture renderer", () => {
 					name.startsWith("template:"),
 				),
 			).toBe(false);
+			const workflow = await Bun.file(
+				resolve(output, ".github/workflows/ci.yml"),
+			).text();
+			expect(workflow).not.toContain("template-only:");
+			expect(workflow).not.toContain("template:validate");
+			const generatedScripts = packageJson.scripts as Record<string, string>;
+			for (const match of workflow.matchAll(/\bbun run ([a-z0-9:_-]+)/g)) {
+				expect(generatedScripts[match[1] ?? ""]).toBeString();
+			}
 			for (const path of [
 				".cursor/mcp.json",
 				".claude/settings.json",
@@ -330,6 +369,20 @@ describe("deterministic fixture renderer", () => {
 			expect(
 				await Bun.file(
 					resolve(temporary, "cloud/tsconfig.stagehand.base.json"),
+				).exists(),
+			).toBe(false);
+			const cloudPackage = await Bun.file(
+				resolve(temporary, "cloud/package.json"),
+			).json();
+			expect(
+				cloudPackage.workspaces.catalog["@fission-ai/openspec"],
+			).toBeUndefined();
+			expect(
+				cloudPackage.devDependencies["@fission-ai/openspec"],
+			).toBeUndefined();
+			expect(
+				await Bun.file(
+					resolve(temporary, "cloud/openspec/config.yaml"),
 				).exists(),
 			).toBe(false);
 			for (const file of [
@@ -418,6 +471,29 @@ describe("deterministic fixture renderer", () => {
 			await Bun.file(resolve(ROOT, "scripts/template/parameters.ts")).exists(),
 		).toBe(true);
 	});
+
+	test("canonicalizes output aliases before protecting tracked sources", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const alias = resolve(temporary, "template-alias");
+			await symlink(ROOT, alias, "dir");
+			await expect(
+				renderFixture({
+					root: ROOT,
+					fixtureName: "minimal",
+					output: resolve(alias, "scripts"),
+					force: true,
+				}),
+			).rejects.toThrow("contains tracked template sources");
+			expect(
+				await Bun.file(
+					resolve(ROOT, "scripts/template/parameters.ts"),
+				).exists(),
+			).toBe(true);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	});
 });
 
 describe("ownership and generated paths", () => {
@@ -440,6 +516,30 @@ describe("ownership and generated paths", () => {
 				expect(await exists(resolve(ROOT, destination.generator))).toBe(true);
 			}
 		}
+
+		const generators = new Set(
+			inventory.generatedDestinations.map(({ generator }) => generator),
+		);
+		const onCreate = await Bun.file(
+			resolve(ROOT, ".devcontainer/on-create.sh"),
+		).text();
+		const invoked = new Set(
+			[
+				...onCreate.matchAll(
+					/\/workspace\/(\.devcontainer\/(?:on-create\/setup-[a-z0-9-]+|scripts\/sync-extensions-json)\.sh)/g,
+				),
+			].flatMap((match) => (match[1] ? [match[1]] : [])),
+		);
+		const devcontainerSource = await Bun.file(
+			resolve(ROOT, ".devcontainer/devcontainer.json"),
+		).text();
+		for (const match of devcontainerSource.matchAll(
+			/(\.devcontainer\/host\/[a-z0-9-]+\.sh)/g,
+		)) {
+			if (match[1]) invoked.add(match[1]);
+		}
+		for (const generator of invoked)
+			expect(generators.has(generator)).toBe(true);
 	});
 
 	test("legacy initializer still produces a committed downstream project", async () => {

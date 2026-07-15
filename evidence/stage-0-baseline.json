@@ -488,17 +488,42 @@
 			"name": "evidence-record-antivacuity",
 			"expected": "Reject missing measurements and empty environment inventory",
 			"observed": "Evidence mutation tests reported the missing clean build and missing tool inventory."
+		},
+		{
+			"name": "generated-workflow-scripts",
+			"expected": "Generated CI must not call template-only package scripts",
+			"observed": "All generated bun run workflow commands resolve to scripts retained in the generated package."
+		},
+		{
+			"name": "runtime-diff-guard",
+			"expected": "Reject any Stage 0 change to the active devcontainer runtime",
+			"observed": "The pure mutation identifies .devcontainer/Dockerfile and .prototools while ignoring template evidence code."
+		},
+		{
+			"name": "generated-destination-exhaustiveness",
+			"expected": "Every invoked on-create and host generator must be inventoried",
+			"observed": "The inventory test derives invoked setup paths from on-create.sh and requires each generator destination record."
+		},
+		{
+			"name": "canonical-output-alias",
+			"expected": "Reject a symlink-aliased output that resolves over tracked template sources",
+			"observed": "The renderer canonicalized the alias, refused the scripts directory, and preserved template sources."
+		},
+		{
+			"name": "disabled-package-residue",
+			"expected": "Remove OpenSpec package authorities when the capability is disabled",
+			"observed": "The cloud fixture omitted both OpenSpec package entries and its config while passing residue scans."
+		},
+		{
+			"name": "fixture-identity",
+			"expected": "Reject a fixture whose embedded name differs from its requested filename",
+			"observed": "A minimal.toml mutation declaring full was rejected with both identities named."
 		}
 	],
 	"rollback": {
 		"mode": "observational",
-		"command": [
-			"git",
-			"revert",
-			"<stage-0-evidence-commit>",
-			"e0210de4df563793ebe1a8529cd6016f8cca0306"
-		],
-		"proof": "The diff from preMigrationSha to baseSha contains no active runtime-path changes; reverting the two Stage 0 commits removes metadata, fixtures, gates, and evidence while the pre-migration runtime remains recoverable at 3577ee33903eb37a45e1baa8b89917e0d408493e."
+		"command": ["git", "revert", "<stage-0-pr-merge-commit>"],
+		"proof": "The diff from preMigrationSha to baseSha is spec-only, and the validator rejects .devcontainer/** or .prototools changes from baseSha through the exact PR head. Reverting the Stage 0 merge removes metadata, fixtures, gates, and evidence while the pre-migration runtime remains recoverable at 3577ee33903eb37a45e1baa8b89917e0d408493e."
 	},
 	"cleanup": {
 		"commands": [

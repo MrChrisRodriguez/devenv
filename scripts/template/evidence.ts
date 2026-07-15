@@ -26,11 +26,17 @@ const REQUIRED_MUTATIONS = [
 	"authoritative-schema-loader",
 	"capability-dependency",
 	"disabled-capability-residue",
+	"disabled-package-residue",
 	"evidence-record-antivacuity",
+	"fixture-identity",
+	"generated-destination-exhaustiveness",
+	"generated-workflow-scripts",
 	"global-source-residue",
 	"invalid-fixture-atomicity",
 	"legacy-initializer",
+	"canonical-output-alias",
 	"protected-output",
+	"runtime-diff-guard",
 	"schema-required-and-unique",
 	"service-graph",
 	"unknown-field",
@@ -58,6 +64,18 @@ const OBSERVATIONAL_BASELINE_PATHS = [
 	"CHANGES.md",
 	"openspec/changes/portable-devcontainer-upgrade/",
 ] as const;
+
+const ACTIVE_RUNTIME_PATHS = [".devcontainer/", ".prototools"] as const;
+
+export function activeRuntimePathChanges(paths: string[]): string[] {
+	return paths
+		.filter((path) =>
+			ACTIVE_RUNTIME_PATHS.some(
+				(runtimePath) => path === runtimePath || path.startsWith(runtimePath),
+			),
+		)
+		.sort();
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -329,6 +347,20 @@ export async function validateStageZeroEvidence(
 					`repository: pre-migration-to-base diff changes runtime path ${path}`,
 				);
 		}
+	}
+	const implementationDiff = git(root, [
+		"diff",
+		"--name-only",
+		baseSha,
+		"HEAD",
+	]);
+	if (implementationDiff.exitCode !== 0)
+		errors.push("repository: Stage 0 runtime diff could not be inspected");
+	else {
+		for (const path of activeRuntimePathChanges(
+			implementationDiff.stdout.split("\n").filter(Boolean),
+		))
+			errors.push(`repository: Stage 0 changes active runtime path ${path}`);
 	}
 
 	return errors.sort();

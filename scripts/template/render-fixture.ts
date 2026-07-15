@@ -38,6 +38,12 @@ export interface ArtifactRule {
 	requiresAll: string[];
 }
 
+export interface PackageRule {
+	capability: string;
+	sections: string[];
+	packages: string[];
+}
+
 export interface CapabilitySignature {
 	paths: string[];
 	tokens: string[];
@@ -48,6 +54,7 @@ export interface TemplateOwnership {
 	classificationMode: "first-match";
 	ownershipRules: OwnershipRule[];
 	artifactRules: ArtifactRule[];
+	packageRules: PackageRule[];
 	capabilitySignatures: Record<string, CapabilitySignature>;
 }
 
@@ -134,6 +141,19 @@ async function pathExists(path: string): Promise<boolean> {
 	}
 }
 
+async function canonicalizePotentialPath(path: string): Promise<string> {
+	const missing: string[] = [];
+	let existing = path;
+	while (!(await pathExists(existing))) {
+		const parent = dirname(existing);
+		if (parent === existing)
+			throw new Error(`Cannot resolve an existing ancestor for ${path}`);
+		missing.unshift(basename(existing));
+		existing = parent;
+	}
+	return resolve(await realpath(existing), ...missing);
+}
+
 export async function loadTemplateOwnership(
 	root: string,
 ): Promise<TemplateOwnership> {
@@ -147,7 +167,8 @@ export async function loadTemplateOwnership(
 		value.classificationMode !== "first-match" ||
 		!Array.isArray(value.ownershipRules) ||
 		value.ownershipRules.length === 0 ||
-		!Array.isArray(value.artifactRules)
+		!Array.isArray(value.artifactRules) ||
+		!Array.isArray(value.packageRules)
 	) {
 		throw new Error(`Invalid ownership inventory: ${path}`);
 	}
@@ -337,6 +358,7 @@ async function renderDevcontainer(
 async function renderPackage(
 	source: string,
 	parameters: TemplateParameters,
+	ownership: TemplateOwnership,
 ): Promise<string> {
 	const value = (await Bun.file(source).json()) as Record<string, unknown>;
 	value["name"] = parameters.project.slug;
@@ -351,7 +373,55 @@ async function renderPackage(
 			if (key.startsWith("template:")) delete scriptMap[key];
 		}
 	}
+	for (const rule of ownership.packageRules) {
+		if (parameters.capabilities.defaults[rule.capability] === true) continue;
+		for (const sectionPath of rule.sections) {
+			let section: unknown = value;
+			for (const segment of sectionPath.split(".")) {
+				if (
+					typeof section !== "object" ||
+					section === null ||
+					Array.isArray(section)
+				) {
+					section = undefined;
+					break;
+				}
+				section = (section as Record<string, unknown>)[segment];
+			}
+			if (
+				typeof section !== "object" ||
+				section === null ||
+				Array.isArray(section)
+			)
+				continue;
+			for (const packageName of rule.packages)
+				delete (section as Record<string, unknown>)[packageName];
+		}
+	}
 	return json(value);
+}
+
+export function stripTemplateOnlyBlocks(source: string): string {
+	const output: string[] = [];
+	let block: string | undefined;
+	for (const line of source.split("\n")) {
+		const start = /^# template-only:start ([a-z0-9-]+)$/.exec(line.trim());
+		const end = /^# template-only:end ([a-z0-9-]+)$/.exec(line.trim());
+		if (start?.[1]) {
+			if (block) throw new Error(`Nested template-only block ${start[1]}`);
+			block = start[1];
+			continue;
+		}
+		if (end?.[1]) {
+			if (block !== end[1])
+				throw new Error(`Mismatched template-only block ${end[1]}`);
+			block = undefined;
+			continue;
+		}
+		if (!block) output.push(line);
+	}
+	if (block) throw new Error(`Unterminated template-only block ${block}`);
+	return output.join("\n");
 }
 
 async function renderMcpSettings(
@@ -502,7 +572,8 @@ async function renderContent(
 	if (entry.path === ".devcontainer/devcontainer.json") {
 		return renderDevcontainer(source, parameters, fixture.fixture.name);
 	}
-	if (entry.path === "package.json") return renderPackage(source, parameters);
+	if (entry.path === "package.json")
+		return renderPackage(source, parameters, await loadTemplateOwnership(root));
 	if (
 		entry.path === ".cursor/mcp.json" ||
 		entry.path === ".claude/settings.json"
@@ -521,7 +592,7 @@ async function renderContent(
 	} catch {
 		return bytes;
 	}
-	content = content
+	content = stripTemplateOnlyBlocks(content)
 		.replaceAll("/workspace", parameters.paths.container_workspace)
 		.replaceAll("@confiador/", `@${parameters.project.slug}/`);
 	if (entry.path === "AGENTS.md")
@@ -660,8 +731,8 @@ export async function renderFixture(options: {
 	output: string;
 	force?: boolean;
 }): Promise<{ manifest: RenderManifest; residue: ResidueReport }> {
-	const root = resolve(options.root);
-	const target = resolve(options.output);
+	const root = await realpath(resolve(options.root));
+	const target = await canonicalizePotentialPath(resolve(options.output));
 	if (target === root || containsPath(target, root)) {
 		throw new Error(`Unsafe output path: ${target}`);
 	}
