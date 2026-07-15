@@ -1,8 +1,8 @@
 {
   "commandId": "stale-image-refusal",
-  "mutation": "shadow-workspace-shell-env-tools-overrides-and-edit-definition",
-  "originalDefinitionFingerprint": "1fdcf6af675c375278210b09942c4dd3fec46b940011addb9ed900c54c614ea5",
-  "mutatedDefinitionFingerprint": "a480382744c4fd8e3917021081d32bb83588c7a036dcbfb4a457f69d7a0d3d2d",
+  "mutation": "shadow-workspace-startup-tools-overrides-and-edit-definition",
+  "originalDefinitionFingerprint": "a0353fdea3947eb3cf089947a3ca6c5e4d7753189dc98356492473cbb8a1219d",
+  "mutatedDefinitionFingerprint": "28086a7ced05be15e465b2a263b4ec267c49d8cbffb0ac4932864c7cbb9b2f1b",
   "shadowBunPath": "/workspace/node_modules/.bin/bun",
   "shadowBashPath": "/workspace/node_modules/.bin/bash",
   "shadowUtilityPaths": [
@@ -17,11 +17,16 @@
     "DEVCONTAINER_REPO_ROOT": "/trusted",
     "DEVCONTAINER_IMAGE_CONTRACT_DIR": "/workspace/contract-marker-override",
     "BASH_ENV": "/workspace/preverify-bash-env.sh",
-    "BASH_FUNC_source%%": "() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }"
+    "BASH_FUNC_source%%": "() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }",
+    "BUN_OPTIONS": "--preload=/workspace/preverify-bun-options.ts"
   },
   "preVerificationShadowExecution": false,
   "preVerificationBashEnvExecution": false,
   "preVerificationExportedFunctionExecution": false,
+  "preVerificationBunOptionsExecution": false,
+  "preVerificationOnCreateExecution": false,
+  "preVerificationSetupCommonExecution": false,
+  "preVerificationFingerprintScriptExecution": false,
   "containerExitCode": 1,
   "refused": true,
   "diagnostic": "ERROR: the devcontainer definition differs from the image fingerprint\nRebuild/recreate the devcontainer; image-owned tools are never repaired at runtime."

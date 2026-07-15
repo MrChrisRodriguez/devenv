@@ -12,7 +12,7 @@ This file documents changes made to this template repository. Each entry provide
 
 The immutable remediated implementation boundary is `69a97d84e2591242265887a7c062bbb0853b5ca9`; evidence-only commits follow it without changing image inputs.
 
-The replacement run `stage2-20260715t080439z-9f48b8ee` executed both supported architectures without cache, refused the shadow-Bun definition attack, measured 4,403,200 bytes of second-worktree growth against the 96,111,608-byte Stage 0 baseline, and restored the actual predecessor tree through the deterministic mainline-revert proof.
+The replacement run `stage2-20260715t142339z-b2e18c63` executed both supported architectures without cache, refused the stale mounted-checkout definition before its setup scripts ran, measured 4,472,832 bytes of second-worktree growth against the 96,111,608-byte Stage 0 baseline, and restored the actual predecessor tree through the deterministic mainline-revert proof.
 
 **Changed files:**
 - `.devcontainer/Dockerfile`, `.devcontainer/devcontainer.json`, `.devcontainer/devcontainer-fingerprint.sh`, `.devcontainer/on-create/setup-proto.sh` — image-owned verification before mounted checkout setup, absolute fingerprint execution, and realpath enforcement.
