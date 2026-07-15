@@ -1,6 +1,7 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Strict JSON records require bracket access.
 import { resolve } from "node:path";
 import { validateJsonSchema } from "./json-schema";
+import { syntheticMergeMetadata } from "./prove-stage-one-revert";
 import { resolvedVersions } from "./toolchain";
 
 const REQUIRED_MUTATIONS = [
@@ -381,6 +382,15 @@ export function validateStageOneEvidenceValue(
 		errors.push("semantic: rollback proof belongs to another run");
 	if (rollbackProof["predecessorSha"] !== recordAt(value, "source")["baseSha"])
 		errors.push("semantic: rollback proof targets another predecessor");
+	if (
+		!sameValue(rollbackProof["syntheticMergeParents"], [
+			recordAt(value, "source")["baseSha"],
+			recordAt(value, "source")["implementationSha"],
+		])
+	)
+		errors.push(
+			"semantic: synthetic merge parents drifted from source boundary",
+		);
 	if (rollbackProof["predecessorTree"] !== rollbackProof["revertedTree"])
 		errors.push("semantic: rollback proof did not restore predecessor tree");
 
@@ -529,6 +539,9 @@ export async function validateStageOneEvidence(
 	for (const required of [
 		`headSha=${String(recordAt(value, "source")["implementationSha"] ?? "")}`,
 		`predecessorSha=${String(recordAt(value, "source")["baseSha"] ?? "")}`,
+		`syntheticMergeSha=${String(rollbackProofRecord["syntheticMergeSha"] ?? "")}`,
+		`syntheticMergeTree=${String(rollbackProofRecord["syntheticMergeTree"] ?? "")}`,
+		`syntheticMergeParents=${arrayAt(rollbackProofRecord, "syntheticMergeParents").join(",")}`,
 		"revertExitCode=0",
 		"treeMatchesPredecessor=true",
 		"predecessorBun=1.3.4",
@@ -701,6 +714,51 @@ export async function validateStageOneEvidence(
 				errors.push(
 					"repository: Stage 1 implementation is not an ancestor of HEAD",
 				);
+			if (typeof baseSha === "string") {
+				const predecessorTree = gitOutput(root, [
+					"rev-parse",
+					`${baseSha}^{tree}`,
+				]);
+				const implementationTree = gitOutput(root, [
+					"rev-parse",
+					`${implementationSha}^{tree}`,
+				]);
+				if (predecessorTree.exitCode !== 0 || implementationTree.exitCode !== 0)
+					errors.push(
+						"repository: Stage 1 rollback trees could not be inspected",
+					);
+				else {
+					if (
+						rollbackProofRecord["predecessorTree"] !== predecessorTree.stdout ||
+						rollbackProofRecord["revertedTree"] !== predecessorTree.stdout
+					)
+						errors.push(
+							"repository: rollback proof tree differs from actual predecessor tree",
+						);
+					const merge = syntheticMergeMetadata(
+						baseSha,
+						implementationSha,
+						implementationTree.stdout,
+					);
+					if (rollbackProofRecord["syntheticMergeTree"] !== merge.tree)
+						errors.push(
+							"repository: synthetic merge tree differs from implementation tree",
+						);
+					if (
+						!sameValue(
+							rollbackProofRecord["syntheticMergeParents"],
+							merge.parents,
+						)
+					)
+						errors.push(
+							"repository: synthetic merge parents differ from source boundary",
+						);
+					if (rollbackProofRecord["syntheticMergeSha"] !== merge.sha)
+						errors.push(
+							"repository: synthetic merge commit does not match deterministic metadata",
+						);
+				}
+			}
 			const boundaryDiff = gitOutput(root, [
 				"diff",
 				"--name-only",

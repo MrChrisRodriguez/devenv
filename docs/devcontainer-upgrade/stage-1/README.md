@@ -65,7 +65,8 @@ mutable plugin URLs, feature digest drift, malformed or mismatched checksums,
 `baseUrl`, absolute aliases, PATH inversion, secondary lockfiles, and disabled
 family residue all fail closed. The evidence record binds the package, feature,
 and checksum lock digests to the reviewed tree. Workflow and local composite
-action metadata are both searched recursively for setup-bun actions. Its
+action metadata are both searched recursively and case-insensitively for
+setup-bun actions. Its
 clean-tree assertion includes
 untracked paths while deliberately excluding the separately maintained Graphify
 index.

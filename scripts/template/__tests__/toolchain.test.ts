@@ -223,7 +223,7 @@ describe("repository toolchain contract", () => {
 			await mkdir(dirname(compositeAction), { recursive: true });
 			await Bun.write(
 				compositeAction,
-				"name: bootstrap\nruns:\n  using: composite\n  steps:\n    - uses: oven-sh/setup-bun@v2\n",
+				"name: bootstrap\nruns:\n  using: composite\n  steps:\n    - uses: Oven-Sh/setup-bun@v2\n",
 			);
 			const compositeErrors = await validateToolchainContract(temporary);
 			const compositeObservation =

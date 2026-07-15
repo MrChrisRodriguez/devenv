@@ -8,13 +8,60 @@ interface CommandResult {
 	stderr: string;
 }
 
-function run(command: string[], cwd: string): CommandResult {
-	const result = Bun.spawnSync({
-		cmd: command,
-		cwd,
-		stdout: "pipe",
-		stderr: "pipe",
-	});
+const SYNTHETIC_MERGE_SUBJECT = "Stage 1 synthetic merge proof";
+const SYNTHETIC_IDENTITY = "Stage 1 Evidence <stage1-evidence@example.invalid>";
+
+export function syntheticMergeMetadata(
+	baseSha: string,
+	headSha: string,
+	treeSha: string,
+): {
+	sha: string;
+	tree: string;
+	parents: [string, string];
+} {
+	const content = [
+		`tree ${treeSha}`,
+		`parent ${baseSha}`,
+		`parent ${headSha}`,
+		`author ${SYNTHETIC_IDENTITY} 0 +0000`,
+		`committer ${SYNTHETIC_IDENTITY} 0 +0000`,
+		"",
+		SYNTHETIC_MERGE_SUBJECT,
+		"",
+	].join("\n");
+	const encoded = new TextEncoder().encode(content);
+	const header = new TextEncoder().encode(`commit ${encoded.byteLength}\0`);
+	const object = new Uint8Array(header.byteLength + encoded.byteLength);
+	object.set(header);
+	object.set(encoded, header.byteLength);
+	return {
+		sha: new Bun.CryptoHasher("sha1").update(object).digest("hex"),
+		tree: treeSha,
+		parents: [baseSha, headSha],
+	};
+}
+
+function run(
+	command: string[],
+	cwd: string,
+	env?: Record<string, string>,
+): CommandResult {
+	const result =
+		env === undefined
+			? Bun.spawnSync({
+					cmd: command,
+					cwd,
+					stdout: "pipe",
+					stderr: "pipe",
+				})
+			: Bun.spawnSync({
+					cmd: command,
+					cwd,
+					env: { ...process.env, ...env },
+					stdout: "pipe",
+					stderr: "pipe",
+				});
 	return {
 		exitCode: result.exitCode,
 		stdout: result.stdout.toString().trim(),
@@ -22,8 +69,12 @@ function run(command: string[], cwd: string): CommandResult {
 	};
 }
 
-function required(command: string[], cwd: string): string {
-	const result = run(command, cwd);
+function required(
+	command: string[],
+	cwd: string,
+	env?: Record<string, string>,
+): string {
+	const result = run(command, cwd, env);
 	if (result.exitCode !== 0) {
 		throw new Error(
 			`${command.join(" ")} exited ${result.exitCode}\n${result.stdout}\n${result.stderr}`,
@@ -60,8 +111,36 @@ async function prove(): Promise<void> {
 			checkout,
 		);
 		required(["git", "checkout", "--quiet", "--detach", baseSha], checkout);
-		required(["git", "merge", "--no-ff", "--no-edit", headSha], checkout);
-		const mergeSha = required(["git", "rev-parse", "HEAD"], checkout);
+		const headTree = required(
+			["git", "rev-parse", `${headSha}^{tree}`],
+			checkout,
+		);
+		const merge = syntheticMergeMetadata(baseSha, headSha, headTree);
+		const mergeSha = required(
+			[
+				"git",
+				"commit-tree",
+				headTree,
+				"-p",
+				baseSha,
+				"-p",
+				headSha,
+				"-m",
+				SYNTHETIC_MERGE_SUBJECT,
+			],
+			checkout,
+			{
+				GIT_AUTHOR_NAME: "Stage 1 Evidence",
+				GIT_AUTHOR_EMAIL: "stage1-evidence@example.invalid",
+				GIT_AUTHOR_DATE: "1970-01-01T00:00:00Z",
+				GIT_COMMITTER_NAME: "Stage 1 Evidence",
+				GIT_COMMITTER_EMAIL: "stage1-evidence@example.invalid",
+				GIT_COMMITTER_DATE: "1970-01-01T00:00:00Z",
+			},
+		);
+		if (mergeSha !== merge.sha)
+			throw new Error("Synthetic merge metadata is not deterministic");
+		required(["git", "checkout", "--quiet", "--detach", mergeSha], checkout);
 		required(["git", "revert", "-m", "1", "--no-edit", mergeSha], checkout);
 		const revertedTree = required(
 			["git", "rev-parse", "HEAD^{tree}"],
@@ -96,6 +175,8 @@ async function prove(): Promise<void> {
 			`headSha=${headSha}`,
 			`predecessorSha=${baseSha}`,
 			`syntheticMergeSha=${mergeSha}`,
+			`syntheticMergeTree=${merge.tree}`,
+			`syntheticMergeParents=${merge.parents.join(",")}`,
 			"revertExitCode=0",
 			`predecessorTree=${predecessorTree}`,
 			`revertedTree=${revertedTree}`,

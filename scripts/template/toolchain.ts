@@ -180,7 +180,7 @@ function setupBunPins(workflow: string): Array<string | undefined> {
 	const lines = workflow.split("\n");
 	const pins: Array<string | undefined> = [];
 	for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
-		if (!lines[lineIndex]?.includes("oven-sh/setup-bun@")) continue;
+		if (!/oven-sh\/setup-bun@/i.test(lines[lineIndex] ?? "")) continue;
 		let stepStart = lineIndex;
 		while (stepStart >= 0 && !/^\s*-\s+/.test(lines[stepStart] ?? ""))
 			stepStart -= 1;
@@ -390,7 +390,7 @@ export async function validateToolchainContract(
 	}
 	for (const automationPath of [...new Set(githubAutomationPaths)].sort()) {
 		const automation = await Bun.file(resolve(root, automationPath)).text();
-		if (!automation.includes("oven-sh/setup-bun@")) continue;
+		if (!/oven-sh\/setup-bun@/i.test(automation)) continue;
 		const pins = setupBunPins(automation);
 		for (const pin of pins) {
 			if (pin === undefined) {

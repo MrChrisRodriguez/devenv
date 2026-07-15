@@ -239,6 +239,8 @@
 				"cleanupExitCode",
 				"predecessorSha",
 				"syntheticMergeSha",
+				"syntheticMergeTree",
+				"syntheticMergeParents",
 				"revertExitCode",
 				"predecessorTree",
 				"revertedTree",
@@ -272,6 +274,13 @@
 				"cleanupExitCode": { "const": 0 },
 				"predecessorSha": { "$ref": "#/$defs/sha" },
 				"syntheticMergeSha": { "$ref": "#/$defs/sha" },
+				"syntheticMergeTree": { "$ref": "#/$defs/sha" },
+				"syntheticMergeParents": {
+					"type": "array",
+					"minItems": 2,
+					"maxItems": 2,
+					"items": { "$ref": "#/$defs/sha" }
+				},
 				"revertExitCode": { "const": 0 },
 				"predecessorTree": { "$ref": "#/$defs/sha" },
 				"revertedTree": { "$ref": "#/$defs/sha" },
