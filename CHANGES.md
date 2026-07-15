@@ -4,6 +4,12 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-07-15 — Add: reproducible Stage 3 acceptance evidence
+
+**Goal:** Bind the Stage 3 browser, agent payload, watchdog, shell, plugin-repair, performance, storage, and rollback acceptance results to exact commands and raw logs from the reviewed image.
+
+**How to implement:** Capture the warm browser image build, repository-pinned browser launch, enabled launcher paths, local plugin source repair, Bash/Zsh login and non-login PATHs, existing known-bad fixture suites, second-worktree storage, and a synthetic mainline-revert proof through one Bun collector. Record exact argv, timestamps, image/source identities, log paths, and log SHA-256 values in a strict machine-readable schema. Revalidate the evidence against the current Docker/package authorities and bound logs, keep the cloud browser profile as an explicit Stage 4 handoff, and roll back the complete Stage 3 merge atomically.
+
 ## 2026-07-15 — Fix: integrate Stage 3 runtimes with the verified lifecycle
 
 **Goal:** Preserve Stage 2 lifecycle verification while making browser and agent payload behavior capability-complete and reliable in generated environments.

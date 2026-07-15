@@ -1,0 +1,338 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"stage",
+		"capturedAt",
+		"run",
+		"source",
+		"image",
+		"commands",
+		"browser",
+		"launchers",
+		"shellPaths",
+		"plugins",
+		"knownBadFixtures",
+		"comparison",
+		"cloudHandoff",
+		"rollback"
+	],
+	"properties": {
+		"schemaVersion": { "const": 1 },
+		"stage": { "const": "stage-3-browser-agent-runtimes" },
+		"capturedAt": { "type": "string", "format": "date-time" },
+		"run": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "logRoot", "temporaryRoot"],
+			"properties": {
+				"id": {
+					"type": "string",
+					"pattern": "^stage3-[0-9]{8}t[0-9]{6}z-[0-9a-f]{8}$"
+				},
+				"logRoot": { "const": "evidence/stage-3-runtimes-run" },
+				"temporaryRoot": {
+					"type": "string",
+					"pattern": "^/tmp/devenv-stage2-stage3-[0-9a-z-]+$"
+				}
+			}
+		},
+		"source": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["baseSha", "implementationSha", "featureTreeClean"],
+			"properties": {
+				"baseSha": { "$ref": "#/$defs/gitSha" },
+				"implementationSha": { "$ref": "#/$defs/gitSha" },
+				"featureTreeClean": { "const": true }
+			}
+		},
+		"image": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["tag", "imageId", "architecture", "os", "pins"],
+			"properties": {
+				"tag": { "type": "string", "pattern": "^devenv-stage3-[a-z0-9-]+$" },
+				"imageId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+				"architecture": { "enum": ["amd64", "arm64"] },
+				"os": { "const": "linux" },
+				"pins": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"playwright",
+						"codex",
+						"gemini",
+						"graphify",
+						"claude",
+						"ccstatusline",
+						"context7",
+						"octopusCommit",
+						"octopusSha256",
+						"warpCommit",
+						"warpSha256"
+					],
+					"properties": {
+						"playwright": { "$ref": "#/$defs/version" },
+						"codex": { "$ref": "#/$defs/version" },
+						"gemini": { "$ref": "#/$defs/version" },
+						"graphify": { "$ref": "#/$defs/version" },
+						"claude": { "$ref": "#/$defs/version" },
+						"ccstatusline": { "$ref": "#/$defs/version" },
+						"context7": { "$ref": "#/$defs/version" },
+						"octopusCommit": { "$ref": "#/$defs/gitSha" },
+						"octopusSha256": { "$ref": "#/$defs/sha256" },
+						"warpCommit": { "$ref": "#/$defs/gitSha" },
+						"warpSha256": { "$ref": "#/$defs/sha256" }
+					}
+				}
+			}
+		},
+		"commands": {
+			"type": "array",
+			"minItems": 14,
+			"items": { "$ref": "#/$defs/commandResult" }
+		},
+		"browser": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"commandId",
+				"markerPath",
+				"markerVersion",
+				"executablePath",
+				"launchPassed"
+			],
+			"properties": {
+				"commandId": { "const": "browser-preflight" },
+				"markerPath": {
+					"const": "/home/vscode/.payloads/browser/.devenv-playwright-version"
+				},
+				"markerVersion": { "$ref": "#/$defs/version" },
+				"executablePath": {
+					"type": "string",
+					"pattern": "^/home/vscode/\\.payloads/browser/chromium_headless_shell-[0-9]+/chrome-linux/headless_shell$"
+				},
+				"launchPassed": { "const": true }
+			}
+		},
+		"launchers": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"codex",
+				"gemini",
+				"graphify",
+				"claude",
+				"ccstatusline",
+				"context7-mcp"
+			],
+			"properties": {
+				"codex": { "const": "/home/vscode/.local/bin/codex" },
+				"gemini": { "const": "/home/vscode/.local/bin/gemini" },
+				"graphify": { "const": "/home/vscode/.local/bin/graphify" },
+				"claude": { "const": "/home/vscode/.local/bin/claude" },
+				"ccstatusline": { "const": "/home/vscode/.local/bin/ccstatusline" },
+				"context7-mcp": { "const": "/home/vscode/.local/bin/context7-mcp" }
+			}
+		},
+		"shellPaths": {
+			"type": "array",
+			"minItems": 4,
+			"maxItems": 4,
+			"items": { "$ref": "#/$defs/shellPath" }
+		},
+		"plugins": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"commandId",
+				"octopusInstallPath",
+				"warpInstallPath",
+				"persistedSourceRepair",
+				"sharedGraphifyResidue"
+			],
+			"properties": {
+				"commandId": { "const": "plugin-repair-smoke" },
+				"octopusInstallPath": {
+					"type": "string",
+					"pattern": "^/home/vscode/\\.claude/plugins/cache/nyldn-plugins/octo/"
+				},
+				"warpInstallPath": {
+					"type": "string",
+					"pattern": "^/home/vscode/\\.claude/plugins/cache/claude-code-warp/warp/"
+				},
+				"persistedSourceRepair": { "const": true },
+				"sharedGraphifyResidue": { "const": false }
+			}
+		},
+		"knownBadFixtures": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"browser",
+				"agents",
+				"watchdog",
+				"watchdogTestCount",
+				"idleTimeoutExitCode",
+				"processGroupCleanup"
+			],
+			"properties": {
+				"browser": { "const": "browser-known-bad-fixtures" },
+				"agents": { "const": "agent-known-bad-fixtures" },
+				"watchdog": { "const": "watchdog-known-bad-fixtures" },
+				"watchdogTestCount": { "const": 14 },
+				"idleTimeoutExitCode": { "const": 124 },
+				"processGroupCleanup": { "const": true }
+			}
+		},
+		"comparison": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"warmBuildCommandId",
+				"warmBuildDurationMs",
+				"stageTwoWarmBuildDurationMs",
+				"browserPreflightDurationMs",
+				"storageCommandId",
+				"secondWorktreeObservedBytes",
+				"stageTwoSecondWorktreeObservedBytes",
+				"stageZeroSecondWorktreeBaselineBytes"
+			],
+			"properties": {
+				"warmBuildCommandId": { "const": "warm-browser-build" },
+				"warmBuildDurationMs": { "type": "integer", "minimum": 1 },
+				"stageTwoWarmBuildDurationMs": { "type": "integer", "minimum": 1 },
+				"browserPreflightDurationMs": { "type": "integer", "minimum": 1 },
+				"storageCommandId": { "const": "second-worktree-storage" },
+				"secondWorktreeObservedBytes": { "type": "integer", "minimum": 0 },
+				"stageTwoSecondWorktreeObservedBytes": {
+					"type": "integer",
+					"minimum": 0
+				},
+				"stageZeroSecondWorktreeBaselineBytes": {
+					"type": "integer",
+					"minimum": 0
+				}
+			}
+		},
+		"cloudHandoff": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"ownerStage",
+				"requiredProfile",
+				"requiredCommand",
+				"requiredMarkerPath",
+				"requiredEnvironment"
+			],
+			"properties": {
+				"ownerStage": { "const": "stage-4-codex-cloud-parity" },
+				"requiredProfile": { "const": "browser" },
+				"requiredCommand": { "const": "bun run browser:preflight" },
+				"requiredMarkerPath": {
+					"const": "/home/vscode/.payloads/browser/.devenv-playwright-version"
+				},
+				"requiredEnvironment": { "const": "PLAYWRIGHT_BROWSERS_PATH" }
+			}
+		},
+		"rollback": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["mode", "command", "runtimeCleanup", "scope", "proof"],
+			"properties": {
+				"mode": { "const": "atomic" },
+				"command": { "$ref": "#/$defs/command" },
+				"runtimeCleanup": { "$ref": "#/$defs/command" },
+				"scope": { "type": "string", "minLength": 40 },
+				"proof": {
+					"type": "object",
+					"required": [
+						"commandId",
+						"predecessorSha",
+						"implementationSha",
+						"treeMatchesPredecessor"
+					]
+				}
+			}
+		}
+	},
+	"$defs": {
+		"gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+		"sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+		"version": {
+			"type": "string",
+			"pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+		},
+		"command": {
+			"type": "array",
+			"minItems": 1,
+			"items": { "type": "string", "minLength": 1 }
+		},
+		"commandResult": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"command",
+				"runId",
+				"startedAt",
+				"completedAt",
+				"durationMs",
+				"stdoutPath",
+				"stderrPath",
+				"stdoutSha256",
+				"stderrSha256",
+				"exitCode",
+				"status"
+			],
+			"properties": {
+				"id": { "type": "string", "minLength": 1 },
+				"command": { "$ref": "#/$defs/command" },
+				"runId": { "type": "string", "minLength": 1 },
+				"startedAt": { "type": "string", "format": "date-time" },
+				"completedAt": { "type": "string", "format": "date-time" },
+				"durationMs": { "type": "integer", "minimum": 1 },
+				"stdoutPath": {
+					"type": "string",
+					"pattern": "^evidence/stage-3-runtimes-run/[a-z0-9-]+\\.stdout$"
+				},
+				"stderrPath": {
+					"type": "string",
+					"pattern": "^evidence/stage-3-runtimes-run/[a-z0-9-]+\\.stderr$"
+				},
+				"stdoutSha256": { "$ref": "#/$defs/sha256" },
+				"stderrSha256": { "$ref": "#/$defs/sha256" },
+				"exitCode": { "const": 0 },
+				"status": { "const": "pass" }
+			}
+		},
+		"shellPath": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"shell",
+				"mode",
+				"commandId",
+				"bun",
+				"proto",
+				"codex",
+				"path"
+			],
+			"properties": {
+				"shell": { "enum": ["bash", "zsh"] },
+				"mode": { "enum": ["login", "non-login"] },
+				"commandId": {
+					"type": "string",
+					"pattern": "^shell-(?:bash|zsh)-(?:login|non-login)$"
+				},
+				"bun": { "type": "string", "minLength": 1 },
+				"proto": { "type": "string", "minLength": 1 },
+				"codex": { "type": "string", "minLength": 1 },
+				"path": { "type": "string", "minLength": 1 }
+			}
+		}
+	}
+}
