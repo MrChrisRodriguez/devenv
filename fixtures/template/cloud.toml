@@ -1,0 +1,32 @@
+[fixture]
+name = "cloud"
+description = "Cloudflare Worker and Codex Cloud core profile without browser or application-stack integrations."
+
+[project]
+slug = "fixture-cloud"
+display_name = "Fixture Cloud"
+environment_prefix = "FIXTURE_CLOUD"
+docker_resource_prefix = "fixture-cloud"
+local_domain_stem = "fixture-cloud"
+
+[capabilities]
+devcontainer = true
+moon = true
+moon_affected_selection = false
+openspec = false
+codex = true
+codex_cloud = true
+gemini = true
+claude = true
+graphify = true
+context7 = true
+ccstatusline = true
+claude_octopus = true
+claude_warp = true
+playwright = false
+cloudflare_workers = true
+better_auth = false
+rhf_zod = false
+sentry = false
+vite_websocket_proxy = false
+tanstack_start = false

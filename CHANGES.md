@@ -4,6 +4,20 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-07-14 — Add: Stage 0 portable devcontainer baseline
+
+**Goal:** Establish a reproducible, reviewable pre-migration baseline without changing the active devcontainer runtime. The baseline must make template inputs and ownership visible, prove disabled-capability omission, and preserve failed measurements honestly so later stages can compare performance, storage, and reliability against observed behavior.
+
+**How to implement:** Validate `template-parameters.toml` and its schema, keep application services empty until a generated project owns a real service graph, and render the explicit minimal/cloud/full fixtures through `scripts/template/`. Use the ownership inventory to omit project-owned, generated, and template-only evidence paths; strip template-only CI blocks, remove capability-owned package entries, require fixture filename/identity agreement, canonicalize output aliases, protect worktree/common Git metadata, and derive generator-inventory coverage from the lifecycle entrypoint. Run the Bun validation, test, typecheck, and fixture commands; capture image builds and two isolated legacy worktrees using uniquely labeled Docker resources; publish the schema-validated evidence with command/log digests and an observational rollback that rejects active runtime-path changes through the immutable Stage 0 boundary. Merge the stage with a merge commit so that boundary remains reachable, and roll it back with `git revert -m 1 <merge-commit>`. Do not prune Docker or stage Graphify output.
+
+**Changed files:**
+- `template-parameters.toml`, `template-parameters.schema.json` — project, path, port, toolchain authority, capability, CI, worktree, and generation contracts.
+- `fixtures/template/*.toml`, `scripts/template/**` — deterministic atomic fixture rendering, validation, and known-bad mutation tests.
+- `docs/devcontainer-upgrade/stage-0/**` — ownership inventory, synchronization risks, measurement method, and rollback.
+- `evidence/stage-0-baseline*.json`, `scripts/template/evidence.ts` — machine-readable measured evidence, strict schema, anti-vacuity checks, commit-lineage proof, and observational runtime-diff validation pinned to an immutable Stage 0 boundary.
+- `package.json` — Bun entry points for the Stage 0 gates.
+- `.github/workflows/ci.yml` — required Stage 0 schema, mutation, typecheck, fixture, and full-history commit-lineage gate.
+
 ## 2026-07-14 — Plan: portable devcontainer upgrade contract
 
 **Goal:** Convert the approved `devcontainer-updates` migration kit into repository-native, testable OpenSpec contracts before changing template runtime behavior. The review found mutable Proto plugin URLs and package versions, runtime/global installers, a per-container Proto volume, fixed ports, Docker-in-Docker, permissive CI, and no verified worktree or Codex Cloud execution boundary.

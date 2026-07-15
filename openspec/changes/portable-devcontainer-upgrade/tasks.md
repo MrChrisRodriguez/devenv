@@ -1,10 +1,10 @@
 ## 1. Stage 0 PR — Inventory, Parameters, and Baseline
 
-- [ ] 1.1 Add and schema-validate `template-parameters.toml` with project, path, toolchain, service, CI, worktree, and capability defaults derived from the current template
-- [ ] 1.2 Inventory template-owned files, downstream sync exclusions/overrides, hardcoded identities/paths/ports, version authorities, and enabled versus supported capabilities
-- [ ] 1.3 Add minimal, cloud, and full fixture definitions plus a deterministic fixture renderer that omits disabled capabilities
-- [ ] 1.4 Capture recoverable pre-migration SHA, image/container/volume inventory, tool and lock multiplicity, CI checks/duration, build/restart/readiness timings, command latency samples, and second-worktree disk growth
-- [ ] 1.5 Validate all existing generated paths, add fixture anti-residue assertions, document rollback as observational, update `CHANGES.md`, and publish machine-readable Stage 0 evidence
+- [x] 1.1 Add and schema-validate `template-parameters.toml` with project, path, toolchain, service, CI, worktree, and capability defaults derived from the current template
+- [x] 1.2 Inventory template-owned files, downstream sync exclusions/overrides, hardcoded identities/paths/ports, version authorities, and enabled versus supported capabilities
+- [x] 1.3 Add minimal, cloud, and full fixture definitions plus a deterministic fixture renderer that omits disabled capabilities
+- [x] 1.4 Capture recoverable pre-migration SHA, image/container/volume inventory, tool and lock multiplicity, CI checks/duration, build/restart/readiness timings, command latency samples, and second-worktree disk growth
+- [x] 1.5 Validate all existing generated paths, add fixture anti-residue assertions, document rollback as observational, update `CHANGES.md`, and publish machine-readable Stage 0 evidence
 
 ## 2. Stage 1 PR — Repository Toolchain and Dependency Contract
 

@@ -1,0 +1,425 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://devenv.local/schemas/stage-0-baseline.schema.json",
+	"title": "Portable devcontainer Stage 0 baseline evidence",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"stage",
+		"capturedAt",
+		"source",
+		"environment",
+		"inventory",
+		"locks",
+		"ci",
+		"measurements",
+		"validation",
+		"mutationProof",
+		"rollback",
+		"cleanup",
+		"logs"
+	],
+	"properties": {
+		"schemaVersion": { "const": 1 },
+		"stage": { "const": "stage-0" },
+		"capturedAt": { "type": "string", "format": "date-time" },
+		"source": { "$ref": "#/$defs/source" },
+		"environment": { "$ref": "#/$defs/environment" },
+		"inventory": { "$ref": "#/$defs/inventory" },
+		"locks": { "$ref": "#/$defs/locks" },
+		"ci": { "$ref": "#/$defs/ci" },
+		"measurements": { "$ref": "#/$defs/measurements" },
+		"validation": {
+			"type": "array",
+			"minItems": 4,
+			"items": { "$ref": "#/$defs/commandResult" }
+		},
+		"mutationProof": {
+			"type": "array",
+			"minItems": 8,
+			"items": { "$ref": "#/$defs/mutation" }
+		},
+		"rollback": { "$ref": "#/$defs/rollback" },
+		"cleanup": { "$ref": "#/$defs/cleanup" },
+		"logs": {
+			"type": "array",
+			"minItems": 14,
+			"items": { "$ref": "#/$defs/log" }
+		}
+	},
+	"$defs": {
+		"sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+		"sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+		"command": {
+			"type": "array",
+			"minItems": 1,
+			"items": { "type": "string", "minLength": 1 }
+		},
+		"source": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"baseSha",
+				"preMigrationSha",
+				"implementationSha",
+				"runtimeBoundarySha",
+				"exactHeadEvidence"
+			],
+			"properties": {
+				"baseSha": { "$ref": "#/$defs/sha" },
+				"preMigrationSha": { "$ref": "#/$defs/sha" },
+				"implementationSha": { "$ref": "#/$defs/sha" },
+				"runtimeBoundarySha": { "$ref": "#/$defs/sha" },
+				"exactHeadEvidence": { "type": "string", "minLength": 1 }
+			}
+		},
+		"environment": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commands", "host", "docker", "tools"],
+			"properties": {
+				"commands": {
+					"type": "array",
+					"minItems": 3,
+					"items": { "$ref": "#/$defs/command" }
+				},
+				"host": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"os",
+						"osVersion",
+						"kernel",
+						"architecture",
+						"logicalCpu",
+						"memoryBytes"
+					],
+					"properties": {
+						"os": { "type": "string", "minLength": 1 },
+						"osVersion": { "type": "string", "minLength": 1 },
+						"kernel": { "type": "string", "minLength": 1 },
+						"architecture": { "enum": ["arm64", "amd64"] },
+						"logicalCpu": { "type": "integer", "minimum": 1 },
+						"memoryBytes": { "type": "integer", "minimum": 1 }
+					}
+				},
+				"docker": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"clientVersion",
+						"serverVersion",
+						"apiVersion",
+						"os",
+						"architecture",
+						"storageDriver",
+						"logicalCpu",
+						"memoryBytes"
+					],
+					"properties": {
+						"clientVersion": { "type": "string", "minLength": 1 },
+						"serverVersion": { "type": "string", "minLength": 1 },
+						"apiVersion": { "type": "string", "minLength": 1 },
+						"os": { "const": "linux" },
+						"architecture": { "enum": ["arm64", "amd64"] },
+						"storageDriver": { "type": "string", "minLength": 1 },
+						"logicalCpu": { "type": "integer", "minimum": 1 },
+						"memoryBytes": { "type": "integer", "minimum": 1 }
+					}
+				},
+				"tools": {
+					"type": "array",
+					"minItems": 10,
+					"items": { "$ref": "#/$defs/tool" }
+				}
+			}
+		},
+		"tool": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["name", "status", "version", "reason"],
+			"properties": {
+				"name": { "type": "string", "minLength": 1 },
+				"status": { "enum": ["measured", "unavailable"] },
+				"version": { "type": ["string", "null"] },
+				"reason": { "type": "string" }
+			}
+		},
+		"inventory": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"commands",
+				"scopedBefore",
+				"ambientLegacy",
+				"controlledRun"
+			],
+			"properties": {
+				"commands": {
+					"type": "array",
+					"minItems": 2,
+					"items": { "$ref": "#/$defs/command" }
+				},
+				"scopedBefore": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["capturedAt", "containers", "images", "volumes"],
+					"properties": {
+						"capturedAt": { "type": "string", "format": "date-time" },
+						"containers": { "const": 0 },
+						"images": { "const": 0 },
+						"volumes": { "const": 0 }
+					}
+				},
+				"ambientLegacy": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"status",
+						"protoVolumeCount",
+						"totalBytesRounded",
+						"attribution"
+					],
+					"properties": {
+						"status": { "const": "measured" },
+						"protoVolumeCount": { "type": "integer", "minimum": 0 },
+						"totalBytesRounded": { "type": "integer", "minimum": 0 },
+						"attribution": { "type": "string", "minLength": 1 }
+					}
+				},
+				"controlledRun": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"runLabel",
+						"imageId",
+						"imageInspectSizeBytes",
+						"containerIds",
+						"volumeCount",
+						"perWorktreeVolumeBytesRounded",
+						"containerSizeRwBytes",
+						"containerRootFsBytes"
+					],
+					"properties": {
+						"runLabel": { "type": "string", "minLength": 1 },
+						"imageId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+						"imageInspectSizeBytes": { "type": "integer", "minimum": 1 },
+						"containerIds": {
+							"type": "array",
+							"minItems": 2,
+							"items": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+						},
+						"volumeCount": { "type": "integer", "minimum": 1 },
+						"perWorktreeVolumeBytesRounded": {
+							"type": "integer",
+							"minimum": 0
+						},
+						"containerSizeRwBytes": { "type": "integer", "minimum": 1 },
+						"containerRootFsBytes": { "type": "integer", "minimum": 1 }
+					}
+				}
+			}
+		},
+		"locks": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["command", "bun"],
+			"properties": {
+				"command": { "$ref": "#/$defs/command" },
+				"bun": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"path",
+						"sha256",
+						"packageEntries",
+						"uniqueResolvedPairs",
+						"multiVersionPackages"
+					],
+					"properties": {
+						"path": { "const": "bun.lock" },
+						"sha256": { "$ref": "#/$defs/sha256" },
+						"packageEntries": { "type": "integer", "minimum": 1 },
+						"uniqueResolvedPairs": { "type": "integer", "minimum": 1 },
+						"multiVersionPackages": {
+							"type": "array",
+							"minItems": 1,
+							"items": { "type": "string", "minLength": 1 }
+						}
+					}
+				}
+			}
+		},
+		"ci": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"commands",
+				"defaultBranchProtected",
+				"rulesetCount",
+				"requiredContexts",
+				"latestRun",
+				"lastTwentyMainDurationsSeconds"
+			],
+			"properties": {
+				"commands": {
+					"type": "array",
+					"minItems": 2,
+					"items": { "$ref": "#/$defs/command" }
+				},
+				"defaultBranchProtected": { "type": "boolean" },
+				"rulesetCount": { "type": "integer", "minimum": 0 },
+				"requiredContexts": { "type": "array", "items": { "type": "string" } },
+				"latestRun": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"databaseId",
+						"headSha",
+						"conclusion",
+						"workflowSeconds",
+						"jobName",
+						"jobDatabaseId",
+						"jobSeconds"
+					],
+					"properties": {
+						"databaseId": { "type": "integer", "minimum": 1 },
+						"headSha": { "$ref": "#/$defs/sha" },
+						"conclusion": { "const": "success" },
+						"workflowSeconds": { "type": "number", "minimum": 0 },
+						"jobName": { "type": "string", "minLength": 1 },
+						"jobDatabaseId": { "type": "integer", "minimum": 1 },
+						"jobSeconds": { "type": "number", "minimum": 0 }
+					}
+				},
+				"lastTwentyMainDurationsSeconds": {
+					"type": "array",
+					"minItems": 20,
+					"items": { "type": "number", "minimum": 0 }
+				}
+			}
+		},
+		"measurements": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"cleanImageBuild",
+				"warmImageBuild",
+				"freshStartupSlotOne",
+				"freshStartupSlotTwo",
+				"readiness",
+				"mechanicalContainerRestart",
+				"readyRestart",
+				"warmCommandLatency",
+				"failedLifecycleExecLatency",
+				"secondWorktreeGrowth"
+			],
+			"properties": {
+				"cleanImageBuild": { "$ref": "#/$defs/measuredResult" },
+				"warmImageBuild": { "$ref": "#/$defs/measuredResult" },
+				"freshStartupSlotOne": { "$ref": "#/$defs/unavailableResult" },
+				"freshStartupSlotTwo": { "$ref": "#/$defs/unavailableResult" },
+				"readiness": { "$ref": "#/$defs/unavailableResult" },
+				"mechanicalContainerRestart": { "$ref": "#/$defs/measuredResult" },
+				"readyRestart": { "$ref": "#/$defs/unavailableResult" },
+				"warmCommandLatency": { "$ref": "#/$defs/unavailableResult" },
+				"failedLifecycleExecLatency": { "$ref": "#/$defs/measuredResult" },
+				"secondWorktreeGrowth": { "$ref": "#/$defs/measuredResult" }
+			}
+		},
+		"measuredResult": {
+			"type": "object",
+			"required": ["status", "command", "value", "unit", "notes"],
+			"properties": {
+				"status": { "const": "measured" },
+				"command": { "$ref": "#/$defs/command" },
+				"value": { "type": ["number", "object", "array"] },
+				"unit": { "type": "string", "minLength": 1 },
+				"notes": { "type": "string", "minLength": 1 }
+			},
+			"additionalProperties": true
+		},
+		"unavailableResult": {
+			"type": "object",
+			"required": ["status", "command", "reason"],
+			"properties": {
+				"status": { "const": "unavailable" },
+				"command": { "$ref": "#/$defs/command" },
+				"reason": { "type": "string", "minLength": 1 }
+			},
+			"additionalProperties": true
+		},
+		"commandResult": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["command", "status", "exitCode", "summary"],
+			"properties": {
+				"command": { "$ref": "#/$defs/command" },
+				"status": { "enum": ["pass", "fail"] },
+				"exitCode": { "type": "integer" },
+				"summary": { "type": "string", "minLength": 1 }
+			}
+		},
+		"mutation": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["name", "expected", "observed"],
+			"properties": {
+				"name": { "type": "string", "minLength": 1 },
+				"expected": { "type": "string", "minLength": 1 },
+				"observed": { "type": "string", "minLength": 1 }
+			}
+		},
+		"rollback": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["mode", "command", "proof"],
+			"properties": {
+				"mode": { "const": "observational" },
+				"command": { "$ref": "#/$defs/command" },
+				"proof": { "type": "string", "minLength": 1 }
+			}
+		},
+		"cleanup": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"commands",
+				"remainingLabeledContainers",
+				"remainingRunImageTags",
+				"remainingRunVolumes",
+				"remainingTemporaryWorktrees",
+				"remainingGitWorktreeRegistrations",
+				"rawLogsDeleted",
+				"dockerPruneUsed"
+			],
+			"properties": {
+				"commands": {
+					"type": "array",
+					"minItems": 2,
+					"items": { "$ref": "#/$defs/command" }
+				},
+				"remainingLabeledContainers": { "const": 0 },
+				"remainingRunImageTags": { "const": 0 },
+				"remainingRunVolumes": { "const": 0 },
+				"remainingTemporaryWorktrees": { "const": 0 },
+				"remainingGitWorktreeRegistrations": { "const": 0 },
+				"rawLogsDeleted": { "const": true },
+				"dockerPruneUsed": { "const": false }
+			}
+		},
+		"log": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["name", "sha256", "bytes", "retention"],
+			"properties": {
+				"name": { "type": "string", "pattern": "^[a-z0-9-]+\\.[a-z]+$" },
+				"sha256": { "$ref": "#/$defs/sha256" },
+				"bytes": { "type": "integer", "minimum": 0 },
+				"retention": { "const": "ephemeral-digest-only" },
+				"keyExcerpt": { "type": "string" }
+			}
+		}
+	}
+}

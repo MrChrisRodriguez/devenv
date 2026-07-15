@@ -1,0 +1,660 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-0",
+	"capturedAt": "2026-07-15T03:10:37.042Z",
+	"source": {
+		"baseSha": "b981dc707bdf34e10094281958cffd5f9a22f741",
+		"preMigrationSha": "3577ee33903eb37a45e1baa8b89917e0d408493e",
+		"implementationSha": "e0210de4df563793ebe1a8529cd6016f8cca0306",
+		"runtimeBoundarySha": "3c2b909d90bf0253add17694c5d8e855701b0817",
+		"exactHeadEvidence": "The final PR head SHA and exact-head required check run are recorded in the PR description because a committed file cannot contain its own commit SHA."
+	},
+	"environment": {
+		"commands": [
+			["sw_vers"],
+			["uname", "-mrs"],
+			["sysctl", "-n", "hw.logicalcpu", "hw.memsize"],
+			["docker", "version", "--format", "<version-template>"],
+			["docker", "info", "--format", "<info-template>"]
+		],
+		"host": {
+			"os": "macOS",
+			"osVersion": "26.3.1(a)",
+			"kernel": "Darwin 25.3.0",
+			"architecture": "arm64",
+			"logicalCpu": 12,
+			"memoryBytes": 34359738368
+		},
+		"docker": {
+			"clientVersion": "29.4.0",
+			"serverVersion": "29.4.0",
+			"apiVersion": "1.54",
+			"os": "linux",
+			"architecture": "arm64",
+			"storageDriver": "overlayfs",
+			"logicalCpu": 10,
+			"memoryBytes": 16820461568
+		},
+		"tools": [
+			{
+				"name": "bun",
+				"status": "measured",
+				"version": "1.3.13",
+				"reason": "observed on host"
+			},
+			{
+				"name": "graphify",
+				"status": "measured",
+				"version": "0.9.16",
+				"reason": "observed on host"
+			},
+			{
+				"name": "devpod",
+				"status": "measured",
+				"version": "0.6.15",
+				"reason": "observed on host"
+			},
+			{
+				"name": "devcontainer",
+				"status": "measured",
+				"version": "0.87.0",
+				"reason": "observed on host"
+			},
+			{
+				"name": "gh",
+				"status": "measured",
+				"version": "2.59.0",
+				"reason": "observed on host"
+			},
+			{
+				"name": "caddy",
+				"status": "measured",
+				"version": "2.11.4",
+				"reason": "observed on host"
+			},
+			{
+				"name": "docker",
+				"status": "measured",
+				"version": "29.4.0",
+				"reason": "observed on host"
+			},
+			{
+				"name": "proto",
+				"status": "unavailable",
+				"version": null,
+				"reason": "not installed on the host"
+			},
+			{
+				"name": "moon",
+				"status": "unavailable",
+				"version": null,
+				"reason": "not installed on the host"
+			},
+			{
+				"name": "hyperfine",
+				"status": "unavailable",
+				"version": null,
+				"reason": "not installed on the host"
+			}
+		]
+	},
+	"inventory": {
+		"commands": [
+			[
+				"docker",
+				"ps",
+				"-aq",
+				"--filter",
+				"label=com.devenv.evidence.run=<run-id>"
+			],
+			["docker", "images", "--format", "<repository-and-tag-template>"],
+			["docker", "system", "df", "-v", "--format", "json"]
+		],
+		"scopedBefore": {
+			"capturedAt": "2026-07-15T02:43:36.000Z",
+			"containers": 0,
+			"images": 0,
+			"volumes": 0
+		},
+		"ambientLegacy": {
+			"status": "measured",
+			"protoVolumeCount": 19,
+			"totalBytesRounded": 26830600000,
+			"attribution": "Separately observed template-style Proto volumes on the shared host; they could not be attributed to this checkout and were never touched by the controlled run."
+		},
+		"controlledRun": {
+			"runLabel": "com.devenv.evidence.run=20260715t030027z",
+			"imageId": "sha256:0462403e19cc2defe6d32152a36c4011a0526f312344fc9fbc87e5c76038cad9",
+			"imageInspectSizeBytes": 677891195,
+			"containerIds": [
+				"640056d79f6a4f710ff053c821621564863ab4a6d92216bc40bece7054a23219",
+				"a867cffbf2c83ab66489ff4b044e5b8ed018d17d63bb267078bee6e63eaa7e8b"
+			],
+			"volumeCount": 14,
+			"perWorktreeVolumeBytesRounded": 69188600,
+			"containerSizeRwBytes": 26877952,
+			"containerRootFsBytes": 1961484288
+		}
+	},
+	"locks": {
+		"command": ["bun", "<lock-analysis-script>", "bun.lock"],
+		"bun": {
+			"path": "bun.lock",
+			"sha256": "d1dd9a79857d28f80ae71da26101a28882074cbadd07825400ca2741477e4880",
+			"packageEntries": 199,
+			"uniqueResolvedPairs": 173,
+			"multiVersionPackages": [
+				"ansi-regex",
+				"ansi-styles",
+				"emoji-regex",
+				"is-fullwidth-code-point",
+				"is-unicode-supported",
+				"picomatch",
+				"resolve-from",
+				"slice-ansi",
+				"string-width",
+				"strip-ansi",
+				"wrap-ansi"
+			]
+		}
+	},
+	"ci": {
+		"commands": [
+			["gh", "api", "repos/MrChrisRodriguez/devenv/branches/main/protection"],
+			["gh", "api", "repos/MrChrisRodriguez/devenv/rulesets"],
+			[
+				"gh",
+				"run",
+				"list",
+				"--branch",
+				"main",
+				"--limit",
+				"20",
+				"--json",
+				"<run-fields>"
+			]
+		],
+		"defaultBranchProtected": false,
+		"rulesetCount": 0,
+		"requiredContexts": [],
+		"latestRun": {
+			"databaseId": 29384003588,
+			"headSha": "b981dc707bdf34e10094281958cffd5f9a22f741",
+			"conclusion": "success",
+			"workflowSeconds": 10,
+			"jobName": "Lint, Typecheck & Test",
+			"jobDatabaseId": 87253381444,
+			"jobSeconds": 8
+		},
+		"lastTwentyMainDurationsSeconds": [
+			9, 10, 10, 11, 11, 12, 12, 12, 12, 12, 12, 13, 13, 13, 13, 14, 14, 15, 15,
+			17
+		]
+	},
+	"measurements": {
+		"cleanImageBuild": {
+			"status": "measured",
+			"command": [
+				"env",
+				"-u",
+				"secrets",
+				"HOME=<isolated-home>",
+				"/usr/bin/time",
+				"-p",
+				"devcontainer",
+				"build",
+				"--workspace-folder",
+				"<worktree-one>",
+				"--no-lockfile",
+				"--no-cache",
+				"--image-name",
+				"devenv-stage0-20260715t030027z",
+				"--label",
+				"com.devenv.evidence.run=20260715t030027z"
+			],
+			"value": 312.33,
+			"unit": "seconds",
+			"notes": "Successful legacy image build; output image ID is recorded in inventory.controlledRun."
+		},
+		"warmImageBuild": {
+			"status": "measured",
+			"command": [
+				"env",
+				"-u",
+				"secrets",
+				"HOME=<isolated-home>",
+				"/usr/bin/time",
+				"-p",
+				"devcontainer",
+				"build",
+				"--workspace-folder",
+				"<worktree-one>",
+				"--no-lockfile",
+				"--image-name",
+				"devenv-stage0-20260715t030027z",
+				"--label",
+				"com.devenv.evidence.run=20260715t030027z"
+			],
+			"value": 17.08,
+			"unit": "seconds",
+			"notes": "Successful cached build with the same image ID as the clean build."
+		},
+		"freshStartupSlotOne": {
+			"status": "unavailable",
+			"command": [
+				"env",
+				"-u",
+				"secrets",
+				"HOME=<isolated-home>",
+				"/usr/bin/time",
+				"-p",
+				"devcontainer",
+				"up",
+				"--workspace-folder",
+				"<worktree-one>",
+				"--no-lockfile",
+				"--id-label",
+				"com.devenv.evidence.run=20260715t030027z",
+				"--id-label",
+				"com.devenv.evidence.slot=one"
+			],
+			"reason": "Fresh startup did not become ready: onCreateCommand exited 11 after Proto reported all 11 selected tool installs failed.",
+			"observedFailureSeconds": 31.49,
+			"devcontainerExitCode": 1,
+			"lifecycleExitCode": 11
+		},
+		"freshStartupSlotTwo": {
+			"status": "unavailable",
+			"command": [
+				"env",
+				"-u",
+				"secrets",
+				"HOME=<isolated-home>",
+				"/usr/bin/time",
+				"-p",
+				"devcontainer",
+				"up",
+				"--workspace-folder",
+				"<worktree-two>",
+				"--no-lockfile",
+				"--id-label",
+				"com.devenv.evidence.run=20260715t030027z",
+				"--id-label",
+				"com.devenv.evidence.slot=two"
+			],
+			"reason": "Second isolated startup reproduced the onCreateCommand exit 11 and never became ready.",
+			"observedFailureSeconds": 23.34,
+			"devcontainerExitCode": 1,
+			"lifecycleExitCode": 11
+		},
+		"readiness": {
+			"status": "unavailable",
+			"command": [
+				"devcontainer",
+				"up",
+				"--workspace-folder",
+				"<isolated-worktree>"
+			],
+			"reason": "Neither isolated worktree completed the lifecycle, so there is no successful readiness time."
+		},
+		"mechanicalContainerRestart": {
+			"status": "measured",
+			"command": [
+				"/usr/bin/time",
+				"-p",
+				"docker",
+				"restart",
+				"--time",
+				"2",
+				"<slot-one-container-id>"
+			],
+			"value": 0.3,
+			"unit": "seconds",
+			"notes": "Docker engine restart only; this is not a readiness-bearing template restart."
+		},
+		"readyRestart": {
+			"status": "unavailable",
+			"command": [
+				"env",
+				"-u",
+				"secrets",
+				"HOME=<isolated-home>",
+				"/usr/bin/time",
+				"-p",
+				"devcontainer",
+				"up",
+				"--workspace-folder",
+				"<worktree-one>",
+				"--no-lockfile",
+				"--expect-existing-container",
+				"--id-label",
+				"com.devenv.evidence.run=20260715t030027z",
+				"--id-label",
+				"com.devenv.evidence.slot=one"
+			],
+			"reason": "The existing container failed postStartCommand with exit 127 because bun was unavailable; it did not become ready.",
+			"observedFailureSeconds": 0.9,
+			"devcontainerExitCode": 1,
+			"lifecycleExitCode": 127
+		},
+		"warmCommandLatency": {
+			"status": "unavailable",
+			"command": [
+				"devcontainer",
+				"exec",
+				"--container-id",
+				"<ready-container-id>",
+				"true"
+			],
+			"reason": "No container reached lifecycle readiness, so a valid warm-command baseline could not be measured."
+		},
+		"failedLifecycleExecLatency": {
+			"status": "measured",
+			"command": [
+				"devcontainer",
+				"exec",
+				"--container-id",
+				"<failed-lifecycle-container-id>",
+				"true"
+			],
+			"value": {
+				"warmupCount": 1,
+				"sampleCount": 10,
+				"samples": [
+					557.45, 538.28, 571.283, 553.311, 592.127, 571.202, 590.724, 574.694,
+					576.399, 579.544
+				],
+				"minimum": 538.28,
+				"p50": 571.283,
+				"p95": 590.724,
+				"maximum": 592.127
+			},
+			"unit": "milliseconds",
+			"notes": "Diagnostic only: the container was running but lifecycle-unready. Percentiles use sorted index floor((n-1)*p) without interpolation."
+		},
+		"secondWorktreeGrowth": {
+			"status": "measured",
+			"command": [
+				"docker",
+				"inspect",
+				"--size",
+				"<slot-one-container-id>",
+				"<slot-two-container-id>"
+			],
+			"value": {
+				"newImageBytes": 0,
+				"containerRwBytes": 26877952,
+				"volumeBytesRounded": 69188600,
+				"checkoutGrowthBytes": 45056,
+				"totalBytesRounded": 96111608
+			},
+			"unit": "bytes",
+			"notes": "The second worktree shared the same image ID; rounded volume sizes come from docker system df -v."
+		}
+	},
+	"validation": [
+		{
+			"command": ["bun", "run", "template:validate"],
+			"status": "pass",
+			"exitCode": 0,
+			"summary": "Registry schema and all three fixture definitions validated."
+		},
+		{
+			"command": ["bun", "run", "template:test"],
+			"status": "pass",
+			"exitCode": 0,
+			"summary": "Positive, negative, safety, determinism, evidence, and legacy-initializer tests passed."
+		},
+		{
+			"command": ["bun", "run", "template:typecheck"],
+			"status": "pass",
+			"exitCode": 0,
+			"summary": "Strict TypeScript project passed."
+		},
+		{
+			"command": [
+				"bun",
+				"run",
+				"template:fixtures",
+				"tmp/stage0-fixtures-final"
+			],
+			"status": "pass",
+			"exitCode": 0,
+			"summary": "Minimal, cloud, and full fixtures rendered atomically and passed residue scans."
+		},
+		{
+			"command": ["bunx", "biome", "check", "--no-errors-on-unmatched", "."],
+			"status": "pass",
+			"exitCode": 0,
+			"summary": "Repository formatting and lint gate passed with informational computed-key suggestions only."
+		}
+	],
+	"mutationProof": [
+		{
+			"name": "schema-required-and-unique",
+			"expected": "Reject missing project slug and duplicate architectures",
+			"observed": "JSON Schema returned both named errors."
+		},
+		{
+			"name": "authoritative-schema-loader",
+			"expected": "Reject a schema-invalid Proto manifest before rendering",
+			"observed": "Direct parameter loading rejected ../../attacker.toml."
+		},
+		{
+			"name": "unknown-field",
+			"expected": "Reject unknown CI fields",
+			"observed": "Semantic validation named ci.unrecognized."
+		},
+		{
+			"name": "unsafe-paths",
+			"expected": "Reject traversal, control bytes, and shell syntax",
+			"observed": "Relative, home, and workspace path guards rejected mutations."
+		},
+		{
+			"name": "capability-dependency",
+			"expected": "Reject affected selection without Moon",
+			"observed": "Fixture validation reported moon_affected_selection requires moon."
+		},
+		{
+			"name": "service-graph",
+			"expected": "Reject duplicate, cyclic, and cross-profile dependencies",
+			"observed": "All three service mutations failed with named causes."
+		},
+		{
+			"name": "disabled-capability-residue",
+			"expected": "Reject a disabled Cloudflare artifact",
+			"observed": "Injected wrangler.toml was reported as cloudflare_workers residue."
+		},
+		{
+			"name": "global-source-residue",
+			"expected": "Reject source identity even in a full fixture",
+			"observed": "Injected trading-games token was reported as global residue."
+		},
+		{
+			"name": "invalid-fixture-atomicity",
+			"expected": "Fail invalid fixture before creating output",
+			"observed": "Unknown fixture returned nonzero and output remained absent."
+		},
+		{
+			"name": "protected-output",
+			"expected": "Refuse an output path containing tracked template sources",
+			"observed": "Renderer refused the scripts directory without mutation."
+		},
+		{
+			"name": "legacy-initializer",
+			"expected": "Produce a committed clean project with baseline reference",
+			"observed": "Isolated initializer created README and .template-ref, removed template-only legacy artifacts, and left a clean Git tree."
+		},
+		{
+			"name": "evidence-record-antivacuity",
+			"expected": "Reject missing measurements and empty environment inventory",
+			"observed": "Evidence mutation tests reported the missing clean build and missing tool inventory."
+		},
+		{
+			"name": "generated-workflow-scripts",
+			"expected": "Generated CI must not call template-only package scripts",
+			"observed": "All generated bun run workflow commands resolve to scripts retained in the generated package."
+		},
+		{
+			"name": "runtime-diff-guard",
+			"expected": "Reject any Stage 0 change to the active devcontainer runtime",
+			"observed": "The pure mutation identifies .devcontainer/Dockerfile and .prototools while ignoring template evidence code."
+		},
+		{
+			"name": "generated-destination-exhaustiveness",
+			"expected": "Every invoked on-create and host generator must be inventoried",
+			"observed": "The inventory test derives invoked setup paths from on-create.sh and requires each generator destination record."
+		},
+		{
+			"name": "canonical-output-alias",
+			"expected": "Reject a symlink-aliased output that resolves over tracked template sources",
+			"observed": "The renderer canonicalized the alias, refused the scripts directory, and preserved template sources."
+		},
+		{
+			"name": "disabled-package-residue",
+			"expected": "Remove OpenSpec package authorities when the capability is disabled",
+			"observed": "The cloud fixture omitted both OpenSpec package entries and its config while passing residue scans."
+		},
+		{
+			"name": "fixture-identity",
+			"expected": "Reject a fixture whose embedded name differs from its requested filename",
+			"observed": "A minimal.toml mutation declaring full was rejected with both identities named."
+		},
+		{
+			"name": "git-metadata-output",
+			"expected": "Reject output paths that overlap worktree or common Git metadata",
+			"observed": "A forced .git/objects output was rejected and the worktree HEAD remained unchanged."
+		},
+		{
+			"name": "rollback-merge-mainline",
+			"expected": "Require the Stage 0 merge rollback to select the base-branch mainline",
+			"observed": "A rollback command without git revert -m 1 was rejected by semantic evidence validation."
+		}
+	],
+	"rollback": {
+		"mode": "observational",
+		"command": ["git", "revert", "-m", "1", "<stage-0-pr-merge-commit>"],
+		"proof": "The diff from preMigrationSha to baseSha is spec-only, and the validator rejects .devcontainer/** or .prototools changes from baseSha through the immutable runtimeBoundarySha. Reverting the Stage 0 merge removes metadata, fixtures, gates, and evidence while the pre-migration runtime remains recoverable at 3577ee33903eb37a45e1baa8b89917e0d408493e."
+	},
+	"cleanup": {
+		"commands": [
+			["docker", "rm", "-f", "<only-run-labeled-container-ids>"],
+			[
+				"docker",
+				"volume",
+				"rm",
+				"<only-volumes-mounted-by-run-labeled-containers>"
+			],
+			["docker", "image", "rm", "<only-run-specific-image-tags>"],
+			["git", "worktree", "remove", "--force", "<temporary-worktree>"],
+			["rm", "-rf", "<isolated-temporary-home-and-raw-logs>"]
+		],
+		"remainingLabeledContainers": 0,
+		"remainingRunImageTags": 0,
+		"remainingRunVolumes": 0,
+		"remainingTemporaryWorktrees": 0,
+		"remainingGitWorktreeRegistrations": 0,
+		"rawLogsDeleted": true,
+		"dockerPruneUsed": false
+	},
+	"logs": [
+		{
+			"name": "clean-build.log",
+			"sha256": "d9b27505fedbb940eee2d1b5eae6bd51dc1b8a23c4ed5a9bba37c165934c0ec4",
+			"bytes": 69,
+			"retention": "ephemeral-digest-only",
+			"keyExcerpt": "outcome success; run-specific image name"
+		},
+		{
+			"name": "clean-build.time",
+			"sha256": "b87e49d453d7a30db9af663d56676a8a78134219368150d80081b35872d560ea",
+			"bytes": 351381,
+			"retention": "ephemeral-digest-only",
+			"keyExcerpt": "real 312.33"
+		},
+		{
+			"name": "warm-build.log",
+			"sha256": "d9b27505fedbb940eee2d1b5eae6bd51dc1b8a23c4ed5a9bba37c165934c0ec4",
+			"bytes": 69,
+			"retention": "ephemeral-digest-only",
+			"keyExcerpt": "outcome success; same run-specific image name"
+		},
+		{
+			"name": "warm-build.time",
+			"sha256": "315c836061c98a8147cbbd0d5cde75ad3514704263ce10e068f5afbad741dbb1",
+			"bytes": 16685,
+			"retention": "ephemeral-digest-only",
+			"keyExcerpt": "real 17.08"
+		},
+		{
+			"name": "up-one.log",
+			"sha256": "4c6926c6eadc726fbf050981547637d8649ab5bb01b0d6a555cadc2edd541ca6",
+			"bytes": 235,
+			"retention": "ephemeral-digest-only",
+			"keyExcerpt": "onCreateCommand failed; lifecycle exit 11"
+		},
+		{
+			"name": "up-one.time",
+			"sha256": "d2ec1d2c8bcdd1d670de127c38c8c21ef4f91e36c240731a044d3183dbfeba1c",
+			"bytes": 23303,
+			"retention": "ephemeral-digest-only",
+			"keyExcerpt": "real 31.49; all selected Proto installs reported failed"
+		},
+		{
+			"name": "command-latency.json",
+			"sha256": "9934c9ccdc96258c34622f9726a1847650c8555950509fe3a3aa2aa1629045f2",
+			"bytes": 392,
+			"retention": "ephemeral-digest-only",
+			"keyExcerpt": "one warmup and ten samples"
+		},
+		{
+			"name": "up-two.log",
+			"sha256": "78a591f12411e10dfac1d00364a18a5fe1ef22dd08c3ef926b16c72b37ac5e3d",
+			"bytes": 235,
+			"retention": "ephemeral-digest-only",
+			"keyExcerpt": "second onCreateCommand failure"
+		},
+		{
+			"name": "up-two.time",
+			"sha256": "50a56cf8722acc86b794dd53f48894156dc1cf4699ac6cc811221800c10b0063",
+			"bytes": 24184,
+			"retention": "ephemeral-digest-only",
+			"keyExcerpt": "real 23.34"
+		},
+		{
+			"name": "resource-footprint.json",
+			"sha256": "4cc8ff70c687a3906aa2c0d737240dd5b7ab413b0421f9be7539ebece182d4a1",
+			"bytes": 3634,
+			"retention": "ephemeral-digest-only",
+			"keyExcerpt": "two controlled containers, mounted volumes, and second-worktree growth"
+		},
+		{
+			"name": "docker-restart.log",
+			"sha256": "4d5c4f5d2f044ff90b2f4ff8629546e8f85522fe2426ef84e7feb7e57b0c9c6a",
+			"bytes": 120,
+			"retention": "ephemeral-digest-only",
+			"keyExcerpt": "mechanical restart container ID"
+		},
+		{
+			"name": "docker-restart.time",
+			"sha256": "9f52ad9ff339bad6c6ecfc22aef27f8a5daf9e5e177b9aba1cfa2fa31d34b367",
+			"bytes": 29,
+			"retention": "ephemeral-digest-only",
+			"keyExcerpt": "real 0.30"
+		},
+		{
+			"name": "restart-ready.log",
+			"sha256": "9d2cf3840d02412eb2dd578c105718e281a9fd7d331b76444d1f9f8d63e5167b",
+			"bytes": 332,
+			"retention": "ephemeral-digest-only",
+			"keyExcerpt": "postStartCommand failed; lifecycle exit 127"
+		},
+		{
+			"name": "restart-ready.time",
+			"sha256": "ea5addca6ebf61303371323ca86b61e3bf9cb9eda66b2a00b678f8f1f7eba941",
+			"bytes": 2292,
+			"retention": "ephemeral-digest-only",
+			"keyExcerpt": "real 0.90; ready restart unavailable"
+		}
+	]
+}
