@@ -1,8 +1,8 @@
 {
   "commandId": "stale-image-refusal",
-  "mutation": "shadow-workspace-contract-tools-and-edit-definition",
-  "originalDefinitionFingerprint": "1f3873deb06b83882c51571c8b078cc5633116808e86c2c18b9bc507cfd8fa06",
-  "mutatedDefinitionFingerprint": "a3f51bd2d5ce7895b9b03d80040608af57f7c6c53f02e96f6afc362e69339230",
+  "mutation": "shadow-workspace-tools-env-overrides-and-edit-definition",
+  "originalDefinitionFingerprint": "8be4399cb0f316298d2f767056d4566c7363b7cb645f6ed2138cb71ecaaea0e1",
+  "mutatedDefinitionFingerprint": "155813b31f093c6c55f8d63a81405a4edd0a98e98066069fe1cf9ce332ea67f9",
   "shadowBunPath": "/workspace/node_modules/.bin/bun",
   "shadowBashPath": "/workspace/node_modules/.bin/bash",
   "shadowUtilityPaths": [
@@ -11,6 +11,13 @@
     "/workspace/node_modules/.bin/awk",
     "/workspace/node_modules/.bin/tr"
   ],
+  "trustedRepoMount": "/trusted",
+  "overrideMarkerPath": "/workspace/contract-marker-override",
+  "environmentOverrides": {
+    "DEVCONTAINER_REPO_ROOT": "/trusted",
+    "DEVCONTAINER_IMAGE_CONTRACT_DIR": "/workspace/contract-marker-override"
+  },
+  "preVerificationShadowExecution": false,
   "containerExitCode": 1,
   "refused": true,
   "diagnostic": "ERROR: the devcontainer definition differs from the image fingerprint\nRebuild/recreate the devcontainer; image-owned tools are never repaired at runtime."

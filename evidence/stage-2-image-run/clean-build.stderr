@@ -1,7 +1,7 @@
 #0 building with "default" instance using docker driver
 
 #1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 11.30kB 0.0s done
+#1 transferring dockerfile: 11.30kB done
 #1 DONE 0.0s
 
 #2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
@@ -15,7 +15,7 @@
 #3 CACHED
 
 #4 [internal] load metadata for mcr.microsoft.com/vscode/devcontainers/base:trixie@sha256:1a00517e89d3075f8c9dc8d9911404de0ff8991a4d71c62068573e9b016a89da
-#4 DONE 0.0s
+#4 DONE 0.6s
 
 #5 [internal] load .dockerignore
 #5 transferring context: 105B done
@@ -30,499 +30,505 @@
 #7 DONE 0.0s
 
 #8 [stable_base 2/5] RUN apt-get update 	&& apt-get install -y --no-install-recommends 		bat 		build-essential 		ca-certificates 		curl 		dnsutils 		fd-find 		fzf 		git 		gzip 		less 		nano 		procps 		ripgrep 		sudo 		tree 		unzip 		vim 		wget 		xz-utils 	&& rm -rf /var/lib/apt/lists/* 	&& ln -sf /usr/bin/fdfind /usr/local/bin/fd 	&& ln -sf /usr/bin/batcat /usr/local/bin/bat
-#8 1.912 Get:1 http://deb.debian.org/debian trixie InRelease [140 kB]
-#8 2.018 Get:2 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]
-#8 2.067 Get:3 http://deb.debian.org/debian-security trixie-security InRelease [43.4 kB]
-#8 2.230 Get:4 http://deb.debian.org/debian trixie/main arm64 Packages [9607 kB]
-#8 11.41 Get:5 http://deb.debian.org/debian trixie-updates/main arm64 Packages [660 B]
-#8 11.44 Get:6 http://deb.debian.org/debian-security trixie-security/main arm64 Packages [227 kB]
-#8 12.21 Fetched 10.1 MB in 12s (836 kB/s)
-#8 12.21 Reading package lists...
-#8 12.76 Reading package lists...
-#8 13.17 Building dependency tree...
-#8 13.28 Reading state information...
-#8 13.42 build-essential is already the newest version (12.12).
-#8 13.42 ca-certificates is already the newest version (20250419).
-#8 13.42 git is already the newest version (1:2.47.3-0+deb13u1).
-#8 13.42 gzip is already the newest version (1.13-1).
-#8 13.42 gzip set to manually installed.
-#8 13.42 less is already the newest version (668-1).
-#8 13.42 nano is already the newest version (8.4-1+deb13u1).
-#8 13.42 procps is already the newest version (2:4.0.4-9).
-#8 13.42 sudo is already the newest version (1.9.16p2-3+deb13u2).
-#8 13.42 tree is already the newest version (2.2.1-1).
-#8 13.42 unzip is already the newest version (6.0-29).
-#8 13.42 wget is already the newest version (1.25.0-2).
-#8 13.42 The following additional packages will be installed:
-#8 13.42   bind9-host bind9-libs libcurl3t64-gnutls libcurl4-openssl-dev libcurl4t64
-#8 13.42   libfstrm0 libgit2-1.9 libgpm2 libhttp-parser2.9 libjemalloc2 libjson-c5
-#8 13.42   liblmdb0 liblzma5 libmaxminddb0 libmbedcrypto16 libmbedtls21 libmbedx509-7
-#8 13.42   libprotobuf-c1 libsodium23 liburcu8t64 libuv1t64 vim-runtime
-#8 13.42 Suggested packages:
-#8 13.42   gpm mmdb-bin ctags vim-doc vim-scripts
-#8 13.56 The following NEW packages will be installed:
-#8 13.56   bat bind9-dnsutils bind9-host bind9-libs fd-find fzf libfstrm0 libgit2-1.9
-#8 13.56   libgpm2 libhttp-parser2.9 libjemalloc2 libjson-c5 liblmdb0 libmaxminddb0
-#8 13.56   libmbedcrypto16 libmbedtls21 libmbedx509-7 libprotobuf-c1 libsodium23
-#8 13.56   liburcu8t64 libuv1t64 ripgrep vim vim-runtime
-#8 13.56 The following packages will be upgraded:
-#8 13.56   curl libcurl3t64-gnutls libcurl4-openssl-dev libcurl4t64 liblzma5 xz-utils
-#8 13.74 6 upgraded, 24 newly installed, 0 to remove and 11 not upgraded.
-#8 13.74 Need to get 20.0 MB of archives.
-#8 13.74 After this operation, 71.6 MB of additional disk space will be used.
-#8 13.74 Get:1 http://deb.debian.org/debian trixie/main arm64 liblzma5 arm64 5.8.1-1+deb13u1 [303 kB]
-#8 14.11 Get:2 http://deb.debian.org/debian trixie/main arm64 libfstrm0 arm64 0.6.1-1+b3 [21.0 kB]
-#8 14.15 Get:3 http://deb.debian.org/debian trixie/main arm64 libjemalloc2 arm64 5.3.0-3 [216 kB]
-#8 14.53 Get:4 http://deb.debian.org/debian trixie/main arm64 libjson-c5 arm64 0.18+ds-1 [45.2 kB]
-#8 14.55 Get:5 http://deb.debian.org/debian trixie/main arm64 liblmdb0 arm64 0.9.31-1+b2 [43.5 kB]
-#8 14.58 Get:6 http://deb.debian.org/debian trixie/main arm64 libmaxminddb0 arm64 1.12.2-1 [25.9 kB]
-#8 14.59 Get:7 http://deb.debian.org/debian trixie/main arm64 libprotobuf-c1 arm64 1.5.1-1 [19.6 kB]
-#8 14.61 Get:8 http://deb.debian.org/debian trixie/main arm64 liburcu8t64 arm64 0.15.2-2 [73.9 kB]
-#8 14.66 Get:9 http://deb.debian.org/debian trixie/main arm64 libuv1t64 arm64 1.50.0-2 [148 kB]
-#8 14.83 Get:10 http://deb.debian.org/debian trixie/main arm64 bind9-libs arm64 1:9.20.23-1~deb13u1 [1106 kB]
-#8 15.39 Get:11 http://deb.debian.org/debian trixie/main arm64 bind9-host arm64 1:9.20.23-1~deb13u1 [53.2 kB]
-#8 15.47 Get:12 http://deb.debian.org/debian trixie/main arm64 bind9-dnsutils arm64 1:9.20.23-1~deb13u1 [159 kB]
-#8 15.55 Get:13 http://deb.debian.org/debian trixie/main arm64 xz-utils arm64 5.8.1-1+deb13u1 [658 kB]
-#8 15.69 Get:14 http://deb.debian.org/debian trixie/main arm64 libhttp-parser2.9 arm64 2.9.4-6+b2 [20.2 kB]
-#8 15.69 Get:15 http://deb.debian.org/debian trixie/main arm64 libmbedcrypto16 arm64 3.6.5-0.1~deb13u1 [347 kB]
-#8 15.87 Get:16 http://deb.debian.org/debian trixie/main arm64 libmbedx509-7 arm64 3.6.5-0.1~deb13u1 [151 kB]
-#8 16.00 Get:17 http://deb.debian.org/debian trixie/main arm64 libmbedtls21 arm64 3.6.5-0.1~deb13u1 [229 kB]
-#8 16.08 Get:18 http://deb.debian.org/debian trixie/main arm64 libgit2-1.9 arm64 1.9.0+ds-2 [517 kB]
-#8 16.19 Get:19 http://deb.debian.org/debian trixie/main arm64 bat arm64 0.25.0-2+b2 [2151 kB]
-#8 16.66 Get:20 http://deb.debian.org/debian trixie/main arm64 libcurl4-openssl-dev arm64 8.14.1-2+deb13u4 [496 kB]
-#8 16.72 Get:21 http://deb.debian.org/debian trixie/main arm64 curl arm64 8.14.1-2+deb13u4 [262 kB]
-#8 16.76 Get:22 http://deb.debian.org/debian trixie/main arm64 libcurl4t64 arm64 8.14.1-2+deb13u4 [360 kB]
-#8 16.88 Get:23 http://deb.debian.org/debian trixie/main arm64 fd-find arm64 10.2.0-1+b5 [901 kB]
-#8 17.05 Get:24 http://deb.debian.org/debian trixie/main arm64 fzf arm64 0.60.3-1+b2 [1287 kB]
-#8 17.19 Get:25 http://deb.debian.org/debian trixie/main arm64 libcurl3t64-gnutls arm64 8.14.1-2+deb13u4 [354 kB]
-#8 17.20 Get:26 http://deb.debian.org/debian trixie/main arm64 libgpm2 arm64 1.20.7-11+b2 [14.7 kB]
-#8 17.25 Get:27 http://deb.debian.org/debian trixie/main arm64 libsodium23 arm64 1.0.18-1+deb13u1 [120 kB]
-#8 17.27 Get:28 http://deb.debian.org/debian trixie/main arm64 ripgrep arm64 14.1.1-1+b4 [1247 kB]
-#8 17.47 Get:29 http://deb.debian.org/debian trixie/main arm64 vim-runtime all 2:9.1.1230-2 [7127 kB]
-#8 18.10 Get:30 http://deb.debian.org/debian trixie/main arm64 vim arm64 2:9.1.1230-2 [1527 kB]
-#8 18.33 debconf: unable to initialize frontend: Dialog
-#8 18.33 debconf: (TERM is not set, so the dialog frontend is not usable.)
-#8 18.33 debconf: falling back to frontend: Readline
-#8 18.33 debconf: unable to initialize frontend: Readline
-#8 18.33 debconf: (This frontend requires a controlling tty.)
-#8 18.33 debconf: falling back to frontend: Teletype
-#8 18.34 debconf: unable to initialize frontend: Teletype
-#8 18.34 debconf: (This frontend requires a controlling tty.)
-#8 18.34 debconf: falling back to frontend: Noninteractive
-#8 18.66 Fetched 20.0 MB in 5s (4321 kB/s)
-#8 18.70 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 25557 files and directories currently installed.)
-#8 18.77 Preparing to unpack .../liblzma5_5.8.1-1+deb13u1_arm64.deb ...
-#8 18.78 Unpacking liblzma5:arm64 (5.8.1-1+deb13u1) over (5.8.1-1) ...
-#8 18.88 Setting up liblzma5:arm64 (5.8.1-1+deb13u1) ...
-#8 18.94 Selecting previously unselected package libfstrm0:arm64.
-#8 18.94 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 25557 files and directories currently installed.)
-#8 18.95 Preparing to unpack .../00-libfstrm0_0.6.1-1+b3_arm64.deb ...
-#8 18.96 Unpacking libfstrm0:arm64 (0.6.1-1+b3) ...
-#8 18.99 Selecting previously unselected package libjemalloc2:arm64.
-#8 18.99 Preparing to unpack .../01-libjemalloc2_5.3.0-3_arm64.deb ...
-#8 19.00 Unpacking libjemalloc2:arm64 (5.3.0-3) ...
-#8 19.04 Selecting previously unselected package libjson-c5:arm64.
-#8 19.04 Preparing to unpack .../02-libjson-c5_0.18+ds-1_arm64.deb ...
-#8 19.04 Unpacking libjson-c5:arm64 (0.18+ds-1) ...
-#8 19.09 Selecting previously unselected package liblmdb0:arm64.
-#8 19.09 Preparing to unpack .../03-liblmdb0_0.9.31-1+b2_arm64.deb ...
-#8 19.10 Unpacking liblmdb0:arm64 (0.9.31-1+b2) ...
-#8 19.13 Selecting previously unselected package libmaxminddb0:arm64.
-#8 19.13 Preparing to unpack .../04-libmaxminddb0_1.12.2-1_arm64.deb ...
-#8 19.13 Unpacking libmaxminddb0:arm64 (1.12.2-1) ...
-#8 19.17 Selecting previously unselected package libprotobuf-c1:arm64.
-#8 19.17 Preparing to unpack .../05-libprotobuf-c1_1.5.1-1_arm64.deb ...
-#8 19.18 Unpacking libprotobuf-c1:arm64 (1.5.1-1) ...
-#8 19.21 Selecting previously unselected package liburcu8t64:arm64.
-#8 19.21 Preparing to unpack .../06-liburcu8t64_0.15.2-2_arm64.deb ...
-#8 19.22 Unpacking liburcu8t64:arm64 (0.15.2-2) ...
-#8 19.26 Selecting previously unselected package libuv1t64:arm64.
-#8 19.26 Preparing to unpack .../07-libuv1t64_1.50.0-2_arm64.deb ...
-#8 19.27 Unpacking libuv1t64:arm64 (1.50.0-2) ...
-#8 19.35 Selecting previously unselected package bind9-libs:arm64.
-#8 19.36 Preparing to unpack .../08-bind9-libs_1%3a9.20.23-1~deb13u1_arm64.deb ...
-#8 19.36 Unpacking bind9-libs:arm64 (1:9.20.23-1~deb13u1) ...
-#8 19.44 Selecting previously unselected package bind9-host.
-#8 19.44 Preparing to unpack .../09-bind9-host_1%3a9.20.23-1~deb13u1_arm64.deb ...
-#8 19.45 Unpacking bind9-host (1:9.20.23-1~deb13u1) ...
-#8 19.48 Selecting previously unselected package bind9-dnsutils.
-#8 19.49 Preparing to unpack .../10-bind9-dnsutils_1%3a9.20.23-1~deb13u1_arm64.deb ...
-#8 19.49 Unpacking bind9-dnsutils (1:9.20.23-1~deb13u1) ...
-#8 19.53 Preparing to unpack .../11-xz-utils_5.8.1-1+deb13u1_arm64.deb ...
-#8 19.54 Unpacking xz-utils (5.8.1-1+deb13u1) over (5.8.1-1) ...
-#8 19.63 Selecting previously unselected package libhttp-parser2.9:arm64.
-#8 19.63 Preparing to unpack .../12-libhttp-parser2.9_2.9.4-6+b2_arm64.deb ...
-#8 19.64 Unpacking libhttp-parser2.9:arm64 (2.9.4-6+b2) ...
-#8 19.67 Selecting previously unselected package libmbedcrypto16:arm64.
-#8 19.67 Preparing to unpack .../13-libmbedcrypto16_3.6.5-0.1~deb13u1_arm64.deb ...
-#8 19.67 Unpacking libmbedcrypto16:arm64 (3.6.5-0.1~deb13u1) ...
-#8 19.73 Selecting previously unselected package libmbedx509-7:arm64.
-#8 19.73 Preparing to unpack .../14-libmbedx509-7_3.6.5-0.1~deb13u1_arm64.deb ...
-#8 19.73 Unpacking libmbedx509-7:arm64 (3.6.5-0.1~deb13u1) ...
-#8 19.76 Selecting previously unselected package libmbedtls21:arm64.
-#8 19.77 Preparing to unpack .../15-libmbedtls21_3.6.5-0.1~deb13u1_arm64.deb ...
-#8 19.77 Unpacking libmbedtls21:arm64 (3.6.5-0.1~deb13u1) ...
-#8 19.81 Selecting previously unselected package libgit2-1.9:arm64.
-#8 19.81 Preparing to unpack .../16-libgit2-1.9_1.9.0+ds-2_arm64.deb ...
-#8 19.82 Unpacking libgit2-1.9:arm64 (1.9.0+ds-2) ...
-#8 19.87 Selecting previously unselected package bat.
-#8 19.87 Preparing to unpack .../17-bat_0.25.0-2+b2_arm64.deb ...
-#8 19.88 Unpacking bat (0.25.0-2+b2) ...
-#8 20.03 Preparing to unpack .../18-libcurl4-openssl-dev_8.14.1-2+deb13u4_arm64.deb ...
-#8 20.04 Unpacking libcurl4-openssl-dev:arm64 (8.14.1-2+deb13u4) over (8.14.1-2+deb13u3) ...
-#8 20.11 Preparing to unpack .../19-curl_8.14.1-2+deb13u4_arm64.deb ...
-#8 20.15 Unpacking curl (8.14.1-2+deb13u4) over (8.14.1-2+deb13u3) ...
-#8 20.20 Preparing to unpack .../20-libcurl4t64_8.14.1-2+deb13u4_arm64.deb ...
-#8 20.22 Unpacking libcurl4t64:arm64 (8.14.1-2+deb13u4) over (8.14.1-2+deb13u3) ...
-#8 20.29 Selecting previously unselected package fd-find.
-#8 20.29 Preparing to unpack .../21-fd-find_10.2.0-1+b5_arm64.deb ...
-#8 20.30 Unpacking fd-find (10.2.0-1+b5) ...
-#8 20.38 Selecting previously unselected package fzf.
-#8 20.38 Preparing to unpack .../22-fzf_0.60.3-1+b2_arm64.deb ...
-#8 20.38 Unpacking fzf (0.60.3-1+b2) ...
-#8 20.50 Preparing to unpack .../23-libcurl3t64-gnutls_8.14.1-2+deb13u4_arm64.deb ...
-#8 20.51 Unpacking libcurl3t64-gnutls:arm64 (8.14.1-2+deb13u4) over (8.14.1-2+deb13u3) ...
-#8 20.58 Selecting previously unselected package libgpm2:arm64.
-#8 20.58 Preparing to unpack .../24-libgpm2_1.20.7-11+b2_arm64.deb ...
-#8 20.59 Unpacking libgpm2:arm64 (1.20.7-11+b2) ...
-#8 20.64 Selecting previously unselected package libsodium23:arm64.
-#8 20.64 Preparing to unpack .../25-libsodium23_1.0.18-1+deb13u1_arm64.deb ...
-#8 20.65 Unpacking libsodium23:arm64 (1.0.18-1+deb13u1) ...
-#8 20.68 Selecting previously unselected package ripgrep.
-#8 20.68 Preparing to unpack .../26-ripgrep_14.1.1-1+b4_arm64.deb ...
-#8 20.69 Unpacking ripgrep (14.1.1-1+b4) ...
-#8 20.78 Selecting previously unselected package vim-runtime.
-#8 20.78 Preparing to unpack .../27-vim-runtime_2%3a9.1.1230-2_all.deb ...
-#8 20.79 Adding 'diversion of /usr/share/vim/vim91/doc/help.txt to /usr/share/vim/vim91/doc/help.txt.vim-tiny by vim-runtime'
-#8 20.80 Adding 'diversion of /usr/share/vim/vim91/doc/tags to /usr/share/vim/vim91/doc/tags.vim-tiny by vim-runtime'
-#8 20.80 Unpacking vim-runtime (2:9.1.1230-2) ...
-#8 21.23 Selecting previously unselected package vim.
-#8 21.23 Preparing to unpack .../28-vim_2%3a9.1.1230-2_arm64.deb ...
-#8 21.24 Unpacking vim (2:9.1.1230-2) ...
-#8 21.34 Setting up liblmdb0:arm64 (0.9.31-1+b2) ...
-#8 21.34 Setting up liburcu8t64:arm64 (0.15.2-2) ...
-#8 21.35 Setting up libsodium23:arm64 (1.0.18-1+deb13u1) ...
-#8 21.36 Setting up libgpm2:arm64 (1.20.7-11+b2) ...
-#8 21.37 Setting up libcurl4t64:arm64 (8.14.1-2+deb13u4) ...
-#8 21.38 Setting up libmaxminddb0:arm64 (1.12.2-1) ...
-#8 21.39 Setting up libfstrm0:arm64 (0.6.1-1+b3) ...
-#8 21.40 Setting up libuv1t64:arm64 (1.50.0-2) ...
-#8 21.41 Setting up libcurl3t64-gnutls:arm64 (8.14.1-2+deb13u4) ...
-#8 21.42 Setting up fd-find (10.2.0-1+b5) ...
-#8 21.43 Setting up libjemalloc2:arm64 (5.3.0-3) ...
-#8 21.44 Setting up libprotobuf-c1:arm64 (1.5.1-1) ...
-#8 21.44 Setting up libcurl4-openssl-dev:arm64 (8.14.1-2+deb13u4) ...
-#8 21.46 Setting up xz-utils (5.8.1-1+deb13u1) ...
-#8 21.48 Setting up fzf (0.60.3-1+b2) ...
-#8 21.50 Setting up ripgrep (14.1.1-1+b4) ...
-#8 21.51 Setting up curl (8.14.1-2+deb13u4) ...
-#8 21.53 Setting up libmbedcrypto16:arm64 (3.6.5-0.1~deb13u1) ...
-#8 21.54 Setting up vim-runtime (2:9.1.1230-2) ...
-#8 21.56 Setting up libjson-c5:arm64 (0.18+ds-1) ...
-#8 21.57 Setting up libhttp-parser2.9:arm64 (2.9.4-6+b2) ...
-#8 21.58 Setting up vim (2:9.1.1230-2) ...
-#8 21.60 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/ex (ex) in auto mode
-#8 21.60 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/rview (rview) in auto mode
-#8 21.60 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/rvim (rvim) in auto mode
-#8 21.61 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/vi (vi) in auto mode
-#8 21.61 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/view (view) in auto mode
-#8 21.62 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/vim (vim) in auto mode
-#8 21.62 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/vimdiff (vimdiff) in auto mode
-#8 21.63 Setting up bind9-libs:arm64 (1:9.20.23-1~deb13u1) ...
-#8 21.64 Setting up libmbedx509-7:arm64 (3.6.5-0.1~deb13u1) ...
-#8 21.65 Setting up libmbedtls21:arm64 (3.6.5-0.1~deb13u1) ...
-#8 21.66 Setting up bind9-host (1:9.20.23-1~deb13u1) ...
-#8 21.68 Setting up libgit2-1.9:arm64 (1.9.0+ds-2) ...
-#8 21.69 Setting up bind9-dnsutils (1:9.20.23-1~deb13u1) ...
-#8 21.70 Setting up bat (0.25.0-2+b2) ...
-#8 21.71 Processing triggers for man-db (2.13.1-1) ...
-#8 22.24 Processing triggers for libc-bin (2.41-12+deb13u3) ...
-#8 DONE 22.8s
+#8 1.883 Get:1 http://deb.debian.org/debian trixie InRelease [140 kB]
+#8 2.044 Get:2 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]
+#8 2.076 Get:3 http://deb.debian.org/debian-security trixie-security InRelease [43.4 kB]
+#8 2.205 Get:4 http://deb.debian.org/debian trixie/main arm64 Packages [9607 kB]
+#8 3.467 Get:5 http://deb.debian.org/debian trixie-updates/main arm64 Packages [660 B]
+#8 3.492 Get:6 http://deb.debian.org/debian-security trixie-security/main arm64 Packages [227 kB]
+#8 4.207 Fetched 10.1 MB in 4s (2515 kB/s)
+#8 4.207 Reading package lists...
+#8 4.599 Reading package lists...
+#8 4.955 Building dependency tree...
+#8 5.059 Reading state information...
+#8 5.205 build-essential is already the newest version (12.12).
+#8 5.205 ca-certificates is already the newest version (20250419).
+#8 5.205 git is already the newest version (1:2.47.3-0+deb13u1).
+#8 5.205 gzip is already the newest version (1.13-1).
+#8 5.205 gzip set to manually installed.
+#8 5.205 less is already the newest version (668-1).
+#8 5.205 nano is already the newest version (8.4-1+deb13u1).
+#8 5.205 procps is already the newest version (2:4.0.4-9).
+#8 5.205 sudo is already the newest version (1.9.16p2-3+deb13u2).
+#8 5.205 tree is already the newest version (2.2.1-1).
+#8 5.205 unzip is already the newest version (6.0-29).
+#8 5.205 wget is already the newest version (1.25.0-2).
+#8 5.205 The following additional packages will be installed:
+#8 5.205   bind9-host bind9-libs libcurl3t64-gnutls libcurl4-openssl-dev libcurl4t64
+#8 5.206   libfstrm0 libgit2-1.9 libgpm2 libhttp-parser2.9 libjemalloc2 libjson-c5
+#8 5.206   liblmdb0 liblzma5 libmaxminddb0 libmbedcrypto16 libmbedtls21 libmbedx509-7
+#8 5.206   libprotobuf-c1 libsodium23 liburcu8t64 libuv1t64 vim-runtime
+#8 5.207 Suggested packages:
+#8 5.207   gpm mmdb-bin ctags vim-doc vim-scripts
+#8 5.347 The following NEW packages will be installed:
+#8 5.348   bat bind9-dnsutils bind9-host bind9-libs fd-find fzf libfstrm0 libgit2-1.9
+#8 5.348   libgpm2 libhttp-parser2.9 libjemalloc2 libjson-c5 liblmdb0 libmaxminddb0
+#8 5.348   libmbedcrypto16 libmbedtls21 libmbedx509-7 libprotobuf-c1 libsodium23
+#8 5.348   liburcu8t64 libuv1t64 ripgrep vim vim-runtime
+#8 5.348 The following packages will be upgraded:
+#8 5.349   curl libcurl3t64-gnutls libcurl4-openssl-dev libcurl4t64 liblzma5 xz-utils
+#8 5.444 6 upgraded, 24 newly installed, 0 to remove and 11 not upgraded.
+#8 5.444 Need to get 20.0 MB of archives.
+#8 5.444 After this operation, 71.6 MB of additional disk space will be used.
+#8 5.444 Get:1 http://deb.debian.org/debian trixie/main arm64 liblzma5 arm64 5.8.1-1+deb13u1 [303 kB]
+#8 5.733 Get:2 http://deb.debian.org/debian trixie/main arm64 libfstrm0 arm64 0.6.1-1+b3 [21.0 kB]
+#8 5.766 Get:3 http://deb.debian.org/debian trixie/main arm64 libjemalloc2 arm64 5.3.0-3 [216 kB]
+#8 5.979 Get:4 http://deb.debian.org/debian trixie/main arm64 libjson-c5 arm64 0.18+ds-1 [45.2 kB]
+#8 6.006 Get:5 http://deb.debian.org/debian trixie/main arm64 liblmdb0 arm64 0.9.31-1+b2 [43.5 kB]
+#8 6.038 Get:6 http://deb.debian.org/debian trixie/main arm64 libmaxminddb0 arm64 1.12.2-1 [25.9 kB]
+#8 6.403 Get:7 http://deb.debian.org/debian trixie/main arm64 libprotobuf-c1 arm64 1.5.1-1 [19.6 kB]
+#8 6.404 Get:8 http://deb.debian.org/debian trixie/main arm64 liburcu8t64 arm64 0.15.2-2 [73.9 kB]
+#8 7.474 Get:9 http://deb.debian.org/debian trixie/main arm64 libuv1t64 arm64 1.50.0-2 [148 kB]
+#8 8.550 Get:10 http://deb.debian.org/debian trixie/main arm64 bind9-libs arm64 1:9.20.23-1~deb13u1 [1106 kB]
+#8 11.75 Get:11 http://deb.debian.org/debian trixie/main arm64 bind9-host arm64 1:9.20.23-1~deb13u1 [53.2 kB]
+#8 11.79 Get:12 http://deb.debian.org/debian trixie/main arm64 bind9-dnsutils arm64 1:9.20.23-1~deb13u1 [159 kB]
+#8 11.86 Get:13 http://deb.debian.org/debian trixie/main arm64 xz-utils arm64 5.8.1-1+deb13u1 [658 kB]
+#8 12.25 Get:14 http://deb.debian.org/debian trixie/main arm64 libhttp-parser2.9 arm64 2.9.4-6+b2 [20.2 kB]
+#8 12.25 Get:15 http://deb.debian.org/debian trixie/main arm64 libmbedcrypto16 arm64 3.6.5-0.1~deb13u1 [347 kB]
+#8 12.36 Get:16 http://deb.debian.org/debian trixie/main arm64 libmbedx509-7 arm64 3.6.5-0.1~deb13u1 [151 kB]
+#8 12.40 Get:17 http://deb.debian.org/debian trixie/main arm64 libmbedtls21 arm64 3.6.5-0.1~deb13u1 [229 kB]
+#8 12.53 Get:18 http://deb.debian.org/debian trixie/main arm64 libgit2-1.9 arm64 1.9.0+ds-2 [517 kB]
+#8 12.72 Get:19 http://deb.debian.org/debian trixie/main arm64 bat arm64 0.25.0-2+b2 [2151 kB]
+#8 13.08 Get:20 http://deb.debian.org/debian trixie/main arm64 libcurl4-openssl-dev arm64 8.14.1-2+deb13u4 [496 kB]
+#8 13.22 Get:21 http://deb.debian.org/debian trixie/main arm64 curl arm64 8.14.1-2+deb13u4 [262 kB]
+#8 13.24 Get:22 http://deb.debian.org/debian trixie/main arm64 libcurl4t64 arm64 8.14.1-2+deb13u4 [360 kB]
+#8 13.30 Get:23 http://deb.debian.org/debian trixie/main arm64 fd-find arm64 10.2.0-1+b5 [901 kB]
+#8 13.38 Get:24 http://deb.debian.org/debian trixie/main arm64 fzf arm64 0.60.3-1+b2 [1287 kB]
+#8 13.57 Get:25 http://deb.debian.org/debian trixie/main arm64 libcurl3t64-gnutls arm64 8.14.1-2+deb13u4 [354 kB]
+#8 13.58 Get:26 http://deb.debian.org/debian trixie/main arm64 libgpm2 arm64 1.20.7-11+b2 [14.7 kB]
+#8 13.62 Get:27 http://deb.debian.org/debian trixie/main arm64 libsodium23 arm64 1.0.18-1+deb13u1 [120 kB]
+#8 13.64 Get:28 http://deb.debian.org/debian trixie/main arm64 ripgrep arm64 14.1.1-1+b4 [1247 kB]
+#8 13.81 Get:29 http://deb.debian.org/debian trixie/main arm64 vim-runtime all 2:9.1.1230-2 [7127 kB]
+#8 14.32 Get:30 http://deb.debian.org/debian trixie/main arm64 vim arm64 2:9.1.1230-2 [1527 kB]
+#8 14.48 debconf: unable to initialize frontend: Dialog
+#8 14.48 debconf: (TERM is not set, so the dialog frontend is not usable.)
+#8 14.48 debconf: falling back to frontend: Readline
+#8 14.48 debconf: unable to initialize frontend: Readline
+#8 14.48 debconf: (This frontend requires a controlling tty.)
+#8 14.48 debconf: falling back to frontend: Teletype
+#8 14.49 debconf: unable to initialize frontend: Teletype
+#8 14.49 debconf: (This frontend requires a controlling tty.)
+#8 14.49 debconf: falling back to frontend: Noninteractive
+#8 14.88 Fetched 20.0 MB in 9s (2219 kB/s)
+#8 14.91 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 25557 files and directories currently installed.)
+#8 14.96 Preparing to unpack .../liblzma5_5.8.1-1+deb13u1_arm64.deb ...
+#8 15.01 Unpacking liblzma5:arm64 (5.8.1-1+deb13u1) over (5.8.1-1) ...
+#8 16.07 Setting up liblzma5:arm64 (5.8.1-1+deb13u1) ...
+#8 16.18 Selecting previously unselected package libfstrm0:arm64.
+#8 16.18 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 25557 files and directories currently installed.)
+#8 16.19 Preparing to unpack .../00-libfstrm0_0.6.1-1+b3_arm64.deb ...
+#8 16.19 Unpacking libfstrm0:arm64 (0.6.1-1+b3) ...
+#8 16.27 Selecting previously unselected package libjemalloc2:arm64.
+#8 16.27 Preparing to unpack .../01-libjemalloc2_5.3.0-3_arm64.deb ...
+#8 16.28 Unpacking libjemalloc2:arm64 (5.3.0-3) ...
+#8 16.36 Selecting previously unselected package libjson-c5:arm64.
+#8 16.37 Preparing to unpack .../02-libjson-c5_0.18+ds-1_arm64.deb ...
+#8 16.38 Unpacking libjson-c5:arm64 (0.18+ds-1) ...
+#8 16.46 Selecting previously unselected package liblmdb0:arm64.
+#8 16.46 Preparing to unpack .../03-liblmdb0_0.9.31-1+b2_arm64.deb ...
+#8 16.47 Unpacking liblmdb0:arm64 (0.9.31-1+b2) ...
+#8 16.55 Selecting previously unselected package libmaxminddb0:arm64.
+#8 16.55 Preparing to unpack .../04-libmaxminddb0_1.12.2-1_arm64.deb ...
+#8 16.56 Unpacking libmaxminddb0:arm64 (1.12.2-1) ...
+#8 16.63 Selecting previously unselected package libprotobuf-c1:arm64.
+#8 16.63 Preparing to unpack .../05-libprotobuf-c1_1.5.1-1_arm64.deb ...
+#8 16.64 Unpacking libprotobuf-c1:arm64 (1.5.1-1) ...
+#8 16.69 Selecting previously unselected package liburcu8t64:arm64.
+#8 16.69 Preparing to unpack .../06-liburcu8t64_0.15.2-2_arm64.deb ...
+#8 16.70 Unpacking liburcu8t64:arm64 (0.15.2-2) ...
+#8 16.77 Selecting previously unselected package libuv1t64:arm64.
+#8 16.77 Preparing to unpack .../07-libuv1t64_1.50.0-2_arm64.deb ...
+#8 16.78 Unpacking libuv1t64:arm64 (1.50.0-2) ...
+#8 16.84 Selecting previously unselected package bind9-libs:arm64.
+#8 16.85 Preparing to unpack .../08-bind9-libs_1%3a9.20.23-1~deb13u1_arm64.deb ...
+#8 16.85 Unpacking bind9-libs:arm64 (1:9.20.23-1~deb13u1) ...
+#8 16.96 Selecting previously unselected package bind9-host.
+#8 16.96 Preparing to unpack .../09-bind9-host_1%3a9.20.23-1~deb13u1_arm64.deb ...
+#8 16.97 Unpacking bind9-host (1:9.20.23-1~deb13u1) ...
+#8 17.03 Selecting previously unselected package bind9-dnsutils.
+#8 17.03 Preparing to unpack .../10-bind9-dnsutils_1%3a9.20.23-1~deb13u1_arm64.deb ...
+#8 17.04 Unpacking bind9-dnsutils (1:9.20.23-1~deb13u1) ...
+#8 17.13 Preparing to unpack .../11-xz-utils_5.8.1-1+deb13u1_arm64.deb ...
+#8 17.17 Unpacking xz-utils (5.8.1-1+deb13u1) over (5.8.1-1) ...
+#8 17.34 Selecting previously unselected package libhttp-parser2.9:arm64.
+#8 17.34 Preparing to unpack .../12-libhttp-parser2.9_2.9.4-6+b2_arm64.deb ...
+#8 17.35 Unpacking libhttp-parser2.9:arm64 (2.9.4-6+b2) ...
+#8 17.42 Selecting previously unselected package libmbedcrypto16:arm64.
+#8 17.43 Preparing to unpack .../13-libmbedcrypto16_3.6.5-0.1~deb13u1_arm64.deb ...
+#8 17.44 Unpacking libmbedcrypto16:arm64 (3.6.5-0.1~deb13u1) ...
+#8 17.52 Selecting previously unselected package libmbedx509-7:arm64.
+#8 17.53 Preparing to unpack .../14-libmbedx509-7_3.6.5-0.1~deb13u1_arm64.deb ...
+#8 17.54 Unpacking libmbedx509-7:arm64 (3.6.5-0.1~deb13u1) ...
+#8 17.63 Selecting previously unselected package libmbedtls21:arm64.
+#8 17.63 Preparing to unpack .../15-libmbedtls21_3.6.5-0.1~deb13u1_arm64.deb ...
+#8 17.64 Unpacking libmbedtls21:arm64 (3.6.5-0.1~deb13u1) ...
+#8 17.73 Selecting previously unselected package libgit2-1.9:arm64.
+#8 17.73 Preparing to unpack .../16-libgit2-1.9_1.9.0+ds-2_arm64.deb ...
+#8 17.74 Unpacking libgit2-1.9:arm64 (1.9.0+ds-2) ...
+#8 17.82 Selecting previously unselected package bat.
+#8 17.82 Preparing to unpack .../17-bat_0.25.0-2+b2_arm64.deb ...
+#8 17.83 Unpacking bat (0.25.0-2+b2) ...
+#8 17.99 Preparing to unpack .../18-libcurl4-openssl-dev_8.14.1-2+deb13u4_arm64.deb ...
+#8 18.01 Unpacking libcurl4-openssl-dev:arm64 (8.14.1-2+deb13u4) over (8.14.1-2+deb13u3) ...
+#8 18.12 Preparing to unpack .../19-curl_8.14.1-2+deb13u4_arm64.deb ...
+#8 18.14 Unpacking curl (8.14.1-2+deb13u4) over (8.14.1-2+deb13u3) ...
+#8 18.23 Preparing to unpack .../20-libcurl4t64_8.14.1-2+deb13u4_arm64.deb ...
+#8 18.25 Unpacking libcurl4t64:arm64 (8.14.1-2+deb13u4) over (8.14.1-2+deb13u3) ...
+#8 18.32 Selecting previously unselected package fd-find.
+#8 18.32 Preparing to unpack .../21-fd-find_10.2.0-1+b5_arm64.deb ...
+#8 18.33 Unpacking fd-find (10.2.0-1+b5) ...
+#8 18.42 Selecting previously unselected package fzf.
+#8 18.42 Preparing to unpack .../22-fzf_0.60.3-1+b2_arm64.deb ...
+#8 18.43 Unpacking fzf (0.60.3-1+b2) ...
+#8 18.57 Preparing to unpack .../23-libcurl3t64-gnutls_8.14.1-2+deb13u4_arm64.deb ...
+#8 18.59 Unpacking libcurl3t64-gnutls:arm64 (8.14.1-2+deb13u4) over (8.14.1-2+deb13u3) ...
+#8 18.65 Selecting previously unselected package libgpm2:arm64.
+#8 18.66 Preparing to unpack .../24-libgpm2_1.20.7-11+b2_arm64.deb ...
+#8 18.66 Unpacking libgpm2:arm64 (1.20.7-11+b2) ...
+#8 18.71 Selecting previously unselected package libsodium23:arm64.
+#8 18.71 Preparing to unpack .../25-libsodium23_1.0.18-1+deb13u1_arm64.deb ...
+#8 18.72 Unpacking libsodium23:arm64 (1.0.18-1+deb13u1) ...
+#8 18.76 Selecting previously unselected package ripgrep.
+#8 18.76 Preparing to unpack .../26-ripgrep_14.1.1-1+b4_arm64.deb ...
+#8 18.76 Unpacking ripgrep (14.1.1-1+b4) ...
+#8 18.88 Selecting previously unselected package vim-runtime.
+#8 18.88 Preparing to unpack .../27-vim-runtime_2%3a9.1.1230-2_all.deb ...
+#8 18.89 Adding 'diversion of /usr/share/vim/vim91/doc/help.txt to /usr/share/vim/vim91/doc/help.txt.vim-tiny by vim-runtime'
+#8 18.90 Adding 'diversion of /usr/share/vim/vim91/doc/tags to /usr/share/vim/vim91/doc/tags.vim-tiny by vim-runtime'
+#8 18.90 Unpacking vim-runtime (2:9.1.1230-2) ...
+#8 19.29 Selecting previously unselected package vim.
+#8 19.30 Preparing to unpack .../28-vim_2%3a9.1.1230-2_arm64.deb ...
+#8 19.31 Unpacking vim (2:9.1.1230-2) ...
+#8 19.44 Setting up liblmdb0:arm64 (0.9.31-1+b2) ...
+#8 19.46 Setting up liburcu8t64:arm64 (0.15.2-2) ...
+#8 19.48 Setting up libsodium23:arm64 (1.0.18-1+deb13u1) ...
+#8 19.50 Setting up libgpm2:arm64 (1.20.7-11+b2) ...
+#8 19.52 Setting up libcurl4t64:arm64 (8.14.1-2+deb13u4) ...
+#8 19.54 Setting up libmaxminddb0:arm64 (1.12.2-1) ...
+#8 19.56 Setting up libfstrm0:arm64 (0.6.1-1+b3) ...
+#8 19.58 Setting up libuv1t64:arm64 (1.50.0-2) ...
+#8 19.60 Setting up libcurl3t64-gnutls:arm64 (8.14.1-2+deb13u4) ...
+#8 19.62 Setting up fd-find (10.2.0-1+b5) ...
+#8 19.65 Setting up libjemalloc2:arm64 (5.3.0-3) ...
+#8 19.67 Setting up libprotobuf-c1:arm64 (1.5.1-1) ...
+#8 19.69 Setting up libcurl4-openssl-dev:arm64 (8.14.1-2+deb13u4) ...
+#8 19.72 Setting up xz-utils (5.8.1-1+deb13u1) ...
+#8 19.76 Setting up fzf (0.60.3-1+b2) ...
+#8 19.80 Setting up ripgrep (14.1.1-1+b4) ...
+#8 19.83 Setting up curl (8.14.1-2+deb13u4) ...
+#8 19.85 Setting up libmbedcrypto16:arm64 (3.6.5-0.1~deb13u1) ...
+#8 19.88 Setting up vim-runtime (2:9.1.1230-2) ...
+#8 19.92 Setting up libjson-c5:arm64 (0.18+ds-1) ...
+#8 19.94 Setting up libhttp-parser2.9:arm64 (2.9.4-6+b2) ...
+#8 19.96 Setting up vim (2:9.1.1230-2) ...
+#8 19.98 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/ex (ex) in auto mode
+#8 19.98 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/rview (rview) in auto mode
+#8 19.99 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/rvim (rvim) in auto mode
+#8 19.99 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/vi (vi) in auto mode
+#8 19.99 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/view (view) in auto mode
+#8 20.00 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/vim (vim) in auto mode
+#8 20.00 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/vimdiff (vimdiff) in auto mode
+#8 20.02 Setting up bind9-libs:arm64 (1:9.20.23-1~deb13u1) ...
+#8 20.03 Setting up libmbedx509-7:arm64 (3.6.5-0.1~deb13u1) ...
+#8 20.06 Setting up libmbedtls21:arm64 (3.6.5-0.1~deb13u1) ...
+#8 20.08 Setting up bind9-host (1:9.20.23-1~deb13u1) ...
+#8 20.11 Setting up libgit2-1.9:arm64 (1.9.0+ds-2) ...
+#8 20.13 Setting up bind9-dnsutils (1:9.20.23-1~deb13u1) ...
+#8 20.17 Setting up bat (0.25.0-2+b2) ...
+#8 20.24 Processing triggers for man-db (2.13.1-1) ...
+#8 20.92 Processing triggers for libc-bin (2.41-12+deb13u3) ...
+#8 DONE 22.6s
 
 #9 [stable_base 3/5] RUN case "arm64" in 		amd64) DELTA_SHA256="1658c7b61825d411b50734f34016101309e4b6e7f5799944cf8e4ac542cebd7f" ;; 		arm64) DELTA_SHA256="937781aa7788e1510858743fff6c9a8b4a69fe0a22a7c8a69493e633227939a9" ;; 		*) echo "Unsupported git-delta architecture: arm64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		--output /tmp/delta.deb 		"https://github.com/dandavison/delta/releases/download/0.18.2/git-delta_0.18.2_arm64.deb" 	&& printf '%s  %s\n' "$DELTA_SHA256" /tmp/delta.deb | sha256sum --check --status - 	&& dpkg -i /tmp/delta.deb 	&& rm /tmp/delta.deb
-#9 3.288 Selecting previously unselected package git-delta.
-#9 3.310 (Reading database ... 28177 files and directories currently installed.)
-#9 3.311 Preparing to unpack /tmp/delta.deb ...
-#9 3.325 Unpacking git-delta (0.18.2) ...
-#9 3.468 Setting up git-delta (0.18.2) ...
-#9 DONE 3.5s
+#9 1.245 Selecting previously unselected package git-delta.
+#9 1.260 (Reading database ... 28177 files and directories currently installed.)
+#9 1.261 Preparing to unpack /tmp/delta.deb ...
+#9 1.302 Unpacking git-delta (0.18.2) ...
+#9 1.837 Setting up git-delta (0.18.2) ...
+#9 DONE 2.0s
 
 #10 [stable_base 4/5] RUN case "arm64" in 		amd64) RTK_TARGET="x86_64-unknown-linux-musl"; RTK_SHA256="ff8a1e7766496e175291a85aeca1dc97c9ff6df33e51e5893d1fbc78fea2a609" ;; 		arm64) RTK_TARGET="aarch64-unknown-linux-gnu"; RTK_SHA256="5519f7ca12e5c143a609f0d28a0a77b97413a8dce31c2681f1a41c24519a8731" ;; 		*) echo "Unsupported RTK architecture: arm64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		--output /tmp/rtk.tar.gz 		"https://github.com/rtk-ai/rtk/releases/download/v0.43.0/rtk-${RTK_TARGET}.tar.gz" 	&& printf '%s  %s\n' "$RTK_SHA256" /tmp/rtk.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/rtk.tar.gz -C /usr/local/bin/ 	&& chmod +x /usr/local/bin/rtk 	&& rm /tmp/rtk.tar.gz 	&& chsh -s /usr/bin/zsh vscode 	&& printf '%s\n' 		'export PROTO_HOME="$HOME/.proto"' 		'export PATH="/workspace/node_modules/.bin:$HOME/.local/bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH"' 		> /etc/profile.d/devenv-path.sh 	&& chmod 0644 /etc/profile.d/devenv-path.sh
-#10 DONE 1.2s
+#10 DONE 1.7s
 
 #11 [stable_base 5/5] RUN mkdir -p 	"/home/vscode/.proto" 	"${HOME}/.bun/install/cache" 	"${HOME}/.cache/uv" 	"${HOME}/.local/bin" 	"${HOME}/.payloads"
-#11 DONE 0.1s
+#11 DONE 0.6s
 
 #12 [proto_foundation 1/3] COPY --chown=vscode:vscode .devcontainer/prototools.foundation /tmp/devenv-proto-foundation/.prototools
-#12 DONE 0.1s
+#12 DONE 0.3s
 
-#13 [proto_foundation 2/3] COPY --chown=vscode:vscode 	.devcontainer/install-proto.sh 	.devcontainer/proto-checksums.txt 	/tmp/devenv-proto-foundation/.devcontainer/
-#13 DONE 0.1s
+#13 [shell_payload 1/1] RUN mkdir -p "${HOME}/.local/share/zinit/zinit.git" 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 120 		"https://github.com/zdharma-continuum/zinit/archive/e347224fb5fe77308cff9f59fbe2acca70d0a6db.tar.gz" 		-o /tmp/zinit.tar.gz 	&& printf '%s  %s\n' "96380971046cf82765dc02822dd6acf993bfce3e3a4eaf46a3f42eafdac37434" /tmp/zinit.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/zinit.tar.gz --strip-components=1 -C "${HOME}/.local/share/zinit/zinit.git" 	&& rm /tmp/zinit.tar.gz
+#13 ...
 
-#14 [shell_payload 1/1] RUN mkdir -p "${HOME}/.local/share/zinit/zinit.git" 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 120 		"https://github.com/zdharma-continuum/zinit/archive/e347224fb5fe77308cff9f59fbe2acca70d0a6db.tar.gz" 		-o /tmp/zinit.tar.gz 	&& printf '%s  %s\n' "96380971046cf82765dc02822dd6acf993bfce3e3a4eaf46a3f42eafdac37434" /tmp/zinit.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/zinit.tar.gz --strip-components=1 -C "${HOME}/.local/share/zinit/zinit.git" 	&& rm /tmp/zinit.tar.gz
-#14 DONE 1.9s
+#14 [proto_foundation 2/3] COPY --chown=vscode:vscode 	.devcontainer/install-proto.sh 	.devcontainer/proto-checksums.txt 	/tmp/devenv-proto-foundation/.devcontainer/
+#14 DONE 0.2s
 
 #15 [proto_foundation 3/3] RUN bash /tmp/devenv-proto-foundation/.devcontainer/install-proto.sh 	&& cd /tmp/devenv-proto-foundation 	&& proto install --yes --config-mode local
-#15 2.468 ✨ There's a new version of proto available, 0.58.2 (currently on 0.55.4)
-#15 2.468 ✨ Run proto upgrade or install from https://moonrepo.dev/docs/proto/install
-#15 2.468 
-#15 4.500 [proto] Installing proto with specification 0.55.4
-#15 4.500 [python] Installing Python with specification 3.14.2
-#15 4.500 [bun] Installing Bun with specification 1.3.13
-#15 4.500 [uv] Installing uv with specification 0.9.7
-#15 5.418 [bun] Installing Bun 1.3.13
-#15 5.418 [bun] Downloading pre-built archive bun-linux-aarch64.zip
-#15 5.418 [uv] Installing uv 0.9.7
-#15 5.418 [uv] Downloading pre-built archive uv-aarch64-unknown-linux-gnu.tar.gz
-#15 5.520 [python] Installing Python 3.14.2
-#15 5.621 [proto] Installing proto 0.55.4
-#15 5.621 [proto] Downloading pre-built archive proto_cli-aarch64-unknown-linux-gnu.tar.xz
-#15 6.128 [python] Downloading pre-built archive cpython-3.14.2+20260127-aarch64-unknown-linux-gnu-install_only.tar.gz
-#15 6.839 [proto] Verifying checksum against proto_cli-aarch64-unknown-linux-gnu.tar.xz.sha256
-#15 7.570 [uv] Verifying checksum against uv-aarch64-unknown-linux-gnu.tar.gz.sha256
-#15 7.772 [proto] Unpacking archive proto_cli-aarch64-unknown-linux-gnu.tar.xz
-#15 7.772 [proto] proto 0.55.4 installed (3s)
-#15 8.185 [uv] Unpacking archive uv-aarch64-unknown-linux-gnu.tar.gz
-#15 8.185 [uv] uv 0.9.7 installed (3s)
-#15 8.490 [bun] Verifying checksum against SHASUMS256.txt
-#15 9.221 [bun] Unpacking archive bun-linux-aarch64.zip
-#15 9.221 [bun] Bun 1.3.13 installed (4s)
-#15 12.91 [python] Verifying checksum against SHA256SUMS
-#15 15.13 [python] Unpacking archive cpython-3.14.2+20260127-aarch64-unknown-linux-gnu-install_only.tar.gz
-#15 15.13 [python] Python 3.14.2 installed (10s)
-#15 15.45 
-#15 15.45 │ SUCCESS
-#15 15.45 │ Installed uv, proto, bun, and python in 11 seconds!
-#15 15.45 
-#15 DONE 16.2s
+#15 ...
 
-#16 [ccstatusline_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/ccstatusline" 	bun install -g "ccstatusline@2.2.23"
+#13 [shell_payload 1/1] RUN mkdir -p "${HOME}/.local/share/zinit/zinit.git" 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 120 		"https://github.com/zdharma-continuum/zinit/archive/e347224fb5fe77308cff9f59fbe2acca70d0a6db.tar.gz" 		-o /tmp/zinit.tar.gz 	&& printf '%s  %s\n' "96380971046cf82765dc02822dd6acf993bfce3e3a4eaf46a3f42eafdac37434" /tmp/zinit.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/zinit.tar.gz --strip-components=1 -C "${HOME}/.local/share/zinit/zinit.git" 	&& rm /tmp/zinit.tar.gz
+#13 DONE 2.2s
+
+#15 [proto_foundation 3/3] RUN bash /tmp/devenv-proto-foundation/.devcontainer/install-proto.sh 	&& cd /tmp/devenv-proto-foundation 	&& proto install --yes --config-mode local
+#15 2.795 ✨ There's a new version of proto available, 0.58.2 (currently on 0.55.4)
+#15 2.795 ✨ Run proto upgrade or install from https://moonrepo.dev/docs/proto/install
+#15 2.795 
+#15 13.05 [python] Installing Python with specification 3.14.2
+#15 13.05 [uv] Installing uv with specification 0.9.7
+#15 13.05 [proto] Installing proto with specification 0.55.4
+#15 13.05 [bun] Installing Bun with specification 1.3.13
+#15 14.65 [uv] Installing uv 0.9.7
+#15 14.65 [uv] Downloading pre-built archive uv-aarch64-unknown-linux-gnu.tar.gz
+#15 14.96 [bun] Installing Bun 1.3.13
+#15 15.06 [bun] Downloading pre-built archive bun-linux-aarch64.zip
+#15 15.06 [python] Installing Python 3.14.2
+#15 15.66 [proto] Installing proto 0.55.4
+#15 15.66 [proto] Downloading pre-built archive proto_cli-aarch64-unknown-linux-gnu.tar.xz
+#15 15.96 [python] Downloading pre-built archive cpython-3.14.2+20260127-aarch64-unknown-linux-gnu-install_only.tar.gz
+#15 18.57 [proto] Verifying checksum against proto_cli-aarch64-unknown-linux-gnu.tar.xz.sha256
+#15 19.37 [proto] Unpacking archive proto_cli-aarch64-unknown-linux-gnu.tar.xz
+#15 19.37 [proto] proto 0.55.4 installed (6s)
+#15 19.47 [uv] Verifying checksum against uv-aarch64-unknown-linux-gnu.tar.gz.sha256
+#15 19.97 [uv] Unpacking archive uv-aarch64-unknown-linux-gnu.tar.gz
+#15 19.97 [uv] uv 0.9.7 installed (6s)
+#15 20.57 [bun] Verifying checksum against SHASUMS256.txt
+#15 21.27 [bun] Unpacking archive bun-linux-aarch64.zip
+#15 21.27 [bun] Bun 1.3.13 installed (8s)
+#15 23.09 [python] Verifying checksum against SHA256SUMS
+#15 24.70 [python] Unpacking archive cpython-3.14.2+20260127-aarch64-unknown-linux-gnu-install_only.tar.gz
+#15 24.70 [python] Python 3.14.2 installed (11s)
+#15 24.96 
+#15 24.96 │ SUCCESS
+#15 24.96 │ Installed proto, uv, bun, and python in 12 seconds!
+#15 24.96 
+#15 DONE 28.7s
+
+#16 [codex_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/codex" 	bun install -g "@openai/codex@0.144.4"
+#16 0.758 bun add v1.3.13 (bf2e2cec)
+#16 0.760 Resolving dependencies
 #16 ...
 
 #17 [proto_auxiliary 1/2] COPY --chown=vscode:vscode .devcontainer/prototools.auxiliary /tmp/devenv-proto-auxiliary/.prototools
-#17 DONE 0.4s
+#17 DONE 1.0s
 
-#16 [ccstatusline_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/ccstatusline" 	bun install -g "ccstatusline@2.2.23"
-#16 0.472 bun add v1.3.13 (bf2e2cec)
-#16 0.477 Resolving dependencies
-#16 1.012 Resolved, downloaded and extracted [4]
-#16 1.013 Saved lockfile
-#16 1.013 
-#16 1.013 installed ccstatusline@2.2.23 with binaries:
-#16 1.013  - ccstatusline
-#16 1.013 
-#16 1.013 1 package installed [543.00ms]
-#16 1.013 
-#16 1.013 warn: To run "ccstatusline", add the global bin folder to $PATH:
-#16 1.013 
-#16 1.013 /home/vscode/.payloads/ccstatusline/bin
-#16 DONE 1.1s
-
-#18 [gemini_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/gemini" 	bun install -g "@google/gemini-cli@0.50.0"
-#18 0.537 bun add v1.3.13 (bf2e2cec)
-#18 0.545 Resolving dependencies
+#18 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
+#18 1.810 [fly] Installing flyctl with specification 0.3.231
+#18 1.810 [dagger] Installing Dagger with specification 0.19.8
+#18 1.810 [yq] Installing yq with specification 4.49.2
+#18 1.810 [direnv] Installing direnv with specification 2.37.1
 #18 ...
 
-#19 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
-#19 2.087 [node] Installing Node.js with specification 24.18.0
-#19 2.087 [moon] Installing moon with specification 2.3.5
-#19 2.087 [infisical] Installing Infisical with specification 0.41.90
-#19 2.087 [direnv] Installing direnv with specification 2.37.1
-#19 2.087 [fly] Installing flyctl with specification 0.3.231
-#19 2.187 [jq] Installing jq with specification 1.8.1
-#19 2.187 [yq] Installing yq with specification 4.49.2
-#19 2.187 [dagger] Installing Dagger with specification 0.19.8
-#19 3.407 [jq] Installing jq 1.8.1
-#19 3.407 [jq] Downloading pre-built archive jq-linux-arm64
-#19 3.407 [direnv] Installing direnv 2.37.1
-#19 3.407 [direnv] Downloading pre-built archive direnv.linux-arm64
-#19 3.610 [dagger] Installing Dagger 0.19.8
-#19 3.610 [dagger] Downloading pre-built archive dagger_v0.19.8_linux_arm64.tar.gz
-#19 3.610 [yq] Installing yq 4.49.2
-#19 3.610 [yq] Downloading pre-built archive yq_linux_arm64
-#19 3.810 [infisical] Installing Infisical 0.41.90
-#19 3.810 [infisical] Downloading pre-built archive infisical_0.41.90_linux_arm64.tar.gz
-#19 4.121 [moon] Installing moon 2.3.5
-#19 4.121 [moon] Downloading pre-built archive moon_cli-aarch64-unknown-linux-gnu.tar.xz
-#19 4.323 [fly] Installing flyctl 0.3.231
-#19 4.323 [fly] Downloading pre-built archive flyctl_0.3.231_Linux_arm64.tar.gz
-#19 5.337 [node] Installing Node.js 24.18.0
-#19 5.337 [node] Downloading pre-built archive node-v24.18.0-linux-arm64.tar.xz
-#19 ...
+#19 [ccstatusline_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/ccstatusline" 	bun install -g "ccstatusline@2.2.23"
+#19 0.835 bun add v1.3.13 (bf2e2cec)
+#19 0.837 Resolving dependencies
+#19 2.534 Resolved, downloaded and extracted [4]
+#19 2.534 
+#19 2.534 installed ccstatusline@2.2.23 with binaries:
+#19 2.534  - ccstatusline
+#19 2.534 
+#19 2.534 1 package installed [1.70s]
+#19 2.534 Saved lockfile
+#19 2.535 
+#19 2.535 warn: To run "ccstatusline", add the global bin folder to $PATH:
+#19 2.535 
+#19 2.535 /home/vscode/.payloads/ccstatusline/bin
+#19 DONE 2.8s
 
-#20 [graphify_payload 1/1] RUN UV_TOOL_DIR="${HOME}/.payloads/graphify" 	UV_TOOL_BIN_DIR="${HOME}/.payloads/graphify/bin" 	CC="$(command -v gcc)" 	CXX="$(command -v g++)" 	uv tool install "graphifyy[gemini,sql]==0.9.16"
-#20 3.137 Resolved 52 packages in 2.39s
-#20 4.140 Downloading openai (1.6MiB)
-#20 4.142 Downloading rapidfuzz (1.3MiB)
-#20 4.142 Downloading graphifyy (1.0MiB)
-#20 4.144 Downloading pydantic-core (1.9MiB)
-#20 4.148 Downloading networkx (2.0MiB)
-#20 4.156 Downloading tiktoken (1.1MiB)
-#20 4.156 Downloading numpy (14.5MiB)
+#18 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
+#18 2.010 [moon] Installing moon with specification 2.3.5
+#18 2.814 [direnv] Installing direnv 2.37.1
+#18 2.814 [direnv] Downloading pre-built archive direnv.linux-arm64
+#18 3.341 [jq] Installing jq 1.8.1
+#18 3.341 [jq] Downloading pre-built archive jq-linux-arm64
+#18 3.341 [yq] Installing yq 4.49.2
+#18 3.341 [yq] Downloading pre-built archive yq_linux_arm64
+#18 3.443 [dagger] Installing Dagger 0.19.8
+#18 3.443 [dagger] Downloading pre-built archive dagger_v0.19.8_linux_arm64.tar.gz
+#18 3.543 [infisical] Installing Infisical 0.41.90
+#18 3.543 [infisical] Downloading pre-built archive infisical_0.41.90_linux_arm64.tar.gz
+#18 3.747 [fly] Installing flyctl 0.3.231
+#18 3.747 [fly] Downloading pre-built archive flyctl_0.3.231_Linux_arm64.tar.gz
+#18 3.848 [moon] Installing moon 2.3.5
+#18 3.848 [moon] Downloading pre-built archive moon_cli-aarch64-unknown-linux-gnu.tar.xz
+#18 3.949 [node] Installing Node.js 24.18.0
+#18 3.949 [node] Downloading pre-built archive node-v24.18.0-linux-arm64.tar.xz
+#18 5.969 [jq] jq 1.8.1 installed (4s)
+#18 ...
+
+#20 [claude_payload 1/1] RUN case "arm64" in 		amd64) CLAUDE_PLATFORM="linux-x64"; CLAUDE_SHA256="e7d2ceb53ed4c2ced1fe7fc1c6331c98dc5f7b4c9b2722d9c5fa3dd5dff6f719" ;; 		arm64) CLAUDE_PLATFORM="linux-arm64"; CLAUDE_SHA256="84feb193c1d91f3b5eba836ed47c0e4dee953195abba950917c3e101eff174e8" ;; 		*) echo "Unsupported Claude architecture: arm64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		"https://downloads.claude.ai/claude-code-releases/2.1.210/${CLAUDE_PLATFORM}/claude" 		-o "${HOME}/.local/bin/claude" 	&& printf '%s  %s\n' "$CLAUDE_SHA256" "${HOME}/.local/bin/claude" | sha256sum --check --status - 	&& chmod +x "${HOME}/.local/bin/claude" 	&& BUN_INSTALL="${HOME}/.payloads/claude-tools" bun install -g "node-gyp@13.0.1"
 #20 ...
 
-#21 [claude_payload 1/1] RUN case "arm64" in 		amd64) CLAUDE_PLATFORM="linux-x64"; CLAUDE_SHA256="e7d2ceb53ed4c2ced1fe7fc1c6331c98dc5f7b4c9b2722d9c5fa3dd5dff6f719" ;; 		arm64) CLAUDE_PLATFORM="linux-arm64"; CLAUDE_SHA256="84feb193c1d91f3b5eba836ed47c0e4dee953195abba950917c3e101eff174e8" ;; 		*) echo "Unsupported Claude architecture: arm64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		"https://downloads.claude.ai/claude-code-releases/2.1.210/${CLAUDE_PLATFORM}/claude" 		-o "${HOME}/.local/bin/claude" 	&& printf '%s  %s\n' "$CLAUDE_SHA256" "${HOME}/.local/bin/claude" | sha256sum --check --status - 	&& chmod +x "${HOME}/.local/bin/claude" 	&& BUN_INSTALL="${HOME}/.payloads/claude-tools" bun install -g "node-gyp@13.0.1"
+#21 [graphify_payload 1/1] RUN UV_TOOL_DIR="${HOME}/.payloads/graphify" 	UV_TOOL_BIN_DIR="${HOME}/.payloads/graphify/bin" 	CC="$(command -v gcc)" 	CXX="$(command -v g++)" 	uv tool install "graphifyy[gemini,sql]==0.9.16"
+#21 4.315 Resolved 52 packages in 3.33s
+#21 5.240 Downloading tiktoken (1.1MiB)
+#21 5.246 Downloading openai (1.6MiB)
+#21 5.246 Downloading numpy (14.5MiB)
+#21 5.247 Downloading networkx (2.0MiB)
+#21 5.248 Downloading pydantic-core (1.9MiB)
+#21 5.252 Downloading rapidfuzz (1.3MiB)
+#21 5.255 Downloading graphifyy (1.0MiB)
 #21 ...
 
-#22 [codex_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/codex" 	bun install -g "@openai/codex@0.144.4"
-#22 0.485 bun add v1.3.13 (bf2e2cec)
-#22 0.486 Resolving dependencies
+#22 [gemini_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/gemini" 	bun install -g "@google/gemini-cli@0.50.0"
+#22 0.908 bun add v1.3.13 (bf2e2cec)
+#22 0.909 Resolving dependencies
+#22 7.087 Resolved, downloaded and extracted [37]
 #22 ...
 
-#19 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
-#19 13.67 [jq] jq 1.8.1 installed (11s)
-#19 16.50 [node] Verifying checksum against SHASUMS256.txt
-#19 ...
-
-#22 [codex_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/codex" 	bun install -g "@openai/codex@0.144.4"
-#22 14.89 Resolved, downloaded and extracted [5]
-#22 14.89 Saved lockfile
-#22 14.89 
-#22 14.89 installed @openai/codex@0.144.4 with binaries:
-#22 14.89  - codex
-#22 14.89 
-#22 14.89 2 packages installed [14.41s]
-#22 14.89 
-#22 14.89 warn: To run "codex", add the global bin folder to $PATH:
-#22 14.89 
-#22 14.89 /home/vscode/.payloads/codex/bin
-#22 DONE 16.9s
-
-#20 [graphify_payload 1/1] RUN UV_TOOL_DIR="${HOME}/.payloads/graphify" 	UV_TOOL_BIN_DIR="${HOME}/.payloads/graphify/bin" 	CC="$(command -v gcc)" 	CXX="$(command -v g++)" 	uv tool install "graphifyy[gemini,sql]==0.9.16"
-#20 17.50  Downloading graphifyy
-#20 17.52  Downloading tiktoken
-#20 17.66  Downloading rapidfuzz
-#20 17.72  Downloading openai
-#20 17.77  Downloading pydantic-core
-#20 17.79  Downloading networkx
-#20 18.91  Downloading numpy
-#20 18.91 Prepared 52 packages in 15.77s
-#20 19.08 Installed 52 packages in 169ms
-#20 19.08  + annotated-types==0.7.0
-#20 19.08  + anyio==4.14.2
-#20 19.08  + certifi==2026.6.17
-#20 19.08  + charset-normalizer==3.4.9
-#20 19.08  + distro==1.9.0
-#20 19.08  + graphifyy==0.9.16
-#20 19.08  + h11==0.16.0
-#20 19.08  + httpcore==1.0.9
-#20 19.08  + httpx==0.28.1
-#20 19.08  + idna==3.18
-#20 19.08  + jiter==0.16.0
-#20 19.08  + networkx==3.6.1
-#20 19.08  + numpy==2.5.1
-#20 19.08  + openai==2.45.0
-#20 19.08  + pydantic==2.13.4
-#20 19.08  + pydantic-core==2.46.4
-#20 19.08  + rapidfuzz==3.14.5
-#20 19.08  + regex==2026.7.10
-#20 19.08  + requests==2.34.2
-#20 19.08  + sniffio==1.3.1
-#20 19.08  + tiktoken==0.13.0
-#20 19.08  + tqdm==4.68.4
-#20 19.08  + tree-sitter==0.25.2
-#20 19.08  + tree-sitter-bash==0.25.1
-#20 19.08  + tree-sitter-c==0.24.2
-#20 19.08  + tree-sitter-c-sharp==0.23.5
-#20 19.08  + tree-sitter-cpp==0.23.4
-#20 19.08  + tree-sitter-elixir==0.3.5
-#20 19.08  + tree-sitter-fortran==0.6.0
-#20 19.08  + tree-sitter-go==0.25.0
-#20 19.08  + tree-sitter-groovy==0.1.2
-#20 19.08  + tree-sitter-java==0.23.5
-#20 19.08  + tree-sitter-javascript==0.25.0
-#20 19.08  + tree-sitter-json==0.24.8
-#20 19.08  + tree-sitter-julia==0.23.1
-#20 19.08  + tree-sitter-kotlin==1.1.0
-#20 19.08  + tree-sitter-lua==0.5.0
-#20 19.08  + tree-sitter-objc==3.0.2
-#20 19.08  + tree-sitter-php==0.24.1
-#20 19.08  + tree-sitter-powershell==0.26.4
-#20 19.08  + tree-sitter-python==0.25.0
-#20 19.08  + tree-sitter-ruby==0.23.1
-#20 19.08  + tree-sitter-rust==0.24.2
-#20 19.08  + tree-sitter-scala==0.26.0
-#20 19.08  + tree-sitter-sql==0.3.11
-#20 19.08  + tree-sitter-swift==0.7.3
-#20 19.08  + tree-sitter-typescript==0.23.2
-#20 19.08  + tree-sitter-verilog==1.0.3
-#20 19.08  + tree-sitter-zig==1.1.2
-#20 19.08  + typing-extensions==4.16.0
-#20 19.08  + typing-inspection==0.4.2
-#20 19.08  + urllib3==2.7.0
-#20 19.09 Installed 2 executables: graphify, graphify-mcp
-#20 19.09 warning: `/home/vscode/.payloads/graphify/bin` is not on your PATH. To use installed tools, add the directory to your PATH.
-#20 DONE 21.0s
-
-#21 [claude_payload 1/1] RUN case "arm64" in 		amd64) CLAUDE_PLATFORM="linux-x64"; CLAUDE_SHA256="e7d2ceb53ed4c2ced1fe7fc1c6331c98dc5f7b4c9b2722d9c5fa3dd5dff6f719" ;; 		arm64) CLAUDE_PLATFORM="linux-arm64"; CLAUDE_SHA256="84feb193c1d91f3b5eba836ed47c0e4dee953195abba950917c3e101eff174e8" ;; 		*) echo "Unsupported Claude architecture: arm64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		"https://downloads.claude.ai/claude-code-releases/2.1.210/${CLAUDE_PLATFORM}/claude" 		-o "${HOME}/.local/bin/claude" 	&& printf '%s  %s\n' "$CLAUDE_SHA256" "${HOME}/.local/bin/claude" | sha256sum --check --status - 	&& chmod +x "${HOME}/.local/bin/claude" 	&& BUN_INSTALL="${HOME}/.payloads/claude-tools" bun install -g "node-gyp@13.0.1"
-#21 20.17 bun add v1.3.13 (bf2e2cec)
-#21 20.18 Resolving dependencies
-#21 21.66 Resolved, downloaded and extracted [80]
-#21 21.68 Saved lockfile
-#21 21.68 
-#21 21.68 installed node-gyp@13.0.1 with binaries:
-#21 21.68  - node-gyp
-#21 21.68 
-#21 21.68 20 packages installed [1.52s]
-#21 21.68 
-#21 21.68 warn: To run "node-gyp", add the global bin folder to $PATH:
-#21 21.68 
-#21 21.68 /home/vscode/.payloads/claude-tools/bin
-#21 DONE 21.9s
-
-#19 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
-#19 19.11 [node] Unpacking archive node-v24.18.0-linux-arm64.tar.xz
-#19 19.11 [node] Node.js 24.18.0 installed (16s)
-#19 20.55 [direnv] direnv 2.37.1 installed (18s)
-#19 21.16 [yq] yq 4.49.2 installed (19s)
-#19 21.96 [moon] Verifying checksum against moon_cli-aarch64-unknown-linux-gnu.tar.xz.sha256
-#19 22.27 [dagger] Verifying checksum against checksums.txt
-#19 22.77 [dagger] Unpacking archive dagger_v0.19.8_linux_arm64.tar.gz
-#19 22.77 [dagger] Dagger 0.19.8 installed (20s)
-#19 23.07 [moon] Unpacking archive moon_cli-aarch64-unknown-linux-gnu.tar.xz
-#19 23.07 [moon] moon 2.3.5 installed (20s)
-#19 23.37 [infisical] Verifying checksum against checksums.txt
-#19 23.88 [fly] Verifying checksum against flyctl_0.3.231_checksums.txt
-#19 23.98 [infisical] Unpacking archive infisical_0.41.90_linux_arm64.tar.gz
-#19 23.98 [infisical] Infisical 0.41.90 installed (21s)
-#19 24.48 [fly] Unpacking archive flyctl_0.3.231_Linux_arm64.tar.gz
-#19 24.48 [fly] flyctl 0.3.231 installed (22s)
-#19 24.83 
-#19 24.83 │ SUCCESS
-#19 24.83 │ Installed jq, node, direnv, yq, dagger, moon, infisical, and fly in 22 seconds!
-#19 24.83 
-#19 DONE 25.2s
-
-#18 [gemini_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/gemini" 	bun install -g "@google/gemini-cli@0.50.0"
-#18 22.52 Resolved, downloaded and extracted [37]
+#18 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
+#18 10.04 [node] Verifying checksum against SHASUMS256.txt
+#18 12.36 [node] Unpacking archive node-v24.18.0-linux-arm64.tar.xz
+#18 12.36 [node] Node.js 24.18.0 installed (10s)
 #18 ...
+
+#22 [gemini_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/gemini" 	bun install -g "@google/gemini-cli@0.50.0"
+#22 14.73 
+#22 14.73 installed @google/gemini-cli@0.50.0 with binaries:
+#22 14.73  - gemini
+#22 14.73 
+#22 14.73 7 packages installed [13.82s]
+#22 14.73 
+#22 14.73 Blocked 1 postinstall. Run `bun pm -g untrusted` for details.
+#22 14.73 Saved lockfile
+#22 14.73 
+#22 14.73 warn: To run "gemini", add the global bin folder to $PATH:
+#22 14.73 
+#22 14.73 /home/vscode/.payloads/gemini/bin
+#22 DONE 16.4s
+
+#21 [graphify_payload 1/1] RUN UV_TOOL_DIR="${HOME}/.payloads/graphify" 	UV_TOOL_BIN_DIR="${HOME}/.payloads/graphify/bin" 	CC="$(command -v gcc)" 	CXX="$(command -v g++)" 	uv tool install "graphifyy[gemini,sql]==0.9.16"
+#21 ...
+
+#16 [codex_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/codex" 	bun install -g "@openai/codex@0.144.4"
+#16 22.14 Resolved, downloaded and extracted [5]
+#16 22.14 Saved lockfile
+#16 22.14 
+#16 22.14 installed @openai/codex@0.144.4 with binaries:
+#16 22.14  - codex
+#16 22.14 
+#16 22.14 2 packages installed [21.38s]
+#16 22.14 
+#16 22.14 warn: To run "codex", add the global bin folder to $PATH:
+#16 22.14 
+#16 22.14 /home/vscode/.payloads/codex/bin
+#16 DONE 23.0s
+
+#20 [claude_payload 1/1] RUN case "arm64" in 		amd64) CLAUDE_PLATFORM="linux-x64"; CLAUDE_SHA256="e7d2ceb53ed4c2ced1fe7fc1c6331c98dc5f7b4c9b2722d9c5fa3dd5dff6f719" ;; 		arm64) CLAUDE_PLATFORM="linux-arm64"; CLAUDE_SHA256="84feb193c1d91f3b5eba836ed47c0e4dee953195abba950917c3e101eff174e8" ;; 		*) echo "Unsupported Claude architecture: arm64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		"https://downloads.claude.ai/claude-code-releases/2.1.210/${CLAUDE_PLATFORM}/claude" 		-o "${HOME}/.local/bin/claude" 	&& printf '%s  %s\n' "$CLAUDE_SHA256" "${HOME}/.local/bin/claude" | sha256sum --check --status - 	&& chmod +x "${HOME}/.local/bin/claude" 	&& BUN_INSTALL="${HOME}/.payloads/claude-tools" bun install -g "node-gyp@13.0.1"
+#20 22.39 bun add v1.3.13 (bf2e2cec)
+#20 22.39 Resolving dependencies
+#20 23.56 Resolved, downloaded and extracted [80]
+#20 23.58 Saved lockfile
+#20 23.58 
+#20 23.58 installed node-gyp@13.0.1 with binaries:
+#20 23.58  - node-gyp
+#20 23.58 
+#20 23.58 20 packages installed [1186.00ms]
+#20 23.58 
+#20 23.58 warn: To run "node-gyp", add the global bin folder to $PATH:
+#20 23.58 
+#20 23.58 /home/vscode/.payloads/claude-tools/bin
+#20 DONE 24.2s
+
+#18 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
+#18 21.59 [direnv] direnv 2.37.1 installed (19s)
+#18 26.25 [yq] yq 4.49.2 installed (24s)
+#18 ...
+
+#21 [graphify_payload 1/1] RUN UV_TOOL_DIR="${HOME}/.payloads/graphify" 	UV_TOOL_BIN_DIR="${HOME}/.payloads/graphify/bin" 	CC="$(command -v gcc)" 	CXX="$(command -v g++)" 	uv tool install "graphifyy[gemini,sql]==0.9.16"
+#21 24.70  Downloading tiktoken
+#21 24.78  Downloading graphifyy
+#21 25.18  Downloading rapidfuzz
+#21 25.40  Downloading openai
+#21 25.65  Downloading pydantic-core
+#21 25.67  Downloading networkx
+#21 28.29  Downloading numpy
+#21 28.29 Prepared 52 packages in 23.96s
+#21 28.41 Installed 52 packages in 118ms
+#21 28.41  + annotated-types==0.7.0
+#21 28.41  + anyio==4.14.2
+#21 28.41  + certifi==2026.6.17
+#21 28.41  + charset-normalizer==3.4.9
+#21 28.41  + distro==1.9.0
+#21 28.41  + graphifyy==0.9.16
+#21 28.41  + h11==0.16.0
+#21 28.41  + httpcore==1.0.9
+#21 28.41  + httpx==0.28.1
+#21 28.41  + idna==3.18
+#21 28.41  + jiter==0.16.0
+#21 28.41  + networkx==3.6.1
+#21 28.41  + numpy==2.5.1
+#21 28.41  + openai==2.45.0
+#21 28.41  + pydantic==2.13.4
+#21 28.41  + pydantic-core==2.46.4
+#21 28.41  + rapidfuzz==3.14.5
+#21 28.41  + regex==2026.7.10
+#21 28.41  + requests==2.34.2
+#21 28.41  + sniffio==1.3.1
+#21 28.41  + tiktoken==0.13.0
+#21 28.41  + tqdm==4.68.4
+#21 28.41  + tree-sitter==0.25.2
+#21 28.41  + tree-sitter-bash==0.25.1
+#21 28.41  + tree-sitter-c==0.24.2
+#21 28.41  + tree-sitter-c-sharp==0.23.5
+#21 28.41  + tree-sitter-cpp==0.23.4
+#21 28.41  + tree-sitter-elixir==0.3.5
+#21 28.41  + tree-sitter-fortran==0.6.0
+#21 28.41  + tree-sitter-go==0.25.0
+#21 28.41  + tree-sitter-groovy==0.1.2
+#21 28.41  + tree-sitter-java==0.23.5
+#21 28.41  + tree-sitter-javascript==0.25.0
+#21 28.41  + tree-sitter-json==0.24.8
+#21 28.41  + tree-sitter-julia==0.23.1
+#21 28.41  + tree-sitter-kotlin==1.1.0
+#21 28.41  + tree-sitter-lua==0.5.0
+#21 28.41  + tree-sitter-objc==3.0.2
+#21 28.41  + tree-sitter-php==0.24.1
+#21 28.41  + tree-sitter-powershell==0.26.4
+#21 28.41  + tree-sitter-python==0.25.0
+#21 28.41  + tree-sitter-ruby==0.23.1
+#21 28.41  + tree-sitter-rust==0.24.2
+#21 28.41  + tree-sitter-scala==0.26.0
+#21 28.41  + tree-sitter-sql==0.3.11
+#21 28.41  + tree-sitter-swift==0.7.3
+#21 28.41  + tree-sitter-typescript==0.23.2
+#21 28.41  + tree-sitter-verilog==1.0.3
+#21 28.41  + tree-sitter-zig==1.1.2
+#21 28.41  + typing-extensions==4.16.0
+#21 28.41  + typing-inspection==0.4.2
+#21 28.41  + urllib3==2.7.0
+#21 28.41 Installed 2 executables: graphify, graphify-mcp
+#21 28.41 warning: `/home/vscode/.payloads/graphify/bin` is not on your PATH. To use installed tools, add the directory to your PATH.
+#21 DONE 29.1s
+
+#18 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
+#18 32.21 [moon] Verifying checksum against moon_cli-aarch64-unknown-linux-gnu.tar.xz.sha256
+#18 34.31 [dagger] Verifying checksum against checksums.txt
+#18 35.01 [dagger] Unpacking archive dagger_v0.19.8_linux_arm64.tar.gz
+#18 35.01 [dagger] Dagger 0.19.8 installed (33s)
+#18 35.31 [moon] Unpacking archive moon_cli-aarch64-unknown-linux-gnu.tar.xz
+#18 35.31 [moon] moon 2.3.5 installed (33s)
+#18 35.93 [infisical] Verifying checksum against checksums.txt
+#18 36.45 [fly] Verifying checksum against flyctl_0.3.231_checksums.txt
+#18 36.55 [infisical] Unpacking archive infisical_0.41.90_linux_arm64.tar.gz
+#18 36.55 [infisical] Infisical 0.41.90 installed (34s)
+#18 37.08 [fly] Unpacking archive flyctl_0.3.231_Linux_arm64.tar.gz
+#18 37.08 [fly] flyctl 0.3.231 installed (35s)
+#18 37.38 
+#18 37.38 │ SUCCESS
+#18 37.38 │ Installed jq, node, direnv, yq, dagger, moon, infisical, and fly in 35 seconds!
+#18 37.38 
+#18 DONE 38.4s
 
 #23 [development  1/19] COPY --link --from=graphify_payload --chown=1000:1000 /home/vscode/.payloads/graphify /home/vscode/.payloads/graphify
 #23 DONE 0.7s
 
 #24 [development  2/19] COPY --link --from=codex_payload --chown=1000:1000 /home/vscode/.payloads/codex /home/vscode/.payloads/codex
-#24 DONE 0.4s
-
-#18 [gemini_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/gemini" 	bun install -g "@google/gemini-cli@0.50.0"
-#18 27.02 Saved lockfile
-#18 27.02 
-#18 27.02 installed @google/gemini-cli@0.50.0 with binaries:
-#18 27.02  - gemini
-#18 27.02 
-#18 27.02 7 packages installed [26.49s]
-#18 27.02 
-#18 27.02 Blocked 1 postinstall. Run `bun pm -g untrusted` for details.
-#18 27.02 
-#18 27.02 warn: To run "gemini", add the global bin folder to $PATH:
-#18 27.02 
-#18 27.02 /home/vscode/.payloads/gemini/bin
-#18 DONE 27.1s
+#24 DONE 0.8s
 
 #25 [development  3/19] COPY --link --from=gemini_payload --chown=1000:1000 /home/vscode/.payloads/gemini /home/vscode/.payloads/gemini
-#25 DONE 0.3s
+#25 DONE 0.4s
 
 #26 [development  4/19] COPY --link --from=ccstatusline_payload --chown=1000:1000 /home/vscode/.payloads/ccstatusline /home/vscode/.payloads/ccstatusline
-#26 DONE 0.1s
+#26 DONE 0.2s
 
 #27 [development  5/19] COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.payloads/claude-tools /home/vscode/.payloads/claude-tools
 #27 DONE 0.2s
@@ -531,24 +537,27 @@
 #28 DONE 0.2s
 
 #29 [development  7/19] COPY --link --from=shell_payload --chown=1000:1000 /home/vscode/.local/share/zinit /home/vscode/.local/share/zinit
+#29 DONE 0.1s
+
+#29 [development  7/19] COPY --link --from=shell_payload --chown=1000:1000 /home/vscode/.local/share/zinit /home/vscode/.local/share/zinit
 #29 merging
-#29 merging 0.6s done
-#29 DONE 0.7s
+#29 merging 0.7s done
+#29 DONE 0.8s
 
 #30 [development  8/19] RUN ln -s ../../.payloads/graphify/bin/graphify "${HOME}/.local/bin/graphify" 	&& ln -s ../../.payloads/graphify/bin/graphify-mcp "${HOME}/.local/bin/graphify-mcp"
-#30 DONE 0.4s
+#30 DONE 0.3s
 
 #31 [development  9/19] RUN ln -s ../../.payloads/codex/bin/codex "${HOME}/.local/bin/codex"
 #31 DONE 0.2s
 
 #32 [development 10/19] RUN ln -s ../../.payloads/gemini/bin/gemini "${HOME}/.local/bin/gemini"
-#32 DONE 0.2s
+#32 DONE 0.3s
 
 #33 [development 11/19] RUN ln -s ../../.payloads/ccstatusline/bin/ccstatusline "${HOME}/.local/bin/ccstatusline"
-#33 DONE 0.1s
+#33 DONE 0.2s
 
 #34 [development 12/19] RUN ln -s ../../.payloads/claude-tools/bin/node-gyp "${HOME}/.local/bin/node-gyp"
-#34 DONE 0.1s
+#34 DONE 0.2s
 
 #35 [development 13/19] RUN printf '%s\n' 		'if [ -n "${BASH_VERSION:-}" ] && [ -f "$HOME/.bashrc" ]; then . "$HOME/.bashrc"; fi' 		'export PROTO_HOME="$HOME/.proto"' 		'export PATH="/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH"' 		> "${HOME}/.profile" 	&& printf '%s\n' 'source "$HOME/.profile"' > "${HOME}/.zprofile"
 #35 DONE 0.2s
@@ -563,7 +572,7 @@
 #38 DONE 0.1s
 
 #39 [development 17/19] COPY .devcontainer /tmp/devenv-definition/.devcontainer
-#39 DONE 0.0s
+#39 DONE 0.1s
 
 #40 [development 18/19] RUN mkdir -p /usr/local/share/devenv-image 	&& sha256sum /tmp/devenv-definition/.prototools | awk '{print $1}' > /usr/local/share/devenv-image/prototools.sha256 	&& bash /tmp/devenv-definition/.devcontainer/devcontainer-fingerprint.sh /tmp/devenv-definition > /usr/local/share/devenv-image/definition.sha256 	&& chmod 0444 /usr/local/share/devenv-image/*.sha256 	&& rm -rf /tmp/devenv-definition
 #40 DONE 0.5s
@@ -573,13 +582,12 @@
 
 #42 exporting to image
 #42 exporting layers
-#42 exporting layers 19.0s done
-#42 exporting manifest sha256:69ac48e638c8570d4a31127860a1c62c860187f1a55c419f7f8d93e1d791299f 0.0s done
-#42 exporting config sha256:f5c5b5f35d19dc92846c5dd4d216709ebb40526ffd05a0601bec93d877ef418e 0.0s done
-#42 exporting attestation manifest sha256:133445d113cd4e22240245a983518997497d987f12409a4676dd47d37b61d3cd 0.0s done
-#42 exporting manifest list sha256:feab64abdeb6fda11ca0860e4ebc3af08712e80a11f27a60d82738200df3cb4f 0.0s done
-#42 naming to docker.io/library/devenv-stage2-stage2-20260715t082607z-51b81f06:latest
-#42 naming to docker.io/library/devenv-stage2-stage2-20260715t082607z-51b81f06:latest done
-#42 unpacking to docker.io/library/devenv-stage2-stage2-20260715t082607z-51b81f06:latest
-#42 unpacking to docker.io/library/devenv-stage2-stage2-20260715t082607z-51b81f06:latest 11.6s done
-#42 DONE 30.7s
+#42 exporting layers 17.9s done
+#42 exporting manifest sha256:b7d6d1a812b44b5710d43a3ca8fc6eb34dd7b26530abc74e0419e7fef9d1e69e done
+#42 exporting config sha256:99620a49052683a70eee54c626fdc21e5f6f75e6fb11fbb74c6d688fc9fe8c52 done
+#42 exporting attestation manifest sha256:2f2f4408c6f5367b15ade644981a3121f6b6c760779b9feeaffd6bd6110be5fa 0.0s done
+#42 exporting manifest list sha256:41b73a5b79f72c3a4da315a46631910467ccaedc1694e9b1f1a47c7216b68d08 done
+#42 naming to docker.io/library/devenv-stage2-stage2-20260715t084253z-2dcd9b26:latest done
+#42 unpacking to docker.io/library/devenv-stage2-stage2-20260715t084253z-2dcd9b26:latest
+#42 unpacking to docker.io/library/devenv-stage2-stage2-20260715t084253z-2dcd9b26:latest 11.0s done
+#42 DONE 29.0s
