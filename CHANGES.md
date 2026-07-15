@@ -4,6 +4,18 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-07-14 — Plan: portable devcontainer upgrade contract
+
+**Goal:** Convert the approved `devcontainer-updates` migration kit into repository-native, testable OpenSpec contracts before changing template runtime behavior. The review found mutable Proto plugin URLs and package versions, runtime/global installers, a per-container Proto volume, fixed ports, Docker-in-Docker, permissive CI, and no verified worktree or Codex Cloud execution boundary.
+
+**How to implement:** Apply the active `portable-devcontainer-upgrade` change in the ordered PR groups in `openspec/changes/portable-devcontainer-upgrade/tasks.md`. Begin with inventory/parameters and a measured baseline, then land the toolchain, image, agent/browser, cloud, additive worktree, cutover, doctor, CI, Moon, OpenSpec, conditional stack, and final-release stages from the latest green `main`. Each PR must include its implementation, required guard, known-bad mutation, documentation/agent rules, rollback, and exact-head evidence; disabled capabilities must generate no residue. Keep this OpenSpec change active through shipping and archive it only after the final implementation PR merges from a clean current default branch.
+
+**Changed files:**
+- `openspec/changes/portable-devcontainer-upgrade/proposal.md` — motivation, capability list, breaking cutovers, and impact.
+- `openspec/changes/portable-devcontainer-upgrade/design.md` — version ownership, image/runtime architecture, execution boundaries, worktree safety, CI rollout, risks, and migration order.
+- `openspec/changes/portable-devcontainer-upgrade/specs/*/spec.md` — seven capability contracts with positive and negative scenarios.
+- `openspec/changes/portable-devcontainer-upgrade/tasks.md` — 82 verifiable tasks grouped into independently reviewable implementation stages.
+
 ## 2026-06-10 — Change: export devcontainer secrets to children + re-sync /etc/environment on start
 
 **Problem:** Secrets had two load paths and a late-added key (one appended to the host secrets file *after* the container was created) fell through both. (1) `/etc/environment`, written by `on-create.sh`, is captured once at create and goes stale — new keys never land there until a rebuild. (2) `configs/.shell_common` re-sourced the file every interactive shell (so it *saw* late keys) but used a plain `source`, so the values stayed local to that one zsh and child processes (Claude Code, `wrangler`, `!`-bash, tool subshells) didn't inherit them. Net: the persistent exported copy was missing the key and the per-shell copy that had it never exported it.
