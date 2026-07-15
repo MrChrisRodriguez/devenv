@@ -8,11 +8,11 @@
 
 ## 2. Stage 1 PR — Repository Toolchain and Dependency Contract
 
-- [ ] 2.1 Exact-pin root Proto tools and immutable plugin commit URLs, add checksum-verified architecture-aware Proto bootstrap metadata, and add Node/Caddy/k6 only when selected
-- [ ] 2.2 Exact-pin project CLIs and shared dependencies in the root catalog/lockfile, convert all consumers to catalog ownership, and put workspace-local binaries first
-- [ ] 2.3 Generate and commit a digest-pinned devcontainer feature lock and remove TypeScript `baseUrl`/absolute source-project aliases in favor of rendered config-relative paths
-- [ ] 2.4 Add non-vacuous guards for mutable/floating pins, catalog bypass, second lock resolutions, coupled Cloudflare/Better Auth/RHF-Zod families, TypeScript `baseUrl`, and bad installer checksums
-- [ ] 2.5 Prove each guard with temporary known-bad mutations, run frozen install/typecheck/fixture generation, document atomic rollback and evidence, update rules/docs/`CHANGES.md`, and refresh Graphify without staging graph artifacts
+- [x] 2.1 Exact-pin root Proto tools and immutable plugin commit URLs, add checksum-verified architecture-aware Proto bootstrap metadata, and add Node/Caddy/k6 only when selected
+- [x] 2.2 Exact-pin project CLIs and shared dependencies in the root catalog/lockfile, convert all consumers to catalog ownership, and put workspace-local binaries first
+- [x] 2.3 Generate and commit a digest-pinned devcontainer feature lock and remove TypeScript `baseUrl`/absolute source-project aliases in favor of rendered config-relative paths
+- [x] 2.4 Add non-vacuous guards for mutable/floating pins, catalog bypass, second lock resolutions, coupled Cloudflare/Better Auth/RHF-Zod families, TypeScript `baseUrl`, and bad installer checksums
+- [x] 2.5 Prove each guard with temporary known-bad mutations, run frozen install/typecheck/fixture generation, document atomic rollback and evidence, update rules/docs/`CHANGES.md`, and refresh Graphify without staging graph artifacts
 
 ## 3. Stage 2 PR — Devcontainer Image Architecture
 

@@ -4,10 +4,15 @@
 
 # Function to setup Proto environment
 setup_proto_env() {
-    export PATH="$HOME/.proto/shims:$HOME/.proto/bin:$PATH"
+	export PATH="/workspace/node_modules/.bin:$HOME/.local/bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.bun/bin:$PATH"
     export PROTO_HOME="$HOME/.proto"
-    # Add bun's global bin directory to PATH for globally installed packages
-    export PATH="$HOME/.bun/bin:$PATH"
-    # Add local bin for Claude Code native binary
-    export PATH="$HOME/.local/bin:$PATH"
+}
+
+install_workspace_dependencies() {
+	if [ -f /workspace/bun.lock ]; then
+		(cd /workspace && bun install --frozen-lockfile)
+	else
+		# Newly rendered projects intentionally create their first lock locally.
+		(cd /workspace && bun install)
+	fi
 }

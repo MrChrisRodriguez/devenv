@@ -15,7 +15,7 @@ fi
 setup_proto_env
 if ! command -v proto &> /dev/null; then
     echo "⬇️  Bootstrapping proto..."
-    curl -fsSL https://moonrepo.dev/install/proto.sh | bash -s -- --yes
+    /workspace/.devcontainer/install-proto.sh
     setup_proto_env
 fi
 

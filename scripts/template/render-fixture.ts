@@ -474,7 +474,9 @@ async function renderTsconfig(
 	const compilerOptions = value["compilerOptions"] as Record<string, unknown>;
 	const paths = compilerOptions["paths"] as Record<string, unknown>;
 	delete paths["@confiador/*"];
-	paths[`@${parameters.project.slug}/*`] = ["libs/*/src"];
+	paths[`@${parameters.project.slug}/*`] = [
+		"$" + "{configDir}/../../libs/*/src",
+	];
 	return json(value);
 }
 
@@ -502,6 +504,30 @@ function filterAgentRuleLines(
 	return source
 		.split("\n")
 		.filter((line) => {
+			if (
+				!parameters.capabilities.defaults["cloudflare_workers"] &&
+				line.includes("Cloudflare package family")
+			) {
+				return false;
+			}
+			if (
+				!parameters.capabilities.defaults["better_auth"] &&
+				line.includes("Better Auth package family")
+			) {
+				return false;
+			}
+			if (
+				!parameters.capabilities.defaults["rhf_zod"] &&
+				line.includes("RHF/Zod package family")
+			) {
+				return false;
+			}
+			if (
+				!parameters.capabilities.defaults["playwright"] &&
+				line.includes("Playwright package family")
+			) {
+				return false;
+			}
 			if (
 				!parameters.capabilities.defaults["cloudflare_workers"] &&
 				line.includes("Cloudflare Workers")

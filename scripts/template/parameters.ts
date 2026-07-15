@@ -801,6 +801,7 @@ export function validateTemplateParameters(value: unknown): TemplateParameters {
 			"package_manifest",
 			"package_lock",
 			"feature_lock",
+			"proto_checksums",
 		]),
 		"toolchain",
 		issues,
@@ -811,6 +812,7 @@ export function validateTemplateParameters(value: unknown): TemplateParameters {
 		"package_manifest",
 		"package_lock",
 		"feature_lock",
+		"proto_checksums",
 	]) {
 		stringAt(toolchain, key, "toolchain", issues);
 	}

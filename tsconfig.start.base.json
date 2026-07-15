@@ -24,7 +24,6 @@
 		"esModuleInterop": true,
 		"forceConsistentCasingInFileNames": true,
 		"skipLibCheck": true
-		// Path Mapping - apps should override with their own baseUrl
 	},
 	"include": ["src", "app.config.ts", "*.d.ts"]
 }

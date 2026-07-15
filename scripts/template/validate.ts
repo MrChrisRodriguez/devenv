@@ -8,6 +8,8 @@ import {
 	parseToml,
 	resolveFixtureParameters,
 } from "./parameters";
+import { validateToolchainContract } from "./toolchain";
+import { validateStageOneEvidence } from "./toolchain-evidence";
 
 export interface ValidationReport {
 	schemaVersion: 1;
@@ -16,6 +18,8 @@ export interface ValidationReport {
 	schemaFile: string;
 	evidenceFile: string;
 	evidenceSchemaFile: string;
+	toolchainEvidenceFile: string;
+	toolchainEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -30,6 +34,8 @@ export async function validateAll(
 		schemaFile: "template-parameters.schema.json",
 		evidenceFile: "evidence/stage-0-baseline.json",
 		evidenceSchemaFile: "evidence/stage-0-baseline.schema.json",
+		toolchainEvidenceFile: "evidence/stage-1-toolchain.json",
+		toolchainEvidenceSchemaFile: "evidence/stage-1-toolchain.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -72,6 +78,20 @@ export async function validateAll(
 				...evidenceErrors.map((error) => `stage-0 evidence: ${error}`),
 			);
 		}
+		const toolchainErrors = await validateToolchainContract(root);
+		if (toolchainErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...toolchainErrors.map((error) => `toolchain: ${error}`),
+			);
+		}
+		const toolchainEvidenceErrors = await validateStageOneEvidence(root);
+		if (toolchainEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...toolchainEvidenceErrors.map((error) => `stage-1 evidence: ${error}`),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -90,7 +110,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile}, ${report.evidenceFile}, and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(

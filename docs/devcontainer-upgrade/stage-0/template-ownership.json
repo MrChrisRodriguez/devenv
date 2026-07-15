@@ -299,9 +299,33 @@
 	],
 	"packageRules": [
 		{
+			"capability": "better_auth",
+			"sections": ["workspaces.catalog", "devDependencies"],
+			"packages": ["better-auth"]
+		},
+		{
+			"capability": "cloudflare_workers",
+			"sections": ["workspaces.catalog", "devDependencies"],
+			"packages": [
+				"@cloudflare/vite-plugin",
+				"@cloudflare/vitest-pool-workers",
+				"wrangler"
+			]
+		},
+		{
 			"capability": "openspec",
 			"sections": ["workspaces.catalog", "devDependencies"],
 			"packages": ["@fission-ai/openspec"]
+		},
+		{
+			"capability": "playwright",
+			"sections": ["workspaces.catalog", "devDependencies"],
+			"packages": ["@playwright/test"]
+		},
+		{
+			"capability": "rhf_zod",
+			"sections": ["workspaces.catalog", "devDependencies", "overrides"],
+			"packages": ["@hookform/resolvers", "react-hook-form", "zod"]
 		}
 	],
 	"capabilitySignatures": {

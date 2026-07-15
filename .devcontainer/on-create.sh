@@ -39,6 +39,10 @@ done
 # this, so a failure here should abort the whole setup rather than limp onward.
 source /workspace/.devcontainer/on-create/setup-proto.sh
 
+# Project CLIs are repository-owned. Install them once before optional setup
+# scripts and keep node_modules/.bin ahead of every global command location.
+install_workspace_dependencies
+
 # ── Optional installers ──────────────────────────────────────────────────────
 # Every script below is SOURCED into this `set -e` shell, so an unguarded
 # `return N` or failing command would abort the ENTIRE remaining chain — it
@@ -58,7 +62,7 @@ optional() {
 # Configure GitHub credential routing (org → token), so `git push` just works per repo
 optional /workspace/.devcontainer/on-create/setup-git-credentials.sh
 
-# Install Biome
+# Verify/configure the repository-local Biome CLI
 optional /workspace/.devcontainer/on-create/setup-biome.sh
 
 # Install Claude Code
@@ -68,7 +72,7 @@ optional /workspace/.devcontainer/on-create/setup-claude.sh
 # block into ~/.claude/settings.json and installs to the non-persistent ~/.bun/bin)
 optional /workspace/.devcontainer/on-create/setup-ccstatusline.sh
 
-# Install Openspec
+# Configure the repository-local OpenSpec CLI
 optional /workspace/.devcontainer/on-create/setup-openspec.sh
 
 # Install Gemini CLI

@@ -4,6 +4,19 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-07-14 — Add: exact repository toolchain and dependency contract
+
+**Goal:** Make the template's repository toolchain reproducible before changing the image architecture. Every selected Proto tool, project CLI, shared dependency, devcontainer feature, supported Proto archive, and TypeScript alias now has one exact visible authority, with fail-closed guards and machine-readable evidence.
+
+**How to implement:** Exact-pin `.prototools` and replace community plugin branches with immutable commits; make Proto own selected Node and remove the competing feature; verify the exact Proto archive against per-architecture SHA-256 metadata before extraction. Move project packages into the root catalog, convert consumers to `catalog:`, regenerate `bun.lock`, and keep workspace-local binaries first. Commit the devcontainer feature digest lock, render config-relative `${configDir}` TypeScript aliases without `baseUrl`, and omit optional package authorities from disabled fixtures. Run the repository/evidence validator, known-bad mutation suite, frozen install, fixture generation, strict template typecheck, and Biome. Upgrade Cloudflare, Better Auth, RHF/Zod, or Playwright only as an atomic family. Roll back the merge bundle with `git revert -m 1 <stage-1-pr-merge-commit>`; never revert a pin, catalog, lock, checksum, or coupled-family member alone.
+
+**Changed files:**
+- `.prototools`, `.devcontainer/install-proto.sh`, `.devcontainer/proto-checksums.txt` — exact Proto selection, immutable plugins, and fail-closed architecture checksum bootstrap.
+- `package.json`, `bun.lock`, `.devcontainer/devcontainer-lock.json` — exact catalog consumers, singleton package families, and digest-pinned features.
+- `.devcontainer/**`, `.github/workflows/ci.yml` — one frozen root install, local-bin PATH precedence, local CLI use, and the Stage 1 CI contract gate.
+- `tsconfig*.json`, `scripts/template/**`, `template-parameters*`, `fixtures/template/**` — config-relative aliases, capability-aware package ownership, live guards, and non-vacuous mutation tests.
+- `evidence/stage-1-toolchain*.json`, `docs/devcontainer-upgrade/stage-1/README.md`, `AGENTS.md` — strict evidence, operator contract, rollback, and ongoing change rules.
+
 ## 2026-07-14 — Add: Stage 0 portable devcontainer baseline
 
 **Goal:** Establish a reproducible, reviewable pre-migration baseline without changing the active devcontainer runtime. The baseline must make template inputs and ownership visible, prove disabled-capability omission, and preserve failed measurements honestly so later stages can compare performance, storage, and reliability against observed behavior.

@@ -1,0 +1,168 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-1-toolchain-contract",
+	"capturedAt": "2026-07-15T04:29:40Z",
+	"source": {
+		"baseSha": "94863ed1b12d261e432702a76848916d92f89450"
+	},
+	"proto": {
+		"version": "0.55.4",
+		"selectedTools": {
+			"bun": "1.3.13",
+			"node": "24.18.0",
+			"moon": "2.3.5",
+			"proto": "0.55.4",
+			"direnv": "2.37.1",
+			"fly": "0.3.231",
+			"infisical": "0.41.90",
+			"python": "3.14.2",
+			"uv": "0.9.7",
+			"jq": "1.8.1",
+			"yq": "4.49.2",
+			"dagger": "0.19.8"
+		},
+		"pluginCommits": [
+			"786005a6ef2371ae1c7893610d065ac5612d61a9",
+			"9808cc412785ac59ec1b0d61bd1bee152f6f6b56"
+		],
+		"checksums": {
+			"amd64": "3f13534217fcf315c0579db6e1f87edd022d850144d9f3b0957a29586de34838",
+			"arm64": "85406d411687412b729ef21f58f8ac2ddafa9e51eafc8ec1b4772af1b6ab98db"
+		}
+	},
+	"catalog": {
+		"consumerPolicy": "catalog:",
+		"packageCount": 17,
+		"packages": {
+			"@biomejs/biome": "2.4.16",
+			"@cloudflare/vite-plugin": "1.43.0",
+			"@cloudflare/vitest-pool-workers": "0.18.0",
+			"@commitlint/cli": "20.5.0",
+			"@commitlint/config-conventional": "20.5.0",
+			"@fission-ai/openspec": "0.19.0",
+			"@hookform/resolvers": "5.4.0",
+			"@playwright/test": "1.59.1",
+			"@types/bun": "1.3.10",
+			"@types/node": "25.5.0",
+			"better-auth": "1.6.23",
+			"husky": "9.1.7",
+			"lint-staged": "16.4.0",
+			"react-hook-form": "7.81.0",
+			"typescript": "5.9.3",
+			"wrangler": "4.107.0",
+			"zod": "4.3.6"
+		}
+	},
+	"coupledFamilies": {
+		"cloudflare": {
+			"wrangler": "4.107.0",
+			"vitePlugin": "1.43.0",
+			"vitestPool": "0.18.0",
+			"miniflare": "4.20260701.0",
+			"workerd": "1.20260701.1"
+		},
+		"betterAuth": {
+			"package": "1.6.23",
+			"core": "1.6.23"
+		},
+		"forms": {
+			"zod": "4.3.6",
+			"reactHookForm": "7.81.0",
+			"resolvers": "5.4.0"
+		},
+		"playwright": {
+			"test": "1.59.1",
+			"runtime": "1.59.1",
+			"core": "1.59.1"
+		}
+	},
+	"locks": {
+		"package": {
+			"path": "bun.lock",
+			"sha256": "1cb0eef43905f41c5290c251d414fc3c632fe3e5c1d5f87cb5eabc83e3bc9e14"
+		},
+		"features": {
+			"path": ".devcontainer/devcontainer-lock.json",
+			"sha256": "415ee207066b3fba6024345671ed010a7e0bc90c8f416f1d7877f45d471eca16",
+			"count": 4
+		},
+		"protoChecksums": {
+			"path": ".devcontainer/proto-checksums.txt",
+			"sha256": "8682a658cc63efbb1dd3c428ec5dcbad662f18e659656a6febcdd413836cd051"
+		}
+	},
+	"mutationProof": [
+		{
+			"name": "catalog-floating",
+			"expected": "Reject a latest catalog selector"
+		},
+		{
+			"name": "catalog-bypass",
+			"expected": "Reject a direct version for a catalog-owned consumer"
+		},
+		{
+			"name": "coupled-family-drift",
+			"expected": "Reject a Cloudflare catalog pin that differs from the lock"
+		},
+		{
+			"name": "second-resolution",
+			"expected": "Reject a second runtime-sensitive lock resolution"
+		},
+		{
+			"name": "mutable-proto-plugin",
+			"expected": "Reject a mutable Proto plugin branch"
+		},
+		{
+			"name": "feature-lock-drift",
+			"expected": "Reject differing feature resolution and integrity digests"
+		},
+		{
+			"name": "proto-checksum-format",
+			"expected": "Reject malformed architecture checksum metadata"
+		},
+		{
+			"name": "proto-checksum-mismatch",
+			"expected": "Reject a valid-looking checksum that does not match the archive"
+		},
+		{
+			"name": "typescript-baseurl",
+			"expected": "Reject an active TypeScript baseUrl"
+		},
+		{
+			"name": "typescript-absolute-alias",
+			"expected": "Reject an absolute TypeScript path target"
+		},
+		{
+			"name": "workspace-path-priority",
+			"expected": "Reject Proto resolution before workspace-local binaries"
+		},
+		{
+			"name": "secondary-lockfile",
+			"expected": "Reject a nested workspace package lock"
+		},
+		{
+			"name": "disabled-family-omission",
+			"expected": "Omit disabled package authorities and consumers from rendered fixtures"
+		}
+	],
+	"validation": [
+		{ "command": ["bun", "install", "--frozen-lockfile"], "status": "pass" },
+		{ "command": ["bun", "run", "toolchain:check"], "status": "pass" },
+		{ "command": ["bun", "run", "template:validate"], "status": "pass" },
+		{ "command": ["bun", "run", "template:test"], "status": "pass" },
+		{ "command": ["bun", "run", "template:typecheck"], "status": "pass" },
+		{
+			"command": ["bun", "run", "template:fixtures", "tmp/stage1-fixtures"],
+			"status": "pass"
+		},
+		{
+			"command": ["bunx", "biome", "check", "--no-errors-on-unmatched", "."],
+			"status": "pass"
+		}
+	],
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-1-pr-merge-commit>"],
+		"scope": "Revert Proto pins and checksum installer, package catalog and bun.lock, feature lock, TypeScript paths, renderer package rules, guard, tests, docs, and evidence together."
+	}
+}

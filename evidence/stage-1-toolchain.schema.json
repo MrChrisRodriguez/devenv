@@ -1,0 +1,153 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"stage",
+		"capturedAt",
+		"source",
+		"proto",
+		"catalog",
+		"coupledFamilies",
+		"locks",
+		"mutationProof",
+		"validation",
+		"rollback"
+	],
+	"properties": {
+		"schemaVersion": { "const": 1 },
+		"stage": { "const": "stage-1-toolchain-contract" },
+		"capturedAt": { "type": "string", "format": "date-time" },
+		"source": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["baseSha"],
+			"properties": { "baseSha": { "$ref": "#/$defs/sha" } }
+		},
+		"proto": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["version", "selectedTools", "pluginCommits", "checksums"],
+			"properties": {
+				"version": { "$ref": "#/$defs/version" },
+				"selectedTools": { "$ref": "#/$defs/versionMap" },
+				"pluginCommits": {
+					"type": "array",
+					"minItems": 2,
+					"uniqueItems": true,
+					"items": { "$ref": "#/$defs/sha" }
+				},
+				"checksums": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["amd64", "arm64"],
+					"properties": {
+						"amd64": { "$ref": "#/$defs/sha" },
+						"arm64": { "$ref": "#/$defs/sha" }
+					}
+				}
+			}
+		},
+		"catalog": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["consumerPolicy", "packageCount", "packages"],
+			"properties": {
+				"consumerPolicy": { "const": "catalog:" },
+				"packageCount": { "type": "integer", "minimum": 1 },
+				"packages": { "$ref": "#/$defs/versionMap" }
+			}
+		},
+		"coupledFamilies": {
+			"type": "object",
+			"minProperties": 4,
+			"additionalProperties": { "$ref": "#/$defs/versionMap" }
+		},
+		"locks": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["package", "features", "protoChecksums"],
+			"properties": {
+				"package": { "$ref": "#/$defs/lock" },
+				"features": { "$ref": "#/$defs/featureLock" },
+				"protoChecksums": { "$ref": "#/$defs/lock" }
+			}
+		},
+		"mutationProof": {
+			"type": "array",
+			"minItems": 13,
+			"items": { "$ref": "#/$defs/mutation" }
+		},
+		"validation": {
+			"type": "array",
+			"minItems": 7,
+			"items": { "$ref": "#/$defs/validation" }
+		},
+		"rollback": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["mode", "command", "scope"],
+			"properties": {
+				"mode": { "const": "atomic" },
+				"command": { "$ref": "#/$defs/command" },
+				"scope": { "type": "string", "minLength": 1 }
+			}
+		}
+	},
+	"$defs": {
+		"sha": { "type": "string", "pattern": "^[0-9a-f]{40,64}$" },
+		"version": {
+			"type": "string",
+			"pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+		},
+		"versionMap": {
+			"type": "object",
+			"minProperties": 1,
+			"additionalProperties": { "$ref": "#/$defs/version" }
+		},
+		"command": {
+			"type": "array",
+			"minItems": 1,
+			"items": { "type": "string", "minLength": 1 }
+		},
+		"lock": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["path", "sha256"],
+			"properties": {
+				"path": { "type": "string", "minLength": 1 },
+				"sha256": { "$ref": "#/$defs/sha" },
+				"count": { "type": "integer", "minimum": 1 }
+			}
+		},
+		"featureLock": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["path", "sha256", "count"],
+			"properties": {
+				"path": { "type": "string", "minLength": 1 },
+				"sha256": { "$ref": "#/$defs/sha" },
+				"count": { "type": "integer", "minimum": 1 }
+			}
+		},
+		"mutation": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["name", "expected"],
+			"properties": {
+				"name": { "type": "string", "minLength": 1 },
+				"expected": { "type": "string", "minLength": 1 }
+			}
+		},
+		"validation": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["command", "status"],
+			"properties": {
+				"command": { "$ref": "#/$defs/command" },
+				"status": { "const": "pass" }
+			}
+		}
+	}
+}

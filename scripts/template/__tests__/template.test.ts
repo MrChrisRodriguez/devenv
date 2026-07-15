@@ -341,9 +341,25 @@ describe("deterministic fixture renderer", () => {
 				resolve(output, "tsconfig.base.json"),
 			).json();
 			expect(tsconfig.compilerOptions.paths["@fixture-minimal/*"]).toEqual([
-				"libs/*/src",
+				"$" + "{configDir}/../../libs/*/src",
 			]);
 			expect(tsconfig.compilerOptions.paths["@confiador/*"]).toBeUndefined();
+			const minimalPackage = await Bun.file(
+				resolve(output, "package.json"),
+			).json();
+			for (const packageName of [
+				"@cloudflare/vite-plugin",
+				"@cloudflare/vitest-pool-workers",
+				"@playwright/test",
+				"@hookform/resolvers",
+				"better-auth",
+				"react-hook-form",
+				"wrangler",
+				"zod",
+			]) {
+				expect(minimalPackage.workspaces.catalog[packageName]).toBeUndefined();
+				expect(minimalPackage.devDependencies[packageName]).toBeUndefined();
+			}
 			const link = resolve(
 				output,
 				".cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc",
@@ -390,6 +406,24 @@ describe("deterministic fixture renderer", () => {
 			expect(
 				cloudPackage.devDependencies["@fission-ai/openspec"],
 			).toBeUndefined();
+			for (const packageName of [
+				"@cloudflare/vite-plugin",
+				"@cloudflare/vitest-pool-workers",
+				"wrangler",
+			]) {
+				expect(cloudPackage.workspaces.catalog[packageName]).toBeDefined();
+				expect(cloudPackage.devDependencies[packageName]).toBe("catalog:");
+			}
+			for (const packageName of [
+				"@playwright/test",
+				"@hookform/resolvers",
+				"better-auth",
+				"react-hook-form",
+				"zod",
+			]) {
+				expect(cloudPackage.workspaces.catalog[packageName]).toBeUndefined();
+				expect(cloudPackage.devDependencies[packageName]).toBeUndefined();
+			}
 			expect(
 				await Bun.file(
 					resolve(temporary, "cloud/openspec/config.yaml"),
@@ -403,6 +437,22 @@ describe("deterministic fixture renderer", () => {
 				expect(await Bun.file(resolve(temporary, "full", file)).exists()).toBe(
 					true,
 				);
+			}
+			const fullPackage = await Bun.file(
+				resolve(temporary, "full/package.json"),
+			).json();
+			for (const packageName of [
+				"@cloudflare/vite-plugin",
+				"@cloudflare/vitest-pool-workers",
+				"@playwright/test",
+				"@hookform/resolvers",
+				"better-auth",
+				"react-hook-form",
+				"wrangler",
+				"zod",
+			]) {
+				expect(fullPackage.workspaces.catalog[packageName]).toBeDefined();
+				expect(fullPackage.devDependencies[packageName]).toBe("catalog:");
 			}
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
