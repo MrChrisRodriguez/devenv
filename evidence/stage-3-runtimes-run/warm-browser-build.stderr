@@ -9,18 +9,14 @@
 
 #3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
 #3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
-#3 DONE 0.0s
-
-#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
 #3 CACHED
 
 #4 [internal] load metadata for mcr.microsoft.com/vscode/devcontainers/base:trixie@sha256:1a00517e89d3075f8c9dc8d9911404de0ff8991a4d71c62068573e9b016a89da
-#4 DONE 0.7s
+#4 DONE 0.5s
 
 #5 [internal] load .dockerignore
-#5 transferring context:
 #5 transferring context: 105B done
-#5 DONE 0.1s
+#5 DONE 0.0s
 
 #6 [internal] settings cache mount permissions
 #6 DONE 0.0s
@@ -33,148 +29,148 @@
 #8 DONE 0.0s
 
 #7 [internal] load build context
-#7 transferring context: 2.40kB 0.0s done
-#7 DONE 0.1s
+#7 transferring context: 2.40kB done
+#7 DONE 0.0s
 
-#9 [development 16/23] RUN ln -s ../../.payloads/claude-tools/bin/node-gyp "${HOME}/.local/bin/node-gyp"
+#9 [development  7/23] COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.payloads/claude-tools /home/vscode/.payloads/claude-tools
 #9 CACHED
 
-#10 [development 20/23] COPY .prototools /tmp/devenv-definition/.prototools
+#10 [development  6/23] COPY --link --from=context7_payload --chown=1000:1000 /home/vscode/.payloads/context7 /home/vscode/.payloads/context7
 #10 CACHED
 
-#11 [octopus_payload 1/1] RUN mkdir -p "${HOME}/.payloads/octopus" 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		"https://github.com/nyldn/claude-octopus/archive/f42f34a8f9a7ee5b9324e8b2d23159878c132b02.tar.gz" 		-o /tmp/octopus.tar.gz 	&& printf '%s  %s\n' "64104245973939c1508babb4503bef56fdf455ffe57370758a8d07fbc0866263" /tmp/octopus.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/octopus.tar.gz --strip-components=1 -C "${HOME}/.payloads/octopus" 	&& rm /tmp/octopus.tar.gz 	&& OCTOPUS_PAYLOAD="${HOME}/.payloads/octopus" bun -e 		'const path = `${process.env.OCTOPUS_PAYLOAD}/.claude-plugin/marketplace.json`; const value = await Bun.file(path).json(); const plugin = value.plugins.find((entry) => entry.name === "octo"); if (!plugin) throw new Error("octo marketplace entry missing"); plugin.source = "."; value.plugins = [plugin]; await Bun.write(path, `${JSON.stringify(value, null, 2)}\n`);' 	&& printf '%s\n%s\n' "f42f34a8f9a7ee5b9324e8b2d23159878c132b02" "64104245973939c1508babb4503bef56fdf455ffe57370758a8d07fbc0866263" > "${HOME}/.payloads/octopus/.devenv-source"
+#11 [development 19/23] COPY .dockerignore /tmp/devenv-definition/.dockerignore
 #11 CACHED
 
-#12 [development  4/23] COPY --link --chown=1000:1000 --chmod=0755 .devcontainer/configs/gemini-watchdog /home/vscode/.local/bin/gemini
+#12 [development_browser 2/2] COPY --link --from=playwright_browser --chown=1000:1000 /home/vscode/.payloads/browser /home/vscode/.payloads/browser
 #12 CACHED
 
-#13 [development  5/23] COPY --link --from=ccstatusline_payload --chown=1000:1000 /home/vscode/.payloads/ccstatusline /home/vscode/.payloads/ccstatusline
+#13 [development  2/23] COPY --link --from=codex_payload --chown=1000:1000 /home/vscode/.payloads/codex /home/vscode/.payloads/codex
 #13 CACHED
 
-#14 [development 23/23] WORKDIR /workspace
+#14 [development  4/23] COPY --link --chown=1000:1000 --chmod=0755 .devcontainer/configs/gemini-watchdog /home/vscode/.local/bin/gemini
 #14 CACHED
 
-#15 [development 10/23] COPY --link --from=warp_payload --chown=1000:1000 /home/vscode/.payloads/warp /home/vscode/.payloads/warp
+#15 [development  5/23] COPY --link --from=ccstatusline_payload --chown=1000:1000 /home/vscode/.payloads/ccstatusline /home/vscode/.payloads/ccstatusline
 #15 CACHED
 
-#16 [development  1/23] COPY --link --from=graphify_payload --chown=1000:1000 /home/vscode/.payloads/graphify /home/vscode/.payloads/graphify
+#16 [warp_payload 1/1] RUN mkdir -p "${HOME}/.payloads/warp" 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		"https://github.com/warpdotdev/claude-code-warp/archive/58c823da195346a7e6645fd2d9484d0e38db6bc2.tar.gz" 		-o /tmp/warp.tar.gz 	&& printf '%s  %s\n' "054607a80b7eb5571615925a6991082091d063b4eac591499177716421f76557" /tmp/warp.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/warp.tar.gz --strip-components=1 -C "${HOME}/.payloads/warp" 	&& rm /tmp/warp.tar.gz 	&& printf '%s\n%s\n' "58c823da195346a7e6645fd2d9484d0e38db6bc2" "054607a80b7eb5571615925a6991082091d063b4eac591499177716421f76557" > "${HOME}/.payloads/warp/.devenv-source" 	&& cp "${HOME}/.payloads/warp/.devenv-source" "${HOME}/.payloads/warp/plugins/warp/.devenv-source"
 #16 CACHED
 
-#17 [graphify_payload 1/1] RUN UV_TOOL_DIR="${HOME}/.payloads/graphify" 	UV_TOOL_BIN_DIR="${HOME}/.payloads/graphify/bin" 	CC="$(command -v gcc)" 	CXX="$(command -v g++)" 	uv tool install "graphifyy[gemini,sql]==0.9.16"
+#17 [development 11/23] COPY --link --from=shell_payload --chown=1000:1000 /home/vscode/.local/share/zinit /home/vscode/.local/share/zinit
 #17 CACHED
 
-#18 [development  3/23] COPY --link --from=gemini_payload --chown=1000:1000 /home/vscode/.payloads/gemini /home/vscode/.payloads/gemini
+#18 [development_browser 1/2] RUN apt-get update 	&& apt-get install -y --no-install-recommends 		fonts-freefont-ttf 		fonts-ipafont-gothic 		fonts-liberation 		fonts-noto-color-emoji 		fonts-tlwg-loma-otf 		fonts-unifont 		fonts-wqy-zenhei 		libasound2t64 		libatk-bridge2.0-0t64 		libatk1.0-0t64 		libatspi2.0-0t64 		libcairo2 		libcups2t64 		libdbus-1-3 		libdrm2 		libfontconfig1 		libfreetype6 		libgbm1 		libglib2.0-0t64 		libnspr4 		libnss3 		libpango-1.0-0 		libx11-6 		libxcb1 		libxcomposite1 		libxdamage1 		libxext6 		libxfixes3 		libxkbcommon0 		libxrandr2 	&& rm -rf /var/lib/apt/lists/*
 #18 CACHED
 
-#19 [proto_foundation 3/3] RUN bash /tmp/devenv-proto-foundation/.devcontainer/install-proto.sh 	&& cd /tmp/devenv-proto-foundation 	&& proto install --yes --config-mode local
+#19 [stable_base 3/5] RUN case "arm64" in 		amd64) DELTA_SHA256="1658c7b61825d411b50734f34016101309e4b6e7f5799944cf8e4ac542cebd7f" ;; 		arm64) DELTA_SHA256="937781aa7788e1510858743fff6c9a8b4a69fe0a22a7c8a69493e633227939a9" ;; 		*) echo "Unsupported git-delta architecture: arm64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		--output /tmp/delta.deb 		"https://github.com/dandavison/delta/releases/download/0.18.2/git-delta_0.18.2_arm64.deb" 	&& printf '%s  %s\n' "$DELTA_SHA256" /tmp/delta.deb | sha256sum --check --status - 	&& dpkg -i /tmp/delta.deb 	&& rm /tmp/delta.deb
 #19 CACHED
 
-#20 [development 15/23] RUN ln -s ../../.payloads/context7/bin/context7-mcp "${HOME}/.local/bin/context7-mcp"
+#20 [stable_base 4/5] RUN case "arm64" in 		amd64) RTK_TARGET="x86_64-unknown-linux-musl"; RTK_SHA256="ff8a1e7766496e175291a85aeca1dc97c9ff6df33e51e5893d1fbc78fea2a609" ;; 		arm64) RTK_TARGET="aarch64-unknown-linux-gnu"; RTK_SHA256="5519f7ca12e5c143a609f0d28a0a77b97413a8dce31c2681f1a41c24519a8731" ;; 		*) echo "Unsupported RTK architecture: arm64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		--output /tmp/rtk.tar.gz 		"https://github.com/rtk-ai/rtk/releases/download/v0.43.0/rtk-${RTK_TARGET}.tar.gz" 	&& printf '%s  %s\n' "$RTK_SHA256" /tmp/rtk.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/rtk.tar.gz -C /usr/local/bin/ 	&& chmod +x /usr/local/bin/rtk 	&& rm /tmp/rtk.tar.gz 	&& chsh -s /usr/bin/zsh vscode 	&& printf '%s\n' 		'export PROTO_HOME="$HOME/.proto"' 		'export PATH="/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH"' 		> /etc/profile.d/devenv-path.sh 	&& chmod 0644 /etc/profile.d/devenv-path.sh
 #20 CACHED
 
-#21 [warp_payload 1/1] RUN mkdir -p "${HOME}/.payloads/warp" 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		"https://github.com/warpdotdev/claude-code-warp/archive/58c823da195346a7e6645fd2d9484d0e38db6bc2.tar.gz" 		-o /tmp/warp.tar.gz 	&& printf '%s  %s\n' "054607a80b7eb5571615925a6991082091d063b4eac591499177716421f76557" /tmp/warp.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/warp.tar.gz --strip-components=1 -C "${HOME}/.payloads/warp" 	&& rm /tmp/warp.tar.gz 	&& printf '%s\n%s\n' "58c823da195346a7e6645fd2d9484d0e38db6bc2" "054607a80b7eb5571615925a6991082091d063b4eac591499177716421f76557" > "${HOME}/.payloads/warp/.devenv-source" 	&& cp "${HOME}/.payloads/warp/.devenv-source" "${HOME}/.payloads/warp/plugins/warp/.devenv-source"
+#21 [graphify_payload 1/1] RUN UV_TOOL_DIR="${HOME}/.payloads/graphify" 	UV_TOOL_BIN_DIR="${HOME}/.payloads/graphify/bin" 	CC="$(command -v gcc)" 	CXX="$(command -v g++)" 	uv tool install "graphifyy[gemini,sql]==0.9.16"
 #21 CACHED
 
-#22 [ccstatusline_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/ccstatusline" 	bun install -g "ccstatusline@2.2.23"
+#22 [development 23/23] WORKDIR /workspace
 #22 CACHED
 
-#23 [stable_base 2/5] RUN apt-get update 	&& apt-get install -y --no-install-recommends 		bat 		build-essential 		ca-certificates 		curl 		dnsutils 		fd-find 		fzf 		git 		gzip 		less 		nano 		procps 		ripgrep 		sudo 		tree 		unzip 		vim 		wget 		xz-utils 	&& rm -rf /var/lib/apt/lists/* 	&& ln -sf /usr/bin/fdfind /usr/local/bin/fd 	&& ln -sf /usr/bin/batcat /usr/local/bin/bat
+#23 [ccstatusline_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/ccstatusline" 	bun install -g "ccstatusline@2.2.23"
 #23 CACHED
 
-#24 [development  8/23] COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.local/bin/claude /home/vscode/.local/bin/claude
+#24 [shell_payload 1/1] RUN mkdir -p "${HOME}/.local/share/zinit/zinit.git" 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 120 		"https://github.com/zdharma-continuum/zinit/archive/e347224fb5fe77308cff9f59fbe2acca70d0a6db.tar.gz" 		-o /tmp/zinit.tar.gz 	&& printf '%s  %s\n' "96380971046cf82765dc02822dd6acf993bfce3e3a4eaf46a3f42eafdac37434" /tmp/zinit.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/zinit.tar.gz --strip-components=1 -C "${HOME}/.local/share/zinit/zinit.git" 	&& rm /tmp/zinit.tar.gz
 #24 CACHED
 
 #25 [development 21/23] COPY .devcontainer /tmp/devenv-definition/.devcontainer
 #25 CACHED
 
-#26 [development 17/23] RUN printf '%s\n' 		'if [ -n "${BASH_VERSION:-}" ] && [ -f "$HOME/.bashrc" ]; then . "$HOME/.bashrc"; fi' 		'export PROTO_HOME="$HOME/.proto"' 		'export PATH="/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH"' 		> "${HOME}/.profile" 	&& printf '%s\n' 'source "$HOME/.profile"' > "${HOME}/.zprofile"
+#26 [development 16/23] RUN ln -s ../../.payloads/claude-tools/bin/node-gyp "${HOME}/.local/bin/node-gyp"
 #26 CACHED
 
-#27 [development 12/23] RUN ln -s ../../.payloads/graphify/bin/graphify "${HOME}/.local/bin/graphify" 	&& ln -s ../../.payloads/graphify/bin/graphify-mcp "${HOME}/.local/bin/graphify-mcp"
+#27 [development  8/23] COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.local/bin/claude /home/vscode/.local/bin/claude
 #27 CACHED
 
-#28 [stable_base 5/5] RUN mkdir -p 	"/home/vscode/.proto" 	"${HOME}/.bun/install/cache" 	"${HOME}/.cache/uv" 	"${HOME}/.local/bin" 	"${HOME}/.payloads"
+#28 [context7_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/context7" 	bun install -g "@upstash/context7-mcp@3.2.3"
 #28 CACHED
 
-#29 [codex_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/codex" 	bun install -g "@openai/codex@0.144.4"
+#29 [proto_foundation 2/3] COPY --chown=vscode:vscode 	.devcontainer/install-proto.sh 	.devcontainer/proto-checksums.txt 	/tmp/devenv-proto-foundation/.devcontainer/
 #29 CACHED
 
-#30 [claude_payload 1/1] RUN case "arm64" in 		amd64) CLAUDE_PLATFORM="linux-x64"; CLAUDE_SHA256="e7d2ceb53ed4c2ced1fe7fc1c6331c98dc5f7b4c9b2722d9c5fa3dd5dff6f719" ;; 		arm64) CLAUDE_PLATFORM="linux-arm64"; CLAUDE_SHA256="84feb193c1d91f3b5eba836ed47c0e4dee953195abba950917c3e101eff174e8" ;; 		*) echo "Unsupported Claude architecture: arm64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		"https://downloads.claude.ai/claude-code-releases/2.1.210/${CLAUDE_PLATFORM}/claude" 		-o "${HOME}/.local/bin/claude" 	&& printf '%s  %s\n' "$CLAUDE_SHA256" "${HOME}/.local/bin/claude" | sha256sum --check --status - 	&& chmod +x "${HOME}/.local/bin/claude" 	&& BUN_INSTALL="${HOME}/.payloads/claude-tools" bun install -g "node-gyp@13.0.1"
+#30 [development 18/23] COPY --chown=vscode:vscode .prototools /home/vscode/.prototools
 #30 CACHED
 
-#31 [gemini_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/gemini" 	bun install -g "@google/gemini-cli@0.50.0"
+#31 [stable_base 5/5] RUN mkdir -p 	"/home/vscode/.proto" 	"${HOME}/.bun/install/cache" 	"${HOME}/.cache/uv" 	"${HOME}/.local/bin" 	"${HOME}/.payloads"
 #31 CACHED
 
-#32 [development  2/23] COPY --link --from=codex_payload --chown=1000:1000 /home/vscode/.payloads/codex /home/vscode/.payloads/codex
+#32 [stable_base 2/5] RUN apt-get update 	&& apt-get install -y --no-install-recommends 		bat 		build-essential 		ca-certificates 		curl 		dnsutils 		fd-find 		fzf 		git 		gzip 		less 		nano 		procps 		ripgrep 		sudo 		tree 		unzip 		vim 		wget 		xz-utils 	&& rm -rf /var/lib/apt/lists/* 	&& ln -sf /usr/bin/fdfind /usr/local/bin/fd 	&& ln -sf /usr/bin/batcat /usr/local/bin/bat
 #32 CACHED
 
-#33 [development  6/23] COPY --link --from=context7_payload --chown=1000:1000 /home/vscode/.payloads/context7 /home/vscode/.payloads/context7
+#33 [octopus_payload 1/1] RUN mkdir -p "${HOME}/.payloads/octopus" 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		"https://github.com/nyldn/claude-octopus/archive/f42f34a8f9a7ee5b9324e8b2d23159878c132b02.tar.gz" 		-o /tmp/octopus.tar.gz 	&& printf '%s  %s\n' "64104245973939c1508babb4503bef56fdf455ffe57370758a8d07fbc0866263" /tmp/octopus.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/octopus.tar.gz --strip-components=1 -C "${HOME}/.payloads/octopus" 	&& rm /tmp/octopus.tar.gz 	&& OCTOPUS_PAYLOAD="${HOME}/.payloads/octopus" bun -e 		'const path = `${process.env.OCTOPUS_PAYLOAD}/.claude-plugin/marketplace.json`; const value = await Bun.file(path).json(); const plugin = value.plugins.find((entry) => entry.name === "octo"); if (!plugin) throw new Error("octo marketplace entry missing"); plugin.source = "."; value.plugins = [plugin]; await Bun.write(path, `${JSON.stringify(value, null, 2)}\n`);' 	&& printf '%s\n%s\n' "f42f34a8f9a7ee5b9324e8b2d23159878c132b02" "64104245973939c1508babb4503bef56fdf455ffe57370758a8d07fbc0866263" > "${HOME}/.payloads/octopus/.devenv-source"
 #33 CACHED
 
-#34 [context7_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/context7" 	bun install -g "@upstash/context7-mcp@3.2.3"
+#34 [gemini_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/gemini" 	bun install -g "@google/gemini-cli@0.50.0"
 #34 CACHED
 
-#35 [development 19/23] COPY .dockerignore /tmp/devenv-definition/.dockerignore
+#35 [development 20/23] COPY .prototools /tmp/devenv-definition/.prototools
 #35 CACHED
 
-#36 [playwright_browser 1/1] RUN --mount=type=cache,target=/home/vscode/.bun/install/cache,uid=1000,gid=1000 	bunx "playwright@1.59.1" install --only-shell chromium 	&& printf '%s\n' "1.59.1" > "/home/vscode/.payloads/browser/.devenv-playwright-version" 	&& find "/home/vscode/.payloads/browser" -type f 		( -name headless_shell -o -name chrome-headless-shell ) 		-perm /111 -print -quit | grep -q . 	&& find "/home/vscode/.payloads/browser" -type f 		( -name ffmpeg -o -name ffmpeg-linux ) 		-perm /111 -print -quit | grep -q .
+#36 [development 13/23] RUN ln -s ../../.payloads/codex/bin/codex "${HOME}/.local/bin/codex"
 #36 CACHED
 
-#37 [stable_base 3/5] RUN case "arm64" in 		amd64) DELTA_SHA256="1658c7b61825d411b50734f34016101309e4b6e7f5799944cf8e4ac542cebd7f" ;; 		arm64) DELTA_SHA256="937781aa7788e1510858743fff6c9a8b4a69fe0a22a7c8a69493e633227939a9" ;; 		*) echo "Unsupported git-delta architecture: arm64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		--output /tmp/delta.deb 		"https://github.com/dandavison/delta/releases/download/0.18.2/git-delta_0.18.2_arm64.deb" 	&& printf '%s  %s\n' "$DELTA_SHA256" /tmp/delta.deb | sha256sum --check --status - 	&& dpkg -i /tmp/delta.deb 	&& rm /tmp/delta.deb
+#37 [development 15/23] RUN ln -s ../../.payloads/context7/bin/context7-mcp "${HOME}/.local/bin/context7-mcp"
 #37 CACHED
 
-#38 [proto_foundation 1/3] COPY --chown=vscode:vscode .devcontainer/prototools.foundation /tmp/devenv-proto-foundation/.prototools
+#38 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
 #38 CACHED
 
-#39 [proto_foundation 2/3] COPY --chown=vscode:vscode 	.devcontainer/install-proto.sh 	.devcontainer/proto-checksums.txt 	/tmp/devenv-proto-foundation/.devcontainer/
+#39 [proto_auxiliary 1/2] COPY --chown=vscode:vscode .devcontainer/prototools.auxiliary /tmp/devenv-proto-auxiliary/.prototools
 #39 CACHED
 
-#40 [shell_payload 1/1] RUN mkdir -p "${HOME}/.local/share/zinit/zinit.git" 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 120 		"https://github.com/zdharma-continuum/zinit/archive/e347224fb5fe77308cff9f59fbe2acca70d0a6db.tar.gz" 		-o /tmp/zinit.tar.gz 	&& printf '%s  %s\n' "96380971046cf82765dc02822dd6acf993bfce3e3a4eaf46a3f42eafdac37434" /tmp/zinit.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/zinit.tar.gz --strip-components=1 -C "${HOME}/.local/share/zinit/zinit.git" 	&& rm /tmp/zinit.tar.gz
+#40 [development 22/23] RUN mkdir -p /usr/local/share/devenv-image 	&& install -m 0555 /tmp/devenv-definition/.devcontainer/devcontainer-fingerprint.sh /usr/local/share/devenv-image/devcontainer-fingerprint.sh 	&& install -m 0555 /tmp/devenv-definition/.devcontainer/on-create/setup-proto.sh /usr/local/share/devenv-image/setup-proto.sh 	&& sha256sum /tmp/devenv-definition/.prototools | awk '{print $1}' > /usr/local/share/devenv-image/prototools.sha256 	&& bash /usr/local/share/devenv-image/devcontainer-fingerprint.sh /tmp/devenv-definition > /usr/local/share/devenv-image/definition.sha256 	&& chmod 0444 /usr/local/share/devenv-image/*.sha256 	&& rm -rf /tmp/devenv-definition
 #40 CACHED
 
-#41 [development 13/23] RUN ln -s ../../.payloads/codex/bin/codex "${HOME}/.local/bin/codex"
+#41 [development 12/23] RUN ln -s ../../.payloads/graphify/bin/graphify "${HOME}/.local/bin/graphify" 	&& ln -s ../../.payloads/graphify/bin/graphify-mcp "${HOME}/.local/bin/graphify-mcp"
 #41 CACHED
 
-#42 [stable_base 4/5] RUN case "arm64" in 		amd64) RTK_TARGET="x86_64-unknown-linux-musl"; RTK_SHA256="ff8a1e7766496e175291a85aeca1dc97c9ff6df33e51e5893d1fbc78fea2a609" ;; 		arm64) RTK_TARGET="aarch64-unknown-linux-gnu"; RTK_SHA256="5519f7ca12e5c143a609f0d28a0a77b97413a8dce31c2681f1a41c24519a8731" ;; 		*) echo "Unsupported RTK architecture: arm64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		--output /tmp/rtk.tar.gz 		"https://github.com/rtk-ai/rtk/releases/download/v0.43.0/rtk-${RTK_TARGET}.tar.gz" 	&& printf '%s  %s\n' "$RTK_SHA256" /tmp/rtk.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/rtk.tar.gz -C /usr/local/bin/ 	&& chmod +x /usr/local/bin/rtk 	&& rm /tmp/rtk.tar.gz 	&& chsh -s /usr/bin/zsh vscode 	&& printf '%s\n' 		'export PROTO_HOME="$HOME/.proto"' 		'export PATH="/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH"' 		> /etc/profile.d/devenv-path.sh 	&& chmod 0644 /etc/profile.d/devenv-path.sh
+#42 [claude_payload 1/1] RUN case "arm64" in 		amd64) CLAUDE_PLATFORM="linux-x64"; CLAUDE_SHA256="e7d2ceb53ed4c2ced1fe7fc1c6331c98dc5f7b4c9b2722d9c5fa3dd5dff6f719" ;; 		arm64) CLAUDE_PLATFORM="linux-arm64"; CLAUDE_SHA256="84feb193c1d91f3b5eba836ed47c0e4dee953195abba950917c3e101eff174e8" ;; 		*) echo "Unsupported Claude architecture: arm64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		"https://downloads.claude.ai/claude-code-releases/2.1.210/${CLAUDE_PLATFORM}/claude" 		-o "${HOME}/.local/bin/claude" 	&& printf '%s  %s\n' "$CLAUDE_SHA256" "${HOME}/.local/bin/claude" | sha256sum --check --status - 	&& chmod +x "${HOME}/.local/bin/claude" 	&& BUN_INSTALL="${HOME}/.payloads/claude-tools" bun install -g "node-gyp@13.0.1"
 #42 CACHED
 
-#43 [development  7/23] COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.payloads/claude-tools /home/vscode/.payloads/claude-tools
+#43 [playwright_browser 1/1] RUN --mount=type=cache,target=/home/vscode/.bun/install/cache,uid=1000,gid=1000 	bunx "playwright@1.59.1" install --only-shell chromium 	&& printf '%s\n' "1.59.1" > "/home/vscode/.payloads/browser/.devenv-playwright-version" 	&& find "/home/vscode/.payloads/browser" -type f 		( -name headless_shell -o -name chrome-headless-shell ) 		-perm /111 -print -quit | grep -q . 	&& find "/home/vscode/.payloads/browser" -type f 		( -name ffmpeg -o -name ffmpeg-linux ) 		-perm /111 -print -quit | grep -q .
 #43 CACHED
 
-#44 [proto_auxiliary 1/2] COPY --chown=vscode:vscode .devcontainer/prototools.auxiliary /tmp/devenv-proto-auxiliary/.prototools
+#44 [development 17/23] RUN printf '%s\n' 		'if [ -n "${BASH_VERSION:-}" ] && [ -f "$HOME/.bashrc" ]; then . "$HOME/.bashrc"; fi' 		'export PROTO_HOME="$HOME/.proto"' 		'export PATH="/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH"' 		> "${HOME}/.profile" 	&& printf '%s\n' 'source "$HOME/.profile"' > "${HOME}/.zprofile"
 #44 CACHED
 
-#45 [development 11/23] COPY --link --from=shell_payload --chown=1000:1000 /home/vscode/.local/share/zinit /home/vscode/.local/share/zinit
+#45 [development 10/23] COPY --link --from=warp_payload --chown=1000:1000 /home/vscode/.payloads/warp /home/vscode/.payloads/warp
 #45 CACHED
 
-#46 [development 18/23] COPY --chown=vscode:vscode .prototools /home/vscode/.prototools
+#46 [development  3/23] COPY --link --from=gemini_payload --chown=1000:1000 /home/vscode/.payloads/gemini /home/vscode/.payloads/gemini
 #46 CACHED
 
-#47 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
+#47 [development  1/23] COPY --link --from=graphify_payload --chown=1000:1000 /home/vscode/.payloads/graphify /home/vscode/.payloads/graphify
 #47 CACHED
 
-#48 [development_browser 1/2] RUN apt-get update 	&& apt-get install -y --no-install-recommends 		fonts-freefont-ttf 		fonts-ipafont-gothic 		fonts-liberation 		fonts-noto-color-emoji 		fonts-tlwg-loma-otf 		fonts-unifont 		fonts-wqy-zenhei 		libasound2t64 		libatk-bridge2.0-0t64 		libatk1.0-0t64 		libatspi2.0-0t64 		libcairo2 		libcups2t64 		libdbus-1-3 		libdrm2 		libfontconfig1 		libfreetype6 		libgbm1 		libglib2.0-0t64 		libnspr4 		libnss3 		libpango-1.0-0 		libx11-6 		libxcb1 		libxcomposite1 		libxdamage1 		libxext6 		libxfixes3 		libxkbcommon0 		libxrandr2 	&& rm -rf /var/lib/apt/lists/*
+#48 [proto_foundation 1/3] COPY --chown=vscode:vscode .devcontainer/prototools.foundation /tmp/devenv-proto-foundation/.prototools
 #48 CACHED
 
-#49 [development 14/23] RUN ln -s ../../.payloads/ccstatusline/bin/ccstatusline "${HOME}/.local/bin/ccstatusline"
+#49 [development  9/23] COPY --link --from=octopus_payload --chown=1000:1000 /home/vscode/.payloads/octopus /home/vscode/.payloads/octopus
 #49 CACHED
 
-#50 [development 22/23] RUN mkdir -p /usr/local/share/devenv-image 	&& install -m 0555 /tmp/devenv-definition/.devcontainer/devcontainer-fingerprint.sh /usr/local/share/devenv-image/devcontainer-fingerprint.sh 	&& install -m 0555 /tmp/devenv-definition/.devcontainer/on-create/setup-proto.sh /usr/local/share/devenv-image/setup-proto.sh 	&& sha256sum /tmp/devenv-definition/.prototools | awk '{print $1}' > /usr/local/share/devenv-image/prototools.sha256 	&& bash /usr/local/share/devenv-image/devcontainer-fingerprint.sh /tmp/devenv-definition > /usr/local/share/devenv-image/definition.sha256 	&& chmod 0444 /usr/local/share/devenv-image/*.sha256 	&& rm -rf /tmp/devenv-definition
+#50 [development 14/23] RUN ln -s ../../.payloads/ccstatusline/bin/ccstatusline "${HOME}/.local/bin/ccstatusline"
 #50 CACHED
 
-#51 [development  9/23] COPY --link --from=octopus_payload --chown=1000:1000 /home/vscode/.payloads/octopus /home/vscode/.payloads/octopus
+#51 [proto_foundation 3/3] RUN bash /tmp/devenv-proto-foundation/.devcontainer/install-proto.sh 	&& cd /tmp/devenv-proto-foundation 	&& proto install --yes --config-mode local
 #51 CACHED
 
-#52 [development_browser 2/2] COPY --link --from=playwright_browser --chown=1000:1000 /home/vscode/.payloads/browser /home/vscode/.payloads/browser
+#52 [codex_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/codex" 	bun install -g "@openai/codex@0.144.4"
 #52 CACHED
 
 #53 exporting to image
 #53 exporting layers done
 #53 exporting manifest sha256:e8765904844c60a2b149ffee6ee1e4365b86114b78fb791dc3284d420c732d3f done
 #53 exporting config sha256:76383a29bd341bb3e493e1f7a05510000dbce2f53ebaf8994b7d2298350a2dc8 done
-#53 exporting attestation manifest sha256:09d16aaddd68109992aaf4403d03929e1bb2e269d39b7bbd7d1ad0f521aa19aa
-#53 exporting attestation manifest sha256:09d16aaddd68109992aaf4403d03929e1bb2e269d39b7bbd7d1ad0f521aa19aa 0.0s done
-#53 exporting manifest list sha256:bb422e3850410d8bd0ac31aa2cb31f7d7a9b7468fc0a1b46e9ae4ce514b26d79 0.0s done
+#53 exporting attestation manifest sha256:7f93337c49cb03f8c237274bab1eda928e417502d7e2ee88f4208038793bb8db 0.0s done
+#53 exporting manifest list sha256:9010dd4ed9ca43be94025199d47c02fff5755f5f9c522321a77963dffe33c5ff
+#53 exporting manifest list sha256:9010dd4ed9ca43be94025199d47c02fff5755f5f9c522321a77963dffe33c5ff 0.0s done
 #53 naming to docker.io/library/devenv-stage3-edaa9dd:latest done
 #53 unpacking to docker.io/library/devenv-stage3-edaa9dd:latest 0.0s done
 #53 DONE 0.2s

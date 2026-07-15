@@ -121,10 +121,10 @@ skill residue.
 ## Acceptance evidence
 
 The reviewed implementation boundary is
-`3665de558333f4920c81b042514961129900ad8c`, based on the merged Stage 2
+`af2ac5b288c226e8ee5c86e30325ecb2ae46b45c`, based on the merged Stage 2
 commit `2a2d4ab71723a608e7170d93a47622b6d92d2fac`. The committed run
-`stage3-20260715t145706z-3665de55` exercised ARM64 image
-`sha256:540356e0a64f9b8386396e6e701a0c9bd66957f7bba9baf0f38167334ca9f40a`
+`stage3-20260715t150405z-af2ac5b2` exercised ARM64 image
+`sha256:9010dd4ed9ca43be94025199d47c02fff5755f5f9c522321a77963dffe33c5ff`
 with 14 exact commands:
 
 1. A cached `development_browser` build and exact image inspection.
@@ -138,10 +138,10 @@ with 14 exact commands:
 7. Second-worktree storage measurement and a synthetic mainline-revert proof
    whose final tree equals the Stage 2 predecessor.
 
-The warm browser build took 3,335 ms versus the Stage 2 warm build's 3,469 ms.
-Second-worktree observed growth was 4,657,152 bytes versus Stage 2's 4,472,832
+The warm browser build took 2,345 ms versus the Stage 2 warm build's 3,469 ms.
+Second-worktree observed growth was 4,775,936 bytes versus Stage 2's 4,472,832
 bytes and the Stage 0 baseline of 96,111,608 bytes. The browser preflight took
-2,610 ms end-to-end, including container startup and image verification.
+1,756 ms end-to-end, including container startup and image verification.
 
 The machine-readable record is `evidence/stage-3-runtimes.json`; its strict
 schema is `evidence/stage-3-runtimes.schema.json`, and every exact argv,
@@ -152,7 +152,7 @@ of the boundary with:
 ```sh
 bun scripts/template/collect-stage-three-evidence.ts capture \
   --image devenv-stage3-edaa9dd \
-  --implementation 3665de558333f4920c81b042514961129900ad8c
+  --implementation af2ac5b288c226e8ee5c86e30325ecb2ae46b45c
 ```
 
 Stage 3 proves the local devcontainer and required CI browser profile. Stage 4

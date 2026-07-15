@@ -34,7 +34,7 @@ describe("Stage 3 runtime evidence", () => {
 				const commands = value["commands"] as Array<Record<string, unknown>>;
 				if (commands[0]) commands[0]["command"] = ["true"];
 			}),
-		).toContain("semantic: command image-inspect drifted");
+		).toContain("semantic: command warm-browser-build drifted");
 
 		expect(
 			await validateMutation((value) => {

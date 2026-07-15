@@ -1,20 +1,20 @@
 {
 	"schemaVersion": 1,
 	"stage": "stage-3-browser-agent-runtimes",
-	"capturedAt": "2026-07-15T14:57:33.586Z",
+	"capturedAt": "2026-07-15T15:04:27.782Z",
 	"run": {
-		"id": "stage3-20260715t145706z-3665de55",
+		"id": "stage3-20260715t150405z-af2ac5b2",
 		"logRoot": "evidence/stage-3-runtimes-run",
-		"temporaryRoot": "/tmp/devenv-stage2-stage3-20260715t145706z-3665de55"
+		"temporaryRoot": "/tmp/devenv-stage2-stage3-20260715t150405z-af2ac5b2"
 	},
 	"source": {
 		"baseSha": "2a2d4ab71723a608e7170d93a47622b6d92d2fac",
-		"implementationSha": "3665de558333f4920c81b042514961129900ad8c",
+		"implementationSha": "af2ac5b288c226e8ee5c86e30325ecb2ae46b45c",
 		"featureTreeClean": true
 	},
 	"image": {
 		"tag": "devenv-stage3-edaa9dd",
-		"imageId": "sha256:540356e0a64f9b8386396e6e701a0c9bd66957f7bba9baf0f38167334ca9f40a",
+		"imageId": "sha256:9010dd4ed9ca43be94025199d47c02fff5755f5f9c522321a77963dffe33c5ff",
 		"architecture": "arm64",
 		"os": "linux",
 		"pins": {
@@ -32,27 +32,6 @@
 		}
 	},
 	"commands": [
-		{
-			"id": "image-inspect",
-			"command": [
-				"docker",
-				"image",
-				"inspect",
-				"--format",
-				"{{json .Id}}|{{json .Architecture}}|{{json .Os}}",
-				"devenv-stage3-edaa9dd"
-			],
-			"runId": "stage3-20260715t145706z-3665de55",
-			"startedAt": "2026-07-15T14:57:06.493Z",
-			"completedAt": "2026-07-15T14:57:06.536Z",
-			"durationMs": 43,
-			"stdoutPath": "evidence/stage-3-runtimes-run/image-inspect.stdout",
-			"stderrPath": "evidence/stage-3-runtimes-run/image-inspect.stderr",
-			"stdoutSha256": "f38dcd6dbce895b2b29389b87a1b453cff88ea4fa093867a86a1894257cc4e1f",
-			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			"exitCode": 0,
-			"status": "pass"
-		},
 		{
 			"id": "warm-browser-build",
 			"command": [
@@ -72,14 +51,35 @@
 				"--load",
 				"."
 			],
-			"runId": "stage3-20260715t145706z-3665de55",
-			"startedAt": "2026-07-15T14:57:06.539Z",
-			"completedAt": "2026-07-15T14:57:09.874Z",
-			"durationMs": 3335,
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:05.779Z",
+			"completedAt": "2026-07-15T15:04:08.124Z",
+			"durationMs": 2345,
 			"stdoutPath": "evidence/stage-3-runtimes-run/warm-browser-build.stdout",
 			"stderrPath": "evidence/stage-3-runtimes-run/warm-browser-build.stderr",
 			"stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			"stderrSha256": "74741491c2c6fa11bcedd432b6ae946e57cc54bf28eb9a949fdd59ff4b9a3d1a",
+			"stderrSha256": "95cb124ebec085965c08006f0d626480b5a07fa3baad335924cca2d267e027c2",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "image-inspect",
+			"command": [
+				"docker",
+				"image",
+				"inspect",
+				"--format",
+				"{{json .Id}}|{{json .Architecture}}|{{json .Os}}",
+				"devenv-stage3-edaa9dd"
+			],
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:08.126Z",
+			"completedAt": "2026-07-15T15:04:08.420Z",
+			"durationMs": 294,
+			"stdoutPath": "evidence/stage-3-runtimes-run/image-inspect.stdout",
+			"stderrPath": "evidence/stage-3-runtimes-run/image-inspect.stderr",
+			"stdoutSha256": "d01a01822647e33b1cbde20ef3b77b8c31389af261af2d84e34bbce3e9a14a8f",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 			"exitCode": 0,
 			"status": "pass"
 		},
@@ -108,13 +108,13 @@
 				"-c",
 				"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && bun run browser:preflight"
 			],
-			"runId": "stage3-20260715t145706z-3665de55",
-			"startedAt": "2026-07-15T14:57:09.875Z",
-			"completedAt": "2026-07-15T14:57:12.485Z",
-			"durationMs": 2610,
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:08.421Z",
+			"completedAt": "2026-07-15T15:04:10.177Z",
+			"durationMs": 1756,
 			"stdoutPath": "evidence/stage-3-runtimes-run/browser-preflight.stdout",
 			"stderrPath": "evidence/stage-3-runtimes-run/browser-preflight.stderr",
-			"stdoutSha256": "647e76da6045c4a7907569bdfdce2525233349c044967f6bc636886c450228fb",
+			"stdoutSha256": "f41c987dc8f984cf19c48cc2e56a2defe105b375d316ec1e8241e9ca871b6093",
 			"stderrSha256": "ad36c27c7a0b8d3fe0754fcbbd0879eec89f1730d81cb8c25861ecc40d7347b2",
 			"exitCode": 0,
 			"status": "pass"
@@ -136,10 +136,10 @@
 				"-c",
 				"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && /bin/bash -p /workspace/scripts/template/run-stage-three-image-smoke.sh launchers"
 			],
-			"runId": "stage3-20260715t145706z-3665de55",
-			"startedAt": "2026-07-15T14:57:12.487Z",
-			"completedAt": "2026-07-15T14:57:15.781Z",
-			"durationMs": 3294,
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:10.180Z",
+			"completedAt": "2026-07-15T15:04:10.678Z",
+			"durationMs": 498,
 			"stdoutPath": "evidence/stage-3-runtimes-run/launcher-smoke.stdout",
 			"stderrPath": "evidence/stage-3-runtimes-run/launcher-smoke.stderr",
 			"stdoutSha256": "f5e7d40bdd80cef22ddc075e917db8f0fe94312c9204d0488f8d2dfd164bb543",
@@ -168,10 +168,10 @@
 				"-c",
 				"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && /bin/bash -p /workspace/scripts/template/run-stage-three-image-smoke.sh plugins"
 			],
-			"runId": "stage3-20260715t145706z-3665de55",
-			"startedAt": "2026-07-15T14:57:15.781Z",
-			"completedAt": "2026-07-15T14:57:25.445Z",
-			"durationMs": 9664,
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:10.678Z",
+			"completedAt": "2026-07-15T15:04:19.986Z",
+			"durationMs": 9308,
 			"stdoutPath": "evidence/stage-3-runtimes-run/plugin-repair-smoke.stdout",
 			"stderrPath": "evidence/stage-3-runtimes-run/plugin-repair-smoke.stderr",
 			"stdoutSha256": "9d296830f5e9eedac63e95041db074a6b37e64dc733eb97c1ff9d0ce6e60980b",
@@ -190,10 +190,10 @@
 				"-lc",
 				"command -v bun; command -v proto; command -v codex; printf \"%s\\n\" \"$PATH\""
 			],
-			"runId": "stage3-20260715t145706z-3665de55",
-			"startedAt": "2026-07-15T14:57:25.446Z",
-			"completedAt": "2026-07-15T14:57:25.883Z",
-			"durationMs": 437,
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:19.987Z",
+			"completedAt": "2026-07-15T15:04:20.437Z",
+			"durationMs": 450,
 			"stdoutPath": "evidence/stage-3-runtimes-run/shell-bash-login.stdout",
 			"stderrPath": "evidence/stage-3-runtimes-run/shell-bash-login.stderr",
 			"stdoutSha256": "1e679d68195328a2fba46587c2bee7357ab05f9f985729554f2e4ba01946b3c2",
@@ -212,10 +212,10 @@
 				"-c",
 				"command -v bun; command -v proto; command -v codex; printf \"%s\\n\" \"$PATH\""
 			],
-			"runId": "stage3-20260715t145706z-3665de55",
-			"startedAt": "2026-07-15T14:57:25.884Z",
-			"completedAt": "2026-07-15T14:57:26.300Z",
-			"durationMs": 416,
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:20.438Z",
+			"completedAt": "2026-07-15T15:04:20.871Z",
+			"durationMs": 433,
 			"stdoutPath": "evidence/stage-3-runtimes-run/shell-bash-non-login.stdout",
 			"stderrPath": "evidence/stage-3-runtimes-run/shell-bash-non-login.stderr",
 			"stdoutSha256": "e7790aac356ddfb6b287b321e14f35950478ee745ae63438600b5c3d98f903c7",
@@ -234,10 +234,10 @@
 				"-lc",
 				"command -v bun; command -v proto; command -v codex; printf \"%s\\n\" \"$PATH\""
 			],
-			"runId": "stage3-20260715t145706z-3665de55",
-			"startedAt": "2026-07-15T14:57:26.301Z",
-			"completedAt": "2026-07-15T14:57:26.709Z",
-			"durationMs": 408,
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:20.872Z",
+			"completedAt": "2026-07-15T15:04:21.278Z",
+			"durationMs": 406,
 			"stdoutPath": "evidence/stage-3-runtimes-run/shell-zsh-login.stdout",
 			"stderrPath": "evidence/stage-3-runtimes-run/shell-zsh-login.stderr",
 			"stdoutSha256": "74481b0110b9e92ee693b9f593d9cd0de03e4df2dfc358a15014dbb339d36024",
@@ -256,10 +256,10 @@
 				"-c",
 				"command -v bun; command -v proto; command -v codex; printf \"%s\\n\" \"$PATH\""
 			],
-			"runId": "stage3-20260715t145706z-3665de55",
-			"startedAt": "2026-07-15T14:57:26.710Z",
-			"completedAt": "2026-07-15T14:57:27.091Z",
-			"durationMs": 381,
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:21.278Z",
+			"completedAt": "2026-07-15T15:04:21.670Z",
+			"durationMs": 392,
 			"stdoutPath": "evidence/stage-3-runtimes-run/shell-zsh-non-login.stdout",
 			"stderrPath": "evidence/stage-3-runtimes-run/shell-zsh-non-login.stderr",
 			"stdoutSha256": "e7790aac356ddfb6b287b321e14f35950478ee745ae63438600b5c3d98f903c7",
@@ -270,28 +270,28 @@
 		{
 			"id": "browser-known-bad-fixtures",
 			"command": ["bun", "test", "scripts/template/__tests__/browser.test.ts"],
-			"runId": "stage3-20260715t145706z-3665de55",
-			"startedAt": "2026-07-15T14:57:27.092Z",
-			"completedAt": "2026-07-15T14:57:28.099Z",
-			"durationMs": 1007,
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:21.670Z",
+			"completedAt": "2026-07-15T15:04:22.716Z",
+			"durationMs": 1046,
 			"stdoutPath": "evidence/stage-3-runtimes-run/browser-known-bad-fixtures.stdout",
 			"stderrPath": "evidence/stage-3-runtimes-run/browser-known-bad-fixtures.stderr",
 			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
-			"stderrSha256": "37a0ce29f14aa8f6a7369fb43f430350e7e7cbb8d051ee49e5406bd4e6c8d8eb",
+			"stderrSha256": "692cc5d49f7cd3cc95d2a436f8407b34d7890172c57d5a3d67242326cd1f6fbe",
 			"exitCode": 0,
 			"status": "pass"
 		},
 		{
 			"id": "agent-known-bad-fixtures",
 			"command": ["bun", "test", "scripts/template/__tests__/image.test.ts"],
-			"runId": "stage3-20260715t145706z-3665de55",
-			"startedAt": "2026-07-15T14:57:28.099Z",
-			"completedAt": "2026-07-15T14:57:28.723Z",
-			"durationMs": 624,
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:22.716Z",
+			"completedAt": "2026-07-15T15:04:23.301Z",
+			"durationMs": 585,
 			"stdoutPath": "evidence/stage-3-runtimes-run/agent-known-bad-fixtures.stdout",
 			"stderrPath": "evidence/stage-3-runtimes-run/agent-known-bad-fixtures.stderr",
 			"stdoutSha256": "f879e264a80a96436679609079e8f291f722b891f40ab3c503be8f1fea8f76ff",
-			"stderrSha256": "f998f85f2f414267f0e290f3f3b984ceef0d3d7f36d3e2903b31548607b9f096",
+			"stderrSha256": "378a8f498b21637a206683642702f170d46aa65ca40d28d61656d6bdbce49300",
 			"exitCode": 0,
 			"status": "pass"
 		},
@@ -302,14 +302,14 @@
 				"test",
 				"scripts/template/__tests__/gemini-watchdog.test.ts"
 			],
-			"runId": "stage3-20260715t145706z-3665de55",
-			"startedAt": "2026-07-15T14:57:28.723Z",
-			"completedAt": "2026-07-15T14:57:30.664Z",
-			"durationMs": 1941,
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:23.302Z",
+			"completedAt": "2026-07-15T15:04:25.214Z",
+			"durationMs": 1912,
 			"stdoutPath": "evidence/stage-3-runtimes-run/watchdog-known-bad-fixtures.stdout",
 			"stderrPath": "evidence/stage-3-runtimes-run/watchdog-known-bad-fixtures.stderr",
 			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
-			"stderrSha256": "5284b7f3d29b6b3af1404314a2c5b015ae3cecaa35834f54e8f72721c12339b0",
+			"stderrSha256": "1d2019e7ae26917419dd4fb687fb407aab3165c2424679fd1e215f04079fa1e0",
 			"exitCode": 0,
 			"status": "pass"
 		},
@@ -322,19 +322,19 @@
 				"--image",
 				"devenv-stage3-edaa9dd",
 				"--run-id",
-				"stage3-20260715t145706z-3665de55",
+				"stage3-20260715t150405z-af2ac5b2",
 				"--implementation",
-				"3665de558333f4920c81b042514961129900ad8c",
+				"af2ac5b288c226e8ee5c86e30325ecb2ae46b45c",
 				"--workspace",
-				"/tmp/devenv-stage2-stage3-20260715t145706z-3665de55-storage"
+				"/tmp/devenv-stage2-stage3-20260715t150405z-af2ac5b2-storage"
 			],
-			"runId": "stage3-20260715t145706z-3665de55",
-			"startedAt": "2026-07-15T14:57:30.664Z",
-			"completedAt": "2026-07-15T14:57:33.129Z",
-			"durationMs": 2465,
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:25.214Z",
+			"completedAt": "2026-07-15T15:04:27.312Z",
+			"durationMs": 2098,
 			"stdoutPath": "evidence/stage-3-runtimes-run/second-worktree-storage.stdout",
 			"stderrPath": "evidence/stage-3-runtimes-run/second-worktree-storage.stderr",
-			"stdoutSha256": "a70c1bc2fe06e00f9d1c4000e0f88cf707c06213f61fd7854222c9f7bf9154b0",
+			"stdoutSha256": "062f371a81a5788dbc0644474d8d6c86c66bf64e78385fd90c86d0d1546168e8",
 			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 			"exitCode": 0,
 			"status": "pass"
@@ -348,17 +348,17 @@
 				"--base",
 				"2a2d4ab71723a608e7170d93a47622b6d92d2fac",
 				"--implementation",
-				"3665de558333f4920c81b042514961129900ad8c",
+				"af2ac5b288c226e8ee5c86e30325ecb2ae46b45c",
 				"--workspace",
-				"/tmp/devenv-stage2-stage3-20260715t145706z-3665de55-rollback"
+				"/tmp/devenv-stage2-stage3-20260715t150405z-af2ac5b2-rollback"
 			],
-			"runId": "stage3-20260715t145706z-3665de55",
-			"startedAt": "2026-07-15T14:57:33.129Z",
-			"completedAt": "2026-07-15T14:57:33.584Z",
-			"durationMs": 455,
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:27.313Z",
+			"completedAt": "2026-07-15T15:04:27.781Z",
+			"durationMs": 468,
 			"stdoutPath": "evidence/stage-3-runtimes-run/rollback-proof.stdout",
 			"stderrPath": "evidence/stage-3-runtimes-run/rollback-proof.stderr",
-			"stdoutSha256": "a8c3c58d39af6f8bb93b78af1ca76a11bf5b5d4f0030d66eb591c234505a96f0",
+			"stdoutSha256": "3ec4be6a8696084e18d6514289259f6dcdff9fe16c21b8a5ff11515c572ace1a",
 			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 			"exitCode": 0,
 			"status": "pass"
@@ -434,11 +434,11 @@
 	},
 	"comparison": {
 		"warmBuildCommandId": "warm-browser-build",
-		"warmBuildDurationMs": 3335,
+		"warmBuildDurationMs": 2345,
 		"stageTwoWarmBuildDurationMs": 3469,
-		"browserPreflightDurationMs": 2610,
+		"browserPreflightDurationMs": 1756,
 		"storageCommandId": "second-worktree-storage",
-		"secondWorktreeObservedBytes": 4657152,
+		"secondWorktreeObservedBytes": 4775936,
 		"stageTwoSecondWorktreeObservedBytes": 4472832,
 		"stageZeroSecondWorktreeBaselineBytes": 96111608
 	},
@@ -457,51 +457,51 @@
 		"proof": {
 			"commandId": "rollback-proof",
 			"predecessorSha": "2a2d4ab71723a608e7170d93a47622b6d92d2fac",
-			"implementationSha": "3665de558333f4920c81b042514961129900ad8c",
-			"syntheticMergeSha": "b6e77b67bc467170d3fda3e2a0289b3e86e72409",
-			"syntheticMergeTree": "60b9e1455dc77ff7c71efda0b59f29fe8c39af84",
+			"implementationSha": "af2ac5b288c226e8ee5c86e30325ecb2ae46b45c",
+			"syntheticMergeSha": "2cf50c7dafb7513796a739d0b4c4549a50fc9af7",
+			"syntheticMergeTree": "bcb319dad2bd33ddaeb923c942d8506af9509708",
 			"syntheticMergeParents": [
 				"2a2d4ab71723a608e7170d93a47622b6d92d2fac",
-				"3665de558333f4920c81b042514961129900ad8c"
+				"af2ac5b288c226e8ee5c86e30325ecb2ae46b45c"
 			],
 			"predecessorTree": "5b23f4511557aba50b6ac8280f6abb4ef909feb4",
 			"revertedTree": "5b23f4511557aba50b6ac8280f6abb4ef909feb4",
 			"treeMatchesPredecessor": true,
 			"operations": [
 				["git", "rev-parse", "2a2d4ab71723a608e7170d93a47622b6d92d2fac^{tree}"],
-				["git", "rev-parse", "3665de558333f4920c81b042514961129900ad8c^{tree}"],
+				["git", "rev-parse", "af2ac5b288c226e8ee5c86e30325ecb2ae46b45c^{tree}"],
 				[
 					"git",
 					"worktree",
 					"add",
 					"--detach",
-					"/tmp/devenv-stage2-stage3-20260715t145706z-3665de55-rollback",
+					"/tmp/devenv-stage2-stage3-20260715t150405z-af2ac5b2-rollback",
 					"2a2d4ab71723a608e7170d93a47622b6d92d2fac"
 				],
 				[
 					"git",
 					"commit-tree",
-					"60b9e1455dc77ff7c71efda0b59f29fe8c39af84",
+					"bcb319dad2bd33ddaeb923c942d8506af9509708",
 					"-p",
 					"2a2d4ab71723a608e7170d93a47622b6d92d2fac",
 					"-p",
-					"3665de558333f4920c81b042514961129900ad8c",
+					"af2ac5b288c226e8ee5c86e30325ecb2ae46b45c",
 					"-m",
 					"Stage 2 synthetic merge"
 				],
-				["git", "rev-parse", "b6e77b67bc467170d3fda3e2a0289b3e86e72409^{tree}"],
+				["git", "rev-parse", "2cf50c7dafb7513796a739d0b4c4549a50fc9af7^{tree}"],
 				[
 					"git",
 					"show",
 					"-s",
 					"--format=%P",
-					"b6e77b67bc467170d3fda3e2a0289b3e86e72409"
+					"2cf50c7dafb7513796a739d0b4c4549a50fc9af7"
 				],
 				[
 					"git",
 					"checkout",
 					"--detach",
-					"b6e77b67bc467170d3fda3e2a0289b3e86e72409"
+					"2cf50c7dafb7513796a739d0b4c4549a50fc9af7"
 				],
 				[
 					"git",
@@ -509,7 +509,7 @@
 					"--no-edit",
 					"-m",
 					"1",
-					"b6e77b67bc467170d3fda3e2a0289b3e86e72409"
+					"2cf50c7dafb7513796a739d0b4c4549a50fc9af7"
 				],
 				["git", "rev-parse", "HEAD^{tree}"]
 			]

@@ -1,14 +1,14 @@
 {
   "commandId": "second-worktree-storage",
-  "primaryContainerId": "2b329dd7efa4f4526b2f3001f89d7662f9a5053a39a1ee1b75b549e037e151c8",
-  "secondContainerId": "f785442864ea6b0ea4447c80022e9a7d4d58023a9e555e070b0e77782574cd8b",
-  "primaryImageId": "sha256:bb422e3850410d8bd0ac31aa2cb31f7d7a9b7468fc0a1b46e9ae4ce514b26d79",
-  "secondImageId": "sha256:bb422e3850410d8bd0ac31aa2cb31f7d7a9b7468fc0a1b46e9ae4ce514b26d79",
+  "primaryContainerId": "0c3200f82c3f4683e7eaaeef6f28952a22e85805a7d6b49f97a9ee4b8d61c0fa",
+  "secondContainerId": "3132e6e994d9522d2df5f06c48a24aab653632b6d36ef2742725f8949fa7516c",
+  "primaryImageId": "sha256:9010dd4ed9ca43be94025199d47c02fff5755f5f9c522321a77963dffe33c5ff",
+  "secondImageId": "sha256:9010dd4ed9ca43be94025199d47c02fff5755f5f9c522321a77963dffe33c5ff",
   "primaryContainerWritableBytes": 274432,
   "secondContainerWritableBytes": 274432,
-  "secondCheckoutBytes": 4382720,
+  "secondCheckoutBytes": 4501504,
   "volumeBytes": 0,
-  "observedBytes": 4657152,
+  "observedBytes": 4775936,
   "stageZeroBaselineBytes": 96111608,
   "imageProtoBytes": 1366372352,
   "protoVolumeCount": 0,
@@ -19,8 +19,8 @@
       "worktree",
       "add",
       "--detach",
-      "/tmp/devenv-stage2-stage3-20260715t145706z-3665de55-storage",
-      "3665de558333f4920c81b042514961129900ad8c"
+      "/tmp/devenv-stage2-stage3-20260715t150405z-af2ac5b2-storage",
+      "af2ac5b288c226e8ee5c86e30325ecb2ae46b45c"
     ],
     [
       "docker",
@@ -35,7 +35,7 @@
       "run",
       "--rm",
       "--label",
-      "com.devenv.evidence.run=stage3-20260715t145706z-3665de55",
+      "com.devenv.evidence.run=stage3-20260715t150405z-af2ac5b2",
       "devenv-stage3-edaa9dd",
       "sh",
       "-c",
@@ -45,7 +45,7 @@
       "docker",
       "create",
       "--label",
-      "com.devenv.evidence.run=stage3-20260715t145706z-3665de55",
+      "com.devenv.evidence.run=stage3-20260715t150405z-af2ac5b2",
       "--label",
       "com.devenv.evidence.slot=primary",
       "--mount",
@@ -58,11 +58,11 @@
       "docker",
       "create",
       "--label",
-      "com.devenv.evidence.run=stage3-20260715t145706z-3665de55",
+      "com.devenv.evidence.run=stage3-20260715t150405z-af2ac5b2",
       "--label",
       "com.devenv.evidence.slot=second",
       "--mount",
-      "type=bind,src=/tmp/devenv-stage2-stage3-20260715t145706z-3665de55-storage,dst=/workspace,readonly",
+      "type=bind,src=/tmp/devenv-stage2-stage3-20260715t150405z-af2ac5b2-storage,dst=/workspace,readonly",
       "devenv-stage3-edaa9dd",
       "sleep",
       "infinity"
@@ -70,43 +70,43 @@
     [
       "docker",
       "start",
-      "2b329dd7efa4f4526b2f3001f89d7662f9a5053a39a1ee1b75b549e037e151c8"
+      "0c3200f82c3f4683e7eaaeef6f28952a22e85805a7d6b49f97a9ee4b8d61c0fa"
     ],
     [
       "docker",
       "start",
-      "f785442864ea6b0ea4447c80022e9a7d4d58023a9e555e070b0e77782574cd8b"
+      "3132e6e994d9522d2df5f06c48a24aab653632b6d36ef2742725f8949fa7516c"
     ],
     [
       "docker",
       "inspect",
       "--size",
-      "2b329dd7efa4f4526b2f3001f89d7662f9a5053a39a1ee1b75b549e037e151c8"
+      "0c3200f82c3f4683e7eaaeef6f28952a22e85805a7d6b49f97a9ee4b8d61c0fa"
     ],
     [
       "docker",
       "inspect",
       "--size",
-      "f785442864ea6b0ea4447c80022e9a7d4d58023a9e555e070b0e77782574cd8b"
+      "3132e6e994d9522d2df5f06c48a24aab653632b6d36ef2742725f8949fa7516c"
     ],
     [
       "du",
       "-sk",
-      "/tmp/devenv-stage2-stage3-20260715t145706z-3665de55-storage"
+      "/tmp/devenv-stage2-stage3-20260715t150405z-af2ac5b2-storage"
     ],
     [
       "docker",
       "rm",
       "-f",
-      "2b329dd7efa4f4526b2f3001f89d7662f9a5053a39a1ee1b75b549e037e151c8",
-      "f785442864ea6b0ea4447c80022e9a7d4d58023a9e555e070b0e77782574cd8b"
+      "0c3200f82c3f4683e7eaaeef6f28952a22e85805a7d6b49f97a9ee4b8d61c0fa",
+      "3132e6e994d9522d2df5f06c48a24aab653632b6d36ef2742725f8949fa7516c"
     ],
     [
       "git",
       "worktree",
       "remove",
       "--force",
-      "/tmp/devenv-stage2-stage3-20260715t145706z-3665de55-storage"
+      "/tmp/devenv-stage2-stage3-20260715t150405z-af2ac5b2-storage"
     ]
   ]
 }

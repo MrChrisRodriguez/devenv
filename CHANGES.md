@@ -10,7 +10,7 @@ This file documents changes made to this template repository. Each entry provide
 
 **How to implement:** Capture the warm browser image build, then inspect and bind the post-build manifest-list identity before running the repository-pinned browser launch, enabled launcher paths, local plugin source repair, Bash/Zsh login and non-login PATHs, existing known-bad fixture suites, second-worktree storage, and a synthetic mainline-revert proof through one Bun collector. Record exact argv, timestamps, image/source identities, log paths, and log SHA-256 values in a strict machine-readable schema. Revalidate the evidence against the current Docker/package authorities and bound logs, keep the cloud browser profile as an explicit Stage 4 handoff, and roll back the complete Stage 3 merge atomically.
 
-The committed run `stage3-20260715t145706z-3665de55` passed all 14 commands against ARM64 image `sha256:540356e0a64f9b8386396e6e701a0c9bd66957f7bba9baf0f38167334ca9f40a`. Its warm build was 3,335 ms, browser preflight was 2,610 ms, second-worktree growth was 4,657,152 bytes versus the 96,111,608-byte Stage 0 baseline, and the synthetic mainline revert restored the exact Stage 2 predecessor tree.
+The committed run `stage3-20260715t150405z-af2ac5b2` passed all 14 commands against post-build ARM64 image `sha256:9010dd4ed9ca43be94025199d47c02fff5755f5f9c522321a77963dffe33c5ff`. Its warm build was 2,345 ms, browser preflight was 1,756 ms, second-worktree growth was 4,775,936 bytes versus the 96,111,608-byte Stage 0 baseline, and the synthetic mainline revert restored the exact Stage 2 predecessor tree.
 
 ## 2026-07-15 — Fix: integrate Stage 3 runtimes with the verified lifecycle
 
