@@ -136,6 +136,10 @@
 				"shadowBunPath",
 				"shadowBashPath",
 				"shadowUtilityPaths",
+				"trustedRepoMount",
+				"overrideMarkerPath",
+				"environmentOverrides",
+				"preVerificationShadowExecution",
 				"containerExitCode",
 				"refused",
 				"diagnostic"
@@ -143,7 +147,7 @@
 			"properties": {
 				"commandId": { "const": "stale-image-refusal" },
 				"mutation": {
-					"const": "shadow-workspace-contract-tools-and-edit-definition"
+					"const": "shadow-workspace-tools-env-overrides-and-edit-definition"
 				},
 				"originalDefinitionFingerprint": { "$ref": "#/$defs/sha256" },
 				"mutatedDefinitionFingerprint": { "$ref": "#/$defs/sha256" },
@@ -155,6 +159,25 @@
 					"uniqueItems": true,
 					"items": { "type": "string", "minLength": 1 }
 				},
+				"trustedRepoMount": { "const": "/trusted" },
+				"overrideMarkerPath": {
+					"const": "/workspace/contract-marker-override"
+				},
+				"environmentOverrides": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"DEVCONTAINER_REPO_ROOT",
+						"DEVCONTAINER_IMAGE_CONTRACT_DIR"
+					],
+					"properties": {
+						"DEVCONTAINER_REPO_ROOT": { "const": "/trusted" },
+						"DEVCONTAINER_IMAGE_CONTRACT_DIR": {
+							"const": "/workspace/contract-marker-override"
+						}
+					}
+				},
+				"preVerificationShadowExecution": { "const": false },
 				"containerExitCode": { "type": "integer", "minimum": 1 },
 				"refused": { "const": true },
 				"diagnostic": { "type": "string", "minLength": 20 }

@@ -9,8 +9,8 @@ source /workspace/.devcontainer/on-create/setup-common.sh
 
 setup_proto_env
 
-repo_root="${DEVCONTAINER_REPO_ROOT:-/workspace}"
-image_contract_dir="${DEVCONTAINER_IMAGE_CONTRACT_DIR:-/usr/local/share/devenv-image}"
+repo_root="/workspace"
+image_contract_dir="/usr/local/share/devenv-image"
 root_manifest="$repo_root/.prototools"
 manifest_marker="$image_contract_dir/prototools.sha256"
 definition_marker="$image_contract_dir/definition.sha256"

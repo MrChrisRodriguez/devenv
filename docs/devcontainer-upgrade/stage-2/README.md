@@ -85,7 +85,9 @@ the first nonzero exit:
    architecture-sensitive base, Proto, Claude, and final stages.
 5. A real stale-definition refusal in a disposable worktree/container while
    malicious workspace-local Bun, Bash, and checksum utilities attempt to
-   print the baked marker.
+   print the baked marker and poisoned environment overrides point at a
+   pristine decoy checkout plus attacker-controlled markers. The probe invokes
+   the real on-create lifecycle and rejects any pre-verification tool sentinel.
 6. A real missing-foundation-uv partition mutation.
 7. Bash and Zsh login/non-login PATH probes.
 8. Two real containers over two worktrees, with image identity, writable-layer,

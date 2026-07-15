@@ -58,12 +58,19 @@ interface CapturedCommand {
 
 interface StaleProbe {
 	commandId: "stale-image-refusal";
-	mutation: "shadow-workspace-contract-tools-and-edit-definition";
+	mutation: "shadow-workspace-tools-env-overrides-and-edit-definition";
 	originalDefinitionFingerprint: string;
 	mutatedDefinitionFingerprint: string;
 	shadowBunPath: "/workspace/node_modules/.bin/bun";
 	shadowBashPath: "/workspace/node_modules/.bin/bash";
 	shadowUtilityPaths: string[];
+	trustedRepoMount: "/trusted";
+	overrideMarkerPath: "/workspace/contract-marker-override";
+	environmentOverrides: {
+		DEVCONTAINER_REPO_ROOT: "/trusted";
+		DEVCONTAINER_IMAGE_CONTRACT_DIR: "/workspace/contract-marker-override";
+	};
+	preVerificationShadowExecution: false;
 	containerExitCode: number;
 	refused: true;
 	diagnostic: string;
@@ -278,6 +285,19 @@ export async function probeStale(options_: {
 		const mutatedDefinitionFingerprint = fingerprint();
 		if (originalDefinitionFingerprint === mutatedDefinitionFingerprint)
 			throw new Error("Definition mutation did not change the fingerprint");
+		const overrideMarkerDirectory = resolve(
+			workspace,
+			"contract-marker-override",
+		);
+		await mkdir(overrideMarkerDirectory, { recursive: true });
+		await Bun.write(
+			resolve(overrideMarkerDirectory, "prototools.sha256"),
+			`${sha256(new Uint8Array(await Bun.file(resolve(workspace, ".prototools")).arrayBuffer()))}\n`,
+		);
+		await Bun.write(
+			resolve(overrideMarkerDirectory, "definition.sha256"),
+			`${originalDefinitionFingerprint}\n`,
+		);
 		const shadowTools = ["bun", "bash", "readlink", "sha256sum", "awk", "tr"];
 		const shadowUtilityPaths = shadowTools
 			.filter((tool) => !["bun", "bash"].includes(tool))
@@ -287,7 +307,7 @@ export async function probeStale(options_: {
 			await mkdir(dirname(shadowTool), { recursive: true });
 			await Bun.write(
 				shadowTool,
-				"#!/bin/sh\ncat /usr/local/share/devenv-image/definition.sha256\n",
+				"#!/bin/sh\nprintf 'PREVERIFY_TOOL_EXECUTED:%s\\n' \"$0\" >&2\n/usr/bin/cat /usr/local/share/devenv-image/definition.sha256\n",
 			);
 			await chmod(shadowTool, 0o755);
 		}
@@ -297,32 +317,49 @@ export async function probeStale(options_: {
 			"--rm",
 			"--mount",
 			`type=bind,src=${workspace},dst=/workspace,readonly`,
+			"--mount",
+			`type=bind,src=${root},dst=/trusted,readonly`,
+			"--env",
+			"DEVCONTAINER_REPO_ROOT=/trusted",
+			"--env",
+			"DEVCONTAINER_IMAGE_CONTRACT_DIR=/workspace/contract-marker-override",
 			"--workdir",
 			"/workspace",
 			options_.image,
 			"/bin/bash",
 			"-lc",
-			"source /workspace/.devcontainer/on-create/setup-proto.sh",
+			"/bin/bash /workspace/.devcontainer/on-create.sh",
 		];
 		const result = execute(command, root);
 		const diagnostic = `${result.stdout}\n${result.stderr}`.trim();
 		if (result.exitCode === 0)
 			throw new Error(
-				"Stale definition with a shadowing workspace Bun was accepted by the image",
+				"Stale definition with shadowed tools and poisoned verifier overrides was accepted by the image",
 			);
 		if (
 			!diagnostic.includes("definition differs") ||
 			!diagnostic.includes("Rebuild/recreate")
 		)
 			throw new Error(`Stale refusal diagnostic drifted:\n${diagnostic}`);
+		if (diagnostic.includes("PREVERIFY_TOOL_EXECUTED"))
+			throw new Error(
+				`Workspace PATH tool executed before stale-image refusal:\n${diagnostic}`,
+			);
 		return {
 			commandId: "stale-image-refusal",
-			mutation: "shadow-workspace-contract-tools-and-edit-definition",
+			mutation: "shadow-workspace-tools-env-overrides-and-edit-definition",
 			originalDefinitionFingerprint,
 			mutatedDefinitionFingerprint,
 			shadowBunPath: "/workspace/node_modules/.bin/bun",
 			shadowBashPath: "/workspace/node_modules/.bin/bash",
 			shadowUtilityPaths,
+			trustedRepoMount: "/trusted",
+			overrideMarkerPath: "/workspace/contract-marker-override",
+			environmentOverrides: {
+				DEVCONTAINER_REPO_ROOT: "/trusted",
+				DEVCONTAINER_IMAGE_CONTRACT_DIR: "/workspace/contract-marker-override",
+			},
+			preVerificationShadowExecution: false,
 			containerExitCode: result.exitCode,
 			refused: true,
 			diagnostic,

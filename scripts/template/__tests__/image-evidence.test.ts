@@ -136,7 +136,7 @@ function validEvidence(): JsonRecord {
 		],
 		staleImageRefusal: {
 			commandId: "stale-image-refusal",
-			mutation: "shadow-workspace-contract-tools-and-edit-definition",
+			mutation: "shadow-workspace-tools-env-overrides-and-edit-definition",
 			originalDefinitionFingerprint: "5".repeat(64),
 			mutatedDefinitionFingerprint: "6".repeat(64),
 			shadowBunPath: "/workspace/node_modules/.bin/bun",
@@ -147,6 +147,13 @@ function validEvidence(): JsonRecord {
 				"/workspace/node_modules/.bin/awk",
 				"/workspace/node_modules/.bin/tr",
 			],
+			trustedRepoMount: "/trusted",
+			overrideMarkerPath: "/workspace/contract-marker-override",
+			environmentOverrides: {
+				DEVCONTAINER_REPO_ROOT: "/trusted",
+				DEVCONTAINER_IMAGE_CONTRACT_DIR: "/workspace/contract-marker-override",
+			},
+			preVerificationShadowExecution: false,
 			containerExitCode: 1,
 			refused: true,
 			diagnostic:

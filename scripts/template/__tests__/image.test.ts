@@ -132,6 +132,26 @@ describe("devcontainer image contract", () => {
 			);
 			await mutate(
 				temporary,
+				".devcontainer/on-create/setup-proto.sh",
+				(source) =>
+					source.replace(
+						'repo_root="/workspace"',
+						String.raw`repo_root="\${DEVCONTAINER_REPO_ROOT:-/workspace}"`,
+					),
+				"image: setup-proto trusts forbidden DEVCONTAINER_REPO_ROOT override",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/on-create/setup-proto.sh",
+				(source) =>
+					source.replace(
+						'image_contract_dir="/usr/local/share/devenv-image"',
+						String.raw`image_contract_dir="\${DEVCONTAINER_IMAGE_CONTRACT_DIR:-/usr/local/share/devenv-image}"`,
+					),
+				"image: setup-proto trusts forbidden DEVCONTAINER_IMAGE_CONTRACT_DIR override",
+			);
+			await mutate(
+				temporary,
 				".devcontainer/devcontainer.json",
 				(source) => source.replace('"/bin/bash"', '"bash"'),
 				"image: onCreateCommand must use absolute system Bash",
@@ -145,6 +165,20 @@ describe("devcontainer image contract", () => {
 						`"mounts": [\n\t\t"source=proto-home-\${devcontainerId},target=/home/vscode/.proto,type=volume",`,
 					),
 				"image: active devcontainer must not mount Proto storage",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/on-create.sh",
+				(source) => {
+					const verifier =
+						"source /workspace/.devcontainer/on-create/setup-proto.sh";
+					const secrets =
+						"source /workspace/.devcontainer/on-create/setup-secrets.sh";
+					return source
+						.replace(`${verifier}\n`, "")
+						.replace(secrets, `${secrets}\n${verifier}`);
+				},
+				"image: on-create must verify Proto before every other sourced lifecycle action",
 			);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });

@@ -5,6 +5,11 @@ set -e
 # Use `return N` for early termination, not `exit N` — `exit` from a sourced
 # script kills the parent shell and silently halts the rest of the setup chain.
 
+# Verify the image-owned Proto manifest and complete devcontainer fingerprint
+# before any lifecycle action can execute a workspace-first PATH command.
+# HARD source (not optional): every later step depends on this exact image.
+source /workspace/.devcontainer/on-create/setup-proto.sh
+
 echo "🚀 Configuring ${DEVCONTAINER_PROJECT:-development} from image-owned payloads..."
 
 # ── Secrets ──────────────────────────────────────────────────────────────────
@@ -30,10 +35,6 @@ for d in "$HOME/.claude" "$HOME/.codex" "$HOME/.gemini" "$HOME/.config"; do
     fi
 done
 # ─────────────────────────────────────────────────────────────────────────────
-
-# Verify the image-owned Proto manifest and complete devcontainer fingerprint.
-# HARD source (not optional): every later step depends on this exact image.
-source /workspace/.devcontainer/on-create/setup-proto.sh
 
 # Project CLIs are repository-owned. Install them once before optional setup
 # scripts and keep node_modules/.bin ahead of every global command location.

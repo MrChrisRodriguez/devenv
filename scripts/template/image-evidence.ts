@@ -565,9 +565,16 @@ export function validateStageTwoEvidenceValue(
 		errors.push("semantic: stale image refusal was not observed");
 	if (
 		stale["mutation"] !==
-			"shadow-workspace-contract-tools-and-edit-definition" ||
+			"shadow-workspace-tools-env-overrides-and-edit-definition" ||
 		stale["shadowBunPath"] !== "/workspace/node_modules/.bin/bun" ||
 		stale["shadowBashPath"] !== "/workspace/node_modules/.bin/bash" ||
+		stale["trustedRepoMount"] !== "/trusted" ||
+		stale["overrideMarkerPath"] !== "/workspace/contract-marker-override" ||
+		!sameValue(stale["environmentOverrides"], {
+			DEVCONTAINER_REPO_ROOT: "/trusted",
+			DEVCONTAINER_IMAGE_CONTRACT_DIR: "/workspace/contract-marker-override",
+		}) ||
+		stale["preVerificationShadowExecution"] !== false ||
 		!sameValue(stale["shadowUtilityPaths"], [
 			"/workspace/node_modules/.bin/readlink",
 			"/workspace/node_modules/.bin/sha256sum",
@@ -575,7 +582,7 @@ export function validateStageTwoEvidenceValue(
 			"/workspace/node_modules/.bin/tr",
 		])
 	)
-		errors.push("semantic: stale image shadow-Bun mutation drifted");
+		errors.push("semantic: stale image trust-boundary mutation drifted");
 	if (
 		stale["originalDefinitionFingerprint"] ===
 		stale["mutatedDefinitionFingerprint"]

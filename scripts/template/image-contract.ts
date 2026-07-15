@@ -376,6 +376,12 @@ export async function validateImageContract(
 	}
 	if (/image_bun=.*\/shims\/bun/.test(setupProto))
 		errors.push("image: setup-proto must not fingerprint through a Proto shim");
+	for (const override of [
+		"DEVCONTAINER_REPO_ROOT",
+		"DEVCONTAINER_IMAGE_CONTRACT_DIR",
+	])
+		if (setupProto.includes(override))
+			errors.push(`image: setup-proto trusts forbidden ${override} override`);
 	for (const capability of [
 		"codex",
 		"gemini",
@@ -394,6 +400,15 @@ export async function validateImageContract(
 	const onCreate = await Bun.file(
 		resolve(root, ".devcontainer/on-create.sh"),
 	).text();
+	const firstLifecycleSource = /^[\t ]*source[\t ]+([^\s#]+)[\t ]*$/m.exec(
+		onCreate,
+	)?.[1];
+	if (
+		firstLifecycleSource !== "/workspace/.devcontainer/on-create/setup-proto.sh"
+	)
+		errors.push(
+			"image: on-create must verify Proto before every other sourced lifecycle action",
+		);
 	if (
 		/\$HOME\/\.proto[^\n]*(?:chown|Claim)|setup-vscode-extensions/.test(
 			onCreate,
