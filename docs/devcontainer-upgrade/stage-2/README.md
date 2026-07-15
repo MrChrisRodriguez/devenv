@@ -60,7 +60,7 @@ alternate Codex version must be a real exact version different from the
 Dockerfile pin.
 
 The reviewed pre-evidence implementation boundary is
-`aade3151cc8559ff59860d0b427f74361b8dffcb`, based on
+`69a97d84e2591242265887a7c062bbb0853b5ca9`, based on
 `4367bad6e2cb49e4c969a61b892634347ed0bf24`. Evidence-only commits may follow
 that boundary, but the collector proves that `.dockerignore`, `.prototools`,
 and `.devcontainer/**` have not changed since it.
@@ -70,7 +70,7 @@ Run from a clean descendant containing the evidence collector:
 ```sh
 bun scripts/template/collect-stage-two-evidence.ts capture \
   --base 4367bad6e2cb49e4c969a61b892634347ed0bf24 \
-  --implementation aade3151cc8559ff59860d0b427f74361b8dffcb \
+  --implementation 69a97d84e2591242265887a7c062bbb0853b5ca9 \
   --alternate-codex-version <exact-available-version>
 ```
 
