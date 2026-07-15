@@ -63,12 +63,14 @@
 				"baseSha",
 				"preMigrationSha",
 				"implementationSha",
+				"runtimeBoundarySha",
 				"exactHeadEvidence"
 			],
 			"properties": {
 				"baseSha": { "$ref": "#/$defs/sha" },
 				"preMigrationSha": { "$ref": "#/$defs/sha" },
 				"implementationSha": { "$ref": "#/$defs/sha" },
+				"runtimeBoundarySha": { "$ref": "#/$defs/sha" },
 				"exactHeadEvidence": { "type": "string", "minLength": 1 }
 			}
 		},

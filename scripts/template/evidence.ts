@@ -290,10 +290,12 @@ export async function validateStageZeroEvidence(
 	const baseSha = source["baseSha"];
 	const preMigrationSha = source["preMigrationSha"];
 	const implementationSha = source["implementationSha"];
+	const runtimeBoundarySha = source["runtimeBoundarySha"];
 	if (
 		typeof baseSha !== "string" ||
 		typeof preMigrationSha !== "string" ||
-		typeof implementationSha !== "string"
+		typeof implementationSha !== "string" ||
+		typeof runtimeBoundarySha !== "string"
 	)
 		return [...errors, "semantic: source commit SHAs are unavailable"];
 
@@ -301,6 +303,7 @@ export async function validateStageZeroEvidence(
 		["base", baseSha],
 		["pre-migration", preMigrationSha],
 		["implementation", implementationSha],
+		["runtime boundary", runtimeBoundarySha],
 	] as const) {
 		if (git(root, ["cat-file", "-e", `${sha}^{commit}`]).exitCode !== 0)
 			errors.push(`repository: ${name} commit ${sha} is unavailable`);
@@ -311,10 +314,21 @@ export async function validateStageZeroEvidence(
 	)
 		errors.push("repository: pre-migration commit is not an ancestor of base");
 	if (
-		git(root, ["merge-base", "--is-ancestor", implementationSha, "HEAD"])
+		git(root, [
+			"merge-base",
+			"--is-ancestor",
+			implementationSha,
+			runtimeBoundarySha,
+		]).exitCode !== 0
+	)
+		errors.push(
+			"repository: implementation commit is not an ancestor of runtime boundary",
+		);
+	if (
+		git(root, ["merge-base", "--is-ancestor", runtimeBoundarySha, "HEAD"])
 			.exitCode !== 0
 	)
-		errors.push("repository: implementation commit is not an ancestor of HEAD");
+		errors.push("repository: runtime boundary is not an ancestor of HEAD");
 	const implementationParent = git(root, [
 		"rev-parse",
 		`${implementationSha}^`,
@@ -353,7 +367,7 @@ export async function validateStageZeroEvidence(
 		"diff",
 		"--name-only",
 		baseSha,
-		"HEAD",
+		runtimeBoundarySha,
 	]);
 	if (implementationDiff.exitCode !== 0)
 		errors.push("repository: Stage 0 runtime diff could not be inspected");

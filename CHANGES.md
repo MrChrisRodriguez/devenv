@@ -14,7 +14,7 @@ This file documents changes made to this template repository. Each entry provide
 - `template-parameters.toml`, `template-parameters.schema.json` — project, path, port, toolchain authority, capability, CI, worktree, and generation contracts.
 - `fixtures/template/*.toml`, `scripts/template/**` — deterministic atomic fixture rendering, validation, and known-bad mutation tests.
 - `docs/devcontainer-upgrade/stage-0/**` — ownership inventory, synchronization risks, measurement method, and rollback.
-- `evidence/stage-0-baseline*.json`, `scripts/template/evidence.ts` — machine-readable measured evidence, strict schema, anti-vacuity checks, commit-lineage proof, and observational-runtime-diff validation.
+- `evidence/stage-0-baseline*.json`, `scripts/template/evidence.ts` — machine-readable measured evidence, strict schema, anti-vacuity checks, commit-lineage proof, and observational runtime-diff validation pinned to an immutable Stage 0 boundary.
 - `package.json` — Bun entry points for the Stage 0 gates.
 - `.github/workflows/ci.yml` — required Stage 0 schema, mutation, typecheck, fixture, and full-history commit-lineage gate.
 

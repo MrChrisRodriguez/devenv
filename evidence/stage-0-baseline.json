@@ -6,6 +6,7 @@
 		"baseSha": "b981dc707bdf34e10094281958cffd5f9a22f741",
 		"preMigrationSha": "3577ee33903eb37a45e1baa8b89917e0d408493e",
 		"implementationSha": "e0210de4df563793ebe1a8529cd6016f8cca0306",
+		"runtimeBoundarySha": "3c2b909d90bf0253add17694c5d8e855701b0817",
 		"exactHeadEvidence": "The final PR head SHA and exact-head required check run are recorded in the PR description because a committed file cannot contain its own commit SHA."
 	},
 	"environment": {
@@ -528,7 +529,7 @@
 	"rollback": {
 		"mode": "observational",
 		"command": ["git", "revert", "<stage-0-pr-merge-commit>"],
-		"proof": "The diff from preMigrationSha to baseSha is spec-only, and the validator rejects .devcontainer/** or .prototools changes from baseSha through the exact PR head. Reverting the Stage 0 merge removes metadata, fixtures, gates, and evidence while the pre-migration runtime remains recoverable at 3577ee33903eb37a45e1baa8b89917e0d408493e."
+		"proof": "The diff from preMigrationSha to baseSha is spec-only, and the validator rejects .devcontainer/** or .prototools changes from baseSha through the immutable runtimeBoundarySha. Reverting the Stage 0 merge removes metadata, fixtures, gates, and evidence while the pre-migration runtime remains recoverable at 3577ee33903eb37a45e1baa8b89917e0d408493e."
 	},
 	"cleanup": {
 		"commands": [
