@@ -19,8 +19,10 @@ fi
 
 # Initialize Zinit
 ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
-[ ! -d $ZINIT_HOME ] && mkdir -p "$(dirname $ZINIT_HOME)"
-[ ! -d $ZINIT_HOME/.git ] && git clone https://github.com/zdharma-continuum/zinit.git "$ZINIT_HOME"
+if [[ ! -r "$ZINIT_HOME/zinit.zsh" ]]; then
+  print -u2 "ERROR: image-owned Zinit is missing; rebuild/recreate the devcontainer"
+  return 1
+fi
 source "${ZINIT_HOME}/zinit.zsh"
 
 # Load Powerlevel10k theme

@@ -1,22 +1,12 @@
 {
 	"name": "Development",
 	"build": {
-		"dockerfile": "Dockerfile"
+		"dockerfile": "Dockerfile",
+		"context": "..",
+		"target": "development"
 	},
 	"features": {
-		"ghcr.io/devcontainers/features/docker-in-docker:2": {
-			"moby": false
-		},
-		"ghcr.io/devcontainers/features/git:1": {},
-		"ghcr.io/devcontainers/features/github-cli:1": {},
-		"ghcr.io/devcontainers/features/common-utils:2": {
-			"installZsh": true,
-			"configureZshAsDefaultShell": true,
-			"installOhMyZsh": false,
-			"username": "vscode",
-			"userUid": "automatic",
-			"userGid": "automatic"
-		}
+		"ghcr.io/devcontainers/features/github-cli:1": {}
 	},
 	"initializeCommand": [
 		"bash",
@@ -109,7 +99,6 @@
 		"source=claude-code-config-${devcontainerId},target=/home/vscode/.claude,type=volume",
 		"source=codex-home-${devcontainerId},target=/home/vscode/.codex,type=volume",
 		"source=gemini-home-${devcontainerId},target=/home/vscode/.gemini,type=volume",
-		"source=proto-home-${devcontainerId},target=/home/vscode/.proto,type=volume",
 		"source=config-home-${devcontainerId},target=/home/vscode/.config,type=volume",
 		"source=${localEnv:HOME}/.ssh,target=/mnt/host-ssh,type=bind,readonly,consistency=cached",
 		"source=${localEnv:HOME}/.config/devcontainer,target=/run/devcontainer-config,type=bind,readonly,consistency=cached"

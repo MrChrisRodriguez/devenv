@@ -1,0 +1,44 @@
+{
+	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
+	"extends": ["config:recommended", ":dependencyDashboard"],
+	"enabledManagers": ["custom.regex", "dockerfile"],
+	"customManagers": [
+		{
+			"customType": "regex",
+			"description": "Exact non-Proto image payload versions; checksum mutations intentionally remain review-gated.",
+			"managerFilePatterns": ["/^\\.devcontainer\\/Dockerfile$/"],
+			"matchStrings": [
+				"# renovate: datasource=(?<datasource>[a-z-]+) depName=(?<depName>\\S+)\\s+ARG \\w+_VERSION=(?<currentValue>\\S+)\\s"
+			]
+		},
+		{
+			"customType": "regex",
+			"description": "Immutable Zinit source commit.",
+			"managerFilePatterns": ["/^\\.devcontainer\\/Dockerfile$/"],
+			"matchStrings": [
+				"# renovate: datasource=(?<datasource>git-refs) depName=(?<depName>\\S+) packageName=(?<packageName>\\S+)\\s+ARG ZINIT_COMMIT=(?<currentValue>[0-9a-f]{40})\\s"
+			]
+		}
+	],
+	"packageRules": [
+		{
+			"matchFileNames": [".devcontainer/Dockerfile"],
+			"matchManagers": ["custom.regex", "dockerfile"],
+			"rangeStrategy": "pin",
+			"separateMajorMinor": true,
+			"separateMinorPatch": true,
+			"separateMultipleMajor": true,
+			"groupName": null,
+			"automerge": false,
+			"commitMessagePrefix": "chore(devcontainer):",
+			"semanticCommits": "disabled"
+		},
+		{
+			"matchFileNames": [".devcontainer/Dockerfile"],
+			"matchManagers": ["custom.regex"],
+			"prBodyNotes": [
+				"Refresh every checksum owned by this pin before merging. The image build intentionally fails when a version changes without its reviewed checksum(s)."
+			]
+		}
+	]
+}

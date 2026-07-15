@@ -57,6 +57,7 @@
 		"template:fixtures": "bun scripts/template/render-all-fixtures.ts",
 		"template:test": "bun test scripts/template/__tests__",
 		"template:typecheck": "bunx tsc -p scripts/template/tsconfig.json",
+		"image:check": "bun scripts/template/validate-image.ts",
 		"toolchain:check": "bun scripts/template/validate-toolchain.ts"
 	},
 	"lint-staged": {

@@ -252,8 +252,8 @@ describe("repository toolchain contract", () => {
 			await mutate(
 				temporary,
 				".devcontainer/devcontainer-lock.json",
-				(source) => source.replace("sha256:cb0c4d3c", "sha256:ab0c4d3c"),
-				"features: ghcr.io/devcontainers/features/common-utils:2 resolved reference and integrity differ",
+				(source) => source.replace("sha256:d22f50b7", "sha256:a22f50b7"),
+				"features: ghcr.io/devcontainers/features/github-cli:1 resolved reference and integrity differ",
 			);
 			await mutate(
 				temporary,
@@ -435,8 +435,11 @@ describe("repository toolchain contract", () => {
 			const setup = await Bun.file(
 				resolve(ROOT, ".devcontainer/on-create/setup-proto.sh"),
 			).text();
-			expect(setup).toContain("/workspace/.devcontainer/install-proto.sh");
-			expect(setup).not.toContain("if ! command -v proto");
+			expect(setup).toContain("prototools.sha256");
+			expect(setup).toContain("definition.sha256");
+			expect(setup).toContain("Rebuild/recreate the devcontainer");
+			expect(setup).not.toContain("/workspace/.devcontainer/install-proto.sh");
+			expect(setup).not.toMatch(/\bproto\s+(?:install|use)\b/);
 			const openspec = await Bun.file(
 				resolve(ROOT, ".devcontainer/on-create/setup-openspec.sh"),
 			).text();

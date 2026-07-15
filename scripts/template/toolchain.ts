@@ -553,10 +553,20 @@ export async function validateToolchainContract(
 		resolve(root, ".devcontainer/on-create/setup-proto.sh"),
 	).text();
 	if (
-		setupProto.includes("moonrepo.dev/install/proto.sh") ||
-		!setupProto.includes(".devcontainer/install-proto.sh")
+		/(?:install-proto\.sh|\bproto\s+(?:install|use)\b|chown[^\n]*\.proto|curl\s)/.test(
+			setupProto,
+		)
 	)
-		errors.push("proto: setup does not use the checksum-verified installer");
+		errors.push("proto: on-create must not mutate the image-owned toolchain");
+	for (const marker of [
+		"prototools.sha256",
+		"definition.sha256",
+		"devcontainer-fingerprint.sh",
+		"Rebuild/recreate the devcontainer",
+	]) {
+		if (!setupProto.includes(marker))
+			errors.push(`proto: on-create omits image contract marker ${marker}`);
+	}
 
 	return [...new Set(errors)].sort();
 }

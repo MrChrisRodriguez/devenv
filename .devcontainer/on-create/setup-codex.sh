@@ -1,22 +1,32 @@
 #!/usr/bin/env bash
 set -e
 
-echo "🤖 Installing Codex CLI..."
+echo "🤖 Verifying image-owned Codex CLI..."
 
 # Source common setup functions
 source /workspace/.devcontainer/on-create/setup-common.sh
 
-# Setup Proto environment to access bun
+# Setup the image tool environment before executing the baked CLI.
 setup_proto_env
 
-# (~/.codex ownership is claimed upfront in on-create.sh, before any tool script
-# runs — so writes here, e.g. OpenSpec's earlier Codex refresh, don't hit EACCES.)
+codex_binary="$HOME/.local/bin/codex"
+codex_payload="$HOME/.payloads/codex/"
 
-# Install Codex CLI (skip if already installed)
-if command -v codex &> /dev/null; then
-    echo "ℹ️  Codex CLI already installed, skipping"
-else
-    bun install -g @openai/codex
+if [ ! -x "$codex_binary" ]; then
+	echo "ERROR: Codex is missing from the image-owned payload; rebuild/recreate the devcontainer" >&2
+	return 1
+fi
+case "$(readlink -f "$codex_binary")" in
+	"$codex_payload"*) ;;
+	*)
+		echo "ERROR: Codex does not resolve inside $codex_payload; rebuild/recreate the devcontainer" >&2
+		return 1
+		;;
+esac
+if ! "$codex_binary" --version >/dev/null 2>&1; then
+	echo "ERROR: the image-owned Codex payload is not executable; rebuild/recreate the devcontainer" >&2
+	return 1
 fi
 
-echo "✅ Codex CLI installed!"
+mkdir -p "$HOME/.codex"
+echo "✅ Image-owned Codex CLI verified"

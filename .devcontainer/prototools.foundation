@@ -1,0 +1,7 @@
+bun = "1.3.13"
+proto = "0.55.4"
+python = "3.14.2"
+uv = "0.9.7"
+
+[plugins]
+uv = "https://raw.githubusercontent.com/Phault/proto-toml-plugins/9808cc412785ac59ec1b0d61bd1bee152f6f6b56/uv/plugin.toml"

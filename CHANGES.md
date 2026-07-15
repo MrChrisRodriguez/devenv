@@ -4,6 +4,18 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-07-14 — Add: reproducible payload-oriented devcontainer image
+
+**Goal:** Move the complete development toolchain out of per-container mutation and into independently cached, capability-rendered image payloads. Every image download, Proto partition, retained feature, marker, and runtime verification path now has one exact owner, while stale definitions fail closed instead of silently repairing themselves.
+
+**How to implement:** Build from digest-pinned Docker syntax and base images, install stable system tools once, split the root Proto tool/plugin set into exact foundation and auxiliary cache partitions, and assemble isolated Graphify, Playwright, Codex, Gemini, ccstatusline, Claude/node-gyp, and pinned Zinit payload stages. Keep `.prototools` user-facing, prove both partition unions equal it, and keep `~/.proto` image-owned by removing its active volume. Restrict the build context to `.dockerignore`, `.prototools`, and `.devcontainer`; hash those complete inputs including modes and symlink targets into read-only image markers; make on-create verify the markers and payload paths without installation or ownership repair. Pin every direct artifact by Docker ARG and architecture checksum, reject unsupported architectures and mutable URLs, isolate Renovate updates, retain only digest-locked GitHub CLI, and provide exact-ID unattached legacy Proto-volume cleanup. Render browser and agent stages only for selected capabilities, run `image:check` in generated CI, and require a real selected-target Docker build. Roll back the image, devcontainer definition, partitions, runtime verification, and feature lock together; never restore the Proto volume without reverting the entire ownership model.
+
+**Changed files:**
+- `.devcontainer/Dockerfile`, `.devcontainer/prototools.*`, `.dockerignore`, `renovate.json` — staged image payloads, exact download ownership, cache partitions, and restricted context.
+- `.devcontainer/devcontainer.json`, `.devcontainer/devcontainer-lock.json`, `.devcontainer/devcontainer-fingerprint.sh` — retained feature, image-owned Proto, and complete definition markers.
+- `.devcontainer/on-create*`, `.devcontainer/configs/.zshrc`, `.devcontainer/host/cleanup-legacy-proto-volume.sh` — fail-closed verification, immutable shell setup, and scoped legacy cleanup.
+- `scripts/template/image-contract.ts`, renderer/tests, `.github/workflows/ci.yml`, `AGENTS.md` — rendered guard, negative mutation proof, real image build gate, and ongoing ownership rules.
+
 ## 2026-07-14 — Add: exact repository toolchain and dependency contract
 
 **Goal:** Make the template's repository toolchain reproducible before changing the image architecture. Every selected Proto tool, project CLI, shared dependency, devcontainer feature, supported Proto archive, and TypeScript alias now has one exact visible authority, with fail-closed guards and machine-readable evidence.

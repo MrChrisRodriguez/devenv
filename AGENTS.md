@@ -62,6 +62,15 @@ scripts/   # one-off tooling scripts
 - TypeScript paths must be config-relative with `${configDir}`. Do not add `baseUrl` or absolute source-project aliases.
 - Run `bun run toolchain:check` after changing any tool, package, feature, checksum, TypeScript path, or PATH authority.
 
+## Devcontainer Image Ownership
+
+- `.prototools` remains the only human-edited Proto authority. The foundation and auxiliary manifests are Docker cache partitions whose tool and plugin union must equal the root manifest exactly.
+- `~/.proto`, agent CLI payloads, Graphify, Claude, and Zinit are image-owned. Container lifecycle scripts verify them and fail with a rebuild/recreate instruction; they must not download, install, chown, or repair those payloads.
+- Docker `ARG` values own non-Proto image versions. Direct downloads require exact versions, immutable URLs, supported-architecture selection, and reviewed SHA-256 values.
+- `.dockerignore`, `.prototools`, and every `.devcontainer` file are definition-fingerprint inputs. Update the fingerprint contract when build inputs move.
+- The active devcontainer must not mount `~/.proto`; use only `.devcontainer/host/cleanup-legacy-proto-volume.sh` with an exact devcontainer ID for old volumes.
+- Run `bun run image:check` plus the clean image build after changing Docker stages, payload pins, derived Proto manifests, mounts, or on-create ownership.
+
 ## Commit Policy
 
 ALWAYS commit and push after completing each significant change. Do NOT wait for the user to ask. Before committing, update `/workspace/CHANGES.md` with a dated entry (Goal + How to implement).
