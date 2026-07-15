@@ -142,6 +142,13 @@
 			"sourceOfTruth": "devcontainer image contract"
 		},
 		{
+			"pattern": "scripts/template/agent-payload-contract.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "agent payload and skill-discovery contract"
+		},
+		{
 			"pattern": "scripts/template/**",
 			"classification": "template-tooling",
 			"syncPolicy": "merge",
@@ -270,6 +277,10 @@
 			"requiresAll": ["playwright"]
 		},
 		{ "pattern": ".codex/**", "requiresAll": ["codex"] },
+		{
+			"pattern": ".codex/skills/graphify/**",
+			"requiresAll": ["graphify"]
+		},
 		{ "pattern": ".codex/skills/openspec-*/**", "requiresAll": ["openspec"] },
 		{ "pattern": ".gemini/**", "requiresAll": ["gemini"] },
 		{ "pattern": ".gemini/commands/opsx/**", "requiresAll": ["openspec"] },
@@ -287,7 +298,6 @@
 			"requiresAll": ["claude"]
 		},
 		{ "pattern": "GEMINI.md", "requiresAll": ["gemini"] },
-		{ "pattern": ".agents/skills/graphify/**", "requiresAll": ["graphify"] },
 		{
 			"pattern": ".devcontainer/ccstatusline-settings.json",
 			"requiresAll": ["ccstatusline"]
@@ -305,8 +315,16 @@
 			"requiresAll": ["claude_warp"]
 		},
 		{
+			"pattern": ".devcontainer/host/capture-warp-env.sh",
+			"requiresAll": ["claude_warp"]
+		},
+		{
 			"pattern": ".devcontainer/on-create/setup-claude.sh",
 			"requiresAll": ["claude"]
+		},
+		{
+			"pattern": ".devcontainer/on-create/setup-context7.sh",
+			"requiresAll": ["context7"]
 		},
 		{
 			"pattern": ".devcontainer/on-create/setup-codex.sh",
@@ -373,6 +391,14 @@
 		"context7": {
 			"paths": [],
 			"tokens": ["context7", "CONTEXT7_API_KEY", "@upstash/context7-mcp"]
+		},
+		"claude_octopus": {
+			"paths": [".devcontainer/on-create/setup-claude-octopus.sh"],
+			"tokens": ["octopus_payload", "OCTOPUS_COMMIT", "Claude Octopus"]
+		},
+		"claude_warp": {
+			"paths": [".devcontainer/on-create/setup-claude-warp.sh"],
+			"tokens": ["warp_payload", "WARP_COMMIT", "Claude Code Warp"]
 		},
 		"moon_affected_selection": {
 			"paths": ["ci-matrix-universes.json", "scripts/ci/affected-matrices.sh"],
@@ -457,6 +483,12 @@
 			"destination": "$HOME/.local/bin/claude and $HOME/.claude/**",
 			"generator": ".devcontainer/on-create/setup-claude.sh",
 			"runtimeMutation": true
+		},
+		{
+			"source": "Dockerfile#CONTEXT7_VERSION and committed MCP settings",
+			"destination": "$HOME/.payloads/context7 and $HOME/.local/bin/context7-mcp",
+			"generator": ".devcontainer/on-create/setup-context7.sh",
+			"runtimeMutation": false
 		},
 		{
 			"source": ".devcontainer/ccstatusline-settings.json",

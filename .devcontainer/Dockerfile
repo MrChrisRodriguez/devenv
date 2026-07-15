@@ -69,7 +69,7 @@ RUN case "$TARGETARCH" in \
 	&& chsh -s /usr/bin/zsh vscode \
 	&& printf '%s\n' \
 		'export PROTO_HOME="$HOME/.proto"' \
-		'export PATH="/workspace/node_modules/.bin:$HOME/.local/bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH"' \
+		'export PATH="/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH"' \
 		> /etc/profile.d/devenv-path.sh \
 	&& chmod 0644 /etc/profile.d/devenv-path.sh
 
@@ -157,6 +157,15 @@ RUN BUN_INSTALL="${HOME}/.payloads/ccstatusline" \
 	bun install -g "ccstatusline@${CCSTATUSLINE_VERSION}"
 # capability:end ccstatusline
 
+# capability:start context7
+FROM proto_foundation AS context7_payload
+
+# renovate: datasource=npm depName=@upstash/context7-mcp
+ARG CONTEXT7_VERSION=3.2.3
+RUN BUN_INSTALL="${HOME}/.payloads/context7" \
+	bun install -g "@upstash/context7-mcp@${CONTEXT7_VERSION}"
+# capability:end context7
+
 # capability:start claude
 FROM proto_foundation AS claude_payload
 
@@ -181,6 +190,45 @@ RUN case "$TARGETARCH" in \
 	&& chmod +x "${HOME}/.local/bin/claude" \
 	&& BUN_INSTALL="${HOME}/.payloads/claude-tools" bun install -g "node-gyp@${NODE_GYP_VERSION}"
 # capability:end claude
+
+# capability:start claude_octopus
+FROM proto_foundation AS octopus_payload
+
+# renovate: datasource=git-refs depName=nyldn/claude-octopus packageName=https://github.com/nyldn/claude-octopus.git
+ARG OCTOPUS_COMMIT=f42f34a8f9a7ee5b9324e8b2d23159878c132b02
+ARG OCTOPUS_SHA256=64104245973939c1508babb4503bef56fdf455ffe57370758a8d07fbc0866263
+RUN mkdir -p "${HOME}/.payloads/octopus" \
+	&& curl --fail --location --silent --show-error \
+		--retry 3 --retry-all-errors --retry-max-time 180 \
+		--connect-timeout 10 --max-time 180 \
+		"https://github.com/nyldn/claude-octopus/archive/${OCTOPUS_COMMIT}.tar.gz" \
+		-o /tmp/octopus.tar.gz \
+	&& printf '%s  %s\n' "$OCTOPUS_SHA256" /tmp/octopus.tar.gz | sha256sum --check --status - \
+	&& tar xzf /tmp/octopus.tar.gz --strip-components=1 -C "${HOME}/.payloads/octopus" \
+	&& rm /tmp/octopus.tar.gz \
+	&& OCTOPUS_PAYLOAD="${HOME}/.payloads/octopus" bun -e \
+		'const path = `${process.env.OCTOPUS_PAYLOAD}/.claude-plugin/marketplace.json`; const value = await Bun.file(path).json(); const plugin = value.plugins.find((entry) => entry.name === "octo"); if (!plugin) throw new Error("octo marketplace entry missing"); plugin.source = "."; value.plugins = [plugin]; await Bun.write(path, `${JSON.stringify(value, null, 2)}\n`);' \
+	&& printf '%s\n%s\n' "$OCTOPUS_COMMIT" "$OCTOPUS_SHA256" > "${HOME}/.payloads/octopus/.devenv-source"
+# capability:end claude_octopus
+
+# capability:start claude_warp
+FROM proto_foundation AS warp_payload
+
+# renovate: datasource=git-refs depName=warpdotdev/claude-code-warp packageName=https://github.com/warpdotdev/claude-code-warp.git
+ARG WARP_COMMIT=58c823da195346a7e6645fd2d9484d0e38db6bc2
+ARG WARP_SHA256=054607a80b7eb5571615925a6991082091d063b4eac591499177716421f76557
+RUN mkdir -p "${HOME}/.payloads/warp" \
+	&& curl --fail --location --silent --show-error \
+		--retry 3 --retry-all-errors --retry-max-time 180 \
+		--connect-timeout 10 --max-time 180 \
+		"https://github.com/warpdotdev/claude-code-warp/archive/${WARP_COMMIT}.tar.gz" \
+		-o /tmp/warp.tar.gz \
+	&& printf '%s  %s\n' "$WARP_SHA256" /tmp/warp.tar.gz | sha256sum --check --status - \
+	&& tar xzf /tmp/warp.tar.gz --strip-components=1 -C "${HOME}/.payloads/warp" \
+	&& rm /tmp/warp.tar.gz \
+	&& printf '%s\n%s\n' "$WARP_COMMIT" "$WARP_SHA256" > "${HOME}/.payloads/warp/.devenv-source" \
+	&& cp "${HOME}/.payloads/warp/.devenv-source" "${HOME}/.payloads/warp/plugins/warp/.devenv-source"
+# capability:end claude_warp
 
 FROM stable_base AS shell_payload
 
@@ -211,10 +259,19 @@ COPY --link --from=gemini_payload --chown=1000:1000 /home/vscode/.payloads/gemin
 # capability:start ccstatusline
 COPY --link --from=ccstatusline_payload --chown=1000:1000 /home/vscode/.payloads/ccstatusline /home/vscode/.payloads/ccstatusline
 # capability:end ccstatusline
+# capability:start context7
+COPY --link --from=context7_payload --chown=1000:1000 /home/vscode/.payloads/context7 /home/vscode/.payloads/context7
+# capability:end context7
 # capability:start claude
 COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.payloads/claude-tools /home/vscode/.payloads/claude-tools
 COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.local/bin/claude /home/vscode/.local/bin/claude
 # capability:end claude
+# capability:start claude_octopus
+COPY --link --from=octopus_payload --chown=1000:1000 /home/vscode/.payloads/octopus /home/vscode/.payloads/octopus
+# capability:end claude_octopus
+# capability:start claude_warp
+COPY --link --from=warp_payload --chown=1000:1000 /home/vscode/.payloads/warp /home/vscode/.payloads/warp
+# capability:end claude_warp
 COPY --link --from=shell_payload --chown=1000:1000 /home/vscode/.local/share/zinit /home/vscode/.local/share/zinit
 
 # capability:start graphify
@@ -230,6 +287,9 @@ RUN ln -s ../../.payloads/gemini/bin/gemini "${HOME}/.local/bin/gemini"
 # capability:start ccstatusline
 RUN ln -s ../../.payloads/ccstatusline/bin/ccstatusline "${HOME}/.local/bin/ccstatusline"
 # capability:end ccstatusline
+# capability:start context7
+RUN ln -s ../../.payloads/context7/bin/context7-mcp "${HOME}/.local/bin/context7-mcp"
+# capability:end context7
 # capability:start claude
 RUN ln -s ../../.payloads/claude-tools/bin/node-gyp "${HOME}/.local/bin/node-gyp"
 # capability:end claude

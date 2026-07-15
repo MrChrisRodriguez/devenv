@@ -4,7 +4,7 @@
 
 # Function to setup Proto environment
 setup_proto_env() {
-	export PATH="/workspace/node_modules/.bin:$HOME/.local/bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.bun/bin:$PATH"
+	export PATH="/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH"
     export PROTO_HOME="$HOME/.proto"
 }
 

@@ -67,6 +67,9 @@ optional /workspace/.devcontainer/on-create/setup-claude.sh
 # Verify ccstatusline and write its user-scoped statusLine configuration
 optional /workspace/.devcontainer/on-create/setup-ccstatusline.sh
 
+# Verify the image-owned Context7 MCP launcher
+optional /workspace/.devcontainer/on-create/setup-context7.sh
+
 # Configure the repository-local OpenSpec CLI
 optional /workspace/.devcontainer/on-create/setup-openspec.sh
 
@@ -76,11 +79,15 @@ optional /workspace/.devcontainer/on-create/setup-gemini.sh
 # Verify the image-owned Codex CLI
 optional /workspace/.devcontainer/on-create/setup-codex.sh
 
-# Install Claude Octopus (must run AFTER claude/codex so their CLIs are on PATH)
+# capability:start claude_octopus
+# Register image-owned Claude Octopus (after Claude/Codex verification)
 optional /workspace/.devcontainer/on-create/setup-claude-octopus.sh
+# capability:end claude_octopus
 
-# Install Claude Code Warp plugin (must run AFTER setup-claude.sh so claude CLI is on PATH)
+# capability:start claude_warp
+# Register the image-owned Claude Code Warp plugin (after Claude verification)
 optional /workspace/.devcontainer/on-create/setup-claude-warp.sh
+# capability:end claude_warp
 
 # Verify the image-owned Graphify payload
 optional /workspace/.devcontainer/on-create/setup-graphify.sh

@@ -71,6 +71,17 @@ scripts/   # one-off tooling scripts
 - The active devcontainer must not mount `~/.proto`; use only `.devcontainer/host/cleanup-legacy-proto-volume.sh` with an exact devcontainer ID for old volumes.
 - Run `bun run image:check` plus the clean image build after changing Docker stages, payload pins, derived Proto manifests, mounts, or on-create ownership.
 - Stage 2 evidence is command-bound to its immutable implementation boundary. Do not hand-edit `evidence/stage-2-image.json` or its raw logs; rerun the documented collector so schema, semantic, digest, architecture, storage, and rollback proofs remain aligned.
+- Agent CLIs are exact image payloads. Runtime setup may verify them but must never download or repair a global agent tool.
+<!-- capability:start context7 -->
+- Context7 is an exact image payload; MCP settings invoke its launcher directly instead of a floating `bunx` package.
+<!-- capability:end context7 -->
+<!-- capability:start claude_octopus -->
+- Claude Octopus is a checksum-verified image payload. Runtime setup may only perform bounded registration from its local directory; it must never fetch a marketplace or clone a repository.
+<!-- capability:end claude_octopus -->
+<!-- capability:start claude_warp -->
+- Claude Warp is a checksum-verified image payload. Runtime setup may only perform bounded registration from its local directory; it must never fetch a marketplace or clone a repository.
+<!-- capability:end claude_warp -->
+- Skill names must be unique across each agent's effective project/shared discovery roots. Graphify is agent-specific at `.codex/skills/graphify`, `.claude/skills/graphify`, and `.gemini/skills/graphify`; do not restore `.agents/skills/graphify`.
 
 ## Commit Policy
 

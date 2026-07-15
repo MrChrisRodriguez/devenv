@@ -17,7 +17,13 @@ const CONTRACT_FILES = [
 	"package.json",
 	"renovate.json",
 	"template-parameters.toml",
+	".claude/settings.json",
+	".cursor/mcp.json",
+	".claude/skills/graphify/SKILL.md",
+	".codex/skills/graphify/SKILL.md",
+	".gemini/skills/graphify/SKILL.md",
 	".devcontainer/Dockerfile",
+	".devcontainer/configs/.shell_common",
 	".devcontainer/devcontainer-fingerprint.sh",
 	".devcontainer/devcontainer-lock.json",
 	".devcontainer/devcontainer.json",
@@ -25,7 +31,11 @@ const CONTRACT_FILES = [
 	".devcontainer/prototools.foundation",
 	".devcontainer/on-create.sh",
 	".devcontainer/on-create/setup-ccstatusline.sh",
+	".devcontainer/on-create/setup-claude-octopus.sh",
+	".devcontainer/on-create/setup-claude-warp.sh",
 	".devcontainer/on-create/setup-claude.sh",
+	".devcontainer/on-create/setup-common.sh",
+	".devcontainer/on-create/setup-context7.sh",
 	".devcontainer/on-create/setup-codex.sh",
 	".devcontainer/on-create/setup-gemini.sh",
 	".devcontainer/on-create/setup-graphify.sh",
@@ -204,6 +214,94 @@ describe("devcontainer image contract", () => {
 					),
 				"image: onCreateCommand must run the image-owned verifier before checkout code",
 			);
+			await mutate(
+				temporary,
+				".devcontainer/Dockerfile",
+				(source) =>
+					source.replace("CONTEXT7_VERSION=3.2.3", "CONTEXT7_VERSION=latest"),
+				"agents: CONTEXT7_VERSION must have one immutable Docker authority",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/Dockerfile",
+				(source) =>
+					source.replace("OCTOPUS_COMMIT=f42f34a8", "OCTOPUS_COMMIT=mutable__"),
+				"agents: OCTOPUS_COMMIT must have one immutable Docker authority",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/Dockerfile",
+				(source) =>
+					source.replace("WARP_SHA256=054607a8", "WARP_SHA256=invalid_"),
+				"agents: WARP_SHA256 must have one immutable Docker authority",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/on-create/setup-claude-octopus.sh",
+				(source) => `${source}\ngit clone https://example.invalid/octopus\n`,
+				"agents: setup-claude-octopus.sh contains a floating runtime fetch",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/on-create/setup-claude-octopus.sh",
+				(source) =>
+					source.replace(
+						"/workspace/.codex/skills",
+						"/workspace/.missing-codex-skills",
+					),
+				"agents: setup-claude-octopus.sh must reject project/shared skill collisions",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/on-create/setup-claude-warp.sh",
+				(source) => source.replace("cmp -s", "test -r"),
+				"agents: setup-claude-warp.sh must verify local marketplace and installed source authorities",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/on-create/setup-claude-warp.sh",
+				(source) => `${source}\ntimeout 30s claude plugin list --json\n`,
+				"agents: setup-claude-warp.sh must fail closed on registration errors",
+			);
+			await mutate(
+				temporary,
+				".claude/settings.json",
+				(source) =>
+					source.replace('"command": "context7-mcp"', '"command": "bunx"'),
+				"agents: .claude/settings.json must invoke the image-owned Context7 launcher",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/configs/.shell_common",
+				(source) =>
+					source.replace(
+						"$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin",
+						"$HOME/.local/bin:$HOME/.proto/shims:$HOME/.proto/bin",
+					),
+				"agents: bash non-login PATH must prefer workspace and Proto before image launchers",
+			);
+
+			const sharedGraphify = resolve(
+				temporary,
+				".agents/skills/graphify/SKILL.md",
+			);
+			await mkdir(dirname(sharedGraphify), { recursive: true });
+			await copyFile(
+				resolve(ROOT, ".codex/skills/graphify/SKILL.md"),
+				sharedGraphify,
+			);
+			const duplicateSkills = await validateImageContract(temporary);
+			expect(duplicateSkills).toContain(
+				"agents: codex discovers duplicate skill graphify: .agents/skills/graphify/SKILL.md, .codex/skills/graphify/SKILL.md",
+			);
+			expect(duplicateSkills).toContain(
+				"agents: shared .agents/skills/graphify duplicates agent-specific discovery",
+			);
+			await rm(resolve(temporary, ".agents"), {
+				recursive: true,
+				force: true,
+			});
+			expect(await validateImageContract(temporary)).toEqual([]);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
@@ -280,10 +378,31 @@ describe("devcontainer image contract", () => {
 				resolve(minimal, ".devcontainer/Dockerfile"),
 			).text();
 			expect(minimalDockerfile).not.toContain("playwright_browser");
+			expect(minimalDockerfile).not.toContain("context7_payload");
+			expect(minimalDockerfile).not.toContain("octopus_payload");
+			expect(minimalDockerfile).not.toContain("warp_payload");
+			expect(
+				await Bun.file(
+					resolve(minimal, ".devcontainer/on-create/setup-context7.sh"),
+				).exists(),
+			).toBe(false);
+			expect(
+				await Bun.file(
+					resolve(minimal, ".devcontainer/on-create/setup-claude-octopus.sh"),
+				).exists(),
+			).toBe(false);
+			expect(
+				await Bun.file(
+					resolve(minimal, ".devcontainer/on-create/setup-claude-warp.sh"),
+				).exists(),
+			).toBe(false);
 			const fullDockerfile = await Bun.file(
 				resolve(full, ".devcontainer/Dockerfile"),
 			).text();
 			expect(fullDockerfile).toContain("development_browser");
+			expect(fullDockerfile).toContain("context7_payload");
+			expect(fullDockerfile).toContain("octopus_payload");
+			expect(fullDockerfile).toContain("warp_payload");
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}

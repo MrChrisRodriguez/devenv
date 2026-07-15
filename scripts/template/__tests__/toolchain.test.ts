@@ -121,7 +121,16 @@ describe("repository toolchain contract", () => {
 		// The Stage 1 run recorded a clean implementation boundary. Later stages
 		// may change unrelated source, while the merge-sealed evidence files and
 		// historical authority snapshots remain immutable and digest-checked.
-		expect(await validateStageOneEvidence(ROOT)).toEqual([]);
+		const untrackedProof = resolve(ROOT, ".stage1-untracked-proof");
+		try {
+			await Bun.write(
+				untrackedProof,
+				"later stages may change the source tree\n",
+			);
+			expect(await validateStageOneEvidence(ROOT)).toEqual([]);
+		} finally {
+			await rm(untrackedProof, { force: true });
+		}
 	});
 
 	test("passes the real tree and rejects known-bad authority mutations", async () => {
@@ -281,8 +290,8 @@ describe("repository toolchain contract", () => {
 				".devcontainer/configs/.shell_common",
 				(source) =>
 					source.replace(
-						"/workspace/node_modules/.bin:$HOME/.local/bin:$HOME/.proto/shims",
-						"$HOME/.proto/shims:/workspace/node_modules/.bin:$HOME/.local/bin",
+						"/workspace/node_modules/.bin:$HOME/.proto/shims",
+						"$HOME/.proto/shims:/workspace/node_modules/.bin",
 					),
 				"path: .shell_common resolves Proto before workspace binaries",
 			);

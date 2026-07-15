@@ -111,6 +111,7 @@ per-terminal vars without going through a Warp terminal once.
   "Login with Google" (remove `GEMINI_API_KEY` from secrets first, since the key
   takes precedence).
 
+<!-- capability:start claude_octopus -->
 ## Provider allowlist (not auth, but related)
 
 `OCTO_ALLOWED_PROVIDERS` in `devcontainer.json` → `containerEnv` controls which
@@ -126,6 +127,7 @@ provider names Octopus recognizes are `codex`, `gemini`, `opencode`, `copilot`,
 `qwen`, `ollama`, `openrouter`, `perplexity`, plus `claude`. **Keep `claude` in
 the list — it's the orchestrator.** Recognized aliases: `claude`/`anthropic`/
 `sonnet`, `codex`/`openai`, `gemini`/`google`, `local`→`ollama`.
+<!-- capability:end claude_octopus -->
 
 ## GitHub push auth (credential routing by org)
 
@@ -170,5 +172,7 @@ repo-specific, and nothing to commit — routing is by the remote's org, and eac
 2. Per-project keys → `~/.config/devcontainer/secrets.d/<that-slug>` on your host.
 3. Device-auth tools → add one `…-${devcontainerId}` volume line per tool to
    `mounts`, then log in once.
+<!-- capability:start claude_octopus -->
 4. Provider allowlist → copy the `OCTO_ALLOWED_PROVIDERS` line and edit it to the
    providers that repo should use (keep `claude`).
+<!-- capability:end claude_octopus -->

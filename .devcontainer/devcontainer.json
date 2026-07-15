@@ -40,7 +40,7 @@
 		"/bin/bash",
 		"-p",
 		"-c",
-		"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
+		"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH\""
 	],
 	"customizations": {
 		"vscode": {
@@ -103,7 +103,7 @@
 		"/bin/bash",
 		"-p",
 		"-c",
-		"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && /bin/bash /workspace/.devcontainer/on-create/setup-secrets.sh; export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
+		"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && /bin/bash /workspace/.devcontainer/on-create/setup-secrets.sh; export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH\""
 	],
 	"waitFor": "postStartCommand",
 	"forwardPorts": [3000, 4000, 8080, 8787],
@@ -143,12 +143,17 @@
 		"SHELL": "/usr/bin/zsh",
 		"TERM": "xterm-256color",
 		"COLORTERM": "truecolor",
+		"DISABLE_AUTOUPDATER": "1",
+		"DISABLE_ERROR_REPORTING": "1",
+		"DISABLE_NON_ESSENTIAL_MODEL_CALLS": "1",
+		"DISABLE_TELEMETRY": "1",
+		"DO_NOT_TRACK": "1",
 		"POWERLEVEL9K_DISABLE_GITSTATUS": "true",
 		"GEMINI_CLI_TRUST_WORKSPACE": "true",
 		"OCTO_ALLOWED_PROVIDERS": "claude codex gemini"
 	},
 	"remoteEnv": {
-		"PATH": "/workspace/node_modules/.bin:/home/vscode/.local/bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:${containerEnv:PATH}",
+		"PATH": "/workspace/node_modules/.bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:${containerEnv:PATH}",
 		"NODE_OPTIONS": "--max-old-space-size=4096",
 		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
 		"GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"

@@ -242,6 +242,8 @@ You're now ready to start building!
 - [Codex CLI](https://github.com/openai/codex)
 - [OpenSpec](https://github.com/fission-ai/openspec) — spec-driven workflow
 - [Context7 MCP](https://context7.com) — up-to-date library docs for Claude Code and Cursor
+- [Claude Octopus](https://github.com/nyldn/claude-octopus) and [Warp integration](https://github.com/warpdotdev/claude-code-warp) — checksum-verified local plugin payloads with no first-run network install
+- [Graphify](https://github.com/safishamsi/graphify) and ccstatusline — image-owned knowledge-graph and Claude status tooling
 - [Biome](https://biomejs.dev) — formatter and linter
 
 **Toolchain**
@@ -250,3 +252,7 @@ You're now ready to start building!
 - Zsh + [Zinit](https://github.com/zdharma-continuum/zinit) + [Powerlevel10k](https://github.com/romkatv/powerlevel10k)
 - fzf, ripgrep, tree, unzip, xz-utils
 - Git, GitHub CLI, Docker
+
+All global AI launchers are exact-pinned image payloads. Repository-local
+commands and Proto shims resolve first in Bash and Zsh; on-create verifies the
+payloads and only registers plugins from their local checksum-verified source.
