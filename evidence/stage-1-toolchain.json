@@ -94,75 +94,134 @@
 	"mutationProof": [
 		{
 			"name": "catalog-floating",
-			"expected": "Reject a latest catalog selector"
+			"expected": "Reject a latest catalog selector",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"status": "pass"
 		},
 		{
 			"name": "catalog-bypass",
-			"expected": "Reject a direct version for a catalog-owned consumer"
+			"expected": "Reject a direct version for a catalog-owned consumer",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"status": "pass"
 		},
 		{
 			"name": "coupled-family-drift",
-			"expected": "Reject a Cloudflare catalog pin that differs from the lock"
+			"expected": "Reject a Cloudflare catalog pin that differs from the lock",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"status": "pass"
 		},
 		{
 			"name": "second-resolution",
-			"expected": "Reject a second runtime-sensitive lock resolution"
+			"expected": "Reject a second runtime-sensitive lock resolution",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"status": "pass"
 		},
 		{
 			"name": "mutable-proto-plugin",
-			"expected": "Reject a mutable Proto plugin branch"
+			"expected": "Reject a mutable Proto plugin branch",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"status": "pass"
 		},
 		{
 			"name": "feature-lock-drift",
-			"expected": "Reject differing feature resolution and integrity digests"
+			"expected": "Reject differing feature resolution and integrity digests",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"status": "pass"
 		},
 		{
 			"name": "proto-checksum-format",
-			"expected": "Reject malformed architecture checksum metadata"
+			"expected": "Reject malformed architecture checksum metadata",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"status": "pass"
 		},
 		{
 			"name": "proto-checksum-mismatch",
-			"expected": "Reject a valid-looking checksum that does not match the archive"
+			"expected": "Reject a valid-looking checksum that does not match the archive",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"status": "pass"
 		},
 		{
 			"name": "typescript-baseurl",
-			"expected": "Reject an active TypeScript baseUrl"
+			"expected": "Reject an active TypeScript baseUrl",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"status": "pass"
 		},
 		{
 			"name": "typescript-absolute-alias",
-			"expected": "Reject an absolute TypeScript path target"
+			"expected": "Reject an absolute TypeScript path target",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"status": "pass"
 		},
 		{
 			"name": "workspace-path-priority",
-			"expected": "Reject Proto resolution before workspace-local binaries"
+			"expected": "Reject Proto resolution before workspace-local binaries",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"status": "pass"
 		},
 		{
 			"name": "secondary-lockfile",
-			"expected": "Reject a nested workspace package lock"
+			"expected": "Reject a nested workspace package lock",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"status": "pass"
 		},
 		{
 			"name": "disabled-family-omission",
-			"expected": "Omit disabled package authorities and consumers from rendered fixtures"
+			"expected": "Omit disabled package authorities and consumers from rendered fixtures",
+			"test": "scripts/template/__tests__/toolchain.test.ts",
+			"status": "pass"
 		}
 	],
 	"validation": [
-		{ "command": ["bun", "install", "--frozen-lockfile"], "status": "pass" },
-		{ "command": ["bun", "run", "toolchain:check"], "status": "pass" },
-		{ "command": ["bun", "run", "template:validate"], "status": "pass" },
-		{ "command": ["bun", "run", "template:test"], "status": "pass" },
-		{ "command": ["bun", "run", "template:typecheck"], "status": "pass" },
+		{
+			"command": ["bun", "install", "--frozen-lockfile"],
+			"status": "pass",
+			"exitCode": 0
+		},
+		{
+			"command": ["bun", "run", "toolchain:check"],
+			"status": "pass",
+			"exitCode": 0
+		},
+		{
+			"command": ["bun", "run", "template:validate"],
+			"status": "pass",
+			"exitCode": 0
+		},
+		{
+			"command": ["bun", "run", "template:test"],
+			"status": "pass",
+			"exitCode": 0
+		},
+		{
+			"command": ["bun", "run", "template:typecheck"],
+			"status": "pass",
+			"exitCode": 0
+		},
 		{
 			"command": ["bun", "run", "template:fixtures", "tmp/stage1-fixtures"],
-			"status": "pass"
+			"status": "pass",
+			"exitCode": 0
 		},
 		{
 			"command": ["bunx", "biome", "check", "--no-errors-on-unmatched", "."],
-			"status": "pass"
+			"status": "pass",
+			"exitCode": 0
 		}
 	],
 	"rollback": {
 		"mode": "atomic",
 		"command": ["git", "revert", "-m", "1", "<stage-1-pr-merge-commit>"],
+		"runtimeCleanup": [
+			[
+				"docker",
+				"inspect",
+				"<stage-1-container>",
+				"--format",
+				"<capture-/home/vscode/.proto-volume-name>"
+			],
+			["docker", "volume", "rm", "<captured-proto-volume>"],
+			["devpod", "up", ".", "--recreate"]
+		],
 		"scope": "Revert Proto pins and checksum installer, package catalog and bun.lock, feature lock, TypeScript paths, renderer package rules, guard, tests, docs, and evidence together."
 	}
 }

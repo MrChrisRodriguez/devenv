@@ -87,10 +87,15 @@
 		"rollback": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["mode", "command", "scope"],
+			"required": ["mode", "command", "runtimeCleanup", "scope"],
 			"properties": {
 				"mode": { "const": "atomic" },
 				"command": { "$ref": "#/$defs/command" },
+				"runtimeCleanup": {
+					"type": "array",
+					"minItems": 3,
+					"items": { "$ref": "#/$defs/command" }
+				},
 				"scope": { "type": "string", "minLength": 1 }
 			}
 		}
@@ -134,19 +139,22 @@
 		"mutation": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["name", "expected"],
+			"required": ["name", "expected", "test", "status"],
 			"properties": {
 				"name": { "type": "string", "minLength": 1 },
-				"expected": { "type": "string", "minLength": 1 }
+				"expected": { "type": "string", "minLength": 1 },
+				"test": { "const": "scripts/template/__tests__/toolchain.test.ts" },
+				"status": { "const": "pass" }
 			}
 		},
 		"validation": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["command", "status"],
+			"required": ["command", "status", "exitCode"],
 			"properties": {
 				"command": { "$ref": "#/$defs/command" },
-				"status": { "const": "pass" }
+				"status": { "const": "pass" },
+				"exitCode": { "const": 0 }
 			}
 		}
 	}

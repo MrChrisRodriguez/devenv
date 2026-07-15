@@ -19,6 +19,28 @@ const REQUIRED_MUTATIONS = [
 	"disabled-family-omission",
 ] as const;
 
+const EXPECTED_MUTATIONS: Record<(typeof REQUIRED_MUTATIONS)[number], string> =
+	{
+		"catalog-floating": "Reject a latest catalog selector",
+		"catalog-bypass": "Reject a direct version for a catalog-owned consumer",
+		"coupled-family-drift":
+			"Reject a Cloudflare catalog pin that differs from the lock",
+		"second-resolution": "Reject a second runtime-sensitive lock resolution",
+		"mutable-proto-plugin": "Reject a mutable Proto plugin branch",
+		"feature-lock-drift":
+			"Reject differing feature resolution and integrity digests",
+		"proto-checksum-format": "Reject malformed architecture checksum metadata",
+		"proto-checksum-mismatch":
+			"Reject a valid-looking checksum that does not match the archive",
+		"typescript-baseurl": "Reject an active TypeScript baseUrl",
+		"typescript-absolute-alias": "Reject an absolute TypeScript path target",
+		"workspace-path-priority":
+			"Reject Proto resolution before workspace-local binaries",
+		"secondary-lockfile": "Reject a nested workspace package lock",
+		"disabled-family-omission":
+			"Omit disabled package authorities and consumers from rendered fixtures",
+	};
+
 const REQUIRED_VALIDATIONS = [
 	["bun", "install", "--frozen-lockfile"],
 	["bun", "run", "toolchain:check"],
@@ -115,6 +137,15 @@ export function validateStageOneEvidenceValue(
 	}
 	for (const mutation of duplicates(mutationNames))
 		errors.push(`semantic: duplicate mutation proof ${mutation}`);
+	for (const entry of arrayAt(value, "mutationProof")) {
+		if (!isRecord(entry) || typeof entry["name"] !== "string") continue;
+		const name = entry["name"] as (typeof REQUIRED_MUTATIONS)[number];
+		if (
+			name in EXPECTED_MUTATIONS &&
+			entry["expected"] !== EXPECTED_MUTATIONS[name]
+		)
+			errors.push(`semantic: mutation proof ${name} expectation drifted`);
+	}
 
 	const validationCommands = new Set(
 		arrayAt(value, "validation").flatMap((entry) => {
@@ -138,6 +169,36 @@ export function validateStageOneEvidenceValue(
 		errors.push(
 			"semantic: Stage 1 rollback must select merge mainline parent 1",
 		);
+	const runtimeCleanup = recordAt(value, "rollback")["runtimeCleanup"];
+	const cleanupCommands = Array.isArray(runtimeCleanup)
+		? new Set(
+				runtimeCleanup.flatMap((command) =>
+					Array.isArray(command) &&
+					command.every((part) => typeof part === "string")
+						? [commandKey(command as string[])]
+						: [],
+				),
+			)
+		: new Set<string>();
+	if (
+		![...cleanupCommands].some((command) =>
+			command.includes('["docker","volume","rm"'),
+		)
+	)
+		errors.push("semantic: Stage 1 rollback omits scoped Proto volume removal");
+	if (
+		![...cleanupCommands].some((command) =>
+			command.includes('["devpod","up",".","--recreate"'),
+		)
+	)
+		errors.push("semantic: Stage 1 rollback omits devcontainer recreation");
+
+	const capturedAt = value["capturedAt"];
+	if (
+		typeof capturedAt === "string" &&
+		Date.parse(capturedAt) > Date.now() + 5 * 60 * 1000
+	)
+		errors.push("semantic: Stage 1 evidence capture time is in the future");
 
 	return [...new Set(errors)].sort();
 }

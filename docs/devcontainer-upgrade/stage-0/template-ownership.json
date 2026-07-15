@@ -114,6 +114,20 @@
 			"sourceOfTruth": "template repository"
 		},
 		{
+			"pattern": "scripts/template/validate-toolchain.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "repository toolchain contract entrypoint"
+		},
+		{
+			"pattern": "scripts/template/toolchain.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "repository toolchain contract"
+		},
+		{
 			"pattern": "scripts/template/**",
 			"classification": "template-tooling",
 			"syncPolicy": "merge",

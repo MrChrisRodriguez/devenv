@@ -12,6 +12,14 @@ verify_archive() {
 	printf '%s  %s\n' "$expected" "$archive" | sha256sum --check --status -
 }
 
+installation_ready() {
+	local home="$1"
+	local expected_version="$2"
+	[ -x "$home/bin/proto" ] &&
+		[ -x "$home/bin/proto-shim" ] &&
+		[ "$("$home/bin/proto" --version 2>/dev/null | awk '{ print $NF }')" = "$expected_version" ]
+}
+
 if [ "${1:-}" = "--verify-only" ]; then
 	if [ "$#" -ne 3 ]; then
 		echo "usage: install-proto.sh --verify-only <archive> <sha256>" >&2
@@ -19,6 +27,15 @@ if [ "${1:-}" = "--verify-only" ]; then
 	fi
 	verify_archive "$2" "$3"
 	exit 0
+fi
+
+if [ "${1:-}" = "--health-check" ]; then
+	if [ "$#" -ne 3 ]; then
+		echo "usage: install-proto.sh --health-check <proto-home> <version>" >&2
+		exit 2
+	fi
+	installation_ready "$2" "$3"
+	exit $?
 fi
 
 if [ "$(uname -s)" != "Linux" ]; then
@@ -66,12 +83,12 @@ fi
 
 export PROTO_HOME="${PROTO_HOME:-$HOME/.proto}"
 export PATH="$PROTO_HOME/shims:$PROTO_HOME/bin:$PATH"
-if command -v proto >/dev/null 2>&1 && [ "$(proto --version | awk '{ print $NF }')" = "$version" ]; then
+if installation_ready "$PROTO_HOME" "$version"; then
 	exit 0
 fi
 
 temporary_directory="$(mktemp -d)"
-trap 'rm -rf "$temporary_directory"' EXIT
+trap 'rm -rf "$temporary_directory"; [ -z "${proto_temporary:-}" ] || rm -f "$proto_temporary"; [ -z "${shim_temporary:-}" ] || rm -f "$shim_temporary"' EXIT
 archive="$temporary_directory/$archive_name"
 url="https://github.com/moonrepo/proto/releases/download/v${version}/${archive_name}"
 
@@ -83,12 +100,16 @@ verify_archive "$archive" "$expected"
 tar -xJf "$archive" -C "$temporary_directory"
 release_dir="$temporary_directory/proto_cli-${target}"
 mkdir -p "$PROTO_HOME/bin"
-install -m 0755 "$release_dir/proto" "$PROTO_HOME/bin/proto"
-install -m 0755 "$release_dir/proto-shim" "$PROTO_HOME/bin/proto-shim"
+proto_temporary="$PROTO_HOME/bin/.proto.$$"
+shim_temporary="$PROTO_HOME/bin/.proto-shim.$$"
+install -m 0755 "$release_dir/proto" "$proto_temporary"
+install -m 0755 "$release_dir/proto-shim" "$shim_temporary"
+mv -f "$shim_temporary" "$PROTO_HOME/bin/proto-shim"
+mv -f "$proto_temporary" "$PROTO_HOME/bin/proto"
 hash -r
 
-actual="$(proto --version | awk '{ print $NF }')"
-if [ "$actual" != "$version" ]; then
+if ! installation_ready "$PROTO_HOME" "$version"; then
+	actual="$("$PROTO_HOME/bin/proto" --version 2>/dev/null | awk '{ print $NF }')"
 	echo "Proto bootstrap expected ${version}, got ${actual:-missing}" >&2
 	exit 1
 fi

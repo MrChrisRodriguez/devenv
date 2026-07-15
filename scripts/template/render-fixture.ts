@@ -710,6 +710,10 @@ export async function scanDisabledResidue(
 		}
 		for (const capability of disabled) {
 			if (path === "fixture-manifest.json") continue;
+			// The generated toolchain guard names supported optional families as
+			// policy, but it does not select or install them. Package/artifact
+			// omission is asserted independently before this residue scan.
+			if (path === "scripts/template/toolchain.ts") continue;
 			const signatures = ownership.capabilitySignatures[capability];
 			if (!signatures) continue;
 			for (const pattern of signatures.paths) {

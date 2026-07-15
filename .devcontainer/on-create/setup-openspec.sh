@@ -13,6 +13,6 @@ if [ ! -x /workspace/node_modules/.bin/openspec ]; then
     echo "Repository-local OpenSpec is missing after dependency installation" >&2
     return 1
 fi
-/workspace/node_modules/.bin/openspec init --tools claude,codex,cursor --force
+/workspace/node_modules/.bin/openspec init --tools claude,codex,cursor --force || return 1
 
 echo "✅ Repository-local OpenSpec configured!"

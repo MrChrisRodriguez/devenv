@@ -62,14 +62,25 @@ mutable plugin URLs, feature digest drift, malformed or mismatched checksums,
 family residue all fail closed. The evidence record binds the package, feature,
 and checksum lock digests to the reviewed tree.
 
+Rendered projects retain the live `toolchain:check` implementation and CI step.
+They validate the selected package families and omit template-only evidence;
+the template source additionally validates the complete supported catalog and
+its committed Stage 1 evidence.
+
 ## Rollback
 
-Stage 1 is one atomic merge bundle. Revert its merge commit with:
+Stage 1 is one atomic merge bundle. Before stopping the current container,
+capture the exact Docker volume mounted at `/home/vscode/.proto` from
+`docker inspect <stage-1-container>`. Then stop it, revert the merge, remove only
+that captured `proto-home-*` volume, and recreate:
 
 ```sh
 git revert -m 1 <stage-1-pr-merge-commit>
+docker volume rm <captured-proto-volume>
+devpod up . --recreate
 ```
 
 Do not revert only a catalog pin, `bun.lock`, one coupled-family member, the
 feature lock, or the Proto checksum metadata. Those files jointly define the
-contract.
+contract. Removing the scoped Proto volume is required because a Git revert
+cannot remove the Stage 1 Node shim from persistent runtime state.

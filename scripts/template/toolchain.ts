@@ -6,34 +6,38 @@ const IMMUTABLE_PLUGIN =
 	/^https:\/\/raw\.githubusercontent\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/[0-9a-f]{40}\/.+\/plugin\.toml$/;
 const SHA256 = /^(?:sha256:)?[0-9a-f]{64}$/;
 
-const REQUIRED_CATALOG_PACKAGES = [
+const CORE_CATALOG_PACKAGES = [
 	"@biomejs/biome",
-	"@cloudflare/vite-plugin",
-	"@cloudflare/vitest-pool-workers",
 	"@commitlint/cli",
 	"@commitlint/config-conventional",
+	"@types/bun",
+	"@types/node",
+	"husky",
+	"lint-staged",
+	"typescript",
+] as const;
+
+const TEMPLATE_CATALOG_PACKAGES = [
+	...CORE_CATALOG_PACKAGES,
+	"@cloudflare/vite-plugin",
+	"@cloudflare/vitest-pool-workers",
 	"@fission-ai/openspec",
 	"@hookform/resolvers",
 	"@playwright/test",
-	"@types/bun",
-	"@types/node",
 	"better-auth",
-	"husky",
-	"lint-staged",
 	"react-hook-form",
-	"typescript",
 	"wrangler",
 	"zod",
 ] as const;
 
-const SINGLETON_PACKAGES = [
-	...REQUIRED_CATALOG_PACKAGES,
-	"@better-auth/core",
-	"miniflare",
-	"playwright",
-	"playwright-core",
-	"workerd",
-] as const;
+const ATOMIC_CATALOG_FAMILIES = {
+	cloudflare: [
+		"@cloudflare/vite-plugin",
+		"@cloudflare/vitest-pool-workers",
+		"wrangler",
+	],
+	forms: ["@hookform/resolvers", "react-hook-form", "zod"],
+} as const;
 
 type JsonRecord = Record<string, unknown>;
 
@@ -57,17 +61,20 @@ function escapeRegExp(value: string): string {
 }
 
 export function resolvedVersions(lock: string, packageName: string): string[] {
+	return [...new Set(resolvedOccurrences(lock, packageName))].sort();
+}
+
+export function resolvedOccurrences(
+	lock: string,
+	packageName: string,
+): string[] {
 	const matcher = new RegExp(
 		`\\["${escapeRegExp(packageName)}@([^"\\s]+)"`,
 		"g",
 	);
-	return [
-		...new Set(
-			[...lock.matchAll(matcher)].flatMap((match) =>
-				match[1] ? [match[1]] : [],
-			),
-		),
-	].sort();
+	return [...lock.matchAll(matcher)].flatMap((match) =>
+		match[1] ? [match[1]] : [],
+	);
 }
 
 function validatePathPriority(
@@ -75,25 +82,38 @@ function validatePathPriority(
 	label: string,
 	errors: string[],
 ): void {
-	const local = value.indexOf("/workspace/node_modules/.bin");
+	const local = value.indexOf("node_modules/.bin");
 	const proto = value.indexOf(".proto/shims");
 	if (local < 0)
-		errors.push(`path: ${label} omits workspace node_modules/.bin`);
+		errors.push(`path: ${label} omits workspace-local node_modules/.bin`);
 	else if (proto >= 0 && local > proto)
 		errors.push(`path: ${label} resolves Proto before workspace binaries`);
 }
 
-async function workspacePackagePaths(root: string): Promise<string[]> {
+async function workspacePackagePaths(
+	root: string,
+	packageValue: JsonRecord,
+): Promise<string[]> {
 	const paths = ["package.json"];
-	for (const pattern of [
-		"apps/*/package.json",
-		"libs/*/package.json",
-		"scripts/*/package.json",
-	]) {
+	const declared = recordAt(packageValue, "workspaces")["packages"];
+	const patterns = [
+		"apps/**/package.json",
+		"libs/**/package.json",
+		"scripts/**/package.json",
+		...(Array.isArray(declared)
+			? declared.flatMap((entry) =>
+					typeof entry === "string"
+						? [`${entry.replace(/\/+$/, "")}/package.json`]
+						: [],
+				)
+			: []),
+	];
+	for (const pattern of patterns) {
 		for await (const path of new Bun.Glob(pattern).scan({
 			cwd: root,
 			onlyFiles: true,
 		})) {
+			if (path.split("/").includes("node_modules")) continue;
 			paths.push(path);
 		}
 	}
@@ -104,14 +124,15 @@ async function tsconfigPaths(root: string): Promise<string[]> {
 	const paths: string[] = [];
 	for (const pattern of [
 		"tsconfig*.json",
-		"apps/*/tsconfig*.json",
-		"libs/*/tsconfig*.json",
-		"scripts/*/tsconfig*.json",
+		"apps/**/tsconfig*.json",
+		"libs/**/tsconfig*.json",
+		"scripts/**/tsconfig*.json",
 	]) {
 		for await (const path of new Bun.Glob(pattern).scan({
 			cwd: root,
 			onlyFiles: true,
 		})) {
+			if (path.split("/").includes("node_modules")) continue;
 			paths.push(path);
 		}
 	}
@@ -128,10 +149,13 @@ async function nestedLockPaths(root: string): Promise<string[]> {
 			"pnpm-lock.yaml",
 			"yarn.lock",
 		]) {
-			for await (const path of new Bun.Glob(`${directory}/*/${filename}`).scan({
-				cwd: root,
-				onlyFiles: true,
-			})) {
+			for await (const path of new Bun.Glob(`${directory}/**/${filename}`).scan(
+				{
+					cwd: root,
+					onlyFiles: true,
+				},
+			)) {
+				if (path.split("/").includes("node_modules")) continue;
 				paths.push(path);
 			}
 		}
@@ -168,18 +192,27 @@ export async function validateToolchainContract(
 		if (!EXACT_VERSION.test(String(protoValue[required] ?? "")))
 			errors.push(`proto: required tool ${required} is not exact-pinned`);
 	}
+	if (Bun.version !== protoValue["bun"])
+		errors.push(
+			`proto: executing Bun ${Bun.version} differs from .prototools ${String(protoValue["bun"] ?? "missing")}`,
+		);
 
-	const parameters = Bun.TOML.parse(
-		await Bun.file(resolve(root, "template-parameters.toml")).text(),
-	) as JsonRecord;
-	const architectures = recordAt(parameters, "container")[
-		"supported_architectures"
-	];
-	const supportedArchitectures = Array.isArray(architectures)
-		? architectures.filter(
-				(entry): entry is string => typeof entry === "string",
-			)
-		: [];
+	const templateParametersPath = resolve(root, "template-parameters.toml");
+	const isTemplateSource = await Bun.file(templateParametersPath).exists();
+	let supportedArchitectures = ["amd64", "arm64"];
+	if (isTemplateSource) {
+		const parameters = Bun.TOML.parse(
+			await Bun.file(templateParametersPath).text(),
+		) as JsonRecord;
+		const architectures = recordAt(parameters, "container")[
+			"supported_architectures"
+		];
+		supportedArchitectures = Array.isArray(architectures)
+			? architectures.filter(
+					(entry): entry is string => typeof entry === "string",
+				)
+			: [];
+	}
 	const checksumText = await Bun.file(
 		resolve(root, ".devcontainer/proto-checksums.txt"),
 	).text();
@@ -216,24 +249,53 @@ export async function validateToolchainContract(
 	const workspaces = recordAt(packageValue, "workspaces");
 	const catalog = recordAt(workspaces, "catalog");
 	const devDependencies = recordAt(packageValue, "devDependencies");
-	for (const packageName of REQUIRED_CATALOG_PACKAGES) {
+	const requiredCatalogPackages = isTemplateSource
+		? TEMPLATE_CATALOG_PACKAGES
+		: CORE_CATALOG_PACKAGES;
+	for (const packageName of requiredCatalogPackages) {
 		const version = catalog[packageName];
 		if (typeof version !== "string" || !EXACT_VERSION.test(version))
 			errors.push(`catalog: ${packageName} must use an exact version`);
-		if (devDependencies[packageName] !== "catalog:")
-			errors.push(`catalog: root consumer ${packageName} must use catalog:`);
 	}
 	for (const [packageName, version] of Object.entries(catalog)) {
 		if (typeof version !== "string" || !EXACT_VERSION.test(version))
 			errors.push(`catalog: ${packageName} is floating or ranged`);
+		if (devDependencies[packageName] !== "catalog:")
+			errors.push(`catalog: root consumer ${packageName} must use catalog:`);
 	}
-	if (recordAt(packageValue, "overrides")["zod"] !== catalog["zod"])
+	for (const [familyName, familyPackages] of Object.entries(
+		ATOMIC_CATALOG_FAMILIES,
+	)) {
+		const selected = familyPackages.filter(
+			(packageName) => catalog[packageName] !== undefined,
+		);
+		if (selected.length !== 0 && selected.length !== familyPackages.length)
+			errors.push(`catalog: ${familyName} family must be selected atomically`);
+	}
+	if (
+		catalog["zod"] !== undefined &&
+		recordAt(packageValue, "overrides")["zod"] !== catalog["zod"]
+	)
 		errors.push("catalog: zod override must equal the catalog pin");
+	if (
+		catalog["zod"] === undefined &&
+		recordAt(packageValue, "overrides")["zod"] !== undefined
+	)
+		errors.push(
+			"catalog: zod override remains while the forms family is disabled",
+		);
 	if (recordAt(packageValue, "engines")["bun"] !== protoValue["bun"])
 		errors.push("catalog: Bun engine must equal the Proto pin");
 
-	for (const relativePath of await workspacePackagePaths(root)) {
-		const manifest = await readJson(resolve(root, relativePath));
+	const manifests = new Map<string, JsonRecord>();
+	for (const relativePath of await workspacePackagePaths(root, packageValue))
+		manifests.set(relativePath, await readJson(resolve(root, relativePath)));
+	const internalPackages = new Set(
+		[...manifests.values()].flatMap((manifest) =>
+			typeof manifest["name"] === "string" ? [manifest["name"]] : [],
+		),
+	);
+	for (const [relativePath, manifest] of manifests) {
 		for (const sectionName of [
 			"dependencies",
 			"devDependencies",
@@ -241,27 +303,85 @@ export async function validateToolchainContract(
 			"peerDependencies",
 		]) {
 			const section = recordAt(manifest, sectionName);
-			for (const packageName of Object.keys(catalog)) {
-				const consumer = section[packageName];
-				if (consumer !== undefined && consumer !== "catalog:")
+			for (const [packageName, consumer] of Object.entries(section)) {
+				if (internalPackages.has(packageName)) {
+					if (
+						typeof consumer !== "string" ||
+						!consumer.startsWith("workspace:")
+					)
+						errors.push(
+							`catalog: ${relativePath} ${sectionName}.${packageName} must use workspace:`,
+						);
+					continue;
+				}
+				const catalogVersion = catalog[packageName];
+				if (typeof catalogVersion !== "string") {
 					errors.push(
-						`catalog: ${relativePath} ${sectionName}.${packageName} bypasses catalog:`,
+						`catalog: ${relativePath} ${sectionName}.${packageName} is not catalog-owned`,
 					);
+					continue;
+				}
+				if (consumer === "catalog:") continue;
+				if (
+					sectionName === "peerDependencies" &&
+					typeof consumer === "string" &&
+					Bun.semver.satisfies(catalogVersion, consumer)
+				)
+					continue;
+				errors.push(
+					`catalog: ${relativePath} ${sectionName}.${packageName} bypasses catalog:`,
+				);
 			}
+		}
+	}
+	const workflowPaths: string[] = [];
+	for (const pattern of [
+		".github/workflows/*.yml",
+		".github/workflows/*.yaml",
+	]) {
+		for await (const workflowPath of new Bun.Glob(pattern).scan({
+			cwd: root,
+			dot: true,
+			onlyFiles: true,
+		}))
+			workflowPaths.push(workflowPath);
+	}
+	for (const workflowPath of [...new Set(workflowPaths)].sort()) {
+		const workflow = await Bun.file(resolve(root, workflowPath)).text();
+		if (!workflow.includes("oven-sh/setup-bun@")) continue;
+		const pins = [
+			...workflow.matchAll(/bun-version:\s*['"]?([^'"\s#]+)/g),
+		].flatMap((match) => (match[1] ? [match[1]] : []));
+		if (pins.length === 0)
+			errors.push(`proto: ${workflowPath} setup-bun omits bun-version`);
+		for (const pin of pins) {
+			if (pin !== protoValue["bun"])
+				errors.push(
+					`proto: ${workflowPath} Bun ${pin} differs from .prototools`,
+				);
 		}
 	}
 
 	const lockText = await Bun.file(resolve(root, "bun.lock")).text();
 	for (const path of await nestedLockPaths(root))
 		errors.push(`lock: secondary package lock ${path} is forbidden`);
-	for (const packageName of SINGLETON_PACKAGES) {
+	const singletonPackages = [
+		...Object.keys(catalog),
+		...(catalog["better-auth"] === undefined ? [] : ["@better-auth/core"]),
+		...(catalog["@playwright/test"] === undefined
+			? []
+			: ["playwright", "playwright-core"]),
+		...(catalog["wrangler"] === undefined ? [] : ["miniflare", "workerd"]),
+	];
+	for (const packageName of singletonPackages) {
+		const occurrences = resolvedOccurrences(lockText, packageName);
 		const versions = resolvedVersions(lockText, packageName);
-		if (versions.length !== 1)
+		if (occurrences.length !== 1)
 			errors.push(
-				`lock: ${packageName} must resolve exactly once, found ${versions.join(", ") || "none"}`,
+				`lock: ${packageName} must resolve exactly once, found ${occurrences.length} entries (${versions.join(", ") || "none"})`,
 			);
 	}
-	for (const packageName of REQUIRED_CATALOG_PACKAGES) {
+	for (const packageName of Object.keys(catalog)) {
 		const version = catalog[packageName];
 		const versions = resolvedVersions(lockText, packageName);
 		if (typeof version === "string" && !versions.includes(version))
@@ -269,20 +389,24 @@ export async function validateToolchainContract(
 				`lock: ${packageName} does not resolve to catalog ${version}`,
 			);
 	}
-	const betterAuthVersions = resolvedVersions(lockText, "better-auth");
-	const betterAuthCoreVersions = resolvedVersions(
-		lockText,
-		"@better-auth/core",
-	);
-	if (betterAuthVersions[0] !== betterAuthCoreVersions[0])
-		errors.push("lock: Better Auth core and package versions diverge");
-	const playwrightVersions = [
-		resolvedVersions(lockText, "@playwright/test")[0],
-		resolvedVersions(lockText, "playwright")[0],
-		resolvedVersions(lockText, "playwright-core")[0],
-	];
-	if (new Set(playwrightVersions).size !== 1)
-		errors.push("lock: Playwright package family versions diverge");
+	if (catalog["better-auth"] !== undefined) {
+		const betterAuthVersions = resolvedVersions(lockText, "better-auth");
+		const betterAuthCoreVersions = resolvedVersions(
+			lockText,
+			"@better-auth/core",
+		);
+		if (betterAuthVersions[0] !== betterAuthCoreVersions[0])
+			errors.push("lock: Better Auth core and package versions diverge");
+	}
+	if (catalog["@playwright/test"] !== undefined) {
+		const playwrightVersions = [
+			resolvedVersions(lockText, "@playwright/test")[0],
+			resolvedVersions(lockText, "playwright")[0],
+			resolvedVersions(lockText, "playwright-core")[0],
+		];
+		if (new Set(playwrightVersions).size !== 1)
+			errors.push("lock: Playwright package family versions diverge");
+	}
 
 	const devcontainer = await readJson(
 		resolve(root, ".devcontainer/devcontainer.json"),

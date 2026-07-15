@@ -347,6 +347,19 @@ describe("deterministic fixture renderer", () => {
 			const minimalPackage = await Bun.file(
 				resolve(output, "package.json"),
 			).json();
+			expect(minimalPackage.scripts["toolchain:check"]).toBe(
+				"bun scripts/template/validate-toolchain.ts",
+			);
+			expect(
+				await Bun.file(
+					resolve(output, "scripts/template/validate-toolchain.ts"),
+				).exists(),
+			).toBe(true);
+			expect(
+				await Bun.file(
+					resolve(output, "scripts/template/toolchain.ts"),
+				).exists(),
+			).toBe(true);
 			for (const packageName of [
 				"@cloudflare/vite-plugin",
 				"@cloudflare/vitest-pool-workers",
