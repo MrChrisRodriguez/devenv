@@ -93,6 +93,15 @@ describe("repository toolchain contract", () => {
 		expect(validateStageOneEvidenceValue(future, schema)).toContain(
 			"semantic: Stage 1 evidence capture time is in the future",
 		);
+		const attachedVolume = structuredClone(value) as Record<string, unknown>;
+		const rollback = attachedVolume["rollback"] as Record<string, unknown>;
+		const runtimeCleanup = rollback["runtimeCleanup"] as string[][];
+		rollback["runtimeCleanup"] = runtimeCleanup.filter(
+			(command) => command[0] !== "docker" || command[1] !== "rm",
+		);
+		expect(validateStageOneEvidenceValue(attachedVolume, schema)).toContain(
+			"semantic: Stage 1 rollback must stop and remove its container before deleting the Proto volume",
+		);
 	});
 
 	test("passes the real tree and rejects known-bad authority mutations", async () => {

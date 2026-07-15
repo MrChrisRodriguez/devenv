@@ -187,27 +187,39 @@ export function validateStageOneEvidenceValue(
 		);
 	const runtimeCleanup = recordAt(value, "rollback")["runtimeCleanup"];
 	const cleanupCommands = Array.isArray(runtimeCleanup)
-		? new Set(
-				runtimeCleanup.flatMap((command) =>
-					Array.isArray(command) &&
-					command.every((part) => typeof part === "string")
-						? [commandKey(command as string[])]
-						: [],
-				),
+		? runtimeCleanup.flatMap((command) =>
+				Array.isArray(command) &&
+				command.every((part) => typeof part === "string")
+					? [commandKey(command as string[])]
+					: [],
 			)
-		: new Set<string>();
-	if (
-		![...cleanupCommands].some((command) =>
-			command.includes('["docker","volume","rm"'),
-		)
-	)
+		: [];
+	const stopIndex = cleanupCommands.findIndex((command) =>
+		command.includes('["devpod","stop","."'),
+	);
+	const containerRemovalIndex = cleanupCommands.findIndex((command) =>
+		command.includes('["docker","rm"'),
+	);
+	const volumeRemovalIndex = cleanupCommands.findIndex((command) =>
+		command.includes('["docker","volume","rm"'),
+	);
+	const recreateIndex = cleanupCommands.findIndex((command) =>
+		command.includes('["devpod","up",".","--recreate"'),
+	);
+	if (volumeRemovalIndex === -1)
 		errors.push("semantic: Stage 1 rollback omits scoped Proto volume removal");
-	if (
-		![...cleanupCommands].some((command) =>
-			command.includes('["devpod","up",".","--recreate"'),
-		)
-	)
+	if (recreateIndex === -1)
 		errors.push("semantic: Stage 1 rollback omits devcontainer recreation");
+	if (
+		stopIndex === -1 ||
+		containerRemovalIndex === -1 ||
+		volumeRemovalIndex === -1 ||
+		stopIndex >= containerRemovalIndex ||
+		containerRemovalIndex >= volumeRemovalIndex
+	)
+		errors.push(
+			"semantic: Stage 1 rollback must stop and remove its container before deleting the Proto volume",
+		);
 
 	const capturedAt = value["capturedAt"];
 	if (

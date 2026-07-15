@@ -71,10 +71,13 @@ its committed Stage 1 evidence.
 
 Stage 1 is one atomic merge bundle. Before stopping the current container,
 capture the exact Docker volume mounted at `/home/vscode/.proto` from
-`docker inspect <stage-1-container>`. Then stop it, revert the merge, remove only
-that captured `proto-home-*` volume, and recreate:
+`docker inspect <stage-1-container>`. Then stop the workspace, remove that exact
+stopped container so Docker releases its volume references, revert the merge,
+remove only the captured `proto-home-*` volume, and recreate:
 
 ```sh
+devpod stop .
+docker rm <stage-1-container>
 git revert -m 1 <stage-1-pr-merge-commit>
 docker volume rm <captured-proto-volume>
 devpod up . --recreate
