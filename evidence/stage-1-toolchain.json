@@ -1,12 +1,12 @@
 {
 	"schemaVersion": 1,
 	"stage": "stage-1-toolchain-contract",
-	"capturedAt": "2026-07-15T06:18:00Z",
+	"capturedAt": "2026-07-15T06:21:00Z",
 	"run": {
 		"id": "stage1-20260715T052419Z-darwin-arm64",
 		"results": {
 			"path": "evidence/stage-1-toolchain-results.json",
-			"sha256": "c6e14bc79f9460b269ea923bf8dbbbd08617d544305ee8a9f7ce94e1c36f9987"
+			"sha256": "791e299207c47dae34858f203b14f440218c81a5ba1e0d69de94b24b13287621"
 		},
 		"mutationResult": {
 			"command": [
@@ -237,11 +237,11 @@
 		{
 			"command": ["bun", "install", "--frozen-lockfile"],
 			"runId": "stage1-20260715T052419Z-darwin-arm64",
-			"startedAt": "2026-07-15T06:02:39Z",
-			"completedAt": "2026-07-15T06:02:39Z",
+			"startedAt": "2026-07-15T06:20:17.787Z",
+			"completedAt": "2026-07-15T06:20:18.014Z",
 			"stdoutPath": "evidence/stage-1-toolchain-run/install.stdout",
 			"stderrPath": "evidence/stage-1-toolchain-run/install.stderr",
-			"stdoutSha256": "e1394c3866828705b72fed67aaf45616f8cce24d3e9b451b5c33aa609f182202",
+			"stdoutSha256": "4aa93f16a025d77285ef1dcf2b59cc562a281fe4766eb323ad78a4536a8f9f81",
 			"stderrSha256": "1549e9b8128b223662d253210e73f7e29e9494049b92b239101a926f6f5b3d95",
 			"status": "pass",
 			"exitCode": 0
@@ -249,8 +249,8 @@
 		{
 			"command": ["bun", "run", "toolchain:check"],
 			"runId": "stage1-20260715T052419Z-darwin-arm64",
-			"startedAt": "2026-07-15T06:02:39Z",
-			"completedAt": "2026-07-15T06:02:40Z",
+			"startedAt": "2026-07-15T06:20:18.059Z",
+			"completedAt": "2026-07-15T06:20:18.506Z",
 			"stdoutPath": "evidence/stage-1-toolchain-run/toolchain.stdout",
 			"stderrPath": "evidence/stage-1-toolchain-run/toolchain.stderr",
 			"stdoutSha256": "3fd2b95593a7482b057943f927e5ee77dda508eadd485ee0574ed41fb20518e6",
@@ -261,8 +261,8 @@
 		{
 			"command": ["bun", "run", "template:validate"],
 			"runId": "stage1-20260715T052419Z-darwin-arm64",
-			"startedAt": "2026-07-15T06:02:40Z",
-			"completedAt": "2026-07-15T06:02:40Z",
+			"startedAt": "2026-07-15T06:20:18.552Z",
+			"completedAt": "2026-07-15T06:20:19.092Z",
 			"stdoutPath": "evidence/stage-1-toolchain-run/validate.stdout",
 			"stderrPath": "evidence/stage-1-toolchain-run/validate.stderr",
 			"stdoutSha256": "0d62ae9bbb9a76963e342ddf8a76680a2ef35d4a75e835c4b1e0b7dc7f0e9041",
@@ -273,20 +273,20 @@
 		{
 			"command": ["bun", "run", "template:test"],
 			"runId": "stage1-20260715T052419Z-darwin-arm64",
-			"startedAt": "2026-07-15T06:02:41Z",
-			"completedAt": "2026-07-15T06:02:47Z",
+			"startedAt": "2026-07-15T06:20:19.126Z",
+			"completedAt": "2026-07-15T06:20:28.930Z",
 			"stdoutPath": "evidence/stage-1-toolchain-run/test.stdout",
 			"stderrPath": "evidence/stage-1-toolchain-run/test.stderr",
 			"stdoutSha256": "0c80abc01a2d8375c50a90ab08e86b1f06050d89e86349209b60dd7ba9c950a9",
-			"stderrSha256": "f7dbb0aded7da6689189feb222ca34f2707cb2a79db4120414cee8397c753b06",
+			"stderrSha256": "b84c0d79074380acd9dc2a453de0608fe15dd9ff5ad0d792f5124972c0962f50",
 			"status": "pass",
 			"exitCode": 0
 		},
 		{
 			"command": ["bun", "run", "template:typecheck"],
 			"runId": "stage1-20260715T052419Z-darwin-arm64",
-			"startedAt": "2026-07-15T06:02:47Z",
-			"completedAt": "2026-07-15T06:02:48Z",
+			"startedAt": "2026-07-15T06:20:28.970Z",
+			"completedAt": "2026-07-15T06:20:29.889Z",
 			"stdoutPath": "evidence/stage-1-toolchain-run/typecheck.stdout",
 			"stderrPath": "evidence/stage-1-toolchain-run/typecheck.stderr",
 			"stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -297,8 +297,8 @@
 		{
 			"command": ["bun", "run", "template:fixtures", "tmp/stage1-fixtures"],
 			"runId": "stage1-20260715T052419Z-darwin-arm64",
-			"startedAt": "2026-07-15T06:02:48Z",
-			"completedAt": "2026-07-15T06:02:48Z",
+			"startedAt": "2026-07-15T06:20:29.934Z",
+			"completedAt": "2026-07-15T06:20:30.358Z",
 			"stdoutPath": "evidence/stage-1-toolchain-run/fixtures.stdout",
 			"stderrPath": "evidence/stage-1-toolchain-run/fixtures.stderr",
 			"stdoutSha256": "3f58fc109e749534e9193a8f2d21011c168ff9fff05585ef507b698c1852229d",
@@ -309,12 +309,12 @@
 		{
 			"command": ["bunx", "biome", "check", "--no-errors-on-unmatched", "."],
 			"runId": "stage1-20260715T052419Z-darwin-arm64",
-			"startedAt": "2026-07-15T06:02:48Z",
-			"completedAt": "2026-07-15T06:02:49Z",
+			"startedAt": "2026-07-15T06:20:30.397Z",
+			"completedAt": "2026-07-15T06:20:30.582Z",
 			"stdoutPath": "evidence/stage-1-toolchain-run/biome.stdout",
 			"stderrPath": "evidence/stage-1-toolchain-run/biome.stderr",
-			"stdoutSha256": "0d66de8b1c9245a3bc8452a9bada70b5925fda776a5141177f9a24daf2029b16",
-			"stderrSha256": "9eef87bf803f518980d0bd9447c2656cfee921201cf232aa00354fa9322ac7a3",
+			"stdoutSha256": "71f8b0a99c74d40821ec106a054b6f047c32d3c030f0efe5309abeb78edb52db",
+			"stderrSha256": "03433971ed0104e974ee453bd477fb981d6bb593e0006e164957c40273db3256",
 			"status": "pass",
 			"exitCode": 0
 		}
