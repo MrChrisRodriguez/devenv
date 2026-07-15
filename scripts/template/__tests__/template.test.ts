@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { lstat, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
+import { validateStageZeroEvidenceValue } from "../evidence";
 import { validateJsonSchema } from "../json-schema";
 import {
 	loadFixtureDefinition,
@@ -185,6 +186,44 @@ describe("template parameter registry", () => {
 		];
 		expect(() => validateTemplateParameters(mutation)).toThrow(
 			"dependency api is unavailable in profile minimal",
+		);
+	});
+});
+
+describe("stage zero evidence", () => {
+	test("validates the measured record and rejects vacuous mutations", async () => {
+		const evidence = (await Bun.file(
+			resolve(ROOT, "evidence/stage-0-baseline.json"),
+		).json()) as Record<string, unknown>;
+		const schema = (await Bun.file(
+			resolve(ROOT, "evidence/stage-0-baseline.schema.json"),
+		).json()) as Record<string, unknown>;
+		expect(validateStageZeroEvidenceValue(evidence, schema)).toEqual([]);
+
+		const missingMeasurement = structuredClone(evidence);
+		delete (missingMeasurement["measurements"] as Record<string, unknown>)[
+			"cleanImageBuild"
+		];
+		expect(
+			validateStageZeroEvidenceValue(missingMeasurement, schema),
+		).toContain("schema: $.measurements.cleanImageBuild is required");
+
+		const emptyEnvironment = structuredClone(evidence);
+		(emptyEnvironment["environment"] as Record<string, unknown>)["tools"] = [];
+		const errors = validateStageZeroEvidenceValue(emptyEnvironment, schema);
+		expect(errors).toContain(
+			"schema: $.environment.tools must contain at least 10 items",
+		);
+		expect(errors).toContain("semantic: missing tool bun");
+
+		const emptyLatency = structuredClone(evidence);
+		(
+			(emptyLatency["measurements"] as Record<string, unknown>)[
+				"failedLifecycleExecLatency"
+			] as Record<string, unknown>
+		)["value"] = {};
+		expect(validateStageZeroEvidenceValue(emptyLatency, schema)).toContain(
+			"semantic: failed-lifecycle latency samples are vacuous",
 		);
 	});
 });

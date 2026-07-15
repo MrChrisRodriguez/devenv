@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { validateStageZeroEvidence } from "./evidence";
 import { validateJsonSchema } from "./json-schema";
 import {
 	loadFixtureDefinition,
@@ -13,6 +14,8 @@ export interface ValidationReport {
 	status: "pass" | "fail";
 	parameterFile: string;
 	schemaFile: string;
+	evidenceFile: string;
+	evidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -25,6 +28,8 @@ export async function validateAll(
 		status: "pass",
 		parameterFile: "template-parameters.toml",
 		schemaFile: "template-parameters.schema.json",
+		evidenceFile: "evidence/stage-0-baseline.json",
+		evidenceSchemaFile: "evidence/stage-0-baseline.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -60,6 +65,13 @@ export async function validateAll(
 				);
 			}
 		}
+		const evidenceErrors = await validateStageZeroEvidence(root);
+		if (evidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...evidenceErrors.map((error) => `stage-0 evidence: ${error}`),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -78,7 +90,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile} against ${report.schemaFile} and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(

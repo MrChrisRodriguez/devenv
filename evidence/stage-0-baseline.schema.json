@@ -192,20 +192,27 @@
 					"required": [
 						"runLabel",
 						"imageId",
+						"imageInspectSizeBytes",
 						"containerIds",
 						"volumeCount",
+						"perWorktreeVolumeBytesRounded",
 						"containerSizeRwBytes",
 						"containerRootFsBytes"
 					],
 					"properties": {
 						"runLabel": { "type": "string", "minLength": 1 },
 						"imageId": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+						"imageInspectSizeBytes": { "type": "integer", "minimum": 1 },
 						"containerIds": {
 							"type": "array",
 							"minItems": 2,
 							"items": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
 						},
 						"volumeCount": { "type": "integer", "minimum": 1 },
+						"perWorktreeVolumeBytesRounded": {
+							"type": "integer",
+							"minimum": 0
+						},
 						"containerSizeRwBytes": { "type": "integer", "minimum": 1 },
 						"containerRootFsBytes": { "type": "integer", "minimum": 1 }
 					}
