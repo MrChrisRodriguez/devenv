@@ -4,6 +4,17 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-07-14 — Fix: close Stage 2 adversarial evidence gaps
+
+**Goal:** Prevent a workspace binary from forging the image-definition check and make the recorded architecture, storage, cache, and rollback evidence reject cached or fabricated observations.
+
+**How to implement:** Resolve Proto and Bun through absolute image-owned paths before computing the mounted checkout fingerprint, pass that Bun explicitly to the fingerprint helper, and reject any tool path that escapes the baked Proto root. Prove the boundary with a changed devcontainer definition plus a malicious `/workspace/node_modules/.bin/bun` that prints the baked marker. Run each supported-architecture evidence build with cache disabled and require the architecture-sensitive base, Proto, Claude, and final stages to execute. Deep-bind JSON probe records to their hashed raw logs, recompute cache counts and storage arithmetic, compare the Stage 0 storage baseline, use deterministic synthetic-merge metadata, and derive rollback trees and parent order from the real Git boundary.
+
+**Changed files:**
+- `.devcontainer/devcontainer-fingerprint.sh`, `.devcontainer/on-create/setup-proto.sh` — absolute image-owned fingerprint execution and realpath enforcement.
+- `scripts/template/image-evidence.ts`, `scripts/template/collect-stage-two-evidence.ts`, evidence schema/tests — uncached architecture proof and non-vacuous log/Git/metric validation.
+- `docs/devcontainer-upgrade/stage-2/README.md`, `scripts/template/image-contract.ts`, image tests — operator contract and regression guards.
+
 ## 2026-07-14 — Add: reproducible payload-oriented devcontainer image
 
 **Goal:** Move the complete development toolchain out of per-container mutation and into independently cached, capability-rendered image payloads. Every image download, Proto partition, retained feature, marker, and runtime verification path now has one exact owner, while stale definitions fail closed instead of silently repairing themselves.

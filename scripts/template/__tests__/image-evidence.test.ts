@@ -4,7 +4,6 @@ import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import {
-	classifyBuildStages,
 	collectionCommands,
 	parseShellProbe,
 	probePartition,
@@ -13,9 +12,11 @@ import {
 	STAGE_TWO_IMPLEMENTATION_SHA,
 } from "../collect-stage-two-evidence";
 import {
+	classifyBuildStages,
 	type JsonRecord,
 	STAGE_TWO_COMMAND_IDS,
 	sha256,
+	syntheticStageTwoMergeMetadata,
 	validateBoundStageTwoLogs,
 	validateStageTwoEvidenceValue,
 } from "../image-evidence";
@@ -59,20 +60,30 @@ function validEvidence(): JsonRecord {
 			codexVersion: "0.144.4",
 			alternateCodexVersion: "0.144.3",
 		},
-		commands: STAGE_TWO_COMMAND_IDS.map((commandId) => ({
-			id: commandId,
-			command: commands[commandId],
-			runId: id,
-			startedAt: "2026-07-15T00:00:00.000Z",
-			completedAt: "2026-07-15T00:00:02.000Z",
-			durationMs: 100,
-			stdoutPath: `evidence/stage-2-image-run/${commandId}.stdout`,
-			stderrPath: `evidence/stage-2-image-run/${commandId}.stderr`,
-			stdoutSha256: SHA,
-			stderrSha256: SHA,
-			exitCode: 0,
-			status: "pass",
-		})),
+		commands: STAGE_TWO_COMMAND_IDS.map((commandId) => {
+			const durationMs =
+				commandId === "clean-build"
+					? 2000
+					: commandId === "warm-build"
+						? 500
+						: 100;
+			return {
+				id: commandId,
+				command: commands[commandId],
+				runId: id,
+				startedAt: "2026-07-15T00:00:00.000Z",
+				completedAt: new Date(
+					Date.parse("2026-07-15T00:00:00.000Z") + durationMs,
+				).toISOString(),
+				durationMs,
+				stdoutPath: `evidence/stage-2-image-run/${commandId}.stdout`,
+				stderrPath: `evidence/stage-2-image-run/${commandId}.stderr`,
+				stdoutSha256: SHA,
+				stderrSha256: SHA,
+				exitCode: 0,
+				status: "pass",
+			};
+		}),
 		builds: {
 			clean: {
 				commandId: "clean-build",
@@ -103,18 +114,31 @@ function validEvidence(): JsonRecord {
 				architecture: "amd64",
 				commandId: "architecture-amd64",
 				status: "pass",
+				rebuiltStages: [
+					"stable_base",
+					"proto_foundation",
+					"claude_payload",
+					"development",
+				],
 			},
 			{
 				architecture: "arm64",
 				commandId: "architecture-arm64",
 				status: "pass",
+				rebuiltStages: [
+					"stable_base",
+					"proto_foundation",
+					"claude_payload",
+					"development",
+				],
 			},
 		],
 		staleImageRefusal: {
 			commandId: "stale-image-refusal",
-			mutation: "append-stage2-stale-tool",
-			originalManifestSha256: "5".repeat(64),
-			mutatedManifestSha256: "6".repeat(64),
+			mutation: "shadow-workspace-bun-and-edit-definition",
+			originalDefinitionFingerprint: "5".repeat(64),
+			mutatedDefinitionFingerprint: "6".repeat(64),
+			shadowBunPath: "/workspace/node_modules/.bin/bun",
 			containerExitCode: 1,
 			refused: true,
 			diagnostic:
@@ -241,12 +265,12 @@ describe("Stage 2 image evidence", () => {
 
 			const validErrors = await validateBoundStageTwoLogs(root, evidence);
 			expect(validErrors).not.toContain(
-				"repository: stale-image diagnostic is absent from its bound log",
+				"repository: stale-image evidence differs from its bound log",
 			);
 
 			stale["diagnostic"] = "another diagnostic";
 			expect(await validateBoundStageTwoLogs(root, evidence)).toContain(
-				"repository: stale-image diagnostic is absent from its bound log",
+				"repository: stale-image evidence differs from its bound log",
 			);
 		} finally {
 			await rm(root, { recursive: true, force: true });
@@ -273,6 +297,11 @@ describe("Stage 2 image evidence", () => {
 		expect(validateStageTwoEvidenceValue(mutableStorage, schema)).toContain(
 			"semantic: second worktree retained mutable Proto storage",
 		);
+		const falseStorage = structuredClone(evidence);
+		(falseStorage["secondWorktreeStorage"] as JsonRecord)["observedBytes"] = 0;
+		expect(validateStageTwoEvidenceValue(falseStorage, schema)).toContain(
+			"semantic: second-worktree storage arithmetic is inconsistent",
+		);
 
 		const cachedAssembly = structuredClone(evidence);
 		(cachedAssembly["layerInvalidation"] as JsonRecord)["rebuiltStages"] = [
@@ -280,6 +309,13 @@ describe("Stage 2 image evidence", () => {
 		];
 		expect(validateStageTwoEvidenceValue(cachedAssembly, schema)).toContain(
 			"semantic: Codex pin mutation did not isolate codex_payload invalidation",
+		);
+		const cachedArchitecture = structuredClone(evidence);
+		((cachedArchitecture["architectures"] as JsonRecord[])[0] as JsonRecord)[
+			"rebuiltStages"
+		] = [];
+		expect(validateStageTwoEvidenceValue(cachedArchitecture, schema)).toContain(
+			"semantic: architecture amd64 did not execute stable_base",
 		);
 	});
 
@@ -367,7 +403,13 @@ describe("Stage 2 image evidence", () => {
 				implementation,
 				workspace,
 			});
+			const expectedMerge = syntheticStageTwoMergeMetadata(
+				base,
+				implementation,
+				git(repository, ["rev-parse", `${implementation}^{tree}`]),
+			);
 			expect(proof.syntheticMergeParents).toEqual([base, implementation]);
+			expect(proof.syntheticMergeSha).toBe(expectedMerge.sha);
 			expect(proof.revertedTree).toBe(proof.predecessorTree);
 			expect(proof.treeMatchesPredecessor).toBe(true);
 		} finally {

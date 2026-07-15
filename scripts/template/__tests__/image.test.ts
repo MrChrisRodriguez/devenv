@@ -116,6 +116,12 @@ describe("devcontainer image contract", () => {
 			);
 			await mutate(
 				temporary,
+				".devcontainer/on-create/setup-proto.sh",
+				(source) => source.replace("DEVCONTAINER_FINGERPRINT_BUN=", ""),
+				"image: setup-proto omits DEVCONTAINER_FINGERPRINT_BUN",
+			);
+			await mutate(
+				temporary,
 				".devcontainer/devcontainer.json",
 				(source) =>
 					source.replace(

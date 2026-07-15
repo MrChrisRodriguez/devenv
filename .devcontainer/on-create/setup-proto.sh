@@ -15,6 +15,9 @@ root_manifest="$repo_root/.prototools"
 manifest_marker="$image_contract_dir/prototools.sha256"
 definition_marker="$image_contract_dir/definition.sha256"
 fingerprint_script="$repo_root/.devcontainer/devcontainer-fingerprint.sh"
+proto_root="$(readlink -f "${PROTO_HOME:-$HOME/.proto}")"
+image_bun="${PROTO_HOME:-$HOME/.proto}/shims/bun"
+image_proto="${PROTO_HOME:-$HOME/.proto}/bin/proto"
 
 rebuild_required() {
 	echo "ERROR: $1" >&2
@@ -40,6 +43,21 @@ for required_file in \
 	fi
 done
 
+for tool_path in "$image_bun" "$image_proto"; do
+	resolved_tool="$(readlink -f "$tool_path" 2>/dev/null || true)"
+	case "$resolved_tool" in
+		"$proto_root"/*) ;;
+		*)
+			rebuild_required "$tool_path does not resolve inside the image-owned Proto toolchain"
+			return 1
+			;;
+	esac
+	if [ ! -x "$tool_path" ]; then
+		rebuild_required "$tool_path is absent from the image-owned Proto toolchain"
+		return 1
+	fi
+done
+
 expected_manifest="$(sha256sum "$root_manifest" | awk '{print $1}')"
 actual_manifest="$(tr -d '[:space:]' < "$manifest_marker")"
 if ! is_sha256 "$actual_manifest" || [ "$actual_manifest" != "$expected_manifest" ]; then
@@ -47,16 +65,19 @@ if ! is_sha256 "$actual_manifest" || [ "$actual_manifest" != "$expected_manifest
 	return 1
 fi
 
-expected_definition="$(bash "$fingerprint_script" "$repo_root")"
+if ! expected_definition="$(DEVCONTAINER_FINGERPRINT_BUN="$image_bun" bash "$fingerprint_script" "$repo_root")"; then
+	rebuild_required "the devcontainer definition fingerprint could not be computed with image-owned Bun"
+	return 1
+fi
 actual_definition="$(tr -d '[:space:]' < "$definition_marker")"
 if ! is_sha256 "$actual_definition" || [ "$actual_definition" != "$expected_definition" ]; then
 	rebuild_required "the devcontainer definition differs from the image fingerprint"
 	return 1
 fi
 
-for tool in proto bun; do
-	if ! command -v "$tool" >/dev/null 2>&1; then
-		rebuild_required "$tool is absent from the image-owned Proto toolchain"
+for tool_path in "$image_proto" "$image_bun"; do
+	if ! "$tool_path" --version >/dev/null 2>&1; then
+		rebuild_required "$tool_path is not executable in the image-owned Proto toolchain"
 		return 1
 	fi
 done

@@ -4,6 +4,11 @@ import { validateJsonSchema } from "./json-schema";
 
 export type JsonRecord = Record<string, unknown>;
 
+export interface BuildStageStatus {
+	cachedStages: string[];
+	rebuiltStages: string[];
+}
+
 export const STAGE_TWO_COMMAND_IDS = [
 	"clean-build",
 	"warm-build",
@@ -43,6 +48,10 @@ const ROLLBACK_COMMAND = [
 	"1",
 	"<stage-2-pr-merge-commit>",
 ] as const;
+export const STAGE_TWO_SYNTHETIC_MERGE_SUBJECT = "Stage 2 synthetic merge";
+export const STAGE_TWO_SYNTHETIC_NAME = "Stage Two Evidence";
+export const STAGE_TWO_SYNTHETIC_EMAIL = "stage-two-evidence@example.invalid";
+export const STAGE_TWO_SYNTHETIC_DATE = "1970-01-01T00:00:00Z";
 
 export function isRecord(value: unknown): value is JsonRecord {
 	return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -95,6 +104,64 @@ function duplicates(values: string[]): string[] {
 
 export function sha256(value: Uint8Array | string): string {
 	return new Bun.CryptoHasher("sha256").update(value).digest("hex");
+}
+
+export function syntheticStageTwoMergeMetadata(
+	baseSha: string,
+	implementationSha: string,
+	implementationTree: string,
+): { sha: string; tree: string; parents: [string, string] } {
+	const identity = `${STAGE_TWO_SYNTHETIC_NAME} <${STAGE_TWO_SYNTHETIC_EMAIL}>`;
+	const content = [
+		`tree ${implementationTree}`,
+		`parent ${baseSha}`,
+		`parent ${implementationSha}`,
+		`author ${identity} 0 +0000`,
+		`committer ${identity} 0 +0000`,
+		"",
+		STAGE_TWO_SYNTHETIC_MERGE_SUBJECT,
+		"",
+	].join("\n");
+	const body = new TextEncoder().encode(content);
+	const header = new TextEncoder().encode(`commit ${body.byteLength}\0`);
+	const object = new Uint8Array(header.byteLength + body.byteLength);
+	object.set(header);
+	object.set(body, header.byteLength);
+	return {
+		sha: new Bun.CryptoHasher("sha1").update(object).digest("hex"),
+		tree: implementationTree,
+		parents: [baseSha, implementationSha],
+	};
+}
+
+export function classifyBuildStages(output: string): BuildStageStatus {
+	const stepStages = new Map<string, string>();
+	const statuses = new Map<string, "cached" | "rebuilt">();
+	for (const line of output.split("\n")) {
+		const instruction =
+			/^#(\d+) \[([a-z][a-z0-9_]*) \d+\/\d+\] (?:RUN|COPY|WORKDIR)\b/.exec(
+				line,
+			);
+		if (instruction?.[1] && instruction[2])
+			stepStages.set(instruction[1], instruction[2]);
+		const completion = /^#(\d+) (CACHED|DONE)\b/.exec(line);
+		if (!completion?.[1] || !completion[2]) continue;
+		const stage = stepStages.get(completion[1]);
+		if (!stage) continue;
+		if (completion[2] === "CACHED") {
+			if (!statuses.has(stage)) statuses.set(stage, "cached");
+		} else statuses.set(stage, "rebuilt");
+	}
+	return {
+		cachedStages: [...statuses]
+			.filter(([, status]) => status === "cached")
+			.map(([stage]) => stage)
+			.sort(),
+		rebuiltStages: [...statuses]
+			.filter(([, status]) => status === "rebuilt")
+			.map(([stage]) => stage)
+			.sort(),
+	};
 }
 
 function gitOutput(
@@ -218,6 +285,7 @@ export function expectedStageTwoCommands(
 			"linux/amd64",
 			"--target",
 			"development",
+			"--no-cache",
 			"--progress",
 			"plain",
 			"--output",
@@ -234,6 +302,7 @@ export function expectedStageTwoCommands(
 			"linux/arm64",
 			"--target",
 			"development",
+			"--no-cache",
 			"--progress",
 			"plain",
 			"--output",
@@ -337,6 +406,13 @@ export function validateStageTwoEvidenceValue(
 	const expectedCommands = expectedStageTwoCommands(value);
 	const commandEntries = arrayAt(value, "commands");
 	const commandIds = names(commandEntries, "id");
+	const commandById = new Map(
+		commandEntries.flatMap((entry) =>
+			isRecord(entry) && typeof entry["id"] === "string"
+				? [[entry["id"] as string, entry] as const]
+				: [],
+		),
+	);
 
 	if (!sameValue([...commandIds].sort(), [...STAGE_TWO_COMMAND_IDS].sort()))
 		errors.push("semantic: Stage 2 command set drifted");
@@ -361,10 +437,22 @@ export function validateStageTwoEvidenceValue(
 		if (
 			typeof entry["startedAt"] === "string" &&
 			typeof entry["completedAt"] === "string" &&
-			Date.parse(entry["startedAt"] as string) >
-				Date.parse(entry["completedAt"] as string)
-		)
-			errors.push(`semantic: command ${id} completed before it started`);
+			Number.isFinite(Date.parse(entry["startedAt"] as string)) &&
+			Number.isFinite(Date.parse(entry["completedAt"] as string))
+		) {
+			const wallDuration =
+				Date.parse(entry["completedAt"] as string) -
+				Date.parse(entry["startedAt"] as string);
+			if (wallDuration < 0)
+				errors.push(`semantic: command ${id} completed before it started`);
+			if (
+				typeof entry["durationMs"] === "number" &&
+				Math.abs(entry["durationMs"] - wallDuration) > 2_000
+			)
+				errors.push(
+					`semantic: command ${id} duration differs from its timestamps`,
+				);
+		}
 		for (const stream of ["stdout", "stderr"] as const) {
 			if (entry[`${stream}Path`] !== `${LOG_ROOT}/${id}.${stream}`)
 				errors.push(`semantic: command ${id} ${stream} path drifted`);
@@ -394,6 +482,14 @@ export function validateStageTwoEvidenceValue(
 	const builds = recordAt(value, "builds");
 	const clean = recordAt(builds, "clean");
 	const warm = recordAt(builds, "warm");
+	if (clean["durationMs"] !== commandById.get("clean-build")?.["durationMs"])
+		errors.push(
+			"semantic: clean build duration differs from its command result",
+		);
+	if (warm["durationMs"] !== commandById.get("warm-build")?.["durationMs"])
+		errors.push(
+			"semantic: warm build duration differs from its command result",
+		);
 	if (clean["commandId"] !== "clean-build" || clean["noCache"] !== true)
 		errors.push("semantic: clean build is not bound to --no-cache");
 	if (
@@ -449,6 +545,15 @@ export function validateStageTwoEvidenceValue(
 			errors.push(
 				`semantic: architecture ${name} is not bound to its successful build`,
 			);
+		const rebuilt = arrayAt(architecture, "rebuiltStages");
+		for (const stage of [
+			"stable_base",
+			"proto_foundation",
+			"claude_payload",
+			"development",
+		])
+			if (!rebuilt.includes(stage))
+				errors.push(`semantic: architecture ${name} did not execute ${stage}`);
 	}
 
 	const stale = recordAt(value, "staleImageRefusal");
@@ -458,8 +563,16 @@ export function validateStageTwoEvidenceValue(
 		Number(stale["containerExitCode"] ?? 0) === 0
 	)
 		errors.push("semantic: stale image refusal was not observed");
-	if (stale["originalManifestSha256"] === stale["mutatedManifestSha256"])
-		errors.push("semantic: stale image mutation did not change .prototools");
+	if (
+		stale["mutation"] !== "shadow-workspace-bun-and-edit-definition" ||
+		stale["shadowBunPath"] !== "/workspace/node_modules/.bin/bun"
+	)
+		errors.push("semantic: stale image shadow-Bun mutation drifted");
+	if (
+		stale["originalDefinitionFingerprint"] ===
+		stale["mutatedDefinitionFingerprint"]
+	)
+		errors.push("semantic: stale image mutation did not change the definition");
 	if (!String(stale["diagnostic"] ?? "").includes("Rebuild/recreate"))
 		errors.push(
 			"semantic: stale image refusal omits rebuild/recreate guidance",
@@ -527,6 +640,13 @@ export function validateStageTwoEvidenceValue(
 		Number(storage["stageZeroBaselineBytes"] ?? -1)
 	)
 		errors.push("semantic: second-worktree storage regressed from Stage 0");
+	if (
+		Number(storage["observedBytes"] ?? -1) !==
+		Number(storage["secondContainerWritableBytes"] ?? 0) +
+			Number(storage["secondCheckoutBytes"] ?? 0) +
+			Number(storage["volumeBytes"] ?? 0)
+	)
+		errors.push("semantic: second-worktree storage arithmetic is inconsistent");
 	if (
 		Number(storage["secondContainerWritableBytes"] ?? Infinity) >=
 		Number(storage["imageProtoBytes"] ?? 0)
@@ -616,14 +736,12 @@ export async function validateBoundStageTwoLogs(
 	}
 	const combined = (id: string): string =>
 		`${contents.get(`${id}:stdout`) ?? ""}\n${contents.get(`${id}:stderr`) ?? ""}`;
-	const boundProbeDiagnostic = (id: string): string => {
+	const boundProbeRecord = (id: string): JsonRecord => {
 		try {
 			const parsed = JSON.parse(contents.get(`${id}:stdout`) ?? "");
-			return isRecord(parsed) && typeof parsed["diagnostic"] === "string"
-				? (parsed["diagnostic"] as string)
-				: "";
+			return isRecord(parsed) ? parsed : {};
 		} catch {
-			return "";
+			return {};
 		}
 	};
 	const image = recordAt(value, "image");
@@ -644,22 +762,30 @@ export async function validateBoundStageTwoLogs(
 	}
 	if (!combined("warm-build").includes("CACHED"))
 		errors.push("repository: warm build log contains no cache hit");
+	const commands = new Map(
+		arrayAt(value, "commands").flatMap((entry) =>
+			isRecord(entry) && typeof entry["id"] === "string"
+				? [[entry["id"] as string, entry] as const]
+				: [],
+		),
+	);
+	for (const id of ["clean-build", "warm-build"] as const) {
+		const build = recordAt(
+			recordAt(value, "builds"),
+			id.split("-")[0] as "clean" | "warm",
+		);
+		const cachedSteps = combined(id).match(/\bCACHED\b/g)?.length ?? 0;
+		if (build["cachedSteps"] !== cachedSteps)
+			errors.push(`repository: ${id} cache count differs from its bound log`);
+		if (build["durationMs"] !== commands.get(id)?.["durationMs"])
+			errors.push(`repository: ${id} duration differs from its command result`);
+	}
 	const stale = recordAt(value, "staleImageRefusal");
-	if (
-		boundProbeDiagnostic("stale-image-refusal") !==
-		String(stale["diagnostic"] ?? "")
-	)
-		errors.push(
-			"repository: stale-image diagnostic is absent from its bound log",
-		);
+	if (!sameValue(boundProbeRecord("stale-image-refusal"), stale))
+		errors.push("repository: stale-image evidence differs from its bound log");
 	const partition = recordAt(value, "partitionMutation");
-	if (
-		boundProbeDiagnostic("partition-mutation") !==
-		String(partition["diagnostic"] ?? "")
-	)
-		errors.push(
-			"repository: partition diagnostic is absent from its bound log",
-		);
+	if (!sameValue(boundProbeRecord("partition-mutation"), partition))
+		errors.push("repository: partition evidence differs from its bound log");
 	for (const shell of arrayAt(value, "shellPaths")) {
 		if (!isRecord(shell) || typeof shell["commandId"] !== "string") continue;
 		const output = combined(shell["commandId"] as string);
@@ -677,11 +803,20 @@ export async function validateBoundStageTwoLogs(
 			evidenceKey === "proof"
 				? recordAt(recordAt(value, "rollback"), "proof")
 				: recordAt(value, evidenceKey);
-		for (const field of evidenceKey === "proof"
-			? ["predecessorTree", "revertedTree"]
-			: ["primaryContainerId", "secondContainerId", "imageProtoBytes"])
-			if (!combined(id).includes(String(target[field] ?? "")))
-				errors.push(`repository: ${id} ${field} is absent from its bound log`);
+		if (!sameValue(boundProbeRecord(id), target))
+			errors.push(`repository: ${id} evidence differs from its bound log`);
+	}
+	for (const architecture of arrayAt(value, "architectures")) {
+		if (
+			!isRecord(architecture) ||
+			typeof architecture["commandId"] !== "string"
+		)
+			continue;
+		const observed = classifyBuildStages(combined(architecture["commandId"]));
+		if (!sameValue(observed.rebuiltStages, architecture["rebuiltStages"]))
+			errors.push(
+				`repository: ${architecture["commandId"]} rebuilt stages differ from its bound log`,
+			);
 	}
 	return [...new Set(errors)].sort();
 }
@@ -747,6 +882,63 @@ export async function validateStageTwoEvidence(
 				"repository: image Proto digest differs from the implementation manifest",
 			);
 	}
+	if (typeof baseSha === "string" && typeof implementationSha === "string") {
+		const predecessorTree = gitOutput(root, ["rev-parse", `${baseSha}^{tree}`]);
+		const implementationTree = gitOutput(root, [
+			"rev-parse",
+			`${implementationSha}^{tree}`,
+		]);
+		const proof = recordAt(recordAt(value, "rollback"), "proof");
+		if (predecessorTree.exitCode !== 0 || implementationTree.exitCode !== 0)
+			errors.push("repository: Stage 2 rollback trees could not be inspected");
+		else {
+			const merge = syntheticStageTwoMergeMetadata(
+				baseSha,
+				implementationSha,
+				implementationTree.stdout,
+			);
+			if (
+				proof["predecessorTree"] !== predecessorTree.stdout ||
+				proof["revertedTree"] !== predecessorTree.stdout
+			)
+				errors.push(
+					"repository: Stage 2 rollback tree differs from the actual predecessor",
+				);
+			if (proof["syntheticMergeTree"] !== merge.tree)
+				errors.push(
+					"repository: Stage 2 synthetic merge tree differs from implementation",
+				);
+			if (!sameValue(proof["syntheticMergeParents"], merge.parents))
+				errors.push(
+					"repository: Stage 2 synthetic merge parents differ from source boundary",
+				);
+			if (proof["syntheticMergeSha"] !== merge.sha)
+				errors.push(
+					"repository: Stage 2 synthetic merge commit metadata drifted",
+				);
+		}
+	}
+	const baselineFile = Bun.file(
+		resolve(root, "evidence/stage-0-baseline.json"),
+	);
+	if (await baselineFile.exists()) {
+		const baseline = (await baselineFile.json()) as unknown;
+		const measurements = isRecord(baseline)
+			? recordAt(baseline, "measurements")
+			: {};
+		const growth = recordAt(measurements, "secondWorktreeGrowth");
+		const baselineValue = growth["value"];
+		const expectedBytes = isRecord(baselineValue)
+			? baselineValue["totalBytesRounded"]
+			: undefined;
+		if (
+			recordAt(value, "secondWorktreeStorage")["stageZeroBaselineBytes"] !==
+			expectedBytes
+		)
+			errors.push(
+				"repository: Stage 2 storage baseline differs from Stage 0 evidence",
+			);
+	} else errors.push("repository: Stage 0 baseline is unavailable");
 	return [...new Set(errors)].sort();
 }
 

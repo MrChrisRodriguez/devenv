@@ -349,6 +349,10 @@ export async function validateImageContract(
 		"prototools.sha256",
 		"definition.sha256",
 		"devcontainer-fingerprint.sh",
+		"DEVCONTAINER_FINGERPRINT_BUN",
+		"/shims/bun",
+		"/bin/proto",
+		"readlink -f",
 		"Rebuild/recreate the devcontainer",
 	]) {
 		if (!setupProto.includes(marker))

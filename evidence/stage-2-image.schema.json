@@ -131,17 +131,19 @@
 			"required": [
 				"commandId",
 				"mutation",
-				"originalManifestSha256",
-				"mutatedManifestSha256",
+				"originalDefinitionFingerprint",
+				"mutatedDefinitionFingerprint",
+				"shadowBunPath",
 				"containerExitCode",
 				"refused",
 				"diagnostic"
 			],
 			"properties": {
 				"commandId": { "const": "stale-image-refusal" },
-				"mutation": { "const": "append-stage2-stale-tool" },
-				"originalManifestSha256": { "$ref": "#/$defs/sha256" },
-				"mutatedManifestSha256": { "$ref": "#/$defs/sha256" },
+				"mutation": { "const": "shadow-workspace-bun-and-edit-definition" },
+				"originalDefinitionFingerprint": { "$ref": "#/$defs/sha256" },
+				"mutatedDefinitionFingerprint": { "$ref": "#/$defs/sha256" },
+				"shadowBunPath": { "const": "/workspace/node_modules/.bin/bun" },
 				"containerExitCode": { "type": "integer", "minimum": 1 },
 				"refused": { "const": true },
 				"diagnostic": { "type": "string", "minLength": 20 }
@@ -266,11 +268,17 @@
 		"architecture": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["architecture", "commandId", "status"],
+			"required": ["architecture", "commandId", "status", "rebuiltStages"],
 			"properties": {
 				"architecture": { "enum": ["amd64", "arm64"] },
 				"commandId": { "enum": ["architecture-amd64", "architecture-arm64"] },
-				"status": { "const": "pass" }
+				"status": { "const": "pass" },
+				"rebuiltStages": {
+					"type": "array",
+					"minItems": 4,
+					"uniqueItems": true,
+					"items": { "$ref": "#/$defs/stageName" }
+				}
 			}
 		},
 		"shellPath": {

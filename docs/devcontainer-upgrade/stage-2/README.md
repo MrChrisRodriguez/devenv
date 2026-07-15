@@ -24,9 +24,12 @@ Proto at runtime.
   capabilities. Disabled profiles contain no corresponding Docker residue.
 
 `.devcontainer/on-create/setup-proto.sh` compares both markers with the mounted
-checkout and verifies image-owned Proto and Bun. Any mismatch fails with a
-rebuild/recreate diagnostic. The scoped host cleanup helper removes only an
-exact, unattached legacy `proto-home-<devcontainer-id>` volume.
+checkout and verifies image-owned Proto and Bun by absolute path and resolved
+location. It passes the image-owned Proto Bun explicitly to the fingerprint
+helper, so a workspace-local binary cannot forge the definition marker. Any
+mismatch fails with a rebuild/recreate diagnostic. The scoped host cleanup
+helper removes only an exact, unattached legacy
+`proto-home-<devcontainer-id>` volume.
 
 ## Validation
 
@@ -77,8 +80,10 @@ the first nonzero exit:
 1. Clean and warm native image builds.
 2. Definition fingerprint, image identity, and baked marker inspection.
 3. A one-owner Codex-pin cache invalidation build.
-4. Complete amd64 and arm64 builds.
-5. A real stale-manifest refusal in a disposable worktree/container.
+4. Complete cache-disabled amd64 and arm64 builds that execute the
+   architecture-sensitive base, Proto, Claude, and final stages.
+5. A real stale-definition refusal in a disposable worktree/container while a
+   malicious workspace-local Bun attempts to print the baked marker.
 6. A real missing-foundation-uv partition mutation.
 7. Bash and Zsh login/non-login PATH probes.
 8. Two real containers over two worktrees, with image identity, writable-layer,
@@ -93,7 +98,9 @@ failed probes leave logs for diagnosis but no passing evidence record. Build
 durations, cache hits, stage invalidation, image/container identities, storage
 bytes, refusal exit codes, diagnostics, and rollback trees are parsed from
 actual command output—zeroes or estimates are not substituted for unavailable
-observations.
+observations. JSON probes are deep-compared with their raw logs; cache counts
+and storage totals are recomputed; rollback trees, deterministic merge
+metadata, and parent order are rederived from Git.
 
 The storage comparison uses Stage 0's captured `96,111,608` byte
 second-worktree baseline. Probe cleanup removes only the exact disposable

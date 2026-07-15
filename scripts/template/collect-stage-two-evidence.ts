@@ -1,14 +1,20 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Evidence fields intentionally match the strict JSON schema.
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, isAbsolute, relative, resolve, sep } from "node:path";
 import {
+	classifyBuildStages,
 	expectedStageTwoCommands,
 	isRecord,
 	type JsonRecord,
 	STAGE_TWO_COMMAND_IDS,
+	STAGE_TWO_SYNTHETIC_DATE,
+	STAGE_TWO_SYNTHETIC_EMAIL,
+	STAGE_TWO_SYNTHETIC_MERGE_SUBJECT,
+	STAGE_TWO_SYNTHETIC_NAME,
 	type StageTwoCommandId,
 	sha256,
+	syntheticStageTwoMergeMetadata,
 	validateBoundStageTwoLogs,
 	validateProtoPartitions,
 	validateStageTwoEvidenceValue,
@@ -52,9 +58,10 @@ interface CapturedCommand {
 
 interface StaleProbe {
 	commandId: "stale-image-refusal";
-	mutation: "append-stage2-stale-tool";
-	originalManifestSha256: string;
-	mutatedManifestSha256: string;
+	mutation: "shadow-workspace-bun-and-edit-definition";
+	originalDefinitionFingerprint: string;
+	mutatedDefinitionFingerprint: string;
+	shadowBunPath: "/workspace/node_modules/.bin/bun";
 	containerExitCode: number;
 	refused: true;
 	diagnostic: string;
@@ -102,11 +109,6 @@ interface ShellProbe {
 	bunPath: string;
 	protoPath: string;
 	path: string;
-}
-
-interface StageStatus {
-	cachedStages: string[];
-	rebuiltStages: string[];
 }
 
 function usage(): string {
@@ -254,10 +256,33 @@ export async function probeStale(options_: {
 	const workspace = temporaryWorkspace(options_.workspace);
 	await addWorktree(root, workspace, "HEAD");
 	try {
-		const manifestPath = resolve(workspace, ".prototools");
-		const original = new Uint8Array(await Bun.file(manifestPath).arrayBuffer());
-		const mutated = `${new TextDecoder().decode(original).trimEnd()}\nstage2_stale_probe = "0.0.1"\n`;
-		await Bun.write(manifestPath, mutated);
+		const fingerprintScript = resolve(
+			workspace,
+			".devcontainer/devcontainer-fingerprint.sh",
+		);
+		const fingerprint = (): string =>
+			checked(["bash", fingerprintScript, workspace], root, {
+				DEVCONTAINER_FINGERPRINT_BUN: process.execPath,
+			}).stdout.trim();
+		const originalDefinitionFingerprint = fingerprint();
+		const definitionPath = resolve(
+			workspace,
+			".devcontainer/devcontainer.json",
+		);
+		await Bun.write(
+			definitionPath,
+			`${await Bun.file(definitionPath).text()}\n`,
+		);
+		const mutatedDefinitionFingerprint = fingerprint();
+		if (originalDefinitionFingerprint === mutatedDefinitionFingerprint)
+			throw new Error("Definition mutation did not change the fingerprint");
+		const shadowBun = resolve(workspace, "node_modules/.bin/bun");
+		await mkdir(dirname(shadowBun), { recursive: true });
+		await Bun.write(
+			shadowBun,
+			"#!/usr/bin/env bash\ncat /usr/local/share/devenv-image/definition.sha256\n",
+		);
+		await chmod(shadowBun, 0o755);
 		const command = [
 			"docker",
 			"run",
@@ -274,17 +299,20 @@ export async function probeStale(options_: {
 		const result = execute(command, root);
 		const diagnostic = `${result.stdout}\n${result.stderr}`.trim();
 		if (result.exitCode === 0)
-			throw new Error("Stale .prototools mutation was accepted by the image");
+			throw new Error(
+				"Stale definition with a shadowing workspace Bun was accepted by the image",
+			);
 		if (
-			!diagnostic.includes(".prototools differs") ||
+			!diagnostic.includes("definition differs") ||
 			!diagnostic.includes("Rebuild/recreate")
 		)
 			throw new Error(`Stale refusal diagnostic drifted:\n${diagnostic}`);
 		return {
 			commandId: "stale-image-refusal",
-			mutation: "append-stage2-stale-tool",
-			originalManifestSha256: sha256(original),
-			mutatedManifestSha256: sha256(mutated),
+			mutation: "shadow-workspace-bun-and-edit-definition",
+			originalDefinitionFingerprint,
+			mutatedDefinitionFingerprint,
+			shadowBunPath: "/workspace/node_modules/.bin/bun",
 			containerExitCode: result.exitCode,
 			refused: true,
 			diagnostic,
@@ -582,10 +610,12 @@ export async function probeRollback(options_: {
 	await addWorktree(root, workspace, predecessorSha, operations);
 	try {
 		const identity = {
-			GIT_AUTHOR_NAME: "Stage Two Evidence",
-			GIT_AUTHOR_EMAIL: "stage-two-evidence@example.invalid",
-			GIT_COMMITTER_NAME: "Stage Two Evidence",
-			GIT_COMMITTER_EMAIL: "stage-two-evidence@example.invalid",
+			GIT_AUTHOR_NAME: STAGE_TWO_SYNTHETIC_NAME,
+			GIT_AUTHOR_EMAIL: STAGE_TWO_SYNTHETIC_EMAIL,
+			GIT_AUTHOR_DATE: STAGE_TWO_SYNTHETIC_DATE,
+			GIT_COMMITTER_NAME: STAGE_TWO_SYNTHETIC_NAME,
+			GIT_COMMITTER_EMAIL: STAGE_TWO_SYNTHETIC_EMAIL,
+			GIT_COMMITTER_DATE: STAGE_TWO_SYNTHETIC_DATE,
 		};
 		const mergeCommand = [
 			"git",
@@ -596,7 +626,7 @@ export async function probeRollback(options_: {
 			"-p",
 			implementationSha,
 			"-m",
-			"Stage 2 synthetic merge",
+			STAGE_TWO_SYNTHETIC_MERGE_SUBJECT,
 		];
 		const syntheticMergeSha = checked(
 			mergeCommand,
@@ -606,6 +636,13 @@ export async function probeRollback(options_: {
 		operations.push(mergeCommand);
 		if (!GIT_SHA.test(syntheticMergeSha))
 			throw new Error("Synthetic merge did not produce a commit SHA");
+		const expectedMerge = syntheticStageTwoMergeMetadata(
+			predecessorSha,
+			implementationSha,
+			implementationTree,
+		);
+		if (syntheticMergeSha !== expectedMerge.sha)
+			throw new Error("Synthetic merge metadata is not deterministic");
 		const syntheticMergeTree = checked(
 			["git", "rev-parse", `${syntheticMergeSha}^{tree}`],
 			root,
@@ -681,36 +718,6 @@ export function parseShellProbe(output: string): ShellProbe {
 	if (!bunPath || !protoPath || !path)
 		throw new Error(`Shell probe output is incomplete:\n${output}`);
 	return { bunPath, protoPath, path };
-}
-
-export function classifyBuildStages(output: string): StageStatus {
-	const stepStages = new Map<string, string>();
-	const statuses = new Map<string, "cached" | "rebuilt">();
-	for (const line of output.split("\n")) {
-		const instruction =
-			/^#(\d+) \[([a-z][a-z0-9_]*) \d+\/\d+\] (?:RUN|COPY|WORKDIR)\b/.exec(
-				line,
-			);
-		if (instruction?.[1] && instruction[2])
-			stepStages.set(instruction[1], instruction[2]);
-		const completion = /^#(\d+) (CACHED|DONE)\b/.exec(line);
-		if (!completion?.[1] || !completion[2]) continue;
-		const stage = stepStages.get(completion[1]);
-		if (!stage) continue;
-		if (completion[2] === "CACHED") {
-			if (!statuses.has(stage)) statuses.set(stage, "cached");
-		} else statuses.set(stage, "rebuilt");
-	}
-	return {
-		cachedStages: [...statuses]
-			.filter(([, status]) => status === "cached")
-			.map(([stage]) => stage)
-			.sort(),
-		rebuiltStages: [...statuses]
-			.filter(([, status]) => status === "rebuilt")
-			.map(([stage]) => stage)
-			.sort(),
-	};
 }
 
 export function collectionCommands(
@@ -942,6 +949,10 @@ async function collect(parsed: Map<string, string>): Promise<void> {
 	const invalidation = classifyBuildStages(
 		await commandOutput(root, "layer-invalidation"),
 	);
+	const architectureStages = {
+		amd64: classifyBuildStages(await commandOutput(root, "architecture-amd64")),
+		arm64: classifyBuildStages(await commandOutput(root, "architecture-arm64")),
+	};
 	const staleImageRefusal = jsonObject<StaleProbe>(
 		await commandOutput(root, "stale-image-refusal"),
 		"stale-image-refusal",
@@ -1013,11 +1024,13 @@ async function collect(parsed: Map<string, string>): Promise<void> {
 				architecture: "amd64",
 				commandId: "architecture-amd64",
 				status: "pass",
+				rebuiltStages: architectureStages.amd64.rebuiltStages,
 			},
 			{
 				architecture: "arm64",
 				commandId: "architecture-arm64",
 				status: "pass",
+				rebuiltStages: architectureStages.arm64.rebuiltStages,
 			},
 		],
 		staleImageRefusal,

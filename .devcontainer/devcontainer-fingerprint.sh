@@ -2,13 +2,17 @@
 set -euo pipefail
 
 root="${1:-/workspace}"
+bun_binary="${DEVCONTAINER_FINGERPRINT_BUN:-}"
 
-if ! command -v bun >/dev/null 2>&1; then
+if [ -z "$bun_binary" ]; then
+	bun_binary="$(command -v bun || true)"
+fi
+if [ -z "$bun_binary" ] || [ "${bun_binary#/}" = "$bun_binary" ] || [ ! -x "$bun_binary" ]; then
 	echo "Devcontainer fingerprint requires Bun" >&2
 	exit 1
 fi
 
-exec bun - "$root" <<'BUN'
+exec "$bun_binary" - "$root" <<'BUN'
 import { lstat, readdir, readlink } from "node:fs/promises";
 import { join, posix, resolve } from "node:path";
 
