@@ -1,0 +1,33 @@
+$ bun test scripts/template/__tests__
+
+scripts/template/__tests__/template.test.ts:
+(pass) template parameter registry > validates the registry, schema JSON, and all fixture definitions [989.53ms]
+(pass) template parameter registry > rejects registry values through the committed JSON Schema [0.89ms]
+(pass) template parameter registry > authoritative parameter loading cannot bypass JSON Schema validation [3.58ms]
+(pass) template parameter registry > rejects unknown fields, unsafe paths, and capability dependency drift [1.38ms]
+(pass) template parameter registry > rejects duplicate and cyclic service definitions [0.55ms]
+(pass) template parameter registry > rejects service dependencies unavailable in a dependent profile [0.41ms]
+(pass) template parameter registry > rejects a fixture whose embedded identity differs from its filename [1.32ms]
+(pass) stage zero evidence > validates the measured record and rejects vacuous mutations [2.12ms]
+(pass) deterministic fixture renderer > renders minimal twice with identical manifests and no disabled residue [246.13ms]
+(pass) deterministic fixture renderer > fresh generated CI creates its first lock before running the guard [1268.32ms]
+(pass) deterministic fixture renderer > renders cloud and full profiles with only their selected artifacts [154.42ms]
+(pass) deterministic fixture renderer > known-bad capability residue is detected and named [150.65ms]
+(pass) deterministic fixture renderer > full fixture still rejects global source identity residue [96.05ms]
+(pass) deterministic fixture renderer > invalid fixture input fails before creating output [16.41ms]
+(pass) deterministic fixture renderer > refuses output paths that contain tracked template sources [29.68ms]
+(pass) deterministic fixture renderer > canonicalizes output aliases before protecting tracked sources [29.59ms]
+(pass) deterministic fixture renderer > refuses outputs that overlap worktree Git metadata [42.14ms]
+(pass) ownership and generated paths > every recorded generator source and local generator exists [1.44ms]
+(pass) ownership and generated paths > legacy initializer still produces a committed downstream project [780.90ms]
+
+scripts/template/__tests__/toolchain.test.ts:
+(pass) repository toolchain contract > validates non-vacuous Stage 1 evidence [219.01ms]
+(pass) repository toolchain contract > passes the real tree and rejects known-bad authority mutations [916.36ms]
+(pass) repository toolchain contract > checksum verifier fails closed before archive extraction [23.83ms]
+(pass) repository toolchain contract > Proto health check rejects incomplete and accepts complete installations [193.87ms]
+
+ 23 pass
+ 0 fail
+ 230 expect() calls
+Ran 23 tests across 2 files. [5.19s]

@@ -1,0 +1,417 @@
+scripts/template/json-schema.ts:62:20 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    60 │ 	if (schema === true) return [];
+    61 │ 	if (schema === false) return [`${path} is forbidden by the schema`];
+  > 62 │ 	if (typeof schema["$ref"] === "string") {
+       │ 	                  ^^^^^^
+    63 │ 		return validateNode(value, pointer(root, schema["$ref"]), root, path);
+    64 │ 	}
+  
+  i Unsafe fix: Use a literal key instead.
+  
+     60  60 │     if (schema === true) return [];
+     61  61 │     if (schema === false) return [`${path} is forbidden by the schema`];
+     62     │ - → if·(typeof·schema["$ref"]·===·"string")·{
+         62 │ + → if·(typeof·schema.$ref·===·"string")·{
+     63  63 │       return validateNode(value, pointer(root, schema["$ref"]), root, path);
+     64  64 │     }
+  
+
+scripts/template/json-schema.ts:63:51 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    61 │ 	if (schema === false) return [`${path} is forbidden by the schema`];
+    62 │ 	if (typeof schema["$ref"] === "string") {
+  > 63 │ 		return validateNode(value, pointer(root, schema["$ref"]), root, path);
+       │ 		                                                ^^^^^^
+    64 │ 	}
+    65 │ 
+  
+  i Unsafe fix: Use a literal key instead.
+  
+     61  61 │     if (schema === false) return [`${path} is forbidden by the schema`];
+     62  62 │     if (typeof schema["$ref"] === "string") {
+     63     │ - → → return·validateNode(value,·pointer(root,·schema["$ref"]),·root,·path);
+         63 │ + → → return·validateNode(value,·pointer(root,·schema.$ref),·root,·path);
+     64  64 │     }
+     65  65 │   
+  
+
+scripts/template/json-schema.ts:67:23 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    66 │ 	const errors: string[] = [];
+  > 67 │ 	const allOf = schema["allOf"];
+       │ 	                     ^^^^^^^
+    68 │ 	if (Array.isArray(allOf)) {
+    69 │ 		for (const branch of allOf) {
+  
+  i Unsafe fix: Use a literal key instead.
+  
+     65  65 │   
+     66  66 │     const errors: string[] = [];
+     67     │ - → const·allOf·=·schema["allOf"];
+         67 │ + → const·allOf·=·schema.allOf;
+     68  68 │     if (Array.isArray(allOf)) {
+     69  69 │       for (const branch of allOf) {
+  
+
+scripts/template/json-schema.ts:74:23 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    72 │ 		}
+    73 │ 	}
+  > 74 │ 	const oneOf = schema["oneOf"];
+       │ 	                     ^^^^^^^
+    75 │ 	if (Array.isArray(oneOf)) {
+    76 │ 		const results = oneOf
+  
+  i Unsafe fix: Use a literal key instead.
+  
+     72  72 │       }
+     73  73 │     }
+     74     │ - → const·oneOf·=·schema["oneOf"];
+         74 │ + → const·oneOf·=·schema.oneOf;
+     75  75 │     if (Array.isArray(oneOf)) {
+     76  76 │       const results = oneOf
+  
+
+scripts/template/json-schema.ts:90:45 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    88 │ 	}
+    89 │ 
+  > 90 │ 	const expectedTypes = Array.isArray(schema["type"])
+       │ 	                                           ^^^^^^
+    91 │ 		? schema["type"]
+    92 │ 		: schema["type"] === undefined
+  
+  i Unsafe fix: Use a literal key instead.
+  
+     88  88 │     }
+     89  89 │   
+     90     │ - → const·expectedTypes·=·Array.isArray(schema["type"])
+         90 │ + → const·expectedTypes·=·Array.isArray(schema.type)
+     91  91 │       ? schema["type"]
+     92  92 │       : schema["type"] === undefined
+  
+
+scripts/template/json-schema.ts:91:12 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    90 │ 	const expectedTypes = Array.isArray(schema["type"])
+  > 91 │ 		? schema["type"]
+       │ 		         ^^^^^^
+    92 │ 		: schema["type"] === undefined
+    93 │ 			? []
+  
+  i Unsafe fix: Use a literal key instead.
+  
+     89  89 │   
+     90  90 │     const expectedTypes = Array.isArray(schema["type"])
+     91     │ - → → ?·schema["type"]
+         91 │ + → → ?·schema.type
+     92  92 │       : schema["type"] === undefined
+     93  93 │         ? []
+  
+
+scripts/template/json-schema.ts:92:12 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    90 │ 	const expectedTypes = Array.isArray(schema["type"])
+    91 │ 		? schema["type"]
+  > 92 │ 		: schema["type"] === undefined
+       │ 		         ^^^^^^
+    93 │ 			? []
+    94 │ 			: [schema["type"]];
+  
+  i Unsafe fix: Use a literal key instead.
+  
+     90  90 │     const expectedTypes = Array.isArray(schema["type"])
+     91  91 │       ? schema["type"]
+     92     │ - → → :·schema["type"]·===·undefined
+         92 │ + → → :·schema.type·===·undefined
+     93  93 │         ? []
+     94  94 │         : [schema["type"]];
+  
+
+scripts/template/json-schema.ts:94:14 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    92 │ 		: schema["type"] === undefined
+    93 │ 			? []
+  > 94 │ 			: [schema["type"]];
+       │ 			          ^^^^^^
+    95 │ 	if (
+    96 │ 		expectedTypes.length > 0 &&
+  
+  i Unsafe fix: Use a literal key instead.
+  
+     92  92 │       : schema["type"] === undefined
+     93  93 │         ? []
+     94     │ - → → → :·[schema["type"]];
+         94 │ + → → → :·[schema.type];
+     95  95 │     if (
+     96  96 │       expectedTypes.length > 0 &&
+  
+
+scripts/template/json-schema.ts:108:52 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    106 │ 	}
+    107 │ 
+  > 108 │ 	if ("const" in schema && !sameValue(value, schema["const"]))
+        │ 	                                                  ^^^^^^^
+    109 │ 		errors.push(`${path} must equal ${JSON.stringify(schema["const"])}`);
+    110 │ 	if (
+  
+  i Unsafe fix: Use a literal key instead.
+  
+    106 106 │     }
+    107 107 │   
+    108     │ - → if·("const"·in·schema·&&·!sameValue(value,·schema["const"]))
+        108 │ + → if·("const"·in·schema·&&·!sameValue(value,·schema.const))
+    109 109 │       errors.push(`${path} must equal ${JSON.stringify(schema["const"])}`);
+    110 110 │     if (
+  
+
+scripts/template/json-schema.ts:109:59 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    108 │ 	if ("const" in schema && !sameValue(value, schema["const"]))
+  > 109 │ 		errors.push(`${path} must equal ${JSON.stringify(schema["const"])}`);
+        │ 		                                                        ^^^^^^^
+    110 │ 	if (
+    111 │ 		Array.isArray(schema["enum"]) &&
+  
+  i Unsafe fix: Use a literal key instead.
+  
+    107 107 │   
+    108 108 │     if ("const" in schema && !sameValue(value, schema["const"]))
+    109     │ - → → errors.push(`${path}·must·equal·${JSON.stringify(schema["const"])}`);
+        109 │ + → → errors.push(`${path}·must·equal·${JSON.stringify(schema.const)}`);
+    110 110 │     if (
+    111 111 │       Array.isArray(schema["enum"]) &&
+  
+
+scripts/template/json-schema.ts:111:24 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    109 │ 		errors.push(`${path} must equal ${JSON.stringify(schema["const"])}`);
+    110 │ 	if (
+  > 111 │ 		Array.isArray(schema["enum"]) &&
+        │ 		                     ^^^^^^
+    112 │ 		!schema["enum"].some((candidate) => sameValue(value, candidate))
+    113 │ 	) {
+  
+  i Unsafe fix: Use a literal key instead.
+  
+    109 109 │       errors.push(`${path} must equal ${JSON.stringify(schema["const"])}`);
+    110 110 │     if (
+    111     │ - → → Array.isArray(schema["enum"])·&&
+        111 │ + → → Array.isArray(schema.enum)·&&
+    112 112 │       !schema["enum"].some((candidate) => sameValue(value, candidate))
+    113 113 │     ) {
+  
+
+scripts/template/json-schema.ts:112:11 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    110 │ 	if (
+    111 │ 		Array.isArray(schema["enum"]) &&
+  > 112 │ 		!schema["enum"].some((candidate) => sameValue(value, candidate))
+        │ 		        ^^^^^^
+    113 │ 	) {
+    114 │ 		errors.push(`${path} must be one of ${JSON.stringify(schema["enum"])}`);
+  
+  i Unsafe fix: Use a literal key instead.
+  
+    110 110 │     if (
+    111 111 │       Array.isArray(schema["enum"]) &&
+    112     │ - → → !schema["enum"].some((candidate)·=>·sameValue(value,·candidate))
+        112 │ + → → !schema.enum.some((candidate)·=>·sameValue(value,·candidate))
+    113 113 │     ) {
+    114 114 │       errors.push(`${path} must be one of ${JSON.stringify(schema["enum"])}`);
+  
+
+scripts/template/json-schema.ts:114:63 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    112 │ 		!schema["enum"].some((candidate) => sameValue(value, candidate))
+    113 │ 	) {
+  > 114 │ 		errors.push(`${path} must be one of ${JSON.stringify(schema["enum"])}`);
+        │ 		                                                            ^^^^^^
+    115 │ 	}
+    116 │ 
+  
+  i Unsafe fix: Use a literal key instead.
+  
+    112 112 │       !schema["enum"].some((candidate) => sameValue(value, candidate))
+    113 113 │     ) {
+    114     │ - → → errors.push(`${path}·must·be·one·of·${JSON.stringify(schema["enum"])}`);
+        114 │ + → → errors.push(`${path}·must·be·one·of·${JSON.stringify(schema.enum)}`);
+    115 115 │     }
+    116 116 │   
+  
+
+scripts/template/json-schema.ts:119:18 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    117 │ 	if (typeof value === "string") {
+    118 │ 		if (
+  > 119 │ 			typeof schema["minLength"] === "number" &&
+        │ 			              ^^^^^^^^^^^
+    120 │ 			value.length < schema["minLength"]
+    121 │ 		) {
+  
+  i Unsafe fix: Use a literal key instead.
+  
+    117 117 │     if (typeof value === "string") {
+    118 118 │       if (
+    119     │ - → → → typeof·schema["minLength"]·===·"number"·&&
+        119 │ + → → → typeof·schema.minLength·===·"number"·&&
+    120 120 │         value.length < schema["minLength"]
+    121 121 │       ) {
+  
+
+scripts/template/json-schema.ts:120:26 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    118 │ 		if (
+    119 │ 			typeof schema["minLength"] === "number" &&
+  > 120 │ 			value.length < schema["minLength"]
+        │ 			                      ^^^^^^^^^^^
+    121 │ 		) {
+    122 │ 			errors.push(
+  
+  i Unsafe fix: Use a literal key instead.
+  
+    118 118 │       if (
+    119 119 │         typeof schema["minLength"] === "number" &&
+    120     │ - → → → value.length·<·schema["minLength"]
+        120 │ + → → → value.length·<·schema.minLength
+    121 121 │       ) {
+    122 122 │         errors.push(
+  
+
+scripts/template/json-schema.ts:123:42 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    121 │ 		) {
+    122 │ 			errors.push(
+  > 123 │ 				`${path} must have at least ${schema["minLength"]} characters`,
+        │ 				                                     ^^^^^^^^^^^
+    124 │ 			);
+    125 │ 		}
+  
+  i Unsafe fix: Use a literal key instead.
+  
+    121 121 │       ) {
+    122 122 │         errors.push(
+    123     │ - → → → → `${path}·must·have·at·least·${schema["minLength"]}·characters`,
+        123 │ + → → → → `${path}·must·have·at·least·${schema.minLength}·characters`,
+    124 124 │         );
+    125 125 │       }
+  
+
+scripts/template/json-schema.ts:127:18 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    125 │ 		}
+    126 │ 		if (
+  > 127 │ 			typeof schema["pattern"] === "string" &&
+        │ 			              ^^^^^^^^^
+    128 │ 			!new RegExp(schema["pattern"], "u").test(value)
+    129 │ 		) {
+  
+  i Unsafe fix: Use a literal key instead.
+  
+    125 125 │       }
+    126 126 │       if (
+    127     │ - → → → typeof·schema["pattern"]·===·"string"·&&
+        127 │ + → → → typeof·schema.pattern·===·"string"·&&
+    128 128 │         !new RegExp(schema["pattern"], "u").test(value)
+    129 129 │       ) {
+  
+
+scripts/template/json-schema.ts:128:23 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    126 │ 		if (
+    127 │ 			typeof schema["pattern"] === "string" &&
+  > 128 │ 			!new RegExp(schema["pattern"], "u").test(value)
+        │ 			                   ^^^^^^^^^
+    129 │ 		) {
+    130 │ 			errors.push(`${path} does not match ${schema["pattern"]}`);
+  
+  i Unsafe fix: Use a literal key instead.
+  
+    126 126 │       if (
+    127 127 │         typeof schema["pattern"] === "string" &&
+    128     │ - → → → !new·RegExp(schema["pattern"],·"u").test(value)
+        128 │ + → → → !new·RegExp(schema.pattern,·"u").test(value)
+    129 129 │       ) {
+    130 130 │         errors.push(`${path} does not match ${schema["pattern"]}`);
+  
+
+scripts/template/json-schema.ts:130:49 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    128 │ 			!new RegExp(schema["pattern"], "u").test(value)
+    129 │ 		) {
+  > 130 │ 			errors.push(`${path} does not match ${schema["pattern"]}`);
+        │ 			                                             ^^^^^^^^^
+    131 │ 		}
+    132 │ 		if (
+  
+  i Unsafe fix: Use a literal key instead.
+  
+    128 128 │         !new RegExp(schema["pattern"], "u").test(value)
+    129 129 │       ) {
+    130     │ - → → → errors.push(`${path}·does·not·match·${schema["pattern"]}`);
+        130 │ + → → → errors.push(`${path}·does·not·match·${schema.pattern}`);
+    131 131 │       }
+    132 132 │       if (
+  
+
+scripts/template/json-schema.ts:133:11 lint/complexity/useLiteralKeys  FIXABLE  ━━━━━━━━━━━━━━━━━━━━
+
+  i The computed expression can be simplified without the use of a string literal.
+  
+    131 │ 		}
+    132 │ 		if (
+  > 133 │ 			schema["format"] === "date-time" &&
+        │ 			       ^^^^^^^^
+    134 │ 			!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value)
+    135 │ 		) {
+  
+  i Unsafe fix: Use a literal key instead.
+  
+    131 131 │       }
+    132 132 │       if (
+    133     │ - → → → schema["format"]·===·"date-time"·&&
+        133 │ + → → → schema.format·===·"date-time"·&&
+    134 134 │         !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z$/.test(value)
+    135 135 │       ) {
+  
+
