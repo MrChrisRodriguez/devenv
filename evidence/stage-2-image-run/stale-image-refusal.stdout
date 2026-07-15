@@ -1,8 +1,8 @@
 {
   "commandId": "stale-image-refusal",
-  "mutation": "shadow-workspace-tools-env-overrides-and-edit-definition",
-  "originalDefinitionFingerprint": "8be4399cb0f316298d2f767056d4566c7363b7cb645f6ed2138cb71ecaaea0e1",
-  "mutatedDefinitionFingerprint": "155813b31f093c6c55f8d63a81405a4edd0a98e98066069fe1cf9ce332ea67f9",
+  "mutation": "shadow-workspace-shell-env-tools-overrides-and-edit-definition",
+  "originalDefinitionFingerprint": "1fdcf6af675c375278210b09942c4dd3fec46b940011addb9ed900c54c614ea5",
+  "mutatedDefinitionFingerprint": "a480382744c4fd8e3917021081d32bb83588c7a036dcbfb4a457f69d7a0d3d2d",
   "shadowBunPath": "/workspace/node_modules/.bin/bun",
   "shadowBashPath": "/workspace/node_modules/.bin/bash",
   "shadowUtilityPaths": [
@@ -15,9 +15,13 @@
   "overrideMarkerPath": "/workspace/contract-marker-override",
   "environmentOverrides": {
     "DEVCONTAINER_REPO_ROOT": "/trusted",
-    "DEVCONTAINER_IMAGE_CONTRACT_DIR": "/workspace/contract-marker-override"
+    "DEVCONTAINER_IMAGE_CONTRACT_DIR": "/workspace/contract-marker-override",
+    "BASH_ENV": "/workspace/preverify-bash-env.sh",
+    "BASH_FUNC_source%%": "() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }"
   },
   "preVerificationShadowExecution": false,
+  "preVerificationBashEnvExecution": false,
+  "preVerificationExportedFunctionExecution": false,
   "containerExitCode": 1,
   "refused": true,
   "diagnostic": "ERROR: the devcontainer definition differs from the image fingerprint\nRebuild/recreate the devcontainer; image-owned tools are never repaired at runtime."

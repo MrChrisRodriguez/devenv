@@ -1,12 +1,12 @@
 {
   "commandId": "rollback-proof",
   "predecessorSha": "4367bad6e2cb49e4c969a61b892634347ed0bf24",
-  "implementationSha": "47ed0f3f8b6a978dfdb803856c3d5a01fa6e83e0",
-  "syntheticMergeSha": "00825e5495b229e5282c022d4ef7fe26d4b89b2b",
-  "syntheticMergeTree": "eac57c2d742caefec16f21f5b42452ee6923bdd7",
+  "implementationSha": "aade3151cc8559ff59860d0b427f74361b8dffcb",
+  "syntheticMergeSha": "92afc3c7b051b623b6430ef36f0ca6baccae6b44",
+  "syntheticMergeTree": "aa66a4a9fdd8a97976be5e832494fa85cd499669",
   "syntheticMergeParents": [
     "4367bad6e2cb49e4c969a61b892634347ed0bf24",
-    "47ed0f3f8b6a978dfdb803856c3d5a01fa6e83e0"
+    "aade3151cc8559ff59860d0b427f74361b8dffcb"
   ],
   "predecessorTree": "80081f0096eedaab06acd255c163b9f987477554",
   "revertedTree": "80081f0096eedaab06acd255c163b9f987477554",
@@ -20,44 +20,44 @@
     [
       "git",
       "rev-parse",
-      "47ed0f3f8b6a978dfdb803856c3d5a01fa6e83e0^{tree}"
+      "aade3151cc8559ff59860d0b427f74361b8dffcb^{tree}"
     ],
     [
       "git",
       "worktree",
       "add",
       "--detach",
-      "/tmp/devenv-stage2-stage2-20260715t084253z-2dcd9b26/rollback-worktree",
+      "/tmp/devenv-stage2-stage2-20260715t085910z-cf10e024/rollback-worktree",
       "4367bad6e2cb49e4c969a61b892634347ed0bf24"
     ],
     [
       "git",
       "commit-tree",
-      "eac57c2d742caefec16f21f5b42452ee6923bdd7",
+      "aa66a4a9fdd8a97976be5e832494fa85cd499669",
       "-p",
       "4367bad6e2cb49e4c969a61b892634347ed0bf24",
       "-p",
-      "47ed0f3f8b6a978dfdb803856c3d5a01fa6e83e0",
+      "aade3151cc8559ff59860d0b427f74361b8dffcb",
       "-m",
       "Stage 2 synthetic merge"
     ],
     [
       "git",
       "rev-parse",
-      "00825e5495b229e5282c022d4ef7fe26d4b89b2b^{tree}"
+      "92afc3c7b051b623b6430ef36f0ca6baccae6b44^{tree}"
     ],
     [
       "git",
       "show",
       "-s",
       "--format=%P",
-      "00825e5495b229e5282c022d4ef7fe26d4b89b2b"
+      "92afc3c7b051b623b6430ef36f0ca6baccae6b44"
     ],
     [
       "git",
       "checkout",
       "--detach",
-      "00825e5495b229e5282c022d4ef7fe26d4b89b2b"
+      "92afc3c7b051b623b6430ef36f0ca6baccae6b44"
     ],
     [
       "git",
@@ -65,7 +65,7 @@
       "--no-edit",
       "-m",
       "1",
-      "00825e5495b229e5282c022d4ef7fe26d4b89b2b"
+      "92afc3c7b051b623b6430ef36f0ca6baccae6b44"
     ],
     [
       "git",

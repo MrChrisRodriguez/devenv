@@ -1,23 +1,23 @@
 {
 	"schemaVersion": 1,
 	"stage": "stage-2-image-architecture",
-	"capturedAt": "2026-07-15T08:48:27.797Z",
+	"capturedAt": "2026-07-15T09:04:09.270Z",
 	"run": {
-		"id": "stage2-20260715t084253z-2dcd9b26",
-		"temporaryRoot": "/tmp/devenv-stage2-stage2-20260715t084253z-2dcd9b26",
+		"id": "stage2-20260715t085910z-cf10e024",
+		"temporaryRoot": "/tmp/devenv-stage2-stage2-20260715t085910z-cf10e024",
 		"nativeArchitecture": "arm64",
 		"logRoot": "evidence/stage-2-image-run"
 	},
 	"source": {
 		"baseSha": "4367bad6e2cb49e4c969a61b892634347ed0bf24",
-		"implementationSha": "47ed0f3f8b6a978dfdb803856c3d5a01fa6e83e0",
+		"implementationSha": "aade3151cc8559ff59860d0b427f74361b8dffcb",
 		"featureTreeClean": true
 	},
 	"image": {
-		"tag": "devenv-stage2-stage2-20260715t084253z-2dcd9b26",
-		"imageId": "sha256:d60150884e05906f57134fbea5b9444aa42df3533c65cf6cacc53b85a2ba7002",
-		"definitionFingerprint": "8be4399cb0f316298d2f767056d4566c7363b7cb645f6ed2138cb71ecaaea0e1",
-		"definitionMarker": "8be4399cb0f316298d2f767056d4566c7363b7cb645f6ed2138cb71ecaaea0e1",
+		"tag": "devenv-stage2-stage2-20260715t085910z-cf10e024",
+		"imageId": "sha256:484eefa02221c28b5b3b0de5fffcc72b3c014a13a6c8a4fb790af551793a8705",
+		"definitionFingerprint": "1fdcf6af675c375278210b09942c4dd3fec46b940011addb9ed900c54c614ea5",
+		"definitionMarker": "1fdcf6af675c375278210b09942c4dd3fec46b940011addb9ed900c54c614ea5",
 		"protoManifestSha256": "eeab37d6991758f99b981747281120296a655d676bf2c6e30ed4786bdc42d6a7",
 		"protoManifestMarker": "eeab37d6991758f99b981747281120296a655d676bf2c6e30ed4786bdc42d6a7",
 		"codexVersion": "0.144.4",
@@ -37,21 +37,21 @@
 				"--target",
 				"development",
 				"--tag",
-				"devenv-stage2-stage2-20260715t084253z-2dcd9b26",
+				"devenv-stage2-stage2-20260715t085910z-cf10e024",
 				"--progress",
 				"plain",
 				"--load",
 				"--no-cache",
 				"."
 			],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:42:54.052Z",
-			"completedAt": "2026-07-15T08:45:04.340Z",
-			"durationMs": 130282,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T08:59:10.291Z",
+			"completedAt": "2026-07-15T09:00:52.399Z",
+			"durationMs": 102105,
 			"stdoutPath": "evidence/stage-2-image-run/clean-build.stdout",
 			"stderrPath": "evidence/stage-2-image-run/clean-build.stderr",
 			"stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			"stderrSha256": "58c467d3b299df33bc5dc332b3a779183ef5ec04d3562d0508b7850f4d7dbe26",
+			"stderrSha256": "5a970c770ef85e3411682c8c2f856398613632a9f5f7ec930f52692779d68df0",
 			"exitCode": 0,
 			"status": "pass"
 		},
@@ -68,33 +68,33 @@
 				"--target",
 				"development",
 				"--tag",
-				"devenv-stage2-stage2-20260715t084253z-2dcd9b26",
+				"devenv-stage2-stage2-20260715t085910z-cf10e024",
 				"--progress",
 				"plain",
 				"--load",
 				"."
 			],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:45:04.342Z",
-			"completedAt": "2026-07-15T08:45:08.178Z",
-			"durationMs": 3836,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T09:00:52.401Z",
+			"completedAt": "2026-07-15T09:00:56.361Z",
+			"durationMs": 3960,
 			"stdoutPath": "evidence/stage-2-image-run/warm-build.stdout",
 			"stderrPath": "evidence/stage-2-image-run/warm-build.stderr",
 			"stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			"stderrSha256": "e3253a3f3a3ade8db9edef5d249960f803d18b20ea1a92a1251edf43b51f85d0",
+			"stderrSha256": "ee86646a254e9c6eeaf6abbed78367e87c18e8e05615c574395fc5ae35f6ded2",
 			"exitCode": 0,
 			"status": "pass"
 		},
 		{
 			"id": "definition-fingerprint",
 			"command": ["bash", ".devcontainer/devcontainer-fingerprint.sh", "."],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:45:08.179Z",
-			"completedAt": "2026-07-15T08:45:08.217Z",
-			"durationMs": 38,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T09:00:56.362Z",
+			"completedAt": "2026-07-15T09:00:56.408Z",
+			"durationMs": 46,
 			"stdoutPath": "evidence/stage-2-image-run/definition-fingerprint.stdout",
 			"stderrPath": "evidence/stage-2-image-run/definition-fingerprint.stderr",
-			"stdoutSha256": "630597fe87dce323aac4a888786bd6b8a9b82d0dd57e15a7d8df1de6eb54f233",
+			"stdoutSha256": "a229f88f64e066fb45f943ac9e40f7fe1c0d805ed43af7fc72072a2ca2d44dac",
 			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 			"exitCode": 0,
 			"status": "pass"
@@ -107,15 +107,15 @@
 				"inspect",
 				"--format",
 				"{{.Id}}",
-				"devenv-stage2-stage2-20260715t084253z-2dcd9b26"
+				"devenv-stage2-stage2-20260715t085910z-cf10e024"
 			],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:45:08.217Z",
-			"completedAt": "2026-07-15T08:45:08.476Z",
-			"durationMs": 259,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T09:00:56.408Z",
+			"completedAt": "2026-07-15T09:00:56.674Z",
+			"durationMs": 267,
 			"stdoutPath": "evidence/stage-2-image-run/image-inspect.stdout",
 			"stderrPath": "evidence/stage-2-image-run/image-inspect.stderr",
-			"stdoutSha256": "ad1103cc0e1ec11f1061bbc53562265849a99922d23328e097cc53da0044825e",
+			"stdoutSha256": "264fb65a3156c5baca7e2fc0a7538720218999c20d8693151ac3ce50d560c93d",
 			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 			"exitCode": 0,
 			"status": "pass"
@@ -126,18 +126,18 @@
 				"docker",
 				"run",
 				"--rm",
-				"devenv-stage2-stage2-20260715t084253z-2dcd9b26",
+				"devenv-stage2-stage2-20260715t085910z-cf10e024",
 				"bash",
 				"-lc",
 				"printf \"definition=%s\\n\" \"$(cat /usr/local/share/devenv-image/definition.sha256)\"; printf \"manifest=%s\\n\" \"$(cat /usr/local/share/devenv-image/prototools.sha256)\""
 			],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:45:08.476Z",
-			"completedAt": "2026-07-15T08:45:09.547Z",
-			"durationMs": 1071,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T09:00:56.675Z",
+			"completedAt": "2026-07-15T09:00:59.953Z",
+			"durationMs": 3278,
 			"stdoutPath": "evidence/stage-2-image-run/image-contract.stdout",
 			"stderrPath": "evidence/stage-2-image-run/image-contract.stderr",
-			"stdoutSha256": "e662733d90f3e9ddbbe2a1172e6e6120bb03adaff3edeefdb0b743328b527463",
+			"stdoutSha256": "0a2a14e39afc79cc153811903439fe846ba51f0180d31a05d47817d6c6b8b163",
 			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 			"exitCode": 0,
 			"status": "pass"
@@ -166,14 +166,14 @@
 				"type=cacheonly",
 				"."
 			],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:45:09.548Z",
-			"completedAt": "2026-07-15T08:45:24.403Z",
-			"durationMs": 14855,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T09:00:59.953Z",
+			"completedAt": "2026-07-15T09:01:15.328Z",
+			"durationMs": 15374,
 			"stdoutPath": "evidence/stage-2-image-run/layer-invalidation.stdout",
 			"stderrPath": "evidence/stage-2-image-run/layer-invalidation.stderr",
 			"stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			"stderrSha256": "4d70080dafb143b7d080c0785d789eab481138297b4d03f195a16ca732f4dc41",
+			"stderrSha256": "880badc322ea036de7c80d0f0960cc9678bd3e159adfca1cb97e593e822f317c",
 			"exitCode": 0,
 			"status": "pass"
 		},
@@ -196,14 +196,14 @@
 				"type=cacheonly",
 				"."
 			],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:45:24.403Z",
-			"completedAt": "2026-07-15T08:46:59.845Z",
-			"durationMs": 95441,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T09:01:15.328Z",
+			"completedAt": "2026-07-15T09:02:49.096Z",
+			"durationMs": 93768,
 			"stdoutPath": "evidence/stage-2-image-run/architecture-amd64.stdout",
 			"stderrPath": "evidence/stage-2-image-run/architecture-amd64.stderr",
 			"stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			"stderrSha256": "b3552d66f0e1a615c9dda7f04d15b7448923eff5869b68d40b16ca3e1158b5d8",
+			"stderrSha256": "47395c820b55bb26251198d1604076c2c93b14b761011babc8f0aebf9427c614",
 			"exitCode": 0,
 			"status": "pass"
 		},
@@ -226,14 +226,14 @@
 				"type=cacheonly",
 				"."
 			],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:46:59.846Z",
-			"completedAt": "2026-07-15T08:48:18.660Z",
-			"durationMs": 78814,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T09:02:49.099Z",
+			"completedAt": "2026-07-15T09:04:02.125Z",
+			"durationMs": 73026,
 			"stdoutPath": "evidence/stage-2-image-run/architecture-arm64.stdout",
 			"stderrPath": "evidence/stage-2-image-run/architecture-arm64.stderr",
 			"stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-			"stderrSha256": "530ae6e5dec67f1efe8ecc15ee14f01a7f73253f6b338c26440be5f7594e0678",
+			"stderrSha256": "6f04fb87b7e88ad47e258028acb0e541ca6857d143f69041090a98224f4e56ff",
 			"exitCode": 0,
 			"status": "pass"
 		},
@@ -244,17 +244,17 @@
 				"scripts/template/collect-stage-two-evidence.ts",
 				"probe-stale",
 				"--image",
-				"devenv-stage2-stage2-20260715t084253z-2dcd9b26",
+				"devenv-stage2-stage2-20260715t085910z-cf10e024",
 				"--workspace",
-				"/tmp/devenv-stage2-stage2-20260715t084253z-2dcd9b26/stale-workspace"
+				"/tmp/devenv-stage2-stage2-20260715t085910z-cf10e024/stale-workspace"
 			],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:48:18.664Z",
-			"completedAt": "2026-07-15T08:48:23.955Z",
-			"durationMs": 5291,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T09:04:02.128Z",
+			"completedAt": "2026-07-15T09:04:03.497Z",
+			"durationMs": 1370,
 			"stdoutPath": "evidence/stage-2-image-run/stale-image-refusal.stdout",
 			"stderrPath": "evidence/stage-2-image-run/stale-image-refusal.stderr",
-			"stdoutSha256": "78c7cbb089462a286b38dc935d15439567504ca60580afdb34cdcd9b96adb2b5",
+			"stdoutSha256": "b3ba46993011743cfc7f9dec32668b0583c7e592288ff1d2b726d850b491a8bc",
 			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 			"exitCode": 0,
 			"status": "pass"
@@ -270,10 +270,10 @@
 				"--mutation",
 				"drop-foundation-uv"
 			],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:48:23.955Z",
-			"completedAt": "2026-07-15T08:48:24.018Z",
-			"durationMs": 63,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T09:04:03.498Z",
+			"completedAt": "2026-07-15T09:04:03.518Z",
+			"durationMs": 21,
 			"stdoutPath": "evidence/stage-2-image-run/partition-mutation.stdout",
 			"stderrPath": "evidence/stage-2-image-run/partition-mutation.stderr",
 			"stdoutSha256": "b346b7fc44ffcc03b8737fdd245a829924b33c0e11d89713a31aa683545fba40",
@@ -287,15 +287,15 @@
 				"docker",
 				"run",
 				"--rm",
-				"devenv-stage2-stage2-20260715t084253z-2dcd9b26",
+				"devenv-stage2-stage2-20260715t085910z-cf10e024",
 				"bash",
 				"-lc",
 				"command -v bun; command -v proto; printf \"%s\\n\" \"$PATH\""
 			],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:48:24.018Z",
-			"completedAt": "2026-07-15T08:48:24.455Z",
-			"durationMs": 437,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T09:04:03.518Z",
+			"completedAt": "2026-07-15T09:04:03.950Z",
+			"durationMs": 432,
 			"stdoutPath": "evidence/stage-2-image-run/shell-bash-login.stdout",
 			"stderrPath": "evidence/stage-2-image-run/shell-bash-login.stderr",
 			"stdoutSha256": "39eee7652f9bf0b9d59a3aa8164b2268bfebededf8158aa0348e3b2a658d94d3",
@@ -309,15 +309,15 @@
 				"docker",
 				"run",
 				"--rm",
-				"devenv-stage2-stage2-20260715t084253z-2dcd9b26",
+				"devenv-stage2-stage2-20260715t085910z-cf10e024",
 				"bash",
 				"-c",
 				"command -v bun; command -v proto; printf \"%s\\n\" \"$PATH\""
 			],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:48:24.455Z",
-			"completedAt": "2026-07-15T08:48:24.858Z",
-			"durationMs": 402,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T09:04:03.950Z",
+			"completedAt": "2026-07-15T09:04:04.362Z",
+			"durationMs": 411,
 			"stdoutPath": "evidence/stage-2-image-run/shell-bash-non-login.stdout",
 			"stderrPath": "evidence/stage-2-image-run/shell-bash-non-login.stderr",
 			"stdoutSha256": "b0a6d7ff84a8bb730146bbf441624271c385d9e721745ae5a5f486b2537ca61a",
@@ -331,15 +331,15 @@
 				"docker",
 				"run",
 				"--rm",
-				"devenv-stage2-stage2-20260715t084253z-2dcd9b26",
+				"devenv-stage2-stage2-20260715t085910z-cf10e024",
 				"zsh",
 				"-lc",
 				"command -v bun; command -v proto; printf \"%s\\n\" \"$PATH\""
 			],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:48:24.858Z",
-			"completedAt": "2026-07-15T08:48:25.261Z",
-			"durationMs": 403,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T09:04:04.362Z",
+			"completedAt": "2026-07-15T09:04:04.796Z",
+			"durationMs": 433,
 			"stdoutPath": "evidence/stage-2-image-run/shell-zsh-login.stdout",
 			"stderrPath": "evidence/stage-2-image-run/shell-zsh-login.stderr",
 			"stdoutSha256": "00b99d22f840ea6a5e9ae6e200a5a31a71be8abe9c8f0de4fdd4e2eb6c636f9b",
@@ -353,15 +353,15 @@
 				"docker",
 				"run",
 				"--rm",
-				"devenv-stage2-stage2-20260715t084253z-2dcd9b26",
+				"devenv-stage2-stage2-20260715t085910z-cf10e024",
 				"zsh",
 				"-c",
 				"command -v bun; command -v proto; printf \"%s\\n\" \"$PATH\""
 			],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:48:25.261Z",
-			"completedAt": "2026-07-15T08:48:25.662Z",
-			"durationMs": 400,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T09:04:04.796Z",
+			"completedAt": "2026-07-15T09:04:05.606Z",
+			"durationMs": 810,
 			"stdoutPath": "evidence/stage-2-image-run/shell-zsh-non-login.stdout",
 			"stderrPath": "evidence/stage-2-image-run/shell-zsh-non-login.stderr",
 			"stdoutSha256": "b0a6d7ff84a8bb730146bbf441624271c385d9e721745ae5a5f486b2537ca61a",
@@ -376,21 +376,21 @@
 				"scripts/template/collect-stage-two-evidence.ts",
 				"probe-storage",
 				"--image",
-				"devenv-stage2-stage2-20260715t084253z-2dcd9b26",
+				"devenv-stage2-stage2-20260715t085910z-cf10e024",
 				"--run-id",
-				"stage2-20260715t084253z-2dcd9b26",
+				"stage2-20260715t085910z-cf10e024",
 				"--implementation",
-				"47ed0f3f8b6a978dfdb803856c3d5a01fa6e83e0",
+				"aade3151cc8559ff59860d0b427f74361b8dffcb",
 				"--workspace",
-				"/tmp/devenv-stage2-stage2-20260715t084253z-2dcd9b26/second-worktree"
+				"/tmp/devenv-stage2-stage2-20260715t085910z-cf10e024/second-worktree"
 			],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:48:25.662Z",
-			"completedAt": "2026-07-15T08:48:27.368Z",
-			"durationMs": 1706,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T09:04:05.606Z",
+			"completedAt": "2026-07-15T09:04:08.451Z",
+			"durationMs": 2844,
 			"stdoutPath": "evidence/stage-2-image-run/second-worktree-storage.stdout",
 			"stderrPath": "evidence/stage-2-image-run/second-worktree-storage.stderr",
-			"stdoutSha256": "85535b51e16a1e9b276102fb307fd7408a9c9ce3e0df6d4ebf98f4d254dfb0f7",
+			"stdoutSha256": "07a01c95f7886c98a73ee167622af45831b8d65a192d56077232958fc5941401",
 			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 			"exitCode": 0,
 			"status": "pass"
@@ -404,17 +404,17 @@
 				"--base",
 				"4367bad6e2cb49e4c969a61b892634347ed0bf24",
 				"--implementation",
-				"47ed0f3f8b6a978dfdb803856c3d5a01fa6e83e0",
+				"aade3151cc8559ff59860d0b427f74361b8dffcb",
 				"--workspace",
-				"/tmp/devenv-stage2-stage2-20260715t084253z-2dcd9b26/rollback-worktree"
+				"/tmp/devenv-stage2-stage2-20260715t085910z-cf10e024/rollback-worktree"
 			],
-			"runId": "stage2-20260715t084253z-2dcd9b26",
-			"startedAt": "2026-07-15T08:48:27.369Z",
-			"completedAt": "2026-07-15T08:48:27.791Z",
-			"durationMs": 423,
+			"runId": "stage2-20260715t085910z-cf10e024",
+			"startedAt": "2026-07-15T09:04:08.451Z",
+			"completedAt": "2026-07-15T09:04:09.251Z",
+			"durationMs": 800,
 			"stdoutPath": "evidence/stage-2-image-run/rollback-proof.stdout",
 			"stderrPath": "evidence/stage-2-image-run/rollback-proof.stderr",
-			"stdoutSha256": "541b66921419361bd3ec5e7c3745b1427ecbf9c79131d94479342d9263223ce6",
+			"stdoutSha256": "0e2c0515e615441c9caf4d2d754b67a66ec98f44f7fb89d3c56def8e0995a271",
 			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
 			"exitCode": 0,
 			"status": "pass"
@@ -423,13 +423,13 @@
 	"builds": {
 		"clean": {
 			"commandId": "clean-build",
-			"durationMs": 130282,
+			"durationMs": 102105,
 			"cachedSteps": 2,
 			"noCache": true
 		},
 		"warm": {
 			"commandId": "warm-build",
-			"durationMs": 3836,
+			"durationMs": 3960,
 			"cachedSteps": 35,
 			"noCache": false
 		}
@@ -487,9 +487,9 @@
 	],
 	"staleImageRefusal": {
 		"commandId": "stale-image-refusal",
-		"mutation": "shadow-workspace-tools-env-overrides-and-edit-definition",
-		"originalDefinitionFingerprint": "8be4399cb0f316298d2f767056d4566c7363b7cb645f6ed2138cb71ecaaea0e1",
-		"mutatedDefinitionFingerprint": "155813b31f093c6c55f8d63a81405a4edd0a98e98066069fe1cf9ce332ea67f9",
+		"mutation": "shadow-workspace-shell-env-tools-overrides-and-edit-definition",
+		"originalDefinitionFingerprint": "1fdcf6af675c375278210b09942c4dd3fec46b940011addb9ed900c54c614ea5",
+		"mutatedDefinitionFingerprint": "a480382744c4fd8e3917021081d32bb83588c7a036dcbfb4a457f69d7a0d3d2d",
 		"shadowBunPath": "/workspace/node_modules/.bin/bun",
 		"shadowBashPath": "/workspace/node_modules/.bin/bash",
 		"shadowUtilityPaths": [
@@ -502,9 +502,13 @@
 		"overrideMarkerPath": "/workspace/contract-marker-override",
 		"environmentOverrides": {
 			"DEVCONTAINER_REPO_ROOT": "/trusted",
-			"DEVCONTAINER_IMAGE_CONTRACT_DIR": "/workspace/contract-marker-override"
+			"DEVCONTAINER_IMAGE_CONTRACT_DIR": "/workspace/contract-marker-override",
+			"BASH_ENV": "/workspace/preverify-bash-env.sh",
+			"BASH_FUNC_source%%": "() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }"
 		},
 		"preVerificationShadowExecution": false,
+		"preVerificationBashEnvExecution": false,
+		"preVerificationExportedFunctionExecution": false,
 		"containerExitCode": 1,
 		"refused": true,
 		"diagnostic": "ERROR: the devcontainer definition differs from the image fingerprint\nRebuild/recreate the devcontainer; image-owned tools are never repaired at runtime."
@@ -551,15 +555,15 @@
 	],
 	"secondWorktreeStorage": {
 		"commandId": "second-worktree-storage",
-		"primaryContainerId": "7d4b57bab97df0d1d2107cb9bd7f5531c4f91a2684e6a339e128542be63b4249",
-		"secondContainerId": "96a3b8416d932d187c26579b331fe78110e9efb283f0630d27cd7dc31bdb2c46",
-		"primaryImageId": "sha256:d60150884e05906f57134fbea5b9444aa42df3533c65cf6cacc53b85a2ba7002",
-		"secondImageId": "sha256:d60150884e05906f57134fbea5b9444aa42df3533c65cf6cacc53b85a2ba7002",
+		"primaryContainerId": "240df22fe1f2032539c9f08016ef2fd512484010d2ffe6413af0f89f545572d0",
+		"secondContainerId": "d02c07b6c321f8ebd1f01b3ad465fe844952e73e79a2da5278a818f5ee00719f",
+		"primaryImageId": "sha256:484eefa02221c28b5b3b0de5fffcc72b3c014a13a6c8a4fb790af551793a8705",
+		"secondImageId": "sha256:484eefa02221c28b5b3b0de5fffcc72b3c014a13a6c8a4fb790af551793a8705",
 		"primaryContainerWritableBytes": 274432,
 		"secondContainerWritableBytes": 274432,
-		"secondCheckoutBytes": 4186112,
+		"secondCheckoutBytes": 4198400,
 		"volumeBytes": 0,
-		"observedBytes": 4460544,
+		"observedBytes": 4472832,
 		"stageZeroBaselineBytes": 96111608,
 		"imageProtoBytes": 1366372352,
 		"protoVolumeCount": 0,
@@ -570,8 +574,8 @@
 				"worktree",
 				"add",
 				"--detach",
-				"/tmp/devenv-stage2-stage2-20260715t084253z-2dcd9b26/second-worktree",
-				"47ed0f3f8b6a978dfdb803856c3d5a01fa6e83e0"
+				"/tmp/devenv-stage2-stage2-20260715t085910z-cf10e024/second-worktree",
+				"aade3151cc8559ff59860d0b427f74361b8dffcb"
 			],
 			[
 				"docker",
@@ -579,15 +583,15 @@
 				"inspect",
 				"--format",
 				"{{.Id}}",
-				"devenv-stage2-stage2-20260715t084253z-2dcd9b26"
+				"devenv-stage2-stage2-20260715t085910z-cf10e024"
 			],
 			[
 				"docker",
 				"run",
 				"--rm",
 				"--label",
-				"com.devenv.evidence.run=stage2-20260715t084253z-2dcd9b26",
-				"devenv-stage2-stage2-20260715t084253z-2dcd9b26",
+				"com.devenv.evidence.run=stage2-20260715t085910z-cf10e024",
+				"devenv-stage2-stage2-20260715t085910z-cf10e024",
 				"sh",
 				"-c",
 				"du -sk /home/vscode/.proto | cut -f1"
@@ -596,12 +600,12 @@
 				"docker",
 				"create",
 				"--label",
-				"com.devenv.evidence.run=stage2-20260715t084253z-2dcd9b26",
+				"com.devenv.evidence.run=stage2-20260715t085910z-cf10e024",
 				"--label",
 				"com.devenv.evidence.slot=primary",
 				"--mount",
 				"type=bind,src=/Users/mrcr/.codex/worktrees/stage2-image/devenv,dst=/workspace,readonly",
-				"devenv-stage2-stage2-20260715t084253z-2dcd9b26",
+				"devenv-stage2-stage2-20260715t085910z-cf10e024",
 				"sleep",
 				"infinity"
 			],
@@ -609,55 +613,55 @@
 				"docker",
 				"create",
 				"--label",
-				"com.devenv.evidence.run=stage2-20260715t084253z-2dcd9b26",
+				"com.devenv.evidence.run=stage2-20260715t085910z-cf10e024",
 				"--label",
 				"com.devenv.evidence.slot=second",
 				"--mount",
-				"type=bind,src=/tmp/devenv-stage2-stage2-20260715t084253z-2dcd9b26/second-worktree,dst=/workspace,readonly",
-				"devenv-stage2-stage2-20260715t084253z-2dcd9b26",
+				"type=bind,src=/tmp/devenv-stage2-stage2-20260715t085910z-cf10e024/second-worktree,dst=/workspace,readonly",
+				"devenv-stage2-stage2-20260715t085910z-cf10e024",
 				"sleep",
 				"infinity"
 			],
 			[
 				"docker",
 				"start",
-				"7d4b57bab97df0d1d2107cb9bd7f5531c4f91a2684e6a339e128542be63b4249"
+				"240df22fe1f2032539c9f08016ef2fd512484010d2ffe6413af0f89f545572d0"
 			],
 			[
 				"docker",
 				"start",
-				"96a3b8416d932d187c26579b331fe78110e9efb283f0630d27cd7dc31bdb2c46"
+				"d02c07b6c321f8ebd1f01b3ad465fe844952e73e79a2da5278a818f5ee00719f"
 			],
 			[
 				"docker",
 				"inspect",
 				"--size",
-				"7d4b57bab97df0d1d2107cb9bd7f5531c4f91a2684e6a339e128542be63b4249"
+				"240df22fe1f2032539c9f08016ef2fd512484010d2ffe6413af0f89f545572d0"
 			],
 			[
 				"docker",
 				"inspect",
 				"--size",
-				"96a3b8416d932d187c26579b331fe78110e9efb283f0630d27cd7dc31bdb2c46"
+				"d02c07b6c321f8ebd1f01b3ad465fe844952e73e79a2da5278a818f5ee00719f"
 			],
 			[
 				"du",
 				"-sk",
-				"/tmp/devenv-stage2-stage2-20260715t084253z-2dcd9b26/second-worktree"
+				"/tmp/devenv-stage2-stage2-20260715t085910z-cf10e024/second-worktree"
 			],
 			[
 				"docker",
 				"rm",
 				"-f",
-				"7d4b57bab97df0d1d2107cb9bd7f5531c4f91a2684e6a339e128542be63b4249",
-				"96a3b8416d932d187c26579b331fe78110e9efb283f0630d27cd7dc31bdb2c46"
+				"240df22fe1f2032539c9f08016ef2fd512484010d2ffe6413af0f89f545572d0",
+				"d02c07b6c321f8ebd1f01b3ad465fe844952e73e79a2da5278a818f5ee00719f"
 			],
 			[
 				"git",
 				"worktree",
 				"remove",
 				"--force",
-				"/tmp/devenv-stage2-stage2-20260715t084253z-2dcd9b26/second-worktree"
+				"/tmp/devenv-stage2-stage2-20260715t085910z-cf10e024/second-worktree"
 			]
 		]
 	},
@@ -670,7 +674,7 @@
 				"ps",
 				"-aq",
 				"--filter",
-				"label=com.devenv.evidence.run=stage2-20260715t084253z-2dcd9b26"
+				"label=com.devenv.evidence.run=stage2-20260715t085910z-cf10e024"
 			],
 			["docker", "rm", "-f", "<run-labeled-container-ids>"],
 			[
@@ -679,14 +683,14 @@
 				"ls",
 				"-q",
 				"--filter",
-				"label=com.devenv.evidence.run=stage2-20260715t084253z-2dcd9b26"
+				"label=com.devenv.evidence.run=stage2-20260715t085910z-cf10e024"
 			],
 			["docker", "volume", "rm", "<run-labeled-volume-names>"],
 			[
 				"docker",
 				"image",
 				"rm",
-				"devenv-stage2-stage2-20260715t084253z-2dcd9b26"
+				"devenv-stage2-stage2-20260715t085910z-cf10e024"
 			],
 			["git", "worktree", "remove", "--force", "<stage-2-temporary-worktrees>"]
 		],
@@ -694,51 +698,51 @@
 		"proof": {
 			"commandId": "rollback-proof",
 			"predecessorSha": "4367bad6e2cb49e4c969a61b892634347ed0bf24",
-			"implementationSha": "47ed0f3f8b6a978dfdb803856c3d5a01fa6e83e0",
-			"syntheticMergeSha": "00825e5495b229e5282c022d4ef7fe26d4b89b2b",
-			"syntheticMergeTree": "eac57c2d742caefec16f21f5b42452ee6923bdd7",
+			"implementationSha": "aade3151cc8559ff59860d0b427f74361b8dffcb",
+			"syntheticMergeSha": "92afc3c7b051b623b6430ef36f0ca6baccae6b44",
+			"syntheticMergeTree": "aa66a4a9fdd8a97976be5e832494fa85cd499669",
 			"syntheticMergeParents": [
 				"4367bad6e2cb49e4c969a61b892634347ed0bf24",
-				"47ed0f3f8b6a978dfdb803856c3d5a01fa6e83e0"
+				"aade3151cc8559ff59860d0b427f74361b8dffcb"
 			],
 			"predecessorTree": "80081f0096eedaab06acd255c163b9f987477554",
 			"revertedTree": "80081f0096eedaab06acd255c163b9f987477554",
 			"treeMatchesPredecessor": true,
 			"operations": [
 				["git", "rev-parse", "4367bad6e2cb49e4c969a61b892634347ed0bf24^{tree}"],
-				["git", "rev-parse", "47ed0f3f8b6a978dfdb803856c3d5a01fa6e83e0^{tree}"],
+				["git", "rev-parse", "aade3151cc8559ff59860d0b427f74361b8dffcb^{tree}"],
 				[
 					"git",
 					"worktree",
 					"add",
 					"--detach",
-					"/tmp/devenv-stage2-stage2-20260715t084253z-2dcd9b26/rollback-worktree",
+					"/tmp/devenv-stage2-stage2-20260715t085910z-cf10e024/rollback-worktree",
 					"4367bad6e2cb49e4c969a61b892634347ed0bf24"
 				],
 				[
 					"git",
 					"commit-tree",
-					"eac57c2d742caefec16f21f5b42452ee6923bdd7",
+					"aa66a4a9fdd8a97976be5e832494fa85cd499669",
 					"-p",
 					"4367bad6e2cb49e4c969a61b892634347ed0bf24",
 					"-p",
-					"47ed0f3f8b6a978dfdb803856c3d5a01fa6e83e0",
+					"aade3151cc8559ff59860d0b427f74361b8dffcb",
 					"-m",
 					"Stage 2 synthetic merge"
 				],
-				["git", "rev-parse", "00825e5495b229e5282c022d4ef7fe26d4b89b2b^{tree}"],
+				["git", "rev-parse", "92afc3c7b051b623b6430ef36f0ca6baccae6b44^{tree}"],
 				[
 					"git",
 					"show",
 					"-s",
 					"--format=%P",
-					"00825e5495b229e5282c022d4ef7fe26d4b89b2b"
+					"92afc3c7b051b623b6430ef36f0ca6baccae6b44"
 				],
 				[
 					"git",
 					"checkout",
 					"--detach",
-					"00825e5495b229e5282c022d4ef7fe26d4b89b2b"
+					"92afc3c7b051b623b6430ef36f0ca6baccae6b44"
 				],
 				[
 					"git",
@@ -746,7 +750,7 @@
 					"--no-edit",
 					"-m",
 					"1",
-					"00825e5495b229e5282c022d4ef7fe26d4b89b2b"
+					"92afc3c7b051b623b6430ef36f0ca6baccae6b44"
 				],
 				["git", "rev-parse", "HEAD^{tree}"]
 			]
