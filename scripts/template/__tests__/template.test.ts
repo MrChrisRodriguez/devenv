@@ -286,6 +286,9 @@ describe("deterministic fixture renderer", () => {
 			expect(first.residue.status).toBe("pass");
 			expect(first.residue.scannedFiles).toBeGreaterThan(0);
 			expect(first.residue.scannedDisabledCapabilities).toBeGreaterThan(0);
+			console.log(
+				"[stage1-observed] minimal fixture guard and artifact scan contain no disabled family residue",
+			);
 
 			const output = resolve(temporary, "first");
 			expect(
@@ -427,6 +430,13 @@ describe("deterministic fixture renderer", () => {
 				stderr: "pipe",
 			});
 			expect(guard.exitCode).toBe(0);
+			const lint = Bun.spawnSync({
+				cmd: ["bunx", "biome", "check", "--no-errors-on-unmatched", "."],
+				cwd: output,
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+			expect(lint.exitCode).toBe(0);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}

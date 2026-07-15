@@ -17,6 +17,7 @@ const REQUIRED_MUTATIONS = [
 	"workspace-path-priority",
 	"secondary-lockfile",
 	"disabled-family-omission",
+	"composite-action-bun-pin",
 ] as const;
 
 const EXPECTED_MUTATIONS: Record<(typeof REQUIRED_MUTATIONS)[number], string> =
@@ -39,6 +40,8 @@ const EXPECTED_MUTATIONS: Record<(typeof REQUIRED_MUTATIONS)[number], string> =
 		"secondary-lockfile": "Reject a nested workspace package lock",
 		"disabled-family-omission":
 			"Omit disabled package authorities and consumers from rendered fixtures",
+		"composite-action-bun-pin":
+			"Reject an unpinned setup-bun action in local composite metadata",
 	};
 
 const EXPECTED_OBSERVATIONS: Record<
@@ -67,6 +70,8 @@ const EXPECTED_OBSERVATIONS: Record<
 		"lock: secondary package lock tests/e2e/bun.lock is forbidden",
 	"disabled-family-omission":
 		"minimal fixture guard and artifact scan contain no disabled family residue",
+	"composite-action-bun-pin":
+		"proto: .github/actions/bootstrap/action.yml setup-bun omits bun-version",
 };
 
 const EXPECTED_MUTATION_TESTS: Record<
@@ -99,6 +104,24 @@ const REQUIRED_MUTATION_RUN = [
 	"-t",
 	"passes the real tree and rejects known-bad authority mutations|checksum verifier fails closed before archive extraction|renders minimal twice with identical manifests and no disabled residue",
 ] as const;
+
+const LOG_ROOT = "evidence/stage-1-toolchain-run";
+
+const VALIDATION_LOG_NAMES = new Map<string, string>([
+	[commandKey(["bun", "install", "--frozen-lockfile"]), "install"],
+	[commandKey(["bun", "run", "toolchain:check"]), "toolchain"],
+	[commandKey(["bun", "run", "template:validate"]), "validate"],
+	[commandKey(["bun", "run", "template:test"]), "test"],
+	[commandKey(["bun", "run", "template:typecheck"]), "typecheck"],
+	[
+		commandKey(["bun", "run", "template:fixtures", "tmp/stage1-fixtures"]),
+		"fixtures",
+	],
+	[
+		commandKey(["bunx", "biome", "check", "--no-errors-on-unmatched", "."]),
+		"biome",
+	],
+]);
 
 const REQUIRED_ROLLBACK_COMMAND = [
 	"git",
@@ -198,6 +221,34 @@ function gitOutput(
 		exitCode: result.exitCode,
 		stdout: result.stdout.toString().trim(),
 	};
+}
+
+async function validateBoundLogs(
+	root: string,
+	entry: JsonRecord,
+	name: string,
+	errors: string[],
+): Promise<string> {
+	const contents: string[] = [];
+	for (const stream of ["stdout", "stderr"] as const) {
+		const pathKey = `${stream}Path`;
+		const digestKey = `${stream}Sha256`;
+		const expectedPath = `${LOG_ROOT}/${name}.${stream}`;
+		if (entry[pathKey] !== expectedPath) {
+			errors.push(`repository: ${name} ${stream} log path drifted`);
+			continue;
+		}
+		const file = Bun.file(resolve(root, expectedPath));
+		if (!(await file.exists())) {
+			errors.push(`repository: ${name} ${stream} log is unavailable`);
+			continue;
+		}
+		const bytes = new Uint8Array(await file.arrayBuffer());
+		if (entry[digestKey] !== sha256(bytes))
+			errors.push(`repository: ${name} ${stream} log digest drifted`);
+		contents.push(new TextDecoder().decode(bytes));
+	}
+	return contents.join("\n");
 }
 
 export function validateStageOneEvidenceValue(
@@ -328,14 +379,10 @@ export function validateStageOneEvidenceValue(
 	const rollbackProof = recordAt(recordAt(value, "rollback"), "proof");
 	if (rollbackProof["runId"] !== runId)
 		errors.push("semantic: rollback proof belongs to another run");
-	const rollbackObservations = rollbackProof["observations"];
-	if (
-		Array.isArray(rollbackObservations) &&
-		rollbackObservations.every((entry) => typeof entry === "string") &&
-		rollbackProof["stdoutSha256"] !==
-			sha256(new TextEncoder().encode(rollbackObservations.join("\n")))
-	)
-		errors.push("semantic: rollback proof output digest drifted");
+	if (rollbackProof["predecessorSha"] !== recordAt(value, "source")["baseSha"])
+		errors.push("semantic: rollback proof targets another predecessor");
+	if (rollbackProof["predecessorTree"] !== rollbackProof["revertedTree"])
+		errors.push("semantic: rollback proof did not restore predecessor tree");
 
 	const capturedAt = value["capturedAt"];
 	if (
@@ -441,6 +488,61 @@ export async function validateStageOneEvidence(
 			valueSha256(recordAt(value, "rollback")["proof"])
 	)
 		errors.push("repository: rollback proof differs from captured results");
+
+	const mutationLog = await validateBoundLogs(
+		root,
+		recordAt(run, "mutationResult"),
+		"mutation",
+		errors,
+	);
+	for (const entry of arrayAt(value, "mutationProof")) {
+		if (
+			isRecord(entry) &&
+			typeof entry["name"] === "string" &&
+			typeof entry["observed"] === "string" &&
+			!mutationLog.includes(entry["observed"])
+		)
+			errors.push(
+				`repository: mutation proof ${entry["name"]} is absent from captured output`,
+			);
+	}
+	for (const entry of arrayAt(value, "validation")) {
+		if (!isRecord(entry) || !Array.isArray(entry["command"])) continue;
+		const name = VALIDATION_LOG_NAMES.get(
+			commandKey(entry["command"] as string[]),
+		);
+		if (name) await validateBoundLogs(root, entry, name, errors);
+	}
+	const rollbackProofRecord = recordAt(recordAt(value, "rollback"), "proof");
+	const rollbackLog = await validateBoundLogs(
+		root,
+		rollbackProofRecord,
+		"rollback",
+		errors,
+	);
+	for (const observation of arrayAt(rollbackProofRecord, "observations")) {
+		if (typeof observation === "string" && !rollbackLog.includes(observation))
+			errors.push(
+				`repository: rollback observation is absent from captured output: ${observation}`,
+			);
+	}
+	for (const required of [
+		`headSha=${String(recordAt(value, "source")["implementationSha"] ?? "")}`,
+		`predecessorSha=${String(recordAt(value, "source")["baseSha"] ?? "")}`,
+		"revertExitCode=0",
+		"treeMatchesPredecessor=true",
+		"predecessorBun=1.3.4",
+		"predecessorProtoNodeSelected=false",
+		"predecessorNodeFeature=ghcr.io/devcontainers/features/node:1",
+		"imageBuildExitCode=0",
+		`nodePath=${String(rollbackProofRecord["nodePath"] ?? "")}`,
+		`nodeVersion=${String(rollbackProofRecord["nodeVersion"] ?? "")}`,
+		"protoNodeShim=absent",
+		"imageCleanupExitCode=0",
+	]) {
+		if (!rollbackLog.includes(required))
+			errors.push(`repository: rollback captured output omits ${required}`);
+	}
 
 	const packageValue = (await Bun.file(
 		resolve(root, "package.json"),
@@ -611,7 +713,11 @@ export async function validateStageOneEvidence(
 				);
 			else {
 				for (const path of boundaryDiff.stdout.split("\n").filter(Boolean)) {
-					if (path !== "evidence/stage-1-toolchain.json")
+					if (
+						path !== "evidence/stage-1-toolchain.json" &&
+						path !== "evidence/stage-1-toolchain-results.json" &&
+						!path.startsWith("evidence/stage-1-toolchain-run/")
+					)
 						errors.push(
 							`repository: post-implementation boundary changes non-evidence path ${path}`,
 						);

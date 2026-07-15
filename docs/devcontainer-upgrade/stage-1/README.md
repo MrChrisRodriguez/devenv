@@ -56,14 +56,17 @@ bunx biome check --no-errors-on-unmatched .
 
 `toolchain:check` validates the live repository and the strict
 `evidence/stage-1-toolchain.json` record. That record digest-binds the executed
-command results in `evidence/stage-1-toolchain-results.json`, including one run
-identity, timestamps, exit codes, output hashes, observed mutation diagnostics,
-and the isolated DevPod rollback proof. The mutation suite proves that floating
+command results in `evidence/stage-1-toolchain-results.json` and the committed
+raw stdout/stderr files under `evidence/stage-1-toolchain-run/`, including one
+run identity, timestamps, exit codes, recomputed output hashes, observed mutation
+diagnostics, and rollback proof. The mutation suite proves that floating
 catalog entries, direct consumer pins, family drift, duplicate resolutions,
 mutable plugin URLs, feature digest drift, malformed or mismatched checksums,
 `baseUrl`, absolute aliases, PATH inversion, secondary lockfiles, and disabled
 family residue all fail closed. The evidence record binds the package, feature,
-and checksum lock digests to the reviewed tree. Its clean-tree assertion includes
+and checksum lock digests to the reviewed tree. Workflow and local composite
+action metadata are both searched recursively for setup-bun actions. Its
+clean-tree assertion includes
 untracked paths while deliberately excluding the separately maintained Graphify
 index.
 
@@ -87,6 +90,12 @@ git revert -m 1 <stage-1-pr-merge-commit>
 docker volume rm <captured-proto-volume>
 devpod up . --recreate
 ```
+
+The committed rollback evidence combines the live scoped-volume cleanup with an
+isolated synthetic merge/revert and predecessor image build. The revert must
+produce the exact predecessor tree, restore Bun 1.3.4 and the Node feature,
+remove Proto's Node selection, resolve Node from the feature path, and leave no
+Proto Node shim.
 
 Do not revert only a catalog pin, `bun.lock`, one coupled-family member, the
 feature lock, or the Proto checksum metadata. Those files jointly define the

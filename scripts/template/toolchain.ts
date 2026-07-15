@@ -379,30 +379,27 @@ export async function validateToolchainContract(
 			}
 		}
 	}
-	const workflowPaths: string[] = [];
-	for (const pattern of [
-		".github/workflows/*.yml",
-		".github/workflows/*.yaml",
-	]) {
-		for await (const workflowPath of new Bun.Glob(pattern).scan({
+	const githubAutomationPaths: string[] = [];
+	for (const pattern of [".github/**/*.yml", ".github/**/*.yaml"]) {
+		for await (const automationPath of new Bun.Glob(pattern).scan({
 			cwd: root,
 			dot: true,
 			onlyFiles: true,
 		}))
-			workflowPaths.push(workflowPath);
+			githubAutomationPaths.push(automationPath);
 	}
-	for (const workflowPath of [...new Set(workflowPaths)].sort()) {
-		const workflow = await Bun.file(resolve(root, workflowPath)).text();
-		if (!workflow.includes("oven-sh/setup-bun@")) continue;
-		const pins = setupBunPins(workflow);
+	for (const automationPath of [...new Set(githubAutomationPaths)].sort()) {
+		const automation = await Bun.file(resolve(root, automationPath)).text();
+		if (!automation.includes("oven-sh/setup-bun@")) continue;
+		const pins = setupBunPins(automation);
 		for (const pin of pins) {
 			if (pin === undefined) {
-				errors.push(`proto: ${workflowPath} setup-bun omits bun-version`);
+				errors.push(`proto: ${automationPath} setup-bun omits bun-version`);
 				continue;
 			}
 			if (pin !== protoValue["bun"])
 				errors.push(
-					`proto: ${workflowPath} Bun ${pin} differs from .prototools`,
+					`proto: ${automationPath} Bun ${pin} differs from .prototools`,
 				);
 		}
 	}

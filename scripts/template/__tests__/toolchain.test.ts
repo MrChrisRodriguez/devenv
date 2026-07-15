@@ -53,7 +53,9 @@ async function mutate(
 	const changed = transform(original);
 	if (changed === original) throw new Error(`Mutation did not change ${path}`);
 	await Bun.write(target, changed);
-	expect(await validateToolchainContract(root)).toContain(expected);
+	const errors = await validateToolchainContract(root);
+	expect(errors).toContain(expected);
+	console.log(`[stage1-observed] ${expected}`);
 	await Bun.write(target, original);
 	expect(await validateToolchainContract(root)).toEqual([]);
 }
@@ -214,6 +216,22 @@ describe("repository toolchain contract", () => {
 					),
 				"proto: .github/workflows/ci.yml setup-bun omits bun-version",
 			);
+			const compositeAction = resolve(
+				temporary,
+				".github/actions/bootstrap/action.yml",
+			);
+			await mkdir(dirname(compositeAction), { recursive: true });
+			await Bun.write(
+				compositeAction,
+				"name: bootstrap\nruns:\n  using: composite\n  steps:\n    - uses: oven-sh/setup-bun@v2\n",
+			);
+			const compositeErrors = await validateToolchainContract(temporary);
+			const compositeObservation =
+				"proto: .github/actions/bootstrap/action.yml setup-bun omits bun-version";
+			expect(compositeErrors).toContain(compositeObservation);
+			console.log(`[stage1-observed] ${compositeObservation}`);
+			await rm(resolve(temporary, ".github/actions"), { recursive: true });
+			expect(await validateToolchainContract(temporary)).toEqual([]);
 			await mutate(
 				temporary,
 				"package.json",
@@ -328,6 +346,9 @@ describe("repository toolchain contract", () => {
 			expect(e2eErrors).toContain(
 				"lock: secondary package lock tests/e2e/bun.lock is forbidden",
 			);
+			console.log(
+				"[stage1-observed] lock: secondary package lock tests/e2e/bun.lock is forbidden",
+			);
 			await rm(e2e, { recursive: true });
 			expect(await validateToolchainContract(temporary)).toEqual([]);
 
@@ -373,6 +394,9 @@ describe("repository toolchain contract", () => {
 			]);
 			expect(valid.exitCode).toBe(0);
 			expect(invalid.exitCode).not.toBe(0);
+			console.log(
+				"[stage1-observed] invalid checksum fixture exited nonzero in verify-only mode",
+			);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
@@ -421,4 +445,26 @@ describe("repository toolchain contract", () => {
 			await rm(temporary, { recursive: true, force: true });
 		}
 	});
+
+	test("synthetic merge revert restores predecessor ownership declarations", () => {
+		const proof = Bun.spawnSync({
+			cmd: [
+				process.execPath,
+				resolve(ROOT, "scripts/template/prove-stage-one-revert.ts"),
+				"--root",
+				ROOT,
+			],
+			cwd: ROOT,
+			stdout: "pipe",
+			stderr: "pipe",
+		});
+		expect(proof.exitCode).toBe(0);
+		const output = proof.stdout.toString();
+		expect(output).toContain("treeMatchesPredecessor=true");
+		expect(output).toContain("predecessorBun=1.3.4");
+		expect(output).toContain("predecessorProtoNodeSelected=false");
+		expect(output).toContain(
+			"predecessorNodeFeature=ghcr.io/devcontainers/features/node:1",
+		);
+	}, 30_000);
 });

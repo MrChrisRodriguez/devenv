@@ -807,6 +807,32 @@ async function atomicPublish(
 	}
 }
 
+function formatRenderedFiles(
+	root: string,
+	output: string,
+	paths: string[],
+): void {
+	const formatter = resolve(root, "node_modules/.bin/biome");
+	const result = Bun.spawnSync({
+		cmd: [
+			process.execPath,
+			formatter,
+			"format",
+			"--write",
+			"--no-errors-on-unmatched",
+			...paths,
+		],
+		cwd: output,
+		stdout: "pipe",
+		stderr: "pipe",
+	});
+	if (result.exitCode !== 0) {
+		throw new Error(
+			`Rendered fixture formatting failed:\n${result.stdout.toString()}${result.stderr.toString()}`,
+		);
+	}
+}
+
 export async function renderFixture(options: {
 	root: string;
 	fixtureName: string;
@@ -876,11 +902,7 @@ export async function renderFixture(options: {
 			.filter(([, enabled]) => !enabled)
 			.map(([capability]) => capability)
 			.sort(),
-		files: rendered.map(({ entry, content }) => ({
-			path: entry.target,
-			mode: entry.mode,
-			sha256: sha256(content),
-		})),
+		files: [],
 		omittedCount: plan.omitted.length,
 	};
 	let residue: ResidueReport | undefined;
@@ -900,10 +922,26 @@ export async function renderFixture(options: {
 				await chmod(destination, entry.mode === "0755" ? 0o755 : 0o644);
 			}
 		}
+		formatRenderedFiles(root, temporary, ["."]);
+		manifest.files = [];
+		for (const { entry, content } of rendered) {
+			const formatted =
+				entry.mode === "120000"
+					? content
+					: new Uint8Array(
+							await Bun.file(resolve(temporary, entry.target)).arrayBuffer(),
+						);
+			manifest.files.push({
+				path: entry.target,
+				mode: entry.mode,
+				sha256: sha256(formatted),
+			});
+		}
 		await Bun.write(
 			resolve(temporary, "fixture-manifest.json"),
 			json(manifest),
 		);
+		formatRenderedFiles(root, temporary, ["fixture-manifest.json"]);
 		residue = await scanDisabledResidue(
 			temporary,
 			resolvedParameters,
