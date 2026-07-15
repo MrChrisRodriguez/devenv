@@ -1,0 +1,10 @@
+{
+	"extends": "../../tsconfig.base.json",
+	"compilerOptions": {
+		"incremental": false,
+		"paths": {},
+		"types": ["bun-types"]
+	},
+	"include": ["./**/*.ts"],
+	"exclude": []
+}

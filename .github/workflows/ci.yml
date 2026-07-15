@@ -31,3 +31,10 @@ jobs:
       - name: Test
         run: bun test
         continue-on-error: true # no tests in template; downstream projects should remove this flag
+
+      - name: Validate template baseline contract
+        run: |
+          bun run template:validate
+          bun run template:test
+          bun run template:typecheck
+          bun run template:fixtures "${RUNNER_TEMP}/template-fixtures"

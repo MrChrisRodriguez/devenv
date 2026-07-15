@@ -1,0 +1,518 @@
+{
+	"schemaVersion": 1,
+	"capturedFrom": "b981dc707bdf34e10094281958cffd5f9a22f741",
+	"classificationMode": "first-match",
+	"baselineCounts": {
+		"syncManaged": 84,
+		"syncExcluded": 108,
+		"excludedGraphifyArtifacts": 88
+	},
+	"ownershipRules": [
+		{
+			"pattern": "graphify-out/**",
+			"classification": "generated",
+			"syncPolicy": "exclude",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "graphify update ."
+		},
+		{
+			"pattern": "openspec/changes/**",
+			"classification": "project-owned",
+			"syncPolicy": "exclude",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "downstream project"
+		},
+		{
+			"pattern": "openspec/specs/**",
+			"classification": "project-owned",
+			"syncPolicy": "exclude",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "downstream project"
+		},
+		{
+			"pattern": "README.template.md",
+			"classification": "template-owned",
+			"syncPolicy": "exclude",
+			"renderPolicy": "render-readme",
+			"sourceOfTruth": "README.template.md"
+		},
+		{
+			"pattern": "README.md",
+			"classification": "project-owned",
+			"syncPolicy": "exclude",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "downstream project"
+		},
+		{
+			"pattern": "bun.lock",
+			"classification": "project-owned",
+			"syncPolicy": "exclude",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "downstream frozen install"
+		},
+		{
+			"pattern": "CHANGES.md",
+			"classification": "template-history",
+			"syncPolicy": "exclude",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "template repository"
+		},
+		{
+			"pattern": "init-host.sh",
+			"classification": "template-bootstrap",
+			"syncPolicy": "exclude",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "template repository"
+		},
+		{
+			"pattern": "init-new-project.sh",
+			"classification": "template-bootstrap",
+			"syncPolicy": "exclude",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "template repository"
+		},
+		{
+			"pattern": "template-parameters.toml",
+			"classification": "template-tooling",
+			"syncPolicy": "merge",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "template-parameters.toml"
+		},
+		{
+			"pattern": "template-parameters.schema.json",
+			"classification": "template-tooling",
+			"syncPolicy": "merge",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "template-parameters.schema.json"
+		},
+		{
+			"pattern": "fixtures/template/**",
+			"classification": "template-test",
+			"syncPolicy": "merge",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "template repository"
+		},
+		{
+			"pattern": "docs/devcontainer-upgrade/**",
+			"classification": "template-evidence",
+			"syncPolicy": "merge",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "template repository"
+		},
+		{
+			"pattern": "evidence/**",
+			"classification": "template-evidence",
+			"syncPolicy": "merge",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "template repository"
+		},
+		{
+			"pattern": "scripts/sync-devcontainer.sh",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "template repository"
+		},
+		{
+			"pattern": "scripts/template/**",
+			"classification": "template-tooling",
+			"syncPolicy": "merge",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "template repository"
+		},
+		{
+			"pattern": "scripts/**",
+			"classification": "project-owned",
+			"syncPolicy": "exclude",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "downstream project"
+		},
+		{
+			"pattern": "apps/**",
+			"classification": "project-owned",
+			"syncPolicy": "exclude",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "downstream project"
+		},
+		{
+			"pattern": "libs/**",
+			"classification": "project-owned",
+			"syncPolicy": "exclude",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "downstream project"
+		},
+		{
+			"pattern": ".devcontainer/**",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": ".devcontainer/devcontainer.json"
+		},
+		{
+			"pattern": ".claude/**",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "canonical agent rules"
+		},
+		{
+			"pattern": ".cursor/**",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "canonical agent rules"
+		},
+		{
+			"pattern": ".codex/**",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "canonical agent rules"
+		},
+		{
+			"pattern": ".gemini/**",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "canonical agent rules"
+		},
+		{
+			"pattern": ".agents/**",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "canonical agent rules"
+		},
+		{
+			"pattern": ".github/**",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": ".github/workflows"
+		},
+		{
+			"pattern": ".moon/**",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": ".moon"
+		},
+		{
+			"pattern": ".husky/**",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": ".husky"
+		},
+		{
+			"pattern": ".vscode/**",
+			"classification": "generated-or-template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": ".devcontainer/devcontainer.json and .vscode settings"
+		},
+		{
+			"pattern": "openspec/config.yaml",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "openspec/config.yaml"
+		},
+		{
+			"pattern": "*",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "template repository"
+		}
+	],
+	"artifactRules": [
+		{ "pattern": ".moon/**", "requiresAll": ["moon"] },
+		{ "pattern": "openspec/config.yaml", "requiresAll": ["openspec"] },
+		{
+			"pattern": "tsconfig.worker.base.json",
+			"requiresAll": ["cloudflare_workers"]
+		},
+		{
+			"pattern": "tsconfig.start.base.json",
+			"requiresAll": ["tanstack_start"]
+		},
+		{
+			"pattern": "tsconfig.stagehand.base.json",
+			"requiresAll": ["playwright"]
+		},
+		{ "pattern": ".codex/**", "requiresAll": ["codex"] },
+		{ "pattern": ".codex/skills/openspec-*/**", "requiresAll": ["openspec"] },
+		{ "pattern": ".gemini/**", "requiresAll": ["gemini"] },
+		{ "pattern": ".gemini/commands/opsx/**", "requiresAll": ["openspec"] },
+		{ "pattern": ".gemini/skills/graphify/**", "requiresAll": ["graphify"] },
+		{ "pattern": ".claude/**", "requiresAll": ["claude"] },
+		{ "pattern": ".claude/commands/opsx/**", "requiresAll": ["openspec"] },
+		{ "pattern": ".claude/skills/openspec-*/**", "requiresAll": ["openspec"] },
+		{ "pattern": ".claude/skills/graphify/**", "requiresAll": ["graphify"] },
+		{ "pattern": ".cursor/commands/opsx-*.md", "requiresAll": ["openspec"] },
+		{ "pattern": ".cursor/skills/openspec-*/**", "requiresAll": ["openspec"] },
+		{ "pattern": ".cursor/skills/graphify/**", "requiresAll": ["graphify"] },
+		{ "pattern": "CLAUDE.md", "requiresAll": ["claude"] },
+		{
+			"pattern": ".cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc",
+			"requiresAll": ["claude"]
+		},
+		{ "pattern": "GEMINI.md", "requiresAll": ["gemini"] },
+		{ "pattern": ".agents/skills/graphify/**", "requiresAll": ["graphify"] },
+		{
+			"pattern": ".devcontainer/ccstatusline-settings.json",
+			"requiresAll": ["ccstatusline"]
+		},
+		{
+			"pattern": ".devcontainer/on-create/setup-ccstatusline.sh",
+			"requiresAll": ["ccstatusline"]
+		},
+		{
+			"pattern": ".devcontainer/on-create/setup-claude-octopus.sh",
+			"requiresAll": ["claude_octopus"]
+		},
+		{
+			"pattern": ".devcontainer/on-create/setup-claude-warp.sh",
+			"requiresAll": ["claude_warp"]
+		},
+		{
+			"pattern": ".devcontainer/on-create/setup-claude.sh",
+			"requiresAll": ["claude"]
+		},
+		{
+			"pattern": ".devcontainer/on-create/setup-codex.sh",
+			"requiresAll": ["codex"]
+		},
+		{
+			"pattern": ".devcontainer/on-create/setup-gemini.sh",
+			"requiresAll": ["gemini"]
+		},
+		{
+			"pattern": ".devcontainer/on-create/setup-graphify.sh",
+			"requiresAll": ["graphify"]
+		},
+		{
+			"pattern": ".devcontainer/on-create/setup-openspec.sh",
+			"requiresAll": ["openspec"]
+		}
+	],
+	"capabilitySignatures": {
+		"better_auth": { "paths": ["libs/auth/**"], "tokens": ["better-auth"] },
+		"cloudflare_workers": {
+			"paths": ["tsconfig.worker.base.json", "wrangler.toml"],
+			"tokens": [
+				"cloudflare.vscode-cloudflare-workers",
+				"@cloudflare/",
+				"Cloudflare",
+				"wrangler"
+			]
+		},
+		"codex_cloud": { "paths": [".codex/cloud/**"], "tokens": ["CODEX_CLOUD"] },
+		"context7": {
+			"paths": [],
+			"tokens": ["context7", "CONTEXT7_API_KEY", "@upstash/context7-mcp"]
+		},
+		"moon_affected_selection": {
+			"paths": ["ci-matrix-universes.json", "scripts/ci/affected-matrices.sh"],
+			"tokens": ["MOON_AFFECTED_MODE"]
+		},
+		"playwright": {
+			"paths": ["tsconfig.stagehand.base.json", "scripts/browser-preflight.ts"],
+			"tokens": ["@playwright/test"]
+		},
+		"rhf_zod": {
+			"paths": ["libs/forms/**"],
+			"tokens": ["react-hook-form", "@hookform/resolvers"]
+		},
+		"sentry": { "paths": ["libs/observability/**"], "tokens": ["@sentry/"] },
+		"tanstack_start": {
+			"paths": ["tsconfig.start.base.json"],
+			"tokens": ["@tanstack/start"]
+		},
+		"vite_websocket_proxy": {
+			"paths": ["vite.config.ts"],
+			"tokens": ["ws: true"]
+		}
+	},
+	"initOverrides": [
+		{
+			"action": "record-baseline",
+			"destination": ".template-ref",
+			"source": "template Git HEAD and origin"
+		},
+		{
+			"action": "remove",
+			"paths": ["bun.lock", "CHANGES.md", "init-host.sh", "graphify-out/**"]
+		},
+		{
+			"action": "replace",
+			"destination": ".devcontainer/devcontainer.json#containerEnv.DEVCONTAINER_PROJECT",
+			"source": "repository argument"
+		},
+		{
+			"action": "render",
+			"destination": "README.md",
+			"source": "README.template.md"
+		},
+		{
+			"action": "remove",
+			"paths": ["README.template.md", "init-new-project.sh"]
+		}
+	],
+	"generatedDestinations": [
+		{
+			"source": ".devcontainer/devcontainer.json#customizations.vscode.extensions",
+			"destination": ".vscode/extensions.json",
+			"generator": ".devcontainer/scripts/sync-extensions-json.sh"
+		},
+		{
+			"source": ".prototools",
+			"destination": "$HOME/.proto",
+			"generator": ".devcontainer/on-create/setup-proto.sh",
+			"runtimeMutation": true
+		},
+		{
+			"source": ".devcontainer/secrets.example",
+			"destination": "/etc/environment",
+			"generator": ".devcontainer/on-create/setup-secrets.sh",
+			"runtimeMutation": true
+		},
+		{
+			"source": ".devcontainer/configs",
+			"destination": "$HOME shell configuration",
+			"generator": ".devcontainer/on-create/setup-shell.sh",
+			"runtimeMutation": true
+		},
+		{
+			"source": "repository source",
+			"destination": "graphify-out/**",
+			"generator": "graphify update .",
+			"runtimeMutation": true
+		},
+		{
+			"source": "OpenSpec package",
+			"destination": "agent-specific OpenSpec skills and commands",
+			"generator": ".devcontainer/on-create/setup-openspec.sh",
+			"runtimeMutation": true
+		}
+	],
+	"hardcodedValues": [
+		{
+			"category": "identity",
+			"value": "devenv",
+			"locations": [
+				".devcontainer/devcontainer.json#containerEnv.DEVCONTAINER_PROJECT"
+			],
+			"parameter": "project.slug"
+		},
+		{
+			"category": "identity",
+			"value": "devenv-template",
+			"locations": ["package.json#name", "bun.lock#workspaces.root.name"],
+			"parameter": "project.slug"
+		},
+		{
+			"category": "identity",
+			"value": "@confiador/*",
+			"locations": ["tsconfig.base.json#compilerOptions.paths"],
+			"parameter": "project.slug"
+		},
+		{
+			"category": "path",
+			"value": "/workspace",
+			"locations": [
+				".devcontainer/**",
+				".vscode/**",
+				"AGENTS.md",
+				"tsconfig.base.json"
+			],
+			"parameter": "paths.container_workspace"
+		},
+		{
+			"category": "user",
+			"value": "vscode",
+			"locations": [".devcontainer/**"],
+			"parameter": "container.development_user"
+		},
+		{
+			"category": "ports",
+			"value": "3000,4000,8080,8787",
+			"locations": [".devcontainer/devcontainer.json"],
+			"parameter": "advertised_ports"
+		},
+		{
+			"category": "branch",
+			"value": "main",
+			"locations": [
+				"init-new-project.sh",
+				"scripts/sync-devcontainer.sh",
+				".github/workflows/ci.yml"
+			],
+			"parameter": "project.default_branch"
+		}
+	],
+	"versionAuthorities": [
+		{
+			"domain": "Proto tools",
+			"authority": ".prototools",
+			"currentRisk": "seven plugin locators use mutable main branches"
+		},
+		{
+			"domain": "project packages",
+			"authority": "package.json and bun.lock",
+			"currentRisk": "latest, ranges, and catalog bypasses coexist"
+		},
+		{
+			"domain": "devcontainer features",
+			"authority": ".devcontainer/devcontainer.json",
+			"currentRisk": "floating major tags and Node lts; lock absent"
+		},
+		{
+			"domain": "Docker downloads",
+			"authority": ".devcontainer/Dockerfile",
+			"currentRisk": "mutable base/latest downloads and missing checksums"
+		},
+		{
+			"domain": "CI Bun",
+			"authority": ".github/workflows/ci.yml",
+			"currentRisk": "duplicates the .prototools Bun literal"
+		},
+		{
+			"domain": "agent and shell runtime installers",
+			"authority": ".devcontainer/on-create/setup-*.sh and .devcontainer/Dockerfile",
+			"currentRisk": "Claude, ccstatusline, Octopus, Warp, Graphify, and zinit use floating or duplicated installer inputs"
+		}
+	],
+	"capabilityInventory": {
+		"alwaysEmittedPartial": [
+			"devcontainer",
+			"moon",
+			"openspec",
+			"codex",
+			"gemini",
+			"claude",
+			"graphify",
+			"context7",
+			"ccstatusline",
+			"claude_octopus",
+			"claude_warp"
+		],
+		"advertisedOnly": ["cloudflare_workers", "tanstack_start"],
+		"absent": [
+			"moon_affected_selection",
+			"codex_cloud",
+			"playwright",
+			"better_auth",
+			"rhf_zod",
+			"sentry",
+			"vite_websocket_proxy"
+		]
+	},
+	"knownBoundaryRisks": [
+		"scripts/sync-devcontainer.sh excludes every scripts/* path except itself, so future template-owned scripts require an explicit ownership manifest cutover.",
+		"The sync script can advance .template-ref despite unresolved conflicts or review-only outcomes.",
+		"The sync script --dry-run still mutates Git remotes and fetch state.",
+		"init-new-project.sh validates neither repository identity nor all generated paths before destructive writes."
+	]
+}

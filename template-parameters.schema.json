@@ -1,0 +1,348 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"$id": "https://github.com/MrChrisRodriguez/devenv/template-parameters.schema.json",
+	"title": "Devenv template parameter registry",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schema",
+		"project",
+		"paths",
+		"container",
+		"services",
+		"advertised_ports",
+		"routing",
+		"toolchain",
+		"capabilities",
+		"capability_dependencies",
+		"ci",
+		"worktrees",
+		"generation"
+	],
+	"properties": {
+		"schema": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["version"],
+			"properties": { "version": { "const": 1 } }
+		},
+		"project": { "$ref": "#/$defs/project" },
+		"paths": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"container_workspace",
+				"generated_state",
+				"mutable_persistence",
+				"shared_cache",
+				"common_secrets",
+				"project_secrets",
+				"cloud_persisted_environment"
+			],
+			"properties": {
+				"container_workspace": {
+					"type": "string",
+					"pattern": "^/(?!$)(?!.*(?:^|/)\\.\\.(?:/|$))[A-Za-z0-9._/-]+$"
+				},
+				"generated_state": { "$ref": "#/$defs/relativePath" },
+				"mutable_persistence": { "$ref": "#/$defs/relativePath" },
+				"shared_cache": { "$ref": "#/$defs/relativePath" },
+				"common_secrets": { "const": "~/.config/devcontainer/secrets" },
+				"project_secrets": { "$ref": "#/$defs/homePath" },
+				"cloud_persisted_environment": { "$ref": "#/$defs/homePath" }
+			}
+		},
+		"container": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"development_user",
+				"supported_architectures",
+				"feature_lock_required",
+				"git_common_directory_mount_required"
+			],
+			"properties": {
+				"development_user": { "type": "string", "minLength": 1 },
+				"supported_architectures": {
+					"type": "array",
+					"minItems": 1,
+					"uniqueItems": true,
+					"items": { "enum": ["amd64", "arm64"] }
+				},
+				"feature_lock_required": { "type": "boolean" },
+				"git_common_directory_mount_required": { "type": "boolean" }
+			}
+		},
+		"services": {
+			"type": "array",
+			"items": { "$ref": "#/$defs/service" }
+		},
+		"advertised_ports": {
+			"type": "array",
+			"minItems": 1,
+			"items": { "$ref": "#/$defs/advertisedPort" }
+		},
+		"routing": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"friendly_domain_pattern",
+				"direct_host",
+				"host_caddy",
+				"always_publish_direct_url"
+			],
+			"properties": {
+				"friendly_domain_pattern": {
+					"type": "string",
+					"allOf": [
+						{ "pattern": "\\{workspace\\}" },
+						{ "pattern": "\\{project\\}" },
+						{ "pattern": "\\.localhost$" }
+					]
+				},
+				"direct_host": { "const": "127.0.0.1" },
+				"host_caddy": { "enum": ["optional", "required", "disabled"] },
+				"always_publish_direct_url": { "type": "boolean" }
+			}
+		},
+		"toolchain": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"package_manager",
+				"proto_manifest",
+				"package_manifest",
+				"package_lock",
+				"feature_lock"
+			],
+			"properties": {
+				"package_manager": { "const": "bun" },
+				"proto_manifest": { "const": ".prototools" },
+				"package_manifest": { "const": "package.json" },
+				"package_lock": { "const": "bun.lock" },
+				"feature_lock": { "const": ".devcontainer/devcontainer-lock.json" }
+			}
+		},
+		"capabilities": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["supported", "defaults"],
+			"properties": {
+				"supported": { "$ref": "#/$defs/capabilityMap" },
+				"defaults": { "$ref": "#/$defs/capabilityMap" }
+			}
+		},
+		"capability_dependencies": {
+			"type": "object",
+			"additionalProperties": {
+				"type": "array",
+				"uniqueItems": true,
+				"items": { "$ref": "#/$defs/capabilityName" }
+			}
+		},
+		"ci": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"affected_mode_initial",
+				"aggregate_gate_name",
+				"network_smoke_is_required",
+				"require_negative_guard_tests"
+			],
+			"properties": {
+				"affected_mode_initial": { "enum": ["full", "moon"] },
+				"aggregate_gate_name": { "type": "string", "minLength": 1 },
+				"network_smoke_is_required": { "const": false },
+				"require_negative_guard_tests": { "const": true }
+			}
+		},
+		"worktrees": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"preferred_offset_modulus",
+				"collision_scan_limit",
+				"manifest_schema_version",
+				"doctor_schema_version",
+				"default_probe_timeout_seconds",
+				"startup_timeout_seconds",
+				"diagnostic_staggered_mode"
+			],
+			"properties": {
+				"preferred_offset_modulus": { "type": "integer", "minimum": 1 },
+				"collision_scan_limit": { "type": "integer", "minimum": 1 },
+				"manifest_schema_version": { "type": "integer", "minimum": 1 },
+				"doctor_schema_version": { "type": "integer", "minimum": 1 },
+				"default_probe_timeout_seconds": { "type": "integer", "minimum": 1 },
+				"startup_timeout_seconds": { "type": "integer", "minimum": 1 },
+				"diagnostic_staggered_mode": { "type": "boolean" }
+			}
+		},
+		"generation": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["omit_disabled_capabilities", "fixture_names"],
+			"properties": {
+				"omit_disabled_capabilities": { "const": true },
+				"fixture_names": { "const": ["minimal", "cloud", "full"] }
+			}
+		}
+	},
+	"$defs": {
+		"slug": { "type": "string", "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$" },
+		"relativePath": {
+			"type": "string",
+			"pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))[^\\u0000-\\u001f]+$"
+		},
+		"homePath": {
+			"type": "string",
+			"pattern": "^~/(?!.*(?:^|/)\\.\\.(?:/|$))[^\\u0000-\\u001f]+$"
+		},
+		"project": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"slug",
+				"display_name",
+				"environment_prefix",
+				"docker_resource_prefix",
+				"local_domain_stem",
+				"default_branch"
+			],
+			"properties": {
+				"slug": { "$ref": "#/$defs/slug" },
+				"display_name": { "type": "string", "minLength": 1 },
+				"environment_prefix": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"docker_resource_prefix": { "$ref": "#/$defs/slug" },
+				"local_domain_stem": { "$ref": "#/$defs/slug" },
+				"default_branch": { "type": "string", "minLength": 1 }
+			}
+		},
+		"profile": { "enum": ["minimal", "cloud", "full"] },
+		"capabilityName": {
+			"enum": [
+				"devcontainer",
+				"moon",
+				"moon_affected_selection",
+				"openspec",
+				"codex",
+				"codex_cloud",
+				"gemini",
+				"claude",
+				"graphify",
+				"context7",
+				"ccstatusline",
+				"claude_octopus",
+				"claude_warp",
+				"playwright",
+				"cloudflare_workers",
+				"better_auth",
+				"rhf_zod",
+				"sentry",
+				"vite_websocket_proxy",
+				"tanstack_start"
+			]
+		},
+		"capabilityMap": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"devcontainer",
+				"moon",
+				"moon_affected_selection",
+				"openspec",
+				"codex",
+				"codex_cloud",
+				"gemini",
+				"claude",
+				"graphify",
+				"context7",
+				"ccstatusline",
+				"claude_octopus",
+				"claude_warp",
+				"playwright",
+				"cloudflare_workers",
+				"better_auth",
+				"rhf_zod",
+				"sentry",
+				"vite_websocket_proxy",
+				"tanstack_start"
+			],
+			"properties": {
+				"devcontainer": { "type": "boolean" },
+				"moon": { "type": "boolean" },
+				"moon_affected_selection": { "type": "boolean" },
+				"openspec": { "type": "boolean" },
+				"codex": { "type": "boolean" },
+				"codex_cloud": { "type": "boolean" },
+				"gemini": { "type": "boolean" },
+				"claude": { "type": "boolean" },
+				"graphify": { "type": "boolean" },
+				"context7": { "type": "boolean" },
+				"ccstatusline": { "type": "boolean" },
+				"claude_octopus": { "type": "boolean" },
+				"claude_warp": { "type": "boolean" },
+				"playwright": { "type": "boolean" },
+				"cloudflare_workers": { "type": "boolean" },
+				"better_auth": { "type": "boolean" },
+				"rhf_zod": { "type": "boolean" },
+				"sentry": { "type": "boolean" },
+				"vite_websocket_proxy": { "type": "boolean" },
+				"tanstack_start": { "type": "boolean" }
+			}
+		},
+		"service": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"name",
+				"kind",
+				"base_port",
+				"depends_on",
+				"health_path",
+				"health_expectation",
+				"profiles"
+			],
+			"properties": {
+				"name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
+				"kind": { "enum": ["frontend", "backend", "worker"] },
+				"base_port": { "type": "integer", "minimum": 1024, "maximum": 65535 },
+				"depends_on": {
+					"type": "array",
+					"uniqueItems": true,
+					"items": { "type": "string" }
+				},
+				"health_path": { "type": "string", "pattern": "^/" },
+				"health_expectation": {
+					"enum": ["http-2xx", "http-2xx-html", "json-status-ok"]
+				},
+				"profiles": {
+					"type": "array",
+					"minItems": 1,
+					"uniqueItems": true,
+					"items": { "$ref": "#/$defs/profile" }
+				},
+				"capability": { "$ref": "#/$defs/capabilityName" }
+			}
+		},
+		"advertisedPort": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["port", "label", "profiles"],
+			"properties": {
+				"port": { "type": "integer", "minimum": 1024, "maximum": 65535 },
+				"label": { "type": "string", "minLength": 1 },
+				"profiles": {
+					"type": "array",
+					"minItems": 1,
+					"uniqueItems": true,
+					"items": { "$ref": "#/$defs/profile" }
+				},
+				"capability": { "$ref": "#/$defs/capabilityName" }
+			}
+		}
+	}
+}

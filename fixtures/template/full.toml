@@ -1,0 +1,32 @@
+[fixture]
+name = "full"
+description = "Every supported template capability enabled for release and integration validation."
+
+[project]
+slug = "fixture-full"
+display_name = "Fixture Full"
+environment_prefix = "FIXTURE_FULL"
+docker_resource_prefix = "fixture-full"
+local_domain_stem = "fixture-full"
+
+[capabilities]
+devcontainer = true
+moon = true
+moon_affected_selection = true
+openspec = true
+codex = true
+codex_cloud = true
+gemini = true
+claude = true
+graphify = true
+context7 = true
+ccstatusline = true
+claude_octopus = true
+claude_warp = true
+playwright = true
+cloudflare_workers = true
+better_auth = true
+rhf_zod = true
+sentry = true
+vite_websocket_proxy = true
+tanstack_start = true

@@ -33,7 +33,11 @@
 		"typescript": "^5"
 	},
 	"scripts": {
-		"prepare": "husky"
+		"prepare": "husky",
+		"template:validate": "bun scripts/template/validate.ts",
+		"template:fixtures": "bun scripts/template/render-all-fixtures.ts",
+		"template:test": "bun test scripts/template/__tests__",
+		"template:typecheck": "bunx tsc -p scripts/template/tsconfig.json"
 	},
 	"lint-staged": {
 		"*": [

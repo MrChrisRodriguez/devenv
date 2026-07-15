@@ -1,0 +1,134 @@
+services = []
+
+[schema]
+version = 1
+
+[project]
+slug = "devenv"
+display_name = "Development Environment"
+environment_prefix = "DEVENV"
+docker_resource_prefix = "devenv"
+local_domain_stem = "devenv"
+default_branch = "main"
+
+[paths]
+container_workspace = "/workspace"
+generated_state = ".dev/state"
+mutable_persistence = ".dev/persistence"
+shared_cache = ".dev/cache"
+common_secrets = "~/.config/devcontainer/secrets"
+project_secrets = "~/.config/devcontainer/secrets.d/devenv"
+cloud_persisted_environment = "~/.config/devenv/codex-cloud.env"
+
+[container]
+development_user = "vscode"
+supported_architectures = ["amd64", "arm64"]
+feature_lock_required = true
+git_common_directory_mount_required = true
+
+# These ports are editor-forwarding hints in the pre-migration template, not
+# evidence that a corresponding service exists.
+[[advertised_ports]]
+port = 3000
+label = "Next.js Dev Server"
+profiles = ["minimal", "cloud", "full"]
+
+[[advertised_ports]]
+port = 4000
+label = "NestJS/ElysiaJS Server"
+profiles = ["minimal", "cloud", "full"]
+
+[[advertised_ports]]
+port = 8080
+label = "Development Server"
+profiles = ["minimal", "cloud", "full"]
+
+[[advertised_ports]]
+port = 8787
+label = "Cloudflare Workers Dev"
+profiles = ["cloud", "full"]
+capability = "cloudflare_workers"
+
+[routing]
+friendly_domain_pattern = "{workspace}.{project}.localhost"
+direct_host = "127.0.0.1"
+host_caddy = "optional"
+always_publish_direct_url = true
+
+[toolchain]
+package_manager = "bun"
+proto_manifest = ".prototools"
+package_manifest = "package.json"
+package_lock = "bun.lock"
+feature_lock = ".devcontainer/devcontainer-lock.json"
+
+[capabilities.supported]
+devcontainer = true
+moon = true
+moon_affected_selection = true
+openspec = true
+codex = true
+codex_cloud = true
+gemini = true
+claude = true
+graphify = true
+context7 = true
+ccstatusline = true
+claude_octopus = true
+claude_warp = true
+playwright = true
+cloudflare_workers = true
+better_auth = true
+rhf_zod = true
+sentry = true
+vite_websocket_proxy = true
+tanstack_start = true
+
+[capabilities.defaults]
+devcontainer = true
+moon = true
+moon_affected_selection = false
+openspec = true
+codex = true
+codex_cloud = false
+gemini = true
+claude = true
+graphify = true
+context7 = true
+ccstatusline = true
+claude_octopus = true
+claude_warp = true
+playwright = false
+cloudflare_workers = false
+better_auth = false
+rhf_zod = false
+sentry = false
+vite_websocket_proxy = false
+tanstack_start = false
+
+[capability_dependencies]
+moon_affected_selection = ["moon"]
+codex_cloud = ["codex"]
+ccstatusline = ["claude"]
+claude_octopus = ["claude"]
+claude_warp = ["claude"]
+tanstack_start = ["cloudflare_workers", "vite_websocket_proxy"]
+
+[ci]
+affected_mode_initial = "full"
+aggregate_gate_name = "ci-gate"
+network_smoke_is_required = false
+require_negative_guard_tests = true
+
+[worktrees]
+preferred_offset_modulus = 1000
+collision_scan_limit = 1000
+manifest_schema_version = 1
+doctor_schema_version = 1
+default_probe_timeout_seconds = 2
+startup_timeout_seconds = 90
+diagnostic_staggered_mode = true
+
+[generation]
+omit_disabled_capabilities = true
+fixture_names = ["minimal", "cloud", "full"]
