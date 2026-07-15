@@ -273,6 +273,14 @@ describe("Stage 2 image evidence", () => {
 		expect(validateStageTwoEvidenceValue(mutableStorage, schema)).toContain(
 			"semantic: second worktree retained mutable Proto storage",
 		);
+
+		const cachedAssembly = structuredClone(evidence);
+		(cachedAssembly["layerInvalidation"] as JsonRecord)["rebuiltStages"] = [
+			"codex_payload",
+		];
+		expect(validateStageTwoEvidenceValue(cachedAssembly, schema)).toContain(
+			"semantic: Codex pin mutation did not isolate codex_payload invalidation",
+		);
 	});
 
 	test("derives all sixteen collector commands from the validator authority", () => {
@@ -290,6 +298,8 @@ describe("Stage 2 image evidence", () => {
 			"scripts/template/collect-stage-two-evidence.ts",
 			"probe-stale",
 		]);
+		expect(commands["layer-invalidation"]).toContain("codex_payload");
+		expect(commands["layer-invalidation"]).toContain("development");
 		expect(commands["rollback-proof"]).toContain("probe-rollback");
 	});
 

@@ -198,6 +198,10 @@ export function expectedStageTwoCommands(
 			"development",
 			"--build-arg",
 			`CODEX_VERSION=${context.alternateCodexVersion}`,
+			"--no-cache-filter",
+			"codex_payload",
+			"--no-cache-filter",
+			"development",
 			"--progress",
 			"plain",
 			"--output",
@@ -419,7 +423,9 @@ export function validateStageTwoEvidenceValue(
 			errors.push(`semantic: layer invalidation did not preserve ${stage}`);
 	if (
 		!rebuiltStages.includes("codex_payload") ||
-		cachedStages.includes("codex_payload")
+		cachedStages.includes("codex_payload") ||
+		!rebuiltStages.includes("development") ||
+		cachedStages.includes("development")
 	)
 		errors.push(
 			"semantic: Codex pin mutation did not isolate codex_payload invalidation",
