@@ -565,7 +565,7 @@ export function validateStageTwoEvidenceValue(
 		errors.push("semantic: stale image refusal was not observed");
 	if (
 		stale["mutation"] !==
-			"shadow-workspace-tools-env-overrides-and-edit-definition" ||
+			"shadow-workspace-shell-env-tools-overrides-and-edit-definition" ||
 		stale["shadowBunPath"] !== "/workspace/node_modules/.bin/bun" ||
 		stale["shadowBashPath"] !== "/workspace/node_modules/.bin/bash" ||
 		stale["trustedRepoMount"] !== "/trusted" ||
@@ -573,8 +573,13 @@ export function validateStageTwoEvidenceValue(
 		!sameValue(stale["environmentOverrides"], {
 			DEVCONTAINER_REPO_ROOT: "/trusted",
 			DEVCONTAINER_IMAGE_CONTRACT_DIR: "/workspace/contract-marker-override",
+			BASH_ENV: "/workspace/preverify-bash-env.sh",
+			"BASH_FUNC_source%%":
+				"() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }",
 		}) ||
 		stale["preVerificationShadowExecution"] !== false ||
+		stale["preVerificationBashEnvExecution"] !== false ||
+		stale["preVerificationExportedFunctionExecution"] !== false ||
 		!sameValue(stale["shadowUtilityPaths"], [
 			"/workspace/node_modules/.bin/readlink",
 			"/workspace/node_modules/.bin/sha256sum",

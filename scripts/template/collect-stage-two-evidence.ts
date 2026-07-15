@@ -58,7 +58,7 @@ interface CapturedCommand {
 
 interface StaleProbe {
 	commandId: "stale-image-refusal";
-	mutation: "shadow-workspace-tools-env-overrides-and-edit-definition";
+	mutation: "shadow-workspace-shell-env-tools-overrides-and-edit-definition";
 	originalDefinitionFingerprint: string;
 	mutatedDefinitionFingerprint: string;
 	shadowBunPath: "/workspace/node_modules/.bin/bun";
@@ -69,8 +69,12 @@ interface StaleProbe {
 	environmentOverrides: {
 		DEVCONTAINER_REPO_ROOT: "/trusted";
 		DEVCONTAINER_IMAGE_CONTRACT_DIR: "/workspace/contract-marker-override";
+		BASH_ENV: "/workspace/preverify-bash-env.sh";
+		"BASH_FUNC_source%%": "() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }";
 	};
 	preVerificationShadowExecution: false;
+	preVerificationBashEnvExecution: false;
+	preVerificationExportedFunctionExecution: false;
 	containerExitCode: number;
 	refused: true;
 	diagnostic: string;
@@ -298,6 +302,10 @@ export async function probeStale(options_: {
 			resolve(overrideMarkerDirectory, "definition.sha256"),
 			`${originalDefinitionFingerprint}\n`,
 		);
+		await Bun.write(
+			resolve(workspace, "preverify-bash-env.sh"),
+			"/bin/echo PREVERIFY_BASH_ENV_EXECUTED >&2\n",
+		);
 		const shadowTools = ["bun", "bash", "readlink", "sha256sum", "awk", "tr"];
 		const shadowUtilityPaths = shadowTools
 			.filter((tool) => !["bun", "bash"].includes(tool))
@@ -323,12 +331,21 @@ export async function probeStale(options_: {
 			"DEVCONTAINER_REPO_ROOT=/trusted",
 			"--env",
 			"DEVCONTAINER_IMAGE_CONTRACT_DIR=/workspace/contract-marker-override",
+			"--env",
+			"BASH_ENV=/workspace/preverify-bash-env.sh",
+			"--env",
+			"BASH_FUNC_source%%=() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }",
 			"--workdir",
 			"/workspace",
 			options_.image,
+			"/usr/bin/env",
+			"-u",
+			"BASH_ENV",
+			"-u",
+			"ENV",
 			"/bin/bash",
-			"-lc",
-			"/bin/bash /workspace/.devcontainer/on-create.sh",
+			"-p",
+			"/workspace/.devcontainer/on-create.sh",
 		];
 		const result = execute(command, root);
 		const diagnostic = `${result.stdout}\n${result.stderr}`.trim();
@@ -345,9 +362,18 @@ export async function probeStale(options_: {
 			throw new Error(
 				`Workspace PATH tool executed before stale-image refusal:\n${diagnostic}`,
 			);
+		if (diagnostic.includes("PREVERIFY_BASH_ENV_EXECUTED"))
+			throw new Error(
+				`BASH_ENV executed before stale-image refusal:\n${diagnostic}`,
+			);
+		if (diagnostic.includes("PREVERIFY_EXPORTED_SOURCE_EXECUTED"))
+			throw new Error(
+				`Exported shell function executed before stale-image refusal:\n${diagnostic}`,
+			);
 		return {
 			commandId: "stale-image-refusal",
-			mutation: "shadow-workspace-tools-env-overrides-and-edit-definition",
+			mutation:
+				"shadow-workspace-shell-env-tools-overrides-and-edit-definition",
 			originalDefinitionFingerprint,
 			mutatedDefinitionFingerprint,
 			shadowBunPath: "/workspace/node_modules/.bin/bun",
@@ -358,8 +384,13 @@ export async function probeStale(options_: {
 			environmentOverrides: {
 				DEVCONTAINER_REPO_ROOT: "/trusted",
 				DEVCONTAINER_IMAGE_CONTRACT_DIR: "/workspace/contract-marker-override",
+				BASH_ENV: "/workspace/preverify-bash-env.sh",
+				"BASH_FUNC_source%%":
+					"() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }",
 			},
 			preVerificationShadowExecution: false,
+			preVerificationBashEnvExecution: false,
+			preVerificationExportedFunctionExecution: false,
 			containerExitCode: result.exitCode,
 			refused: true,
 			diagnostic,

@@ -140,6 +140,8 @@
 				"overrideMarkerPath",
 				"environmentOverrides",
 				"preVerificationShadowExecution",
+				"preVerificationBashEnvExecution",
+				"preVerificationExportedFunctionExecution",
 				"containerExitCode",
 				"refused",
 				"diagnostic"
@@ -147,7 +149,7 @@
 			"properties": {
 				"commandId": { "const": "stale-image-refusal" },
 				"mutation": {
-					"const": "shadow-workspace-tools-env-overrides-and-edit-definition"
+					"const": "shadow-workspace-shell-env-tools-overrides-and-edit-definition"
 				},
 				"originalDefinitionFingerprint": { "$ref": "#/$defs/sha256" },
 				"mutatedDefinitionFingerprint": { "$ref": "#/$defs/sha256" },
@@ -168,16 +170,26 @@
 					"additionalProperties": false,
 					"required": [
 						"DEVCONTAINER_REPO_ROOT",
-						"DEVCONTAINER_IMAGE_CONTRACT_DIR"
+						"DEVCONTAINER_IMAGE_CONTRACT_DIR",
+						"BASH_ENV",
+						"BASH_FUNC_source%%"
 					],
 					"properties": {
 						"DEVCONTAINER_REPO_ROOT": { "const": "/trusted" },
 						"DEVCONTAINER_IMAGE_CONTRACT_DIR": {
 							"const": "/workspace/contract-marker-override"
+						},
+						"BASH_ENV": {
+							"const": "/workspace/preverify-bash-env.sh"
+						},
+						"BASH_FUNC_source%%": {
+							"const": "() { /bin/echo PREVERIFY_EXPORTED_SOURCE_EXECUTED >&2; }"
 						}
 					}
 				},
 				"preVerificationShadowExecution": { "const": false },
+				"preVerificationBashEnvExecution": { "const": false },
+				"preVerificationExportedFunctionExecution": { "const": false },
 				"containerExitCode": { "type": "integer", "minimum": 1 },
 				"refused": { "const": true },
 				"diagnostic": { "type": "string", "minLength": 20 }

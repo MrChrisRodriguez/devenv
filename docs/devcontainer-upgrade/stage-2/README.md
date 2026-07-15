@@ -87,7 +87,8 @@ the first nonzero exit:
    malicious workspace-local Bun, Bash, and checksum utilities attempt to
    print the baked marker and poisoned environment overrides point at a
    pristine decoy checkout plus attacker-controlled markers. The probe invokes
-   the real on-create lifecycle and rejects any pre-verification tool sentinel.
+   the real startup-scrubbed on-create lifecycle and rejects pre-verification
+   tool, `BASH_ENV`, and exported-function sentinels.
 6. A real missing-foundation-uv partition mutation.
 7. Bash and Zsh login/non-login PATH probes.
 8. Two real containers over two worktrees, with image identity, writable-layer,

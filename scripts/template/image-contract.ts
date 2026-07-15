@@ -322,14 +322,28 @@ export async function validateImageContract(
 		: [];
 	if (mounts.some((mount) => String(mount).includes(".proto")))
 		errors.push("image: active devcontainer must not mount Proto storage");
+	const lifecyclePrefix = [
+		"/usr/bin/env",
+		"-u",
+		"BASH_ENV",
+		"-u",
+		"ENV",
+		"/bin/bash",
+		"-p",
+	];
 	for (const lifecycle of [
 		"onCreateCommand",
 		"postCreateCommand",
 		"postStartCommand",
 	]) {
 		const command = devcontainer[lifecycle];
-		if (!Array.isArray(command) || command[0] !== "/bin/bash")
-			errors.push(`image: ${lifecycle} must use absolute system Bash`);
+		if (
+			!Array.isArray(command) ||
+			!same(command.slice(0, lifecyclePrefix.length), lifecyclePrefix)
+		)
+			errors.push(
+				`image: ${lifecycle} must scrub shell startup code before privileged Bash`,
+			);
 	}
 	if (!JSON.stringify(devcontainer["postStartCommand"]).includes("/bin/bash"))
 		errors.push("image: postStartCommand inner shell must use absolute Bash");

@@ -153,8 +153,9 @@ describe("devcontainer image contract", () => {
 			await mutate(
 				temporary,
 				".devcontainer/devcontainer.json",
-				(source) => source.replace('"/bin/bash"', '"bash"'),
-				"image: onCreateCommand must use absolute system Bash",
+				(source) =>
+					source.replace('"-u",\n\t\t"BASH_ENV",', '"BASH_ENV_NOT_SCRUBBED",'),
+				"image: onCreateCommand must scrub shell startup code before privileged Bash",
 			);
 			await mutate(
 				temporary,
