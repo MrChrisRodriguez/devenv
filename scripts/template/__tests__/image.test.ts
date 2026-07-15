@@ -122,6 +122,16 @@ describe("devcontainer image contract", () => {
 			);
 			await mutate(
 				temporary,
+				".devcontainer/on-create/setup-proto.sh",
+				(source) =>
+					source.replace(
+						'image_bun="$image_proto_home/tools/bun/$bun_version/bun"',
+						'image_bun="$image_proto_home/shims/bun"',
+					),
+				"image: setup-proto must not fingerprint through a Proto shim",
+			);
+			await mutate(
+				temporary,
 				".devcontainer/devcontainer.json",
 				(source) => source.replace('"/bin/bash"', '"bash"'),
 				"image: onCreateCommand must use absolute system Bash",

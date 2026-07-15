@@ -300,7 +300,7 @@ export async function probeStale(options_: {
 			"--workdir",
 			"/workspace",
 			options_.image,
-			"bash",
+			"/bin/bash",
 			"-lc",
 			"source /workspace/.devcontainer/on-create/setup-proto.sh",
 		];

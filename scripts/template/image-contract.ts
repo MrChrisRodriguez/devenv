@@ -361,7 +361,8 @@ export async function validateImageContract(
 		"definition.sha256",
 		"devcontainer-fingerprint.sh",
 		"DEVCONTAINER_FINGERPRINT_BUN",
-		"/shims/bun",
+		"/tools/bun/",
+		"/home/vscode/.proto",
 		"/bin/proto",
 		"/bin/bash",
 		"/usr/bin/readlink -f",
@@ -373,6 +374,8 @@ export async function validateImageContract(
 		if (!setupProto.includes(marker))
 			errors.push(`image: setup-proto omits ${marker}`);
 	}
+	if (/image_bun=.*\/shims\/bun/.test(setupProto))
+		errors.push("image: setup-proto must not fingerprint through a Proto shim");
 	for (const capability of [
 		"codex",
 		"gemini",
