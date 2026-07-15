@@ -360,6 +360,19 @@ describe("deterministic fixture renderer", () => {
 					resolve(output, "scripts/template/toolchain.ts"),
 				).exists(),
 			).toBe(true);
+			const generatedGuard = await Bun.file(
+				resolve(output, "scripts/template/toolchain.ts"),
+			).text();
+			for (const token of [
+				"capability:start",
+				"@cloudflare/",
+				"Cloudflare",
+				"better-auth",
+				"playwright",
+				"react-hook-form",
+				"zod",
+			])
+				expect(generatedGuard).not.toContain(token);
 			for (const packageName of [
 				"@cloudflare/vite-plugin",
 				"@cloudflare/vitest-pool-workers",
@@ -382,6 +395,42 @@ describe("deterministic fixture renderer", () => {
 			await rm(temporary, { recursive: true, force: true });
 		}
 	});
+
+	test("fresh generated CI creates its first lock before running the guard", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const output = resolve(temporary, "minimal");
+			await renderFixture({
+				root: ROOT,
+				fixtureName: "minimal",
+				output,
+			});
+			expect(await Bun.file(resolve(output, "bun.lock")).exists()).toBe(false);
+			const install = Bun.spawnSync({
+				cmd: [
+					"bash",
+					"-euo",
+					"pipefail",
+					"-c",
+					"if [ -f bun.lock ]; then bun install --frozen-lockfile; else bun install; test -f bun.lock; fi",
+				],
+				cwd: output,
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+			expect(install.exitCode).toBe(0);
+			expect(await Bun.file(resolve(output, "bun.lock")).exists()).toBe(true);
+			const guard = Bun.spawnSync({
+				cmd: ["bun", "run", "toolchain:check"],
+				cwd: output,
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+			expect(guard.exitCode).toBe(0);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 120_000);
 
 	test("renders cloud and full profiles with only their selected artifacts", async () => {
 		const temporary = await temporaryDirectory();

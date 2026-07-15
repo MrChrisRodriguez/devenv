@@ -1,122 +1,6 @@
 {
 	"schemaVersion": 1,
-	"stage": "stage-1-toolchain-contract",
-	"capturedAt": "2026-07-15T05:36:00Z",
-	"run": {
-		"id": "stage1-20260715T052419Z-darwin-arm64",
-		"results": {
-			"path": "evidence/stage-1-toolchain-results.json",
-			"sha256": "39b047b60b9aff3a46741b752fd1fae82be70981961559b806710f2ee13f2285"
-		},
-		"mutationResult": {
-			"command": [
-				"bun",
-				"test",
-				"scripts/template/__tests__/toolchain.test.ts",
-				"scripts/template/__tests__/template.test.ts",
-				"-t",
-				"passes the real tree and rejects known-bad authority mutations|checksum verifier fails closed before archive extraction|renders minimal twice with identical manifests and no disabled residue"
-			],
-			"runId": "stage1-20260715T052419Z-darwin-arm64",
-			"startedAt": "2026-07-15T05:35:25Z",
-			"completedAt": "2026-07-15T05:35:26Z",
-			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
-			"stderrSha256": "c9319169c670d87a595919b524877d1eb6712d4363d7296f0a2dcc90e9109650",
-			"status": "pass",
-			"exitCode": 0
-		}
-	},
-	"source": {
-		"baseSha": "94863ed1b12d261e432702a76848916d92f89450",
-		"implementationSha": "a7c06919e8483d970eb213537c2d8a670e7922bd",
-		"featureTreeClean": true
-	},
-	"proto": {
-		"version": "0.55.4",
-		"selectedTools": {
-			"bun": "1.3.13",
-			"node": "24.18.0",
-			"moon": "2.3.5",
-			"proto": "0.55.4",
-			"direnv": "2.37.1",
-			"fly": "0.3.231",
-			"infisical": "0.41.90",
-			"python": "3.14.2",
-			"uv": "0.9.7",
-			"jq": "1.8.1",
-			"yq": "4.49.2",
-			"dagger": "0.19.8"
-		},
-		"pluginCommits": [
-			"786005a6ef2371ae1c7893610d065ac5612d61a9",
-			"9808cc412785ac59ec1b0d61bd1bee152f6f6b56"
-		],
-		"checksums": {
-			"amd64": "3f13534217fcf315c0579db6e1f87edd022d850144d9f3b0957a29586de34838",
-			"arm64": "85406d411687412b729ef21f58f8ac2ddafa9e51eafc8ec1b4772af1b6ab98db"
-		}
-	},
-	"catalog": {
-		"consumerPolicy": "catalog:",
-		"packageCount": 17,
-		"packages": {
-			"@biomejs/biome": "2.4.16",
-			"@cloudflare/vite-plugin": "1.43.0",
-			"@cloudflare/vitest-pool-workers": "0.18.0",
-			"@commitlint/cli": "20.5.0",
-			"@commitlint/config-conventional": "20.5.0",
-			"@fission-ai/openspec": "0.19.0",
-			"@hookform/resolvers": "5.4.0",
-			"@playwright/test": "1.59.1",
-			"@types/bun": "1.3.10",
-			"@types/node": "25.5.0",
-			"better-auth": "1.6.23",
-			"husky": "9.1.7",
-			"lint-staged": "16.4.0",
-			"react-hook-form": "7.81.0",
-			"typescript": "5.9.3",
-			"wrangler": "4.107.0",
-			"zod": "4.3.6"
-		}
-	},
-	"coupledFamilies": {
-		"cloudflare": {
-			"wrangler": "4.107.0",
-			"vitePlugin": "1.43.0",
-			"vitestPool": "0.18.0",
-			"miniflare": "4.20260701.0",
-			"workerd": "1.20260701.1"
-		},
-		"betterAuth": {
-			"package": "1.6.23",
-			"core": "1.6.23"
-		},
-		"forms": {
-			"zod": "4.3.6",
-			"reactHookForm": "7.81.0",
-			"resolvers": "5.4.0"
-		},
-		"playwright": {
-			"test": "1.59.1",
-			"runtime": "1.59.1",
-			"core": "1.59.1"
-		}
-	},
-	"locks": {
-		"package": {
-			"path": "bun.lock",
-			"sha256": "1cb0eef43905f41c5290c251d414fc3c632fe3e5c1d5f87cb5eabc83e3bc9e14"
-		},
-		"features": {
-			"path": ".devcontainer/devcontainer-lock.json",
-			"sha256": "415ee207066b3fba6024345671ed010a7e0bc90c8f416f1d7877f45d471eca16",
-			"count": 4
-		},
-		"protoChecksums": {
-			"path": ".devcontainer/proto-checksums.txt",
-			"sha256": "8682a658cc63efbb1dd3c428ec5dcbad662f18e659656a6febcdd413836cd051"
-		}
-	},
+	"runId": "stage1-20260715T052419Z-darwin-arm64",
 	"mutationProof": [
 		{
 			"name": "catalog-floating",
@@ -223,6 +107,24 @@
 			"status": "pass"
 		}
 	],
+	"mutationProofSha256": "4797432b8946f47fcf928a456c7b19ce90f86c860e0a41124f4e56c610ae2eeb",
+	"mutationResult": {
+		"command": [
+			"bun",
+			"test",
+			"scripts/template/__tests__/toolchain.test.ts",
+			"scripts/template/__tests__/template.test.ts",
+			"-t",
+			"passes the real tree and rejects known-bad authority mutations|checksum verifier fails closed before archive extraction|renders minimal twice with identical manifests and no disabled residue"
+		],
+		"runId": "stage1-20260715T052419Z-darwin-arm64",
+		"startedAt": "2026-07-15T05:35:25Z",
+		"completedAt": "2026-07-15T05:35:26Z",
+		"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+		"stderrSha256": "c9319169c670d87a595919b524877d1eb6712d4363d7296f0a2dcc90e9109650",
+		"status": "pass",
+		"exitCode": 0
+	},
 	"validation": [
 		{
 			"command": ["bun", "install", "--frozen-lockfile"],
@@ -295,54 +197,34 @@
 			"exitCode": 0
 		}
 	],
-	"performance": {
-		"status": "not-measured",
-		"reason": "Stage 1 changes repository authorities and creation-time validation, not the image architecture or worktree runtime; Stage 0 remains the comparison baseline for the later image and final release stages."
-	},
-	"rollback": {
-		"mode": "atomic",
-		"command": ["git", "revert", "-m", "1", "<stage-1-pr-merge-commit>"],
-		"runtimeCleanup": [
-			[
-				"docker",
-				"inspect",
-				"<stage-1-container>",
-				"--format",
-				"<capture-/home/vscode/.proto-volume-name>"
-			],
-			["devpod", "stop", "."],
-			["docker", "rm", "<stage-1-container>"],
-			["docker", "volume", "rm", "<captured-proto-volume>"],
-			["devpod", "up", ".", "--recreate"]
+	"validationSha256": "95ff1aa13b5fe70cdd2389d7a8b8bd7a7d42a334f4bc38fedd1b7c7f3964c2d9",
+	"rollbackProof": {
+		"runId": "stage1-20260715T052419Z-darwin-arm64",
+		"mode": "isolated-devpod",
+		"workspaceId": "devenv-stage1-rollback-20260715",
+		"containerId": "d8c24c5becc46273b10674e72876d05096b7433ef4bedc0eb0b373c64fa0561b",
+		"volumeName": "proto-home-default-de-e1f07",
+		"attachedRemovalExitCode": 1,
+		"containerRemovalExitCode": 0,
+		"volumeRemovalExitCode": 0,
+		"recreateExitCode": 0,
+		"healthCheckExitCode": 0,
+		"cleanupExitCode": 0,
+		"observations": [
+			"initialContainer=d8c24c5becc46273b10674e72876d05096b7433ef4bedc0eb0b373c64fa0561b",
+			"volume=proto-home-default-de-e1f07",
+			"initialHealth=node:v24.18.0 bun:1.3.13 proto:0.55.4 guard:pass",
+			"attachedVolumeRemoval=exit:1 volume-is-in-use",
+			"containerRemoval=exit:0",
+			"volumeRemoval=exit:0",
+			"replacementContainer=20bafa4526fa866083709e65245bf0dbc128d213f760f2b86b9d07bd82a7b4ec",
+			"recreate=exit:0",
+			"replacementHealth=node:v24.18.0 bun:1.3.13 proto:0.55.4 guard:pass",
+			"workspaceDelete=exit:0",
+			"scopedVolumeCleanup=exit:0"
 		],
-		"scope": "Revert Proto pins and checksum installer, package catalog and bun.lock, feature lock, TypeScript paths, renderer package rules, guard, tests, docs, and evidence together.",
-		"proof": {
-			"runId": "stage1-20260715T052419Z-darwin-arm64",
-			"mode": "isolated-devpod",
-			"workspaceId": "devenv-stage1-rollback-20260715",
-			"containerId": "d8c24c5becc46273b10674e72876d05096b7433ef4bedc0eb0b373c64fa0561b",
-			"volumeName": "proto-home-default-de-e1f07",
-			"attachedRemovalExitCode": 1,
-			"containerRemovalExitCode": 0,
-			"volumeRemovalExitCode": 0,
-			"recreateExitCode": 0,
-			"healthCheckExitCode": 0,
-			"cleanupExitCode": 0,
-			"observations": [
-				"initialContainer=d8c24c5becc46273b10674e72876d05096b7433ef4bedc0eb0b373c64fa0561b",
-				"volume=proto-home-default-de-e1f07",
-				"initialHealth=node:v24.18.0 bun:1.3.13 proto:0.55.4 guard:pass",
-				"attachedVolumeRemoval=exit:1 volume-is-in-use",
-				"containerRemoval=exit:0",
-				"volumeRemoval=exit:0",
-				"replacementContainer=20bafa4526fa866083709e65245bf0dbc128d213f760f2b86b9d07bd82a7b4ec",
-				"recreate=exit:0",
-				"replacementHealth=node:v24.18.0 bun:1.3.13 proto:0.55.4 guard:pass",
-				"workspaceDelete=exit:0",
-				"scopedVolumeCleanup=exit:0"
-			],
-			"stdoutSha256": "65bd205022dd0c49a4fb2e4b9cd94de3ebc7ef92325d08318e17c7ee5ca41e4d",
-			"status": "pass"
-		}
-	}
+		"stdoutSha256": "65bd205022dd0c49a4fb2e4b9cd94de3ebc7ef92325d08318e17c7ee5ca41e4d",
+		"status": "pass"
+	},
+	"rollbackProofSha256": "f369cf21e454d13b158ad9f2b8bf9e26604d24ccd16226242e7d4141d177c6cc"
 }

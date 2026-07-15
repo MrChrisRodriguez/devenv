@@ -6,6 +6,7 @@
 		"schemaVersion",
 		"stage",
 		"capturedAt",
+		"run",
 		"source",
 		"proto",
 		"catalog",
@@ -20,6 +21,16 @@
 		"schemaVersion": { "const": 1 },
 		"stage": { "const": "stage-1-toolchain-contract" },
 		"capturedAt": { "type": "string", "format": "date-time" },
+		"run": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "results", "mutationResult"],
+			"properties": {
+				"id": { "type": "string", "pattern": "^stage1-[0-9TZ-]+-[a-z0-9-]+$" },
+				"results": { "$ref": "#/$defs/resultArtifact" },
+				"mutationResult": { "$ref": "#/$defs/validation" }
+			}
+		},
 		"source": {
 			"type": "object",
 			"additionalProperties": false,
@@ -101,16 +112,17 @@
 		"rollback": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["mode", "command", "runtimeCleanup", "scope"],
+			"required": ["mode", "command", "runtimeCleanup", "scope", "proof"],
 			"properties": {
 				"mode": { "const": "atomic" },
 				"command": { "$ref": "#/$defs/command" },
 				"runtimeCleanup": {
 					"type": "array",
-					"minItems": 3,
+					"minItems": 5,
 					"items": { "$ref": "#/$defs/command" }
 				},
-				"scope": { "type": "string", "minLength": 1 }
+				"scope": { "type": "string", "minLength": 1 },
+				"proof": { "$ref": "#/$defs/rollbackProof" }
 			}
 		}
 	},
@@ -153,22 +165,93 @@
 		"mutation": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["name", "expected", "test", "status"],
+			"required": ["name", "expected", "observed", "test", "runId", "status"],
 			"properties": {
 				"name": { "type": "string", "minLength": 1 },
 				"expected": { "type": "string", "minLength": 1 },
-				"test": { "const": "scripts/template/__tests__/toolchain.test.ts" },
+				"observed": { "type": "string", "minLength": 1 },
+				"test": {
+					"enum": [
+						"scripts/template/__tests__/toolchain.test.ts",
+						"scripts/template/__tests__/template.test.ts"
+					]
+				},
+				"runId": { "type": "string", "minLength": 1 },
 				"status": { "const": "pass" }
 			}
 		},
 		"validation": {
 			"type": "object",
 			"additionalProperties": false,
-			"required": ["command", "status", "exitCode"],
+			"required": [
+				"command",
+				"runId",
+				"startedAt",
+				"completedAt",
+				"stdoutSha256",
+				"stderrSha256",
+				"status",
+				"exitCode"
+			],
 			"properties": {
 				"command": { "$ref": "#/$defs/command" },
+				"runId": { "type": "string", "minLength": 1 },
+				"startedAt": { "type": "string", "format": "date-time" },
+				"completedAt": { "type": "string", "format": "date-time" },
+				"stdoutSha256": { "$ref": "#/$defs/sha256" },
+				"stderrSha256": { "$ref": "#/$defs/sha256" },
 				"status": { "const": "pass" },
 				"exitCode": { "const": 0 }
+			}
+		},
+		"sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+		"resultArtifact": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["path", "sha256"],
+			"properties": {
+				"path": { "const": "evidence/stage-1-toolchain-results.json" },
+				"sha256": { "$ref": "#/$defs/sha256" }
+			}
+		},
+		"rollbackProof": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"runId",
+				"mode",
+				"workspaceId",
+				"containerId",
+				"volumeName",
+				"attachedRemovalExitCode",
+				"containerRemovalExitCode",
+				"volumeRemovalExitCode",
+				"recreateExitCode",
+				"healthCheckExitCode",
+				"cleanupExitCode",
+				"observations",
+				"stdoutSha256",
+				"status"
+			],
+			"properties": {
+				"runId": { "type": "string", "minLength": 1 },
+				"mode": { "const": "isolated-devpod" },
+				"workspaceId": { "type": "string", "minLength": 1 },
+				"containerId": { "$ref": "#/$defs/sha" },
+				"volumeName": { "type": "string", "minLength": 1 },
+				"attachedRemovalExitCode": { "type": "integer", "minimum": 1 },
+				"containerRemovalExitCode": { "const": 0 },
+				"volumeRemovalExitCode": { "const": 0 },
+				"recreateExitCode": { "const": 0 },
+				"healthCheckExitCode": { "const": 0 },
+				"cleanupExitCode": { "const": 0 },
+				"observations": {
+					"type": "array",
+					"minItems": 10,
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"stdoutSha256": { "$ref": "#/$defs/sha256" },
+				"status": { "const": "pass" }
 			}
 		}
 	}

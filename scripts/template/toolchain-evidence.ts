@@ -41,6 +41,46 @@ const EXPECTED_MUTATIONS: Record<(typeof REQUIRED_MUTATIONS)[number], string> =
 			"Omit disabled package authorities and consumers from rendered fixtures",
 	};
 
+const EXPECTED_OBSERVATIONS: Record<
+	(typeof REQUIRED_MUTATIONS)[number],
+	string
+> = {
+	"catalog-floating": "catalog: @biomejs/biome must use an exact version",
+	"catalog-bypass": "catalog: root consumer @biomejs/biome must use catalog:",
+	"coupled-family-drift": "lock: wrangler does not resolve to catalog 4.108.0",
+	"second-resolution":
+		"lock: wrangler must resolve exactly once, found 2 entries (4.107.0, 4.108.0)",
+	"mutable-proto-plugin":
+		"proto: plugin direnv must use an immutable commit URL",
+	"feature-lock-drift":
+		"features: ghcr.io/devcontainers/features/common-utils:2 resolved reference and integrity differ",
+	"proto-checksum-format":
+		"proto: checksum architectures drift from template parameters",
+	"proto-checksum-mismatch":
+		"invalid checksum fixture exited nonzero in verify-only mode",
+	"typescript-baseurl": "typescript: tsconfig.base.json reintroduces baseUrl",
+	"typescript-absolute-alias":
+		"typescript: tsconfig.base.json contains an absolute path alias",
+	"workspace-path-priority":
+		"path: .shell_common resolves Proto before workspace binaries",
+	"secondary-lockfile":
+		"lock: secondary package lock tests/e2e/bun.lock is forbidden",
+	"disabled-family-omission":
+		"minimal fixture guard and artifact scan contain no disabled family residue",
+};
+
+const EXPECTED_MUTATION_TESTS: Record<
+	(typeof REQUIRED_MUTATIONS)[number],
+	string
+> = Object.fromEntries(
+	REQUIRED_MUTATIONS.map((name) => [
+		name,
+		name === "disabled-family-omission"
+			? "scripts/template/__tests__/template.test.ts"
+			: "scripts/template/__tests__/toolchain.test.ts",
+	]),
+) as Record<(typeof REQUIRED_MUTATIONS)[number], string>;
+
 const REQUIRED_VALIDATIONS = [
 	["bun", "install", "--frozen-lockfile"],
 	["bun", "run", "toolchain:check"],
@@ -49,6 +89,15 @@ const REQUIRED_VALIDATIONS = [
 	["bun", "run", "template:typecheck"],
 	["bun", "run", "template:fixtures", "tmp/stage1-fixtures"],
 	["bunx", "biome", "check", "--no-errors-on-unmatched", "."],
+] as const;
+
+const REQUIRED_MUTATION_RUN = [
+	"bun",
+	"test",
+	"scripts/template/__tests__/toolchain.test.ts",
+	"scripts/template/__tests__/template.test.ts",
+	"-t",
+	"passes the real tree and rejects known-bad authority mutations|checksum verifier fails closed before archive extraction|renders minimal twice with identical manifests and no disabled residue",
 ] as const;
 
 const REQUIRED_ROLLBACK_COMMAND = [
@@ -95,21 +144,35 @@ function commandKey(command: readonly string[]): string {
 	return JSON.stringify(command);
 }
 
+function canonicalValue(value: unknown): unknown {
+	if (Array.isArray(value)) return value.map(canonicalValue);
+	if (!isRecord(value)) return value;
+	return Object.fromEntries(
+		Object.entries(value)
+			.sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
+			.map(([key, entry]) => [key, canonicalValue(entry)]),
+	);
+}
+
 function sameValue(left: unknown, right: unknown): boolean {
-	const stable = (value: unknown): unknown => {
-		if (Array.isArray(value)) return value.map(stable);
-		if (!isRecord(value)) return value;
-		return Object.fromEntries(
-			Object.entries(value)
-				.sort(([leftKey], [rightKey]) => leftKey.localeCompare(rightKey))
-				.map(([key, entry]) => [key, stable(entry)]),
-		);
-	};
-	return JSON.stringify(stable(left)) === JSON.stringify(stable(right));
+	return (
+		JSON.stringify(canonicalValue(left)) ===
+		JSON.stringify(canonicalValue(right))
+	);
+}
+
+function hasExactKeys(value: JsonRecord, expected: readonly string[]): boolean {
+	return sameValue(Object.keys(value).sort(), [...expected].sort());
 }
 
 function sha256(value: Uint8Array): string {
 	return new Bun.CryptoHasher("sha256").update(value).digest("hex");
+}
+
+function valueSha256(value: unknown): string {
+	return sha256(
+		new TextEncoder().encode(JSON.stringify(canonicalValue(value))),
+	);
 }
 
 function git(root: string, args: string[]): number {
@@ -145,6 +208,17 @@ export function validateStageOneEvidenceValue(
 		(error) => `schema: ${error}`,
 	);
 	if (!isRecord(value)) return errors;
+	const run = recordAt(value, "run");
+	const runId = run["id"];
+	const mutationResult = recordAt(run, "mutationResult");
+	if (
+		!Array.isArray(mutationResult["command"]) ||
+		commandKey(mutationResult["command"] as string[]) !==
+			commandKey(REQUIRED_MUTATION_RUN)
+	)
+		errors.push("semantic: mutation result command drifted");
+	if (mutationResult["runId"] !== runId)
+		errors.push("semantic: mutation result belongs to another run");
 
 	const mutationNames = names(arrayAt(value, "mutationProof"));
 	for (const mutation of REQUIRED_MUTATIONS) {
@@ -161,19 +235,50 @@ export function validateStageOneEvidenceValue(
 			entry["expected"] !== EXPECTED_MUTATIONS[name]
 		)
 			errors.push(`semantic: mutation proof ${name} expectation drifted`);
+		if (
+			name in EXPECTED_OBSERVATIONS &&
+			entry["observed"] !== EXPECTED_OBSERVATIONS[name]
+		)
+			errors.push(`semantic: mutation proof ${name} observation drifted`);
+		if (
+			name in EXPECTED_MUTATION_TESTS &&
+			entry["test"] !== EXPECTED_MUTATION_TESTS[name]
+		)
+			errors.push(`semantic: mutation proof ${name} test path drifted`);
+		if (entry["runId"] !== runId)
+			errors.push(`semantic: mutation proof ${name} belongs to another run`);
 	}
 
-	const validationCommands = new Set(
-		arrayAt(value, "validation").flatMap((entry) => {
-			if (!isRecord(entry) || !Array.isArray(entry["command"])) return [];
-			if (!entry["command"].every((part) => typeof part === "string"))
-				return [];
-			return [commandKey(entry["command"] as string[])];
-		}),
-	);
+	const validationCommands = arrayAt(value, "validation").flatMap((entry) => {
+		if (!isRecord(entry) || !Array.isArray(entry["command"])) return [];
+		if (!entry["command"].every((part) => typeof part === "string")) return [];
+		return [commandKey(entry["command"] as string[])];
+	});
+	const requiredValidationCommands = REQUIRED_VALIDATIONS.map(commandKey);
+	if (
+		!sameValue(
+			[...validationCommands].sort(),
+			[...requiredValidationCommands].sort(),
+		)
+	)
+		errors.push("semantic: validation command set drifted");
+	const validationCommandSet = new Set(validationCommands);
 	for (const command of REQUIRED_VALIDATIONS) {
-		if (!validationCommands.has(commandKey(command)))
+		if (!validationCommandSet.has(commandKey(command)))
 			errors.push(`semantic: missing validation ${command.join(" ")}`);
+	}
+	for (const entry of arrayAt(value, "validation")) {
+		if (!isRecord(entry)) continue;
+		if (entry["runId"] !== runId)
+			errors.push("semantic: validation result belongs to another run");
+		const startedAt = entry["startedAt"];
+		const completedAt = entry["completedAt"];
+		if (
+			typeof startedAt === "string" &&
+			typeof completedAt === "string" &&
+			Date.parse(startedAt) > Date.parse(completedAt)
+		)
+			errors.push("semantic: validation result completed before it started");
 	}
 
 	const rollbackCommand = recordAt(value, "rollback")["command"];
@@ -220,6 +325,17 @@ export function validateStageOneEvidenceValue(
 		errors.push(
 			"semantic: Stage 1 rollback must stop and remove its container before deleting the Proto volume",
 		);
+	const rollbackProof = recordAt(recordAt(value, "rollback"), "proof");
+	if (rollbackProof["runId"] !== runId)
+		errors.push("semantic: rollback proof belongs to another run");
+	const rollbackObservations = rollbackProof["observations"];
+	if (
+		Array.isArray(rollbackObservations) &&
+		rollbackObservations.every((entry) => typeof entry === "string") &&
+		rollbackProof["stdoutSha256"] !==
+			sha256(new TextEncoder().encode(rollbackObservations.join("\n")))
+	)
+		errors.push("semantic: rollback proof output digest drifted");
 
 	const capturedAt = value["capturedAt"];
 	if (
@@ -227,6 +343,20 @@ export function validateStageOneEvidenceValue(
 		Date.parse(capturedAt) > Date.now() + 5 * 60 * 1000
 	)
 		errors.push("semantic: Stage 1 evidence capture time is in the future");
+	if (typeof capturedAt === "string") {
+		const completedTimes = [
+			mutationResult["completedAt"],
+			...arrayAt(value, "validation").flatMap((entry) =>
+				isRecord(entry) ? [entry["completedAt"]] : [],
+			),
+		].filter((entry): entry is string => typeof entry === "string");
+		if (
+			completedTimes.some(
+				(completedAt) => Date.parse(capturedAt) < Date.parse(completedAt),
+			)
+		)
+			errors.push("semantic: Stage 1 evidence predates its command results");
+	}
 
 	return [...new Set(errors)].sort();
 }
@@ -240,6 +370,77 @@ export async function validateStageOneEvidence(
 	const schema = (await Bun.file(schemaPath).json()) as JsonRecord;
 	const errors = validateStageOneEvidenceValue(value, schema);
 	if (!isRecord(value)) return errors;
+
+	const run = recordAt(value, "run");
+	const resultsReference = recordAt(run, "results");
+	const resultsPath = resultsReference["path"];
+	let results: JsonRecord = {};
+	if (resultsPath !== "evidence/stage-1-toolchain-results.json")
+		errors.push("repository: Stage 1 results artifact path is incorrect");
+	else {
+		const resultFile = Bun.file(resolve(root, resultsPath));
+		if (!(await resultFile.exists()))
+			errors.push("repository: Stage 1 results artifact is unavailable");
+		else {
+			const bytes = new Uint8Array(await resultFile.arrayBuffer());
+			if (resultsReference["sha256"] !== sha256(bytes))
+				errors.push("repository: Stage 1 results artifact digest drifted");
+			const parsed = (await resultFile.json()) as unknown;
+			if (!isRecord(parsed))
+				errors.push("repository: Stage 1 results artifact is malformed");
+			else results = parsed;
+		}
+	}
+	if (results["runId"] !== run["id"])
+		errors.push("repository: Stage 1 results artifact belongs to another run");
+	if (
+		!hasExactKeys(results, [
+			"schemaVersion",
+			"runId",
+			"mutationProof",
+			"mutationProofSha256",
+			"mutationResult",
+			"validation",
+			"validationSha256",
+			"rollbackProof",
+			"rollbackProofSha256",
+		])
+	)
+		errors.push("repository: Stage 1 results artifact shape drifted");
+	if (results["schemaVersion"] !== 1)
+		errors.push("repository: Stage 1 results artifact schema version drifted");
+	for (const digestKey of [
+		"mutationProofSha256",
+		"validationSha256",
+		"rollbackProofSha256",
+	]) {
+		if (
+			typeof results[digestKey] !== "string" ||
+			!/^[0-9a-f]{64}$/.test(results[digestKey])
+		)
+			errors.push(`repository: Stage 1 results ${digestKey} is malformed`);
+	}
+	if (
+		!sameValue(results["mutationProof"], value["mutationProof"]) ||
+		results["mutationProofSha256"] !== valueSha256(value["mutationProof"])
+	)
+		errors.push("repository: mutation proof differs from captured results");
+	if (!sameValue(results["mutationResult"], run["mutationResult"]))
+		errors.push("repository: mutation result differs from captured results");
+	if (
+		!sameValue(results["validation"], value["validation"]) ||
+		results["validationSha256"] !== valueSha256(value["validation"])
+	)
+		errors.push("repository: validation results differ from captured results");
+	if (
+		!sameValue(
+			results["rollbackProof"],
+			recordAt(value, "rollback")["proof"],
+		) ||
+		results["rollbackProofSha256"] !==
+			valueSha256(recordAt(value, "rollback")["proof"])
+	)
+		errors.push("repository: rollback proof differs from captured results");
 
 	const packageValue = (await Bun.file(
 		resolve(root, "package.json"),
@@ -410,10 +611,7 @@ export async function validateStageOneEvidence(
 				);
 			else {
 				for (const path of boundaryDiff.stdout.split("\n").filter(Boolean)) {
-					if (
-						path !== "evidence/stage-1-toolchain.json" &&
-						path !== "evidence/stage-1-toolchain.schema.json"
-					)
+					if (path !== "evidence/stage-1-toolchain.json")
 						errors.push(
 							`repository: post-implementation boundary changes non-evidence path ${path}`,
 						);
@@ -421,18 +619,18 @@ export async function validateStageOneEvidence(
 			}
 		}
 	}
-	if (
-		recordAt(value, "source")["featureTreeClean"] === true &&
-		git(root, [
-			"diff",
-			"--quiet",
-			"HEAD",
+	if (recordAt(value, "source")["featureTreeClean"] === true) {
+		const status = gitOutput(root, [
+			"status",
+			"--porcelain=v1",
+			"--untracked-files=all",
 			"--",
 			".",
 			":(exclude)graphify-out/**",
-		]) !== 0
-	)
-		errors.push("repository: non-Graphify feature tree is not clean");
+		]);
+		if (status.exitCode !== 0 || status.stdout !== "")
+			errors.push("repository: non-Graphify feature tree is not clean");
+	}
 
 	return [...new Set(errors)].sort();
 }

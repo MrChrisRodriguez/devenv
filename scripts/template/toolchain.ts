@@ -19,25 +19,57 @@ const CORE_CATALOG_PACKAGES = [
 
 const TEMPLATE_CATALOG_PACKAGES = [
 	...CORE_CATALOG_PACKAGES,
+	// capability:start cloudflare_workers
 	"@cloudflare/vite-plugin",
 	"@cloudflare/vitest-pool-workers",
+	// capability:end cloudflare_workers
+	// capability:start openspec
 	"@fission-ai/openspec",
+	// capability:end openspec
+	// capability:start rhf_zod
 	"@hookform/resolvers",
+	// capability:end rhf_zod
+	// capability:start playwright
 	"@playwright/test",
+	// capability:end playwright
+	// capability:start better_auth
 	"better-auth",
+	// capability:end better_auth
+	// capability:start rhf_zod
 	"react-hook-form",
+	// capability:end rhf_zod
+	// capability:start cloudflare_workers
 	"wrangler",
+	// capability:end cloudflare_workers
+	// capability:start rhf_zod
 	"zod",
+	// capability:end rhf_zod
 ] as const;
 
 const ATOMIC_CATALOG_FAMILIES = {
+	// capability:start cloudflare_workers
 	cloudflare: [
 		"@cloudflare/vite-plugin",
 		"@cloudflare/vitest-pool-workers",
 		"wrangler",
 	],
+	// capability:end cloudflare_workers
+	// capability:start rhf_zod
 	forms: ["@hookform/resolvers", "react-hook-form", "zod"],
+	// capability:end rhf_zod
 } as const;
+
+const IGNORED_DISCOVERY_SEGMENTS = new Set([
+	".bun",
+	".git",
+	".moon",
+	".next",
+	"coverage",
+	"dist",
+	"graphify-out",
+	"node_modules",
+	"tmp",
+]);
 
 type JsonRecord = Record<string, unknown>;
 
@@ -92,83 +124,86 @@ function validatePathPriority(
 
 async function workspacePackagePaths(
 	root: string,
-	packageValue: JsonRecord,
+	_packageValue: JsonRecord,
 ): Promise<string[]> {
-	const paths = ["package.json"];
-	const declared = recordAt(packageValue, "workspaces")["packages"];
-	const patterns = [
-		"apps/**/package.json",
-		"libs/**/package.json",
-		"scripts/**/package.json",
-		...(Array.isArray(declared)
-			? declared.flatMap((entry) =>
-					typeof entry === "string"
-						? [`${entry.replace(/\/+$/, "")}/package.json`]
-						: [],
-				)
-			: []),
-	];
-	for (const pattern of patterns) {
-		for await (const path of new Bun.Glob(pattern).scan({
-			cwd: root,
-			onlyFiles: true,
-		})) {
-			if (path.split("/").includes("node_modules")) continue;
-			paths.push(path);
-		}
+	const paths: string[] = [];
+	for await (const path of new Bun.Glob("**/package.json").scan({
+		cwd: root,
+		dot: true,
+		onlyFiles: true,
+	})) {
+		if (path.split("/").some((part) => IGNORED_DISCOVERY_SEGMENTS.has(part)))
+			continue;
+		paths.push(path);
 	}
 	return [...new Set(paths)].sort();
 }
 
 async function tsconfigPaths(root: string): Promise<string[]> {
 	const paths: string[] = [];
-	for (const pattern of [
-		"tsconfig*.json",
-		"apps/**/tsconfig*.json",
-		"libs/**/tsconfig*.json",
-		"scripts/**/tsconfig*.json",
-	]) {
-		for await (const path of new Bun.Glob(pattern).scan({
-			cwd: root,
-			onlyFiles: true,
-		})) {
-			if (path.split("/").includes("node_modules")) continue;
-			paths.push(path);
-		}
+	for await (const path of new Bun.Glob("**/tsconfig*.json").scan({
+		cwd: root,
+		dot: true,
+		onlyFiles: true,
+	})) {
+		if (path.split("/").some((part) => IGNORED_DISCOVERY_SEGMENTS.has(part)))
+			continue;
+		paths.push(path);
 	}
 	return [...new Set(paths)].sort();
 }
 
 async function nestedLockPaths(root: string): Promise<string[]> {
 	const paths: string[] = [];
-	for (const directory of ["apps", "libs", "scripts"]) {
-		for (const filename of [
-			"bun.lock",
-			"bun.lockb",
-			"package-lock.json",
-			"pnpm-lock.yaml",
-			"yarn.lock",
-		]) {
-			for await (const path of new Bun.Glob(`${directory}/**/${filename}`).scan(
-				{
-					cwd: root,
-					onlyFiles: true,
-				},
-			)) {
-				if (path.split("/").includes("node_modules")) continue;
-				paths.push(path);
-			}
-		}
-	}
 	for (const filename of [
+		"bun.lock",
 		"bun.lockb",
 		"package-lock.json",
 		"pnpm-lock.yaml",
 		"yarn.lock",
 	]) {
-		if (await Bun.file(resolve(root, filename)).exists()) paths.push(filename);
+		for await (const path of new Bun.Glob(`**/${filename}`).scan({
+			cwd: root,
+			dot: true,
+			onlyFiles: true,
+		})) {
+			if (path === "bun.lock") continue;
+			if (path.split("/").some((part) => IGNORED_DISCOVERY_SEGMENTS.has(part)))
+				continue;
+			paths.push(path);
+		}
 	}
 	return [...new Set(paths)].sort();
+}
+
+function setupBunPins(workflow: string): Array<string | undefined> {
+	const lines = workflow.split("\n");
+	const pins: Array<string | undefined> = [];
+	for (let lineIndex = 0; lineIndex < lines.length; lineIndex += 1) {
+		if (!lines[lineIndex]?.includes("oven-sh/setup-bun@")) continue;
+		let stepStart = lineIndex;
+		while (stepStart >= 0 && !/^\s*-\s+/.test(lines[stepStart] ?? ""))
+			stepStart -= 1;
+		if (stepStart < 0) {
+			pins.push(undefined);
+			continue;
+		}
+		const indentation = /^\s*/.exec(lines[stepStart] ?? "")?.[0] ?? "";
+		let stepEnd = stepStart + 1;
+		while (
+			stepEnd < lines.length &&
+			!new RegExp(`^${escapeRegExp(indentation)}-\\s+`).test(
+				lines[stepEnd] ?? "",
+			)
+		)
+			stepEnd += 1;
+		const step = lines.slice(stepStart, stepEnd).join("\n");
+		const matches = [
+			...step.matchAll(/bun-version:\s*['"]?([^'"\s#]+)/g),
+		].flatMap((match) => (match[1] ? [match[1]] : []));
+		pins.push(matches.length === 1 ? matches[0] : undefined);
+	}
+	return pins;
 }
 
 export async function validateToolchainContract(
@@ -272,6 +307,7 @@ export async function validateToolchainContract(
 		if (selected.length !== 0 && selected.length !== familyPackages.length)
 			errors.push(`catalog: ${familyName} family must be selected atomically`);
 	}
+	// capability:start rhf_zod
 	if (
 		catalog["zod"] !== undefined &&
 		recordAt(packageValue, "overrides")["zod"] !== catalog["zod"]
@@ -284,6 +320,15 @@ export async function validateToolchainContract(
 		errors.push(
 			"catalog: zod override remains while the forms family is disabled",
 		);
+	// capability:end rhf_zod
+	// capability:start cloudflare_workers
+	for (const transitive of ["miniflare", "workerd"]) {
+		if (catalog[transitive] !== undefined)
+			errors.push(
+				`catalog: Cloudflare transitive ${transitive} must remain lock-owned`,
+			);
+	}
+	// capability:end cloudflare_workers
 	if (recordAt(packageValue, "engines")["bun"] !== protoValue["bun"])
 		errors.push("catalog: Bun engine must equal the Proto pin");
 
@@ -349,12 +394,12 @@ export async function validateToolchainContract(
 	for (const workflowPath of [...new Set(workflowPaths)].sort()) {
 		const workflow = await Bun.file(resolve(root, workflowPath)).text();
 		if (!workflow.includes("oven-sh/setup-bun@")) continue;
-		const pins = [
-			...workflow.matchAll(/bun-version:\s*['"]?([^'"\s#]+)/g),
-		].flatMap((match) => (match[1] ? [match[1]] : []));
-		if (pins.length === 0)
-			errors.push(`proto: ${workflowPath} setup-bun omits bun-version`);
+		const pins = setupBunPins(workflow);
 		for (const pin of pins) {
+			if (pin === undefined) {
+				errors.push(`proto: ${workflowPath} setup-bun omits bun-version`);
+				continue;
+			}
 			if (pin !== protoValue["bun"])
 				errors.push(
 					`proto: ${workflowPath} Bun ${pin} differs from .prototools`,
@@ -367,11 +412,17 @@ export async function validateToolchainContract(
 		errors.push(`lock: secondary package lock ${path} is forbidden`);
 	const singletonPackages = [
 		...Object.keys(catalog),
+		// capability:start better_auth
 		...(catalog["better-auth"] === undefined ? [] : ["@better-auth/core"]),
+		// capability:end better_auth
+		// capability:start playwright
 		...(catalog["@playwright/test"] === undefined
 			? []
 			: ["playwright", "playwright-core"]),
+		// capability:end playwright
+		// capability:start cloudflare_workers
 		...(catalog["wrangler"] === undefined ? [] : ["miniflare", "workerd"]),
+		// capability:end cloudflare_workers
 	];
 	for (const packageName of singletonPackages) {
 		const occurrences = resolvedOccurrences(lockText, packageName);
@@ -389,6 +440,7 @@ export async function validateToolchainContract(
 				`lock: ${packageName} does not resolve to catalog ${version}`,
 			);
 	}
+	// capability:start better_auth
 	if (catalog["better-auth"] !== undefined) {
 		const betterAuthVersions = resolvedVersions(lockText, "better-auth");
 		const betterAuthCoreVersions = resolvedVersions(
@@ -398,6 +450,8 @@ export async function validateToolchainContract(
 		if (betterAuthVersions[0] !== betterAuthCoreVersions[0])
 			errors.push("lock: Better Auth core and package versions diverge");
 	}
+	// capability:end better_auth
+	// capability:start playwright
 	if (catalog["@playwright/test"] !== undefined) {
 		const playwrightVersions = [
 			resolvedVersions(lockText, "@playwright/test")[0],
@@ -407,6 +461,7 @@ export async function validateToolchainContract(
 		if (new Set(playwrightVersions).size !== 1)
 			errors.push("lock: Playwright package family versions diverge");
 	}
+	// capability:end playwright
 
 	const devcontainer = await readJson(
 		resolve(root, ".devcontainer/devcontainer.json"),

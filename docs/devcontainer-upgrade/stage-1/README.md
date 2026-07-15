@@ -55,12 +55,17 @@ bunx biome check --no-errors-on-unmatched .
 ```
 
 `toolchain:check` validates the live repository and the strict
-`evidence/stage-1-toolchain.json` record. The mutation suite proves that floating
+`evidence/stage-1-toolchain.json` record. That record digest-binds the executed
+command results in `evidence/stage-1-toolchain-results.json`, including one run
+identity, timestamps, exit codes, output hashes, observed mutation diagnostics,
+and the isolated DevPod rollback proof. The mutation suite proves that floating
 catalog entries, direct consumer pins, family drift, duplicate resolutions,
 mutable plugin URLs, feature digest drift, malformed or mismatched checksums,
 `baseUrl`, absolute aliases, PATH inversion, secondary lockfiles, and disabled
 family residue all fail closed. The evidence record binds the package, feature,
-and checksum lock digests to the reviewed tree.
+and checksum lock digests to the reviewed tree. Its clean-tree assertion includes
+untracked paths while deliberately excluding the separately maintained Graphify
+index.
 
 Rendered projects retain the live `toolchain:check` implementation and CI step.
 They validate the selected package families and omit template-only evidence;

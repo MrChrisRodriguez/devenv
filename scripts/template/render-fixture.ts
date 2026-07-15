@@ -449,6 +449,35 @@ export function stripTemplateOnlyBlocks(source: string): string {
 	return output.join("\n");
 }
 
+export function filterCapabilityBlocks(
+	source: string,
+	capabilities: CapabilityMap,
+): string {
+	const output: string[] = [];
+	let block: string | undefined;
+	let retain = false;
+	for (const line of source.split("\n")) {
+		const start = /^\s*\/\/ capability:start ([a-z0-9_]+)$/.exec(line);
+		const end = /^\s*\/\/ capability:end ([a-z0-9_]+)$/.exec(line);
+		if (start?.[1]) {
+			if (block) throw new Error(`Nested capability block ${start[1]}`);
+			block = start[1];
+			retain = capabilities[block] === true;
+			continue;
+		}
+		if (end?.[1]) {
+			if (block !== end[1])
+				throw new Error(`Mismatched capability block ${end[1]}`);
+			block = undefined;
+			retain = false;
+			continue;
+		}
+		if (!block || retain) output.push(line);
+	}
+	if (block) throw new Error(`Unterminated capability block ${block}`);
+	return output.join("\n");
+}
+
 async function renderMcpSettings(
 	source: string,
 	parameters: TemplateParameters,
@@ -646,6 +675,8 @@ async function renderContent(
 	content = stripTemplateOnlyBlocks(content)
 		.replaceAll("/workspace", parameters.paths.container_workspace)
 		.replaceAll("@confiador/", `@${parameters.project.slug}/`);
+	if (entry.path === "scripts/template/toolchain.ts")
+		content = filterCapabilityBlocks(content, parameters.capabilities.defaults);
 	if (entry.path === "AGENTS.md")
 		content = filterAgentRuleLines(content, parameters);
 	if (entry.path === ".devcontainer/on-create.sh") {
@@ -710,10 +741,6 @@ export async function scanDisabledResidue(
 		}
 		for (const capability of disabled) {
 			if (path === "fixture-manifest.json") continue;
-			// The generated toolchain guard names supported optional families as
-			// policy, but it does not select or install them. Package/artifact
-			// omission is asserted independently before this residue scan.
-			if (path === "scripts/template/toolchain.ts") continue;
 			const signatures = ownership.capabilitySignatures[capability];
 			if (!signatures) continue;
 			for (const pattern of signatures.paths) {

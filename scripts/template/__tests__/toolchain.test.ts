@@ -88,6 +88,19 @@ describe("repository toolchain contract", () => {
 		expect(validateStageOneEvidenceValue(fabricated, schema)).toContain(
 			"semantic: mutation proof catalog-floating expectation drifted",
 		);
+		const unobserved = structuredClone(value) as Record<string, unknown>;
+		const unobservedProofs = unobserved["mutationProof"] as Array<
+			Record<string, unknown>
+		>;
+		const unobservedFloating = unobservedProofs.find(
+			(proof) => proof["name"] === "catalog-floating",
+		);
+		if (!unobservedFloating)
+			throw new Error("catalog-floating proof fixture is missing");
+		unobservedFloating["observed"] = "claimed pass without a diagnostic";
+		expect(validateStageOneEvidenceValue(unobserved, schema)).toContain(
+			"semantic: mutation proof catalog-floating observation drifted",
+		);
 		const future = structuredClone(value) as Record<string, unknown>;
 		future["capturedAt"] = "2035-01-01T00:00:00Z";
 		expect(validateStageOneEvidenceValue(future, schema)).toContain(
@@ -102,6 +115,16 @@ describe("repository toolchain contract", () => {
 		expect(validateStageOneEvidenceValue(attachedVolume, schema)).toContain(
 			"semantic: Stage 1 rollback must stop and remove its container before deleting the Proto volume",
 		);
+
+		const untrackedProof = resolve(ROOT, ".stage1-untracked-proof");
+		try {
+			await Bun.write(untrackedProof, "must make the feature tree dirty\n");
+			expect(await validateStageOneEvidence(ROOT)).toContain(
+				"repository: non-Graphify feature tree is not clean",
+			);
+		} finally {
+			await rm(untrackedProof, { force: true });
+		}
 	});
 
 	test("passes the real tree and rejects known-bad authority mutations", async () => {
@@ -183,6 +206,33 @@ describe("repository toolchain contract", () => {
 			);
 			await mutate(
 				temporary,
+				".github/workflows/ci.yml",
+				(source) =>
+					source.replace(
+						"      - name: Install dependencies",
+						"      - uses: oven-sh/setup-bun@v2\n\n      - name: Install dependencies",
+					),
+				"proto: .github/workflows/ci.yml setup-bun omits bun-version",
+			);
+			await mutate(
+				temporary,
+				"package.json",
+				(source) => {
+					const value = JSON.parse(source) as Record<string, unknown>;
+					const workspaces = value["workspaces"] as Record<string, unknown>;
+					const catalog = workspaces["catalog"] as Record<string, unknown>;
+					const devDependencies = value["devDependencies"] as Record<
+						string,
+						unknown
+					>;
+					catalog["miniflare"] = "4.20260701.0";
+					devDependencies["miniflare"] = "catalog:";
+					return `${JSON.stringify(value, null, 2)}\n`;
+				},
+				"catalog: Cloudflare transitive miniflare must remain lock-owned",
+			);
+			await mutate(
+				temporary,
 				".devcontainer/devcontainer-lock.json",
 				(source) => source.replace("sha256:cb0c4d3c", "sha256:ab0c4d3c"),
 				"features: ghcr.io/devcontainers/features/common-utils:2 resolved reference and integrity differ",
@@ -255,6 +305,30 @@ describe("repository toolchain contract", () => {
 				"lock: secondary package lock scripts/templates/game-skeleton/bun.lock is forbidden",
 			);
 			await rm(skeleton, { recursive: true });
+			expect(await validateToolchainContract(temporary)).toEqual([]);
+
+			const e2e = resolve(temporary, "tests/e2e");
+			await mkdir(e2e, { recursive: true });
+			await Bun.write(
+				resolve(e2e, "package.json"),
+				'{"name":"e2e","devDependencies":{"zod":"latest"}}\n',
+			);
+			await Bun.write(
+				resolve(e2e, "tsconfig.json"),
+				'{"compilerOptions":{"baseUrl":"."}}\n',
+			);
+			await Bun.write(resolve(e2e, "bun.lock"), "{}\n");
+			const e2eErrors = await validateToolchainContract(temporary);
+			expect(e2eErrors).toContain(
+				"catalog: tests/e2e/package.json devDependencies.zod bypasses catalog:",
+			);
+			expect(e2eErrors).toContain(
+				"typescript: tests/e2e/tsconfig.json reintroduces baseUrl",
+			);
+			expect(e2eErrors).toContain(
+				"lock: secondary package lock tests/e2e/bun.lock is forbidden",
+			);
+			await rm(e2e, { recursive: true });
 			expect(await validateToolchainContract(temporary)).toEqual([]);
 
 			const packageManifest = resolve(temporary, "package.json");

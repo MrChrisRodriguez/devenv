@@ -350,6 +350,8 @@
 				"cloudflare.vscode-cloudflare-workers",
 				"@cloudflare/",
 				"Cloudflare",
+				"miniflare",
+				"workerd",
 				"wrangler"
 			]
 		},
@@ -365,11 +367,11 @@
 		"openspec": { "paths": [], "tokens": ["@fission-ai/openspec"] },
 		"playwright": {
 			"paths": ["tsconfig.stagehand.base.json", "scripts/browser-preflight.ts"],
-			"tokens": ["@playwright/test"]
+			"tokens": ["playwright"]
 		},
 		"rhf_zod": {
 			"paths": ["libs/forms/**"],
-			"tokens": ["react-hook-form", "@hookform/resolvers"]
+			"tokens": ["react-hook-form", "@hookform/resolvers", "zod"]
 		},
 		"sentry": { "paths": ["libs/observability/**"], "tokens": ["@sentry/"] },
 		"tanstack_start": {
