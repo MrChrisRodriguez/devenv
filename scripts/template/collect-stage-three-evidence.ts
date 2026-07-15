@@ -230,11 +230,24 @@ async function capture(imageTag: string, implementationRevision: string) {
 		durations.set(id, captured.record.durationMs);
 	}
 
+	const recordedInspect = (
+		executions.get("image-inspect")?.stdout ?? ""
+	).trim();
+	const [recordedImageIdJson, recordedArchitectureJson, recordedOsJson] =
+		recordedInspect.split("|");
+	const recordedImageId = JSON.parse(recordedImageIdJson ?? "null") as string;
+	const recordedArchitecture = JSON.parse(
+		recordedArchitectureJson ?? "null",
+	) as string;
+	const recordedOs = JSON.parse(recordedOsJson ?? "null") as string;
+	if (
+		!recordedImageId ||
+		recordedArchitecture !== architecture ||
+		recordedOs !== os
+	)
+		throw new Error(`Recorded image identity is invalid: ${recordedInspect}`);
 	const launcher = keyValues(executions.get("launcher-smoke")?.stdout ?? "");
 	const plugin = keyValues(executions.get("plugin-repair-smoke")?.stdout ?? "");
-	const inspected = (executions.get("image-inspect")?.stdout ?? "").trim();
-	if (inspected !== inspect)
-		throw new Error("Recorded image identity changed during capture");
 	if (
 		!(executions.get("browser-preflight")?.stdout ?? "").includes(
 			"Browser preflight passed",
@@ -292,7 +305,7 @@ async function capture(imageTag: string, implementationRevision: string) {
 		source: { baseSha, implementationSha, featureTreeClean: true },
 		image: {
 			tag: imageTag,
-			imageId,
+			imageId: recordedImageId,
 			architecture,
 			os,
 			pins: {

@@ -5,8 +5,8 @@ import { validateJsonSchema } from "./json-schema";
 type JsonRecord = Record<string, unknown>;
 
 export const STAGE_THREE_COMMAND_IDS = [
-	"image-inspect",
 	"warm-browser-build",
+	"image-inspect",
 	"browser-preflight",
 	"launcher-smoke",
 	"plugin-repair-smoke",
