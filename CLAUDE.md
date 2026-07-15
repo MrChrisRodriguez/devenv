@@ -1,5 +1,5 @@
 ---
-description: Use Bun instead of Node.js, npm, pnpm, or vite.
+description: Prefer Bun (built-in runtime and package manager); not required for everything.
 globs: "*.ts, *.tsx, *.html, *.css, *.js, *.jsx, package.json"
 alwaysApply: false
 ---
@@ -10,7 +10,7 @@ Shared conventions (Bun-first, monorepo structure, code quality, secrets) are in
 
 ## Frontend
 
-Use HTML imports with `Bun.serve()`. Don't use `vite`. HTML imports fully support React, CSS, Tailwind.
+A lightweight option is HTML imports with `Bun.serve()` — no bundler config needed, and they fully support React, CSS, and Tailwind. Use Vite or another bundler when a framework or your tooling calls for it.
 
 Server:
 
