@@ -1,18 +1,18 @@
 #0 building with "default" instance using docker driver
 
 #1 [internal] load build definition from Dockerfile
-#1 transferring dockerfile: 11.30kB 0.0s done
+#1 transferring dockerfile: 11.30kB done
 #1 DONE 0.1s
 
-#2 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
-#2 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
-#2 CACHED
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#2 DONE 1.7s
 
-#3 resolve image config for docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
-#3 DONE 0.1s
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+#3 CACHED
 
 #4 [internal] load metadata for mcr.microsoft.com/vscode/devcontainers/base:trixie@sha256:1a00517e89d3075f8c9dc8d9911404de0ff8991a4d71c62068573e9b016a89da
-#4 DONE 0.1s
+#4 DONE 0.7s
 
 #5 [internal] load .dockerignore
 #5 transferring context: 105B done
@@ -20,110 +20,564 @@
 
 #6 [stable_base 1/5] FROM mcr.microsoft.com/vscode/devcontainers/base:trixie@sha256:1a00517e89d3075f8c9dc8d9911404de0ff8991a4d71c62068573e9b016a89da
 #6 resolve mcr.microsoft.com/vscode/devcontainers/base:trixie@sha256:1a00517e89d3075f8c9dc8d9911404de0ff8991a4d71c62068573e9b016a89da 0.0s done
-#6 DONE 0.0s
+#6 CACHED
 
 #7 [internal] load build context
 #7 transferring context: 2.28kB done
 #7 DONE 0.0s
 
-#8 [development  2/19] COPY --link --from=codex_payload --chown=1000:1000 /home/vscode/.payloads/codex /home/vscode/.payloads/codex
-#8 CACHED
+#8 [stable_base 2/5] RUN apt-get update 	&& apt-get install -y --no-install-recommends 		bat 		build-essential 		ca-certificates 		curl 		dnsutils 		fd-find 		fzf 		git 		gzip 		less 		nano 		procps 		ripgrep 		sudo 		tree 		unzip 		vim 		wget 		xz-utils 	&& rm -rf /var/lib/apt/lists/* 	&& ln -sf /usr/bin/fdfind /usr/local/bin/fd 	&& ln -sf /usr/bin/batcat /usr/local/bin/bat
+#8 0.460 Get:1 http://deb.debian.org/debian trixie InRelease [140 kB]
+#8 0.638 Get:2 http://deb.debian.org/debian trixie-updates InRelease [47.3 kB]
+#8 0.683 Get:3 http://deb.debian.org/debian-security trixie-security InRelease [43.4 kB]
+#8 0.846 Get:4 http://deb.debian.org/debian trixie/main amd64 Packages [9673 kB]
+#8 6.484 Get:5 http://deb.debian.org/debian trixie-updates/main amd64 Packages [660 B]
+#8 6.485 Get:6 http://deb.debian.org/debian-security trixie-security/main amd64 Packages [226 kB]
+#8 7.420 Fetched 10.1 MB in 7s (1433 kB/s)
+#8 7.420 Reading package lists...
+#8 8.230 Reading package lists...
+#8 9.089 Building dependency tree...
+#8 9.264 Reading state information...
+#8 9.631 build-essential is already the newest version (12.12).
+#8 9.631 ca-certificates is already the newest version (20250419).
+#8 9.631 git is already the newest version (1:2.47.3-0+deb13u1).
+#8 9.631 gzip is already the newest version (1.13-1).
+#8 9.631 gzip set to manually installed.
+#8 9.631 less is already the newest version (668-1).
+#8 9.631 nano is already the newest version (8.4-1+deb13u1).
+#8 9.631 procps is already the newest version (2:4.0.4-9).
+#8 9.631 sudo is already the newest version (1.9.16p2-3+deb13u2).
+#8 9.631 tree is already the newest version (2.2.1-1).
+#8 9.631 unzip is already the newest version (6.0-29).
+#8 9.631 wget is already the newest version (1.25.0-2).
+#8 9.631 The following additional packages will be installed:
+#8 9.631   bind9-host bind9-libs libcurl3t64-gnutls libcurl4-openssl-dev libcurl4t64
+#8 9.631   libfstrm0 libgit2-1.9 libgpm2 libhttp-parser2.9 libjemalloc2 libjson-c5
+#8 9.631   liblmdb0 liblzma5 libmaxminddb0 libmbedcrypto16 libmbedtls21 libmbedx509-7
+#8 9.632   libprotobuf-c1 libsodium23 liburcu8t64 libuv1t64 vim-runtime
+#8 9.633 Suggested packages:
+#8 9.633   gpm mmdb-bin ctags vim-doc vim-scripts
+#8 9.801 The following NEW packages will be installed:
+#8 9.801   bat bind9-dnsutils bind9-host bind9-libs fd-find fzf libfstrm0 libgit2-1.9
+#8 9.801   libgpm2 libhttp-parser2.9 libjemalloc2 libjson-c5 liblmdb0 libmaxminddb0
+#8 9.801   libmbedcrypto16 libmbedtls21 libmbedx509-7 libprotobuf-c1 libsodium23
+#8 9.802   liburcu8t64 libuv1t64 ripgrep vim vim-runtime
+#8 9.803 The following packages will be upgraded:
+#8 9.803   curl libcurl3t64-gnutls libcurl4-openssl-dev libcurl4t64 liblzma5 xz-utils
+#8 10.36 6 upgraded, 24 newly installed, 0 to remove and 11 not upgraded.
+#8 10.36 Need to get 21.3 MB of archives.
+#8 10.36 After this operation, 72.4 MB of additional disk space will be used.
+#8 10.36 Get:1 http://deb.debian.org/debian trixie/main amd64 liblzma5 amd64 5.8.1-1+deb13u1 [309 kB]
+#8 10.44 Get:2 http://deb.debian.org/debian trixie/main amd64 libfstrm0 amd64 0.6.1-1+b3 [21.9 kB]
+#8 10.83 Get:3 http://deb.debian.org/debian trixie/main amd64 libjemalloc2 amd64 5.3.0-3 [274 kB]
+#8 10.83 Get:4 http://deb.debian.org/debian trixie/main amd64 libjson-c5 amd64 0.18+ds-1 [46.0 kB]
+#8 10.84 Get:5 http://deb.debian.org/debian trixie/main amd64 liblmdb0 amd64 0.9.31-1+b2 [45.2 kB]
+#8 10.85 Get:6 http://deb.debian.org/debian trixie/main amd64 libmaxminddb0 amd64 1.12.2-1 [25.8 kB]
+#8 10.85 Get:7 http://deb.debian.org/debian trixie/main amd64 libprotobuf-c1 amd64 1.5.1-1 [20.5 kB]
+#8 10.86 Get:8 http://deb.debian.org/debian trixie/main amd64 liburcu8t64 amd64 0.15.2-2 [76.3 kB]
+#8 10.88 Get:9 http://deb.debian.org/debian trixie/main amd64 libuv1t64 amd64 1.50.0-2 [154 kB]
+#8 11.32 Get:10 http://deb.debian.org/debian trixie/main amd64 bind9-libs amd64 1:9.20.23-1~deb13u1 [1242 kB]
+#8 11.39 Get:11 http://deb.debian.org/debian trixie/main amd64 bind9-host amd64 1:9.20.23-1~deb13u1 [56.0 kB]
+#8 11.41 Get:12 http://deb.debian.org/debian trixie/main amd64 bind9-dnsutils amd64 1:9.20.23-1~deb13u1 [166 kB]
+#8 11.42 Get:13 http://deb.debian.org/debian trixie/main amd64 xz-utils amd64 5.8.1-1+deb13u1 [659 kB]
+#8 11.43 Get:14 http://deb.debian.org/debian trixie/main amd64 libhttp-parser2.9 amd64 2.9.4-6+b2 [21.2 kB]
+#8 11.45 Get:15 http://deb.debian.org/debian trixie/main amd64 libmbedcrypto16 amd64 3.6.5-0.1~deb13u1 [361 kB]
+#8 11.49 Get:16 http://deb.debian.org/debian trixie/main amd64 libmbedx509-7 amd64 3.6.5-0.1~deb13u1 [152 kB]
+#8 11.86 Get:17 http://deb.debian.org/debian trixie/main amd64 libmbedtls21 amd64 3.6.5-0.1~deb13u1 [243 kB]
+#8 11.90 Get:18 http://deb.debian.org/debian trixie/main amd64 libgit2-1.9 amd64 1.9.0+ds-2 [555 kB]
+#8 11.93 Get:19 http://deb.debian.org/debian trixie/main amd64 bat amd64 0.25.0-2+b2 [2339 kB]
+#8 12.42 Get:20 http://deb.debian.org/debian trixie/main amd64 libcurl4-openssl-dev amd64 8.14.1-2+deb13u4 [511 kB]
+#8 12.46 Get:21 http://deb.debian.org/debian trixie/main amd64 curl amd64 8.14.1-2+deb13u4 [270 kB]
+#8 12.50 Get:22 http://deb.debian.org/debian trixie/main amd64 libcurl4t64 amd64 8.14.1-2+deb13u4 [392 kB]
+#8 12.89 Get:23 http://deb.debian.org/debian trixie/main amd64 fd-find amd64 10.2.0-1+b5 [1053 kB]
+#8 12.93 Get:24 http://deb.debian.org/debian trixie/main amd64 fzf amd64 0.60.3-1+b2 [1474 kB]
+#8 12.99 Get:25 http://deb.debian.org/debian trixie/main amd64 libcurl3t64-gnutls amd64 8.14.1-2+deb13u4 [384 kB]
+#8 13.00 Get:26 http://deb.debian.org/debian trixie/main amd64 libgpm2 amd64 1.20.7-11+b2 [14.4 kB]
+#8 13.43 Get:27 http://deb.debian.org/debian trixie/main amd64 libsodium23 amd64 1.0.18-1+deb13u1 [165 kB]
+#8 13.46 Get:28 http://deb.debian.org/debian trixie/main amd64 ripgrep amd64 14.1.1-1+b4 [1434 kB]
+#8 13.51 Get:29 http://deb.debian.org/debian trixie/main amd64 vim-runtime all 2:9.1.1230-2 [7127 kB]
+#8 13.97 Get:30 http://deb.debian.org/debian trixie/main amd64 vim amd64 2:9.1.1230-2 [1670 kB]
+#8 14.37 debconf: unable to initialize frontend: Dialog
+#8 14.37 debconf: (TERM is not set, so the dialog frontend is not usable.)
+#8 14.37 debconf: falling back to frontend: Readline
+#8 14.42 debconf: unable to initialize frontend: Readline
+#8 14.42 debconf: (This frontend requires a controlling tty.)
+#8 14.42 debconf: falling back to frontend: Teletype
+#8 14.46 debconf: unable to initialize frontend: Teletype
+#8 14.46 debconf: (This frontend requires a controlling tty.)
+#8 14.46 debconf: falling back to frontend: Noninteractive
+#8 15.06 Fetched 21.3 MB in 4s (5055 kB/s)
+#8 15.16 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 25456 files and directories currently installed.)
+#8 15.24 Preparing to unpack .../liblzma5_5.8.1-1+deb13u1_amd64.deb ...
+#8 15.28 Unpacking liblzma5:amd64 (5.8.1-1+deb13u1) over (5.8.1-1) ...
+#8 15.41 Setting up liblzma5:amd64 (5.8.1-1+deb13u1) ...
+#8 15.53 Selecting previously unselected package libfstrm0:amd64.
+#8 15.53 (Reading database ... (Reading database ... 5%(Reading database ... 10%(Reading database ... 15%(Reading database ... 20%(Reading database ... 25%(Reading database ... 30%(Reading database ... 35%(Reading database ... 40%(Reading database ... 45%(Reading database ... 50%(Reading database ... 55%(Reading database ... 60%(Reading database ... 65%(Reading database ... 70%(Reading database ... 75%(Reading database ... 80%(Reading database ... 85%(Reading database ... 90%(Reading database ... 95%(Reading database ... 100%(Reading database ... 25456 files and directories currently installed.)
+#8 15.54 Preparing to unpack .../00-libfstrm0_0.6.1-1+b3_amd64.deb ...
+#8 15.54 Unpacking libfstrm0:amd64 (0.6.1-1+b3) ...
+#8 15.65 Selecting previously unselected package libjemalloc2:amd64.
+#8 15.65 Preparing to unpack .../01-libjemalloc2_5.3.0-3_amd64.deb ...
+#8 15.65 Unpacking libjemalloc2:amd64 (5.3.0-3) ...
+#8 15.77 Selecting previously unselected package libjson-c5:amd64.
+#8 15.77 Preparing to unpack .../02-libjson-c5_0.18+ds-1_amd64.deb ...
+#8 15.77 Unpacking libjson-c5:amd64 (0.18+ds-1) ...
+#8 15.87 Selecting previously unselected package liblmdb0:amd64.
+#8 15.87 Preparing to unpack .../03-liblmdb0_0.9.31-1+b2_amd64.deb ...
+#8 15.88 Unpacking liblmdb0:amd64 (0.9.31-1+b2) ...
+#8 15.99 Selecting previously unselected package libmaxminddb0:amd64.
+#8 15.99 Preparing to unpack .../04-libmaxminddb0_1.12.2-1_amd64.deb ...
+#8 15.99 Unpacking libmaxminddb0:amd64 (1.12.2-1) ...
+#8 16.09 Selecting previously unselected package libprotobuf-c1:amd64.
+#8 16.09 Preparing to unpack .../05-libprotobuf-c1_1.5.1-1_amd64.deb ...
+#8 16.10 Unpacking libprotobuf-c1:amd64 (1.5.1-1) ...
+#8 16.21 Selecting previously unselected package liburcu8t64:amd64.
+#8 16.21 Preparing to unpack .../06-liburcu8t64_0.15.2-2_amd64.deb ...
+#8 16.22 Unpacking liburcu8t64:amd64 (0.15.2-2) ...
+#8 16.32 Selecting previously unselected package libuv1t64:amd64.
+#8 16.33 Preparing to unpack .../07-libuv1t64_1.50.0-2_amd64.deb ...
+#8 16.33 Unpacking libuv1t64:amd64 (1.50.0-2) ...
+#8 16.44 Selecting previously unselected package bind9-libs:amd64.
+#8 16.44 Preparing to unpack .../08-bind9-libs_1%3a9.20.23-1~deb13u1_amd64.deb ...
+#8 16.44 Unpacking bind9-libs:amd64 (1:9.20.23-1~deb13u1) ...
+#8 16.58 Selecting previously unselected package bind9-host.
+#8 16.58 Preparing to unpack .../09-bind9-host_1%3a9.20.23-1~deb13u1_amd64.deb ...
+#8 16.59 Unpacking bind9-host (1:9.20.23-1~deb13u1) ...
+#8 16.69 Selecting previously unselected package bind9-dnsutils.
+#8 16.69 Preparing to unpack .../10-bind9-dnsutils_1%3a9.20.23-1~deb13u1_amd64.deb ...
+#8 16.70 Unpacking bind9-dnsutils (1:9.20.23-1~deb13u1) ...
+#8 16.81 Preparing to unpack .../11-xz-utils_5.8.1-1+deb13u1_amd64.deb ...
+#8 16.85 Unpacking xz-utils (5.8.1-1+deb13u1) over (5.8.1-1) ...
+#8 17.03 Selecting previously unselected package libhttp-parser2.9:amd64.
+#8 17.03 Preparing to unpack .../12-libhttp-parser2.9_2.9.4-6+b2_amd64.deb ...
+#8 17.03 Unpacking libhttp-parser2.9:amd64 (2.9.4-6+b2) ...
+#8 17.14 Selecting previously unselected package libmbedcrypto16:amd64.
+#8 17.14 Preparing to unpack .../13-libmbedcrypto16_3.6.5-0.1~deb13u1_amd64.deb ...
+#8 17.14 Unpacking libmbedcrypto16:amd64 (3.6.5-0.1~deb13u1) ...
+#8 17.26 Selecting previously unselected package libmbedx509-7:amd64.
+#8 17.26 Preparing to unpack .../14-libmbedx509-7_3.6.5-0.1~deb13u1_amd64.deb ...
+#8 17.26 Unpacking libmbedx509-7:amd64 (3.6.5-0.1~deb13u1) ...
+#8 17.37 Selecting previously unselected package libmbedtls21:amd64.
+#8 17.37 Preparing to unpack .../15-libmbedtls21_3.6.5-0.1~deb13u1_amd64.deb ...
+#8 17.38 Unpacking libmbedtls21:amd64 (3.6.5-0.1~deb13u1) ...
+#8 17.49 Selecting previously unselected package libgit2-1.9:amd64.
+#8 17.49 Preparing to unpack .../16-libgit2-1.9_1.9.0+ds-2_amd64.deb ...
+#8 17.49 Unpacking libgit2-1.9:amd64 (1.9.0+ds-2) ...
+#8 17.61 Selecting previously unselected package bat.
+#8 17.61 Preparing to unpack .../17-bat_0.25.0-2+b2_amd64.deb ...
+#8 17.62 Unpacking bat (0.25.0-2+b2) ...
+#8 17.80 Preparing to unpack .../18-libcurl4-openssl-dev_8.14.1-2+deb13u4_amd64.deb ...
+#8 17.81 Unpacking libcurl4-openssl-dev:amd64 (8.14.1-2+deb13u4) over (8.14.1-2+deb13u3) ...
+#8 17.95 Preparing to unpack .../19-curl_8.14.1-2+deb13u4_amd64.deb ...
+#8 17.96 Unpacking curl (8.14.1-2+deb13u4) over (8.14.1-2+deb13u3) ...
+#8 18.08 Preparing to unpack .../20-libcurl4t64_8.14.1-2+deb13u4_amd64.deb ...
+#8 18.09 Unpacking libcurl4t64:amd64 (8.14.1-2+deb13u4) over (8.14.1-2+deb13u3) ...
+#8 18.21 Selecting previously unselected package fd-find.
+#8 18.21 Preparing to unpack .../21-fd-find_10.2.0-1+b5_amd64.deb ...
+#8 18.21 Unpacking fd-find (10.2.0-1+b5) ...
+#8 18.36 Selecting previously unselected package fzf.
+#8 18.36 Preparing to unpack .../22-fzf_0.60.3-1+b2_amd64.deb ...
+#8 18.37 Unpacking fzf (0.60.3-1+b2) ...
+#8 18.53 Preparing to unpack .../23-libcurl3t64-gnutls_8.14.1-2+deb13u4_amd64.deb ...
+#8 18.55 Unpacking libcurl3t64-gnutls:amd64 (8.14.1-2+deb13u4) over (8.14.1-2+deb13u3) ...
+#8 18.69 Selecting previously unselected package libgpm2:amd64.
+#8 18.69 Preparing to unpack .../24-libgpm2_1.20.7-11+b2_amd64.deb ...
+#8 18.70 Unpacking libgpm2:amd64 (1.20.7-11+b2) ...
+#8 18.80 Selecting previously unselected package libsodium23:amd64.
+#8 18.80 Preparing to unpack .../25-libsodium23_1.0.18-1+deb13u1_amd64.deb ...
+#8 18.80 Unpacking libsodium23:amd64 (1.0.18-1+deb13u1) ...
+#8 18.91 Selecting previously unselected package ripgrep.
+#8 18.91 Preparing to unpack .../26-ripgrep_14.1.1-1+b4_amd64.deb ...
+#8 18.91 Unpacking ripgrep (14.1.1-1+b4) ...
+#8 19.08 Selecting previously unselected package vim-runtime.
+#8 19.08 Preparing to unpack .../27-vim-runtime_2%3a9.1.1230-2_all.deb ...
+#8 19.12 Adding 'diversion of /usr/share/vim/vim91/doc/help.txt to /usr/share/vim/vim91/doc/help.txt.vim-tiny by vim-runtime'
+#8 19.15 Adding 'diversion of /usr/share/vim/vim91/doc/tags to /usr/share/vim/vim91/doc/tags.vim-tiny by vim-runtime'
+#8 19.16 Unpacking vim-runtime (2:9.1.1230-2) ...
+#8 19.77 Selecting previously unselected package vim.
+#8 19.77 Preparing to unpack .../28-vim_2%3a9.1.1230-2_amd64.deb ...
+#8 19.78 Unpacking vim (2:9.1.1230-2) ...
+#8 19.92 Setting up liblmdb0:amd64 (0.9.31-1+b2) ...
+#8 19.93 Setting up liburcu8t64:amd64 (0.15.2-2) ...
+#8 19.94 Setting up libsodium23:amd64 (1.0.18-1+deb13u1) ...
+#8 19.95 Setting up libgpm2:amd64 (1.20.7-11+b2) ...
+#8 19.96 Setting up libcurl4t64:amd64 (8.14.1-2+deb13u4) ...
+#8 19.97 Setting up libmaxminddb0:amd64 (1.12.2-1) ...
+#8 19.98 Setting up libfstrm0:amd64 (0.6.1-1+b3) ...
+#8 19.99 Setting up libuv1t64:amd64 (1.50.0-2) ...
+#8 20.00 Setting up libcurl3t64-gnutls:amd64 (8.14.1-2+deb13u4) ...
+#8 20.01 Setting up fd-find (10.2.0-1+b5) ...
+#8 20.02 Setting up libjemalloc2:amd64 (5.3.0-3) ...
+#8 20.03 Setting up libprotobuf-c1:amd64 (1.5.1-1) ...
+#8 20.04 Setting up libcurl4-openssl-dev:amd64 (8.14.1-2+deb13u4) ...
+#8 20.05 Setting up xz-utils (5.8.1-1+deb13u1) ...
+#8 20.10 Setting up fzf (0.60.3-1+b2) ...
+#8 20.11 Setting up ripgrep (14.1.1-1+b4) ...
+#8 20.12 Setting up curl (8.14.1-2+deb13u4) ...
+#8 20.13 Setting up libmbedcrypto16:amd64 (3.6.5-0.1~deb13u1) ...
+#8 20.14 Setting up vim-runtime (2:9.1.1230-2) ...
+#8 20.27 Setting up libjson-c5:amd64 (0.18+ds-1) ...
+#8 20.28 Setting up libhttp-parser2.9:amd64 (2.9.4-6+b2) ...
+#8 20.29 Setting up vim (2:9.1.1230-2) ...
+#8 20.35 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/ex (ex) in auto mode
+#8 20.37 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/rview (rview) in auto mode
+#8 20.39 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/rvim (rvim) in auto mode
+#8 20.41 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/vi (vi) in auto mode
+#8 20.43 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/view (view) in auto mode
+#8 20.45 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/vim (vim) in auto mode
+#8 20.47 update-alternatives: using /usr/bin/vim.basic to provide /usr/bin/vimdiff (vimdiff) in auto mode
+#8 20.47 Setting up bind9-libs:amd64 (1:9.20.23-1~deb13u1) ...
+#8 20.49 Setting up libmbedx509-7:amd64 (3.6.5-0.1~deb13u1) ...
+#8 20.50 Setting up libmbedtls21:amd64 (3.6.5-0.1~deb13u1) ...
+#8 20.51 Setting up bind9-host (1:9.20.23-1~deb13u1) ...
+#8 20.52 Setting up libgit2-1.9:amd64 (1.9.0+ds-2) ...
+#8 20.53 Setting up bind9-dnsutils (1:9.20.23-1~deb13u1) ...
+#8 20.54 Setting up bat (0.25.0-2+b2) ...
+#8 20.55 Processing triggers for man-db (2.13.1-1) ...
+#8 21.33 Processing triggers for libc-bin (2.41-12+deb13u3) ...
+#8 DONE 22.0s
 
-#9 [development  6/19] COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.local/bin/claude /home/vscode/.local/bin/claude
-#9 CACHED
+#9 [stable_base 3/5] RUN case "amd64" in 		amd64) DELTA_SHA256="1658c7b61825d411b50734f34016101309e4b6e7f5799944cf8e4ac542cebd7f" ;; 		arm64) DELTA_SHA256="937781aa7788e1510858743fff6c9a8b4a69fe0a22a7c8a69493e633227939a9" ;; 		*) echo "Unsupported git-delta architecture: amd64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		--output /tmp/delta.deb 		"https://github.com/dandavison/delta/releases/download/0.18.2/git-delta_0.18.2_amd64.deb" 	&& printf '%s  %s\n' "$DELTA_SHA256" /tmp/delta.deb | sha256sum --check --status - 	&& dpkg -i /tmp/delta.deb 	&& rm /tmp/delta.deb
+#9 1.435 Selecting previously unselected package git-delta.
+#9 1.460 (Reading database ... 28076 files and directories currently installed.)
+#9 1.461 Preparing to unpack /tmp/delta.deb ...
+#9 1.475 Unpacking git-delta (0.18.2) ...
+#9 1.629 Setting up git-delta (0.18.2) ...
+#9 DONE 1.7s
 
-#10 [development 15/19] COPY .dockerignore /tmp/devenv-definition/.dockerignore
-#10 CACHED
+#10 [stable_base 4/5] RUN case "amd64" in 		amd64) RTK_TARGET="x86_64-unknown-linux-musl"; RTK_SHA256="ff8a1e7766496e175291a85aeca1dc97c9ff6df33e51e5893d1fbc78fea2a609" ;; 		arm64) RTK_TARGET="aarch64-unknown-linux-gnu"; RTK_SHA256="5519f7ca12e5c143a609f0d28a0a77b97413a8dce31c2681f1a41c24519a8731" ;; 		*) echo "Unsupported RTK architecture: amd64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		--output /tmp/rtk.tar.gz 		"https://github.com/rtk-ai/rtk/releases/download/v0.43.0/rtk-${RTK_TARGET}.tar.gz" 	&& printf '%s  %s\n' "$RTK_SHA256" /tmp/rtk.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/rtk.tar.gz -C /usr/local/bin/ 	&& chmod +x /usr/local/bin/rtk 	&& rm /tmp/rtk.tar.gz 	&& chsh -s /usr/bin/zsh vscode 	&& printf '%s\n' 		'export PROTO_HOME="$HOME/.proto"' 		'export PATH="/workspace/node_modules/.bin:$HOME/.local/bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH"' 		> /etc/profile.d/devenv-path.sh 	&& chmod 0644 /etc/profile.d/devenv-path.sh
+#10 DONE 1.6s
 
-#11 [proto_foundation 2/3] COPY --chown=vscode:vscode 	.devcontainer/install-proto.sh 	.devcontainer/proto-checksums.txt 	/tmp/devenv-proto-foundation/.devcontainer/
-#11 CACHED
+#11 [stable_base 5/5] RUN mkdir -p 	"/home/vscode/.proto" 	"${HOME}/.bun/install/cache" 	"${HOME}/.cache/uv" 	"${HOME}/.local/bin" 	"${HOME}/.payloads"
+#11 DONE 0.2s
 
-#12 [proto_auxiliary 1/2] COPY --chown=vscode:vscode .devcontainer/prototools.auxiliary /tmp/devenv-proto-auxiliary/.prototools
-#12 CACHED
+#12 [proto_foundation 1/3] COPY --chown=vscode:vscode .devcontainer/prototools.foundation /tmp/devenv-proto-foundation/.prototools
+#12 DONE 0.1s
 
-#13 [development 12/19] RUN ln -s ../../.payloads/claude-tools/bin/node-gyp "${HOME}/.local/bin/node-gyp"
-#13 CACHED
+#13 [shell_payload 1/1] RUN mkdir -p "${HOME}/.local/share/zinit/zinit.git" 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 120 		"https://github.com/zdharma-continuum/zinit/archive/e347224fb5fe77308cff9f59fbe2acca70d0a6db.tar.gz" 		-o /tmp/zinit.tar.gz 	&& printf '%s  %s\n' "96380971046cf82765dc02822dd6acf993bfce3e3a4eaf46a3f42eafdac37434" /tmp/zinit.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/zinit.tar.gz --strip-components=1 -C "${HOME}/.local/share/zinit/zinit.git" 	&& rm /tmp/zinit.tar.gz
+#13 ...
 
-#14 [gemini_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/gemini" 	bun install -g "@google/gemini-cli@0.50.0"
-#14 CACHED
+#14 [proto_foundation 2/3] COPY --chown=vscode:vscode 	.devcontainer/install-proto.sh 	.devcontainer/proto-checksums.txt 	/tmp/devenv-proto-foundation/.devcontainer/
+#14 DONE 0.1s
 
-#15 [development 13/19] RUN printf '%s\n' 		'if [ -n "${BASH_VERSION:-}" ] && [ -f "$HOME/.bashrc" ]; then . "$HOME/.bashrc"; fi' 		'export PROTO_HOME="$HOME/.proto"' 		'export PATH="/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH"' 		> "${HOME}/.profile" 	&& printf '%s\n' 'source "$HOME/.profile"' > "${HOME}/.zprofile"
-#15 CACHED
+#15 [proto_foundation 3/3] RUN bash /tmp/devenv-proto-foundation/.devcontainer/install-proto.sh 	&& cd /tmp/devenv-proto-foundation 	&& proto install --yes --config-mode local
+#15 ...
 
-#16 [stable_base 2/5] RUN apt-get update 	&& apt-get install -y --no-install-recommends 		bat 		build-essential 		ca-certificates 		curl 		dnsutils 		fd-find 		fzf 		git 		gzip 		less 		nano 		procps 		ripgrep 		sudo 		tree 		unzip 		vim 		wget 		xz-utils 	&& rm -rf /var/lib/apt/lists/* 	&& ln -sf /usr/bin/fdfind /usr/local/bin/fd 	&& ln -sf /usr/bin/batcat /usr/local/bin/bat
-#16 CACHED
+#13 [shell_payload 1/1] RUN mkdir -p "${HOME}/.local/share/zinit/zinit.git" 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 120 		"https://github.com/zdharma-continuum/zinit/archive/e347224fb5fe77308cff9f59fbe2acca70d0a6db.tar.gz" 		-o /tmp/zinit.tar.gz 	&& printf '%s  %s\n' "96380971046cf82765dc02822dd6acf993bfce3e3a4eaf46a3f42eafdac37434" /tmp/zinit.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/zinit.tar.gz --strip-components=1 -C "${HOME}/.local/share/zinit/zinit.git" 	&& rm /tmp/zinit.tar.gz
+#13 DONE 1.8s
 
-#17 [development  4/19] COPY --link --from=ccstatusline_payload --chown=1000:1000 /home/vscode/.payloads/ccstatusline /home/vscode/.payloads/ccstatusline
-#17 CACHED
+#15 [proto_foundation 3/3] RUN bash /tmp/devenv-proto-foundation/.devcontainer/install-proto.sh 	&& cd /tmp/devenv-proto-foundation 	&& proto install --yes --config-mode local
+#15 3.219 ✨ There's a new version of proto available, 0.58.2 (currently on 0.55.4)
+#15 3.219 ✨ Run proto upgrade or install from https://moonrepo.dev/docs/proto/install
+#15 3.219 
+#15 7.258 [python] Installing Python with specification 3.14.2
+#15 7.258 [proto] Installing proto with specification 0.55.4
+#15 7.258 [bun] Installing Bun with specification 1.3.13
+#15 7.258 [uv] Installing uv with specification 0.9.7
+#15 8.332 [uv] Installing uv 0.9.7
+#15 8.332 [bun] Installing Bun 1.3.13
+#15 8.332 [uv] Downloading pre-built archive uv-x86_64-unknown-linux-gnu.tar.gz
+#15 8.435 [python] Installing Python 3.14.2
+#15 8.435 [bun] Downloading pre-built archive bun-linux-x64-baseline.zip
+#15 8.535 [proto] Installing proto 0.55.4
+#15 8.535 [proto] Downloading pre-built archive proto_cli-x86_64-unknown-linux-gnu.tar.xz
+#15 8.739 [python] Downloading pre-built archive cpython-3.14.2+20260127-x86_64-unknown-linux-gnu-install_only.tar.gz
+#15 9.864 [proto] Verifying checksum against proto_cli-x86_64-unknown-linux-gnu.tar.xz.sha256
+#15 10.07 [uv] Verifying checksum against uv-x86_64-unknown-linux-gnu.tar.gz.sha256
+#15 10.67 [uv] Unpacking archive uv-x86_64-unknown-linux-gnu.tar.gz
+#15 10.67 [uv] uv 0.9.7 installed (3s)
+#15 10.77 [proto] Unpacking archive proto_cli-x86_64-unknown-linux-gnu.tar.xz
+#15 10.77 [proto] proto 0.55.4 installed (3s)
+#15 11.27 [bun] Verifying checksum against SHASUMS256.txt
+#15 11.98 [bun] Unpacking archive bun-linux-x64-baseline.zip
+#15 11.98 [bun] Bun 1.3.13 installed (4s)
+#15 15.29 [python] Verifying checksum against SHA256SUMS
+#15 18.32 [python] Unpacking archive cpython-3.14.2+20260127-x86_64-unknown-linux-gnu-install_only.tar.gz
+#15 18.32 [python] Python 3.14.2 installed (11s)
+#15 19.15 
+#15 19.15 │ SUCCESS
+#15 19.15 │ Installed proto, uv, bun, and python in 12 seconds!
+#15 19.15 
+#15 DONE 20.4s
 
-#18 [claude_payload 1/1] RUN case "amd64" in 		amd64) CLAUDE_PLATFORM="linux-x64"; CLAUDE_SHA256="e7d2ceb53ed4c2ced1fe7fc1c6331c98dc5f7b4c9b2722d9c5fa3dd5dff6f719" ;; 		arm64) CLAUDE_PLATFORM="linux-arm64"; CLAUDE_SHA256="84feb193c1d91f3b5eba836ed47c0e4dee953195abba950917c3e101eff174e8" ;; 		*) echo "Unsupported Claude architecture: amd64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		"https://downloads.claude.ai/claude-code-releases/2.1.210/${CLAUDE_PLATFORM}/claude" 		-o "${HOME}/.local/bin/claude" 	&& printf '%s  %s\n' "$CLAUDE_SHA256" "${HOME}/.local/bin/claude" | sha256sum --check --status - 	&& chmod +x "${HOME}/.local/bin/claude" 	&& BUN_INSTALL="${HOME}/.payloads/claude-tools" bun install -g "node-gyp@13.0.1"
-#18 CACHED
+#16 [codex_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/codex" 	bun install -g "@openai/codex@0.144.4"
+#16 ...
 
-#19 [development 16/19] COPY .prototools /tmp/devenv-definition/.prototools
-#19 CACHED
+#17 [proto_auxiliary 1/2] COPY --chown=vscode:vscode .devcontainer/prototools.auxiliary /tmp/devenv-proto-auxiliary/.prototools
+#17 DONE 0.3s
 
-#20 [development 11/19] RUN ln -s ../../.payloads/ccstatusline/bin/ccstatusline "${HOME}/.local/bin/ccstatusline"
-#20 CACHED
+#18 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
+#18 ...
 
-#21 [stable_base 4/5] RUN case "amd64" in 		amd64) RTK_TARGET="x86_64-unknown-linux-musl"; RTK_SHA256="ff8a1e7766496e175291a85aeca1dc97c9ff6df33e51e5893d1fbc78fea2a609" ;; 		arm64) RTK_TARGET="aarch64-unknown-linux-gnu"; RTK_SHA256="5519f7ca12e5c143a609f0d28a0a77b97413a8dce31c2681f1a41c24519a8731" ;; 		*) echo "Unsupported RTK architecture: amd64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		--output /tmp/rtk.tar.gz 		"https://github.com/rtk-ai/rtk/releases/download/v0.43.0/rtk-${RTK_TARGET}.tar.gz" 	&& printf '%s  %s\n' "$RTK_SHA256" /tmp/rtk.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/rtk.tar.gz -C /usr/local/bin/ 	&& chmod +x /usr/local/bin/rtk 	&& rm /tmp/rtk.tar.gz 	&& chsh -s /usr/bin/zsh vscode 	&& printf '%s\n' 		'export PROTO_HOME="$HOME/.proto"' 		'export PATH="/workspace/node_modules/.bin:$HOME/.local/bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH"' 		> /etc/profile.d/devenv-path.sh 	&& chmod 0644 /etc/profile.d/devenv-path.sh
-#21 CACHED
+#19 [ccstatusline_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/ccstatusline" 	bun install -g "ccstatusline@2.2.23"
+#19 0.988 bun add v1.3.13 (bf2e2cec)
+#19 1.078 Resolving dependencies
+#19 1.869 Resolved, downloaded and extracted [4]
+#19 1.882 Saved lockfile
+#19 1.883 
+#19 1.883 installed ccstatusline@2.2.23 with binaries:
+#19 1.883  - ccstatusline
+#19 1.883 
+#19 1.883 1 package installed [912.00ms]
+#19 1.885 
+#19 1.885 warn: To run "ccstatusline", add the global bin folder to $PATH:
+#19 1.885 
+#19 1.885 /home/vscode/.payloads/ccstatusline/bin
+#19 DONE 2.0s
 
-#22 [development 14/19] COPY --chown=vscode:vscode .prototools /home/vscode/.prototools
-#22 CACHED
+#16 [codex_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/codex" 	bun install -g "@openai/codex@0.144.4"
+#16 1.015 bun add v1.3.13 (bf2e2cec)
+#16 1.078 Resolving dependencies
+#16 ...
 
-#23 [development  5/19] COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.payloads/claude-tools /home/vscode/.payloads/claude-tools
-#23 CACHED
+#20 [graphify_payload 1/1] RUN UV_TOOL_DIR="${HOME}/.payloads/graphify" 	UV_TOOL_BIN_DIR="${HOME}/.payloads/graphify/bin" 	CC="$(command -v gcc)" 	CXX="$(command -v g++)" 	uv tool install "graphifyy[gemini,sql]==0.9.16"
+#20 4.980 Resolved 52 packages in 3.14s
+#20 5.675 Downloading pydantic-core (2.0MiB)
+#20 5.676 Downloading graphifyy (1.0MiB)
+#20 5.677 Downloading rapidfuzz (3.0MiB)
+#20 5.680 Downloading networkx (2.0MiB)
+#20 5.685 Downloading tiktoken (1.1MiB)
+#20 5.687 Downloading openai (1.6MiB)
+#20 5.688 Downloading numpy (15.9MiB)
+#20 ...
 
-#24 [development 10/19] RUN ln -s ../../.payloads/gemini/bin/gemini "${HOME}/.local/bin/gemini"
-#24 CACHED
+#18 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
+#18 4.003 [infisical] Installing Infisical with specification 0.41.90
+#18 4.003 [fly] Installing flyctl with specification 0.3.231
+#18 4.003 [dagger] Installing Dagger with specification 0.19.8
+#18 4.003 [jq] Installing jq with specification 1.8.1
+#18 4.003 [direnv] Installing direnv with specification 2.37.1
+#18 4.003 [yq] Installing yq with specification 4.49.2
+#18 4.123 [moon] Installing moon with specification 2.3.5
+#18 4.795 [node] Installing Node.js 24.18.0
+#18 4.795 [node] Downloading pre-built archive node-v24.18.0-linux-x64.tar.xz
+#18 6.335 [jq] Installing jq 1.8.1
+#18 6.495 [jq] Downloading pre-built archive jq-linux-amd64
+#18 6.605 [direnv] Installing direnv 2.37.1
+#18 6.605 [direnv] Downloading pre-built archive direnv.linux-amd64
+#18 6.909 [infisical] Installing Infisical 0.41.90
+#18 6.909 [infisical] Downloading pre-built archive infisical_0.41.90_linux_amd64.tar.gz
+#18 7.009 [moon] Installing moon 2.3.5
+#18 7.009 [moon] Downloading pre-built archive moon_cli-x86_64-unknown-linux-gnu.tar.xz
+#18 7.009 [fly] Installing flyctl 0.3.231
+#18 7.009 [fly] Downloading pre-built archive flyctl_0.3.231_Linux_x86_64.tar.gz
+#18 8.220 [node] Verifying checksum against SHASUMS256.txt
+#18 ...
 
-#25 [development 17/19] COPY .devcontainer /tmp/devenv-definition/.devcontainer
-#25 CACHED
+#21 [claude_payload 1/1] RUN case "amd64" in 		amd64) CLAUDE_PLATFORM="linux-x64"; CLAUDE_SHA256="e7d2ceb53ed4c2ced1fe7fc1c6331c98dc5f7b4c9b2722d9c5fa3dd5dff6f719" ;; 		arm64) CLAUDE_PLATFORM="linux-arm64"; CLAUDE_SHA256="84feb193c1d91f3b5eba836ed47c0e4dee953195abba950917c3e101eff174e8" ;; 		*) echo "Unsupported Claude architecture: amd64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		"https://downloads.claude.ai/claude-code-releases/2.1.210/${CLAUDE_PLATFORM}/claude" 		-o "${HOME}/.local/bin/claude" 	&& printf '%s  %s\n' "$CLAUDE_SHA256" "${HOME}/.local/bin/claude" | sha256sum --check --status - 	&& chmod +x "${HOME}/.local/bin/claude" 	&& BUN_INSTALL="${HOME}/.payloads/claude-tools" bun install -g "node-gyp@13.0.1"
+#21 ...
 
-#26 [development  7/19] COPY --link --from=shell_payload --chown=1000:1000 /home/vscode/.local/share/zinit /home/vscode/.local/share/zinit
-#26 CACHED
+#22 [gemini_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/gemini" 	bun install -g "@google/gemini-cli@0.50.0"
+#22 1.017 bun add v1.3.13 (bf2e2cec)
+#22 1.080 Resolving dependencies
+#22 4.129 Resolved, downloaded and extracted [37]
+#22 ...
 
-#27 [codex_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/codex" 	bun install -g "@openai/codex@0.144.4"
-#27 CACHED
+#18 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
+#18 10.55 [yq] Installing yq 4.49.2
+#18 10.55 [yq] Downloading pre-built archive yq_linux_amd64
+#18 10.65 [node] Unpacking archive node-v24.18.0-linux-x64.tar.xz
+#18 10.75 [node] Node.js 24.18.0 installed (6s)
+#18 10.85 [dagger] Installing Dagger 0.19.8
+#18 10.85 [dagger] Downloading pre-built archive dagger_v0.19.8_linux_amd64.tar.gz
+#18 12.18 [jq] jq 1.8.1 installed (8s)
+#18 ...
 
-#28 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
-#28 CACHED
+#21 [claude_payload 1/1] RUN case "amd64" in 		amd64) CLAUDE_PLATFORM="linux-x64"; CLAUDE_SHA256="e7d2ceb53ed4c2ced1fe7fc1c6331c98dc5f7b4c9b2722d9c5fa3dd5dff6f719" ;; 		arm64) CLAUDE_PLATFORM="linux-arm64"; CLAUDE_SHA256="84feb193c1d91f3b5eba836ed47c0e4dee953195abba950917c3e101eff174e8" ;; 		*) echo "Unsupported Claude architecture: amd64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		"https://downloads.claude.ai/claude-code-releases/2.1.210/${CLAUDE_PLATFORM}/claude" 		-o "${HOME}/.local/bin/claude" 	&& printf '%s  %s\n' "$CLAUDE_SHA256" "${HOME}/.local/bin/claude" | sha256sum --check --status - 	&& chmod +x "${HOME}/.local/bin/claude" 	&& BUN_INSTALL="${HOME}/.payloads/claude-tools" bun install -g "node-gyp@13.0.1"
+#21 16.03 bun add v1.3.13 (bf2e2cec)
+#21 16.10 Resolving dependencies
+#21 ...
 
-#29 [stable_base 3/5] RUN case "amd64" in 		amd64) DELTA_SHA256="1658c7b61825d411b50734f34016101309e4b6e7f5799944cf8e4ac542cebd7f" ;; 		arm64) DELTA_SHA256="937781aa7788e1510858743fff6c9a8b4a69fe0a22a7c8a69493e633227939a9" ;; 		*) echo "Unsupported git-delta architecture: amd64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		--output /tmp/delta.deb 		"https://github.com/dandavison/delta/releases/download/0.18.2/git-delta_0.18.2_amd64.deb" 	&& printf '%s  %s\n' "$DELTA_SHA256" /tmp/delta.deb | sha256sum --check --status - 	&& dpkg -i /tmp/delta.deb 	&& rm /tmp/delta.deb
-#29 CACHED
+#22 [gemini_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/gemini" 	bun install -g "@google/gemini-cli@0.50.0"
+#22 16.39 Saved lockfile
+#22 16.39 
+#22 16.39 installed @google/gemini-cli@0.50.0 with binaries:
+#22 16.39  - gemini
+#22 16.39 
+#22 16.39 7 packages installed [15.39s]
+#22 16.39 
+#22 16.39 Blocked 1 postinstall. Run `bun pm -g untrusted` for details.
+#22 16.39 
+#22 16.39 warn: To run "gemini", add the global bin folder to $PATH:
+#22 16.39 
+#22 16.39 /home/vscode/.payloads/gemini/bin
+#22 DONE 17.3s
 
-#30 [stable_base 5/5] RUN mkdir -p 	"/home/vscode/.proto" 	"${HOME}/.bun/install/cache" 	"${HOME}/.cache/uv" 	"${HOME}/.local/bin" 	"${HOME}/.payloads"
-#30 CACHED
+#18 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
+#18 15.71 [direnv] direnv 2.37.1 installed (11s)
+#18 17.03 [yq] yq 4.49.2 installed (12s)
+#18 17.14 [moon] Verifying checksum against moon_cli-x86_64-unknown-linux-gnu.tar.xz.sha256
+#18 ...
 
-#31 [development  8/19] RUN ln -s ../../.payloads/graphify/bin/graphify "${HOME}/.local/bin/graphify" 	&& ln -s ../../.payloads/graphify/bin/graphify-mcp "${HOME}/.local/bin/graphify-mcp"
-#31 CACHED
+#16 [codex_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/codex" 	bun install -g "@openai/codex@0.144.4"
+#16 17.90 Resolved, downloaded and extracted [5]
+#16 17.92 Saved lockfile
+#16 17.92 
+#16 17.92 installed @openai/codex@0.144.4 with binaries:
+#16 17.92  - codex
+#16 17.92 
+#16 17.92 2 packages installed [16.92s]
+#16 17.92 
+#16 17.92 warn: To run "codex", add the global bin folder to $PATH:
+#16 17.92 
+#16 17.92 /home/vscode/.payloads/codex/bin
+#16 DONE 18.2s
 
-#32 [development  3/19] COPY --link --from=gemini_payload --chown=1000:1000 /home/vscode/.payloads/gemini /home/vscode/.payloads/gemini
-#32 CACHED
+#20 [graphify_payload 1/1] RUN UV_TOOL_DIR="${HOME}/.payloads/graphify" 	UV_TOOL_BIN_DIR="${HOME}/.payloads/graphify/bin" 	CC="$(command -v gcc)" 	CXX="$(command -v g++)" 	uv tool install "graphifyy[gemini,sql]==0.9.16"
+#20 ...
 
-#33 [development 18/19] RUN mkdir -p /usr/local/share/devenv-image 	&& sha256sum /tmp/devenv-definition/.prototools | awk '{print $1}' > /usr/local/share/devenv-image/prototools.sha256 	&& bash /tmp/devenv-definition/.devcontainer/devcontainer-fingerprint.sh /tmp/devenv-definition > /usr/local/share/devenv-image/definition.sha256 	&& chmod 0444 /usr/local/share/devenv-image/*.sha256 	&& rm -rf /tmp/devenv-definition
-#33 CACHED
+#21 [claude_payload 1/1] RUN case "amd64" in 		amd64) CLAUDE_PLATFORM="linux-x64"; CLAUDE_SHA256="e7d2ceb53ed4c2ced1fe7fc1c6331c98dc5f7b4c9b2722d9c5fa3dd5dff6f719" ;; 		arm64) CLAUDE_PLATFORM="linux-arm64"; CLAUDE_SHA256="84feb193c1d91f3b5eba836ed47c0e4dee953195abba950917c3e101eff174e8" ;; 		*) echo "Unsupported Claude architecture: amd64" >&2; exit 1 ;; 	esac 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 180 		"https://downloads.claude.ai/claude-code-releases/2.1.210/${CLAUDE_PLATFORM}/claude" 		-o "${HOME}/.local/bin/claude" 	&& printf '%s  %s\n' "$CLAUDE_SHA256" "${HOME}/.local/bin/claude" | sha256sum --check --status - 	&& chmod +x "${HOME}/.local/bin/claude" 	&& BUN_INSTALL="${HOME}/.payloads/claude-tools" bun install -g "node-gyp@13.0.1"
+#21 18.44 Resolved, downloaded and extracted [80]
+#21 18.51 Saved lockfile
+#21 18.51 
+#21 18.51 installed node-gyp@13.0.1 with binaries:
+#21 18.51  - node-gyp
+#21 18.51 
+#21 18.51 20 packages installed [2.49s]
+#21 18.51 
+#21 18.51 warn: To run "node-gyp", add the global bin folder to $PATH:
+#21 18.51 
+#21 18.51 /home/vscode/.payloads/claude-tools/bin
+#21 DONE 18.8s
 
-#34 [proto_foundation 3/3] RUN bash /tmp/devenv-proto-foundation/.devcontainer/install-proto.sh 	&& cd /tmp/devenv-proto-foundation 	&& proto install --yes --config-mode local
-#34 CACHED
+#20 [graphify_payload 1/1] RUN UV_TOOL_DIR="${HOME}/.payloads/graphify" 	UV_TOOL_BIN_DIR="${HOME}/.payloads/graphify/bin" 	CC="$(command -v gcc)" 	CXX="$(command -v g++)" 	uv tool install "graphifyy[gemini,sql]==0.9.16"
+#20 18.74  Downloading graphifyy
+#20 18.79  Downloading tiktoken
+#20 19.24  Downloading openai
+#20 19.46  Downloading pydantic-core
+#20 19.46  Downloading networkx
+#20 19.73  Downloading rapidfuzz
+#20 20.40  Downloading numpy
+#20 20.40 Prepared 52 packages in 15.40s
+#20 20.67 Installed 52 packages in 266ms
+#20 20.67  + annotated-types==0.7.0
+#20 20.67  + anyio==4.14.2
+#20 20.67  + certifi==2026.6.17
+#20 20.67  + charset-normalizer==3.4.9
+#20 20.67  + distro==1.9.0
+#20 20.67  + graphifyy==0.9.16
+#20 20.67  + h11==0.16.0
+#20 20.67  + httpcore==1.0.9
+#20 20.67  + httpx==0.28.1
+#20 20.67  + idna==3.18
+#20 20.67  + jiter==0.16.0
+#20 20.67  + networkx==3.6.1
+#20 20.67  + numpy==2.5.1
+#20 20.67  + openai==2.45.0
+#20 20.67  + pydantic==2.13.4
+#20 20.67  + pydantic-core==2.46.4
+#20 20.67  + rapidfuzz==3.14.5
+#20 20.67  + regex==2026.7.10
+#20 20.67  + requests==2.34.2
+#20 20.67  + sniffio==1.3.1
+#20 20.67  + tiktoken==0.13.0
+#20 20.67  + tqdm==4.68.4
+#20 20.67  + tree-sitter==0.25.2
+#20 20.67  + tree-sitter-bash==0.25.1
+#20 20.67  + tree-sitter-c==0.24.2
+#20 20.67  + tree-sitter-c-sharp==0.23.5
+#20 20.67  + tree-sitter-cpp==0.23.4
+#20 20.67  + tree-sitter-elixir==0.3.5
+#20 20.67  + tree-sitter-fortran==0.6.0
+#20 20.67  + tree-sitter-go==0.25.0
+#20 20.67  + tree-sitter-groovy==0.1.2
+#20 20.67  + tree-sitter-java==0.23.5
+#20 20.67  + tree-sitter-javascript==0.25.0
+#20 20.67  + tree-sitter-json==0.24.8
+#20 20.67  + tree-sitter-julia==0.23.1
+#20 20.67  + tree-sitter-kotlin==1.1.0
+#20 20.67  + tree-sitter-lua==0.5.0
+#20 20.67  + tree-sitter-objc==3.0.2
+#20 20.67  + tree-sitter-php==0.24.1
+#20 20.67  + tree-sitter-powershell==0.26.4
+#20 20.67  + tree-sitter-python==0.25.0
+#20 20.67  + tree-sitter-ruby==0.23.1
+#20 20.67  + tree-sitter-rust==0.24.2
+#20 20.67  + tree-sitter-scala==0.26.0
+#20 20.67  + tree-sitter-sql==0.3.11
+#20 20.67  + tree-sitter-swift==0.7.3
+#20 20.67  + tree-sitter-typescript==0.23.2
+#20 20.67  + tree-sitter-verilog==1.0.3
+#20 20.67  + tree-sitter-zig==1.1.2
+#20 20.67  + typing-extensions==4.16.0
+#20 20.67  + typing-inspection==0.4.2
+#20 20.67  + urllib3==2.7.0
+#20 20.68 Installed 2 executables: graphify, graphify-mcp
+#20 20.69 warning: `/home/vscode/.payloads/graphify/bin` is not on your PATH. To use installed tools, add the directory to your PATH.
+#20 DONE 22.0s
 
-#35 [graphify_payload 1/1] RUN UV_TOOL_DIR="${HOME}/.payloads/graphify" 	UV_TOOL_BIN_DIR="${HOME}/.payloads/graphify/bin" 	CC="$(command -v gcc)" 	CXX="$(command -v g++)" 	uv tool install "graphifyy[gemini,sql]==0.9.16"
-#35 CACHED
+#18 [proto_auxiliary 2/2] RUN cd /tmp/devenv-proto-auxiliary 	&& proto install --yes --config-mode local
+#18 18.04 [dagger] Verifying checksum against checksums.txt
+#18 18.64 [moon] Unpacking archive moon_cli-x86_64-unknown-linux-gnu.tar.xz
+#18 18.74 [moon] moon 2.3.5 installed (14s)
+#18 18.74 [dagger] Unpacking archive dagger_v0.19.8_linux_amd64.tar.gz
+#18 18.74 [dagger] Dagger 0.19.8 installed (14s)
+#18 19.15 [infisical] Verifying checksum against checksums.txt
+#18 19.76 [infisical] Unpacking archive infisical_0.41.90_linux_amd64.tar.gz
+#18 19.76 [fly] Verifying checksum against flyctl_0.3.231_checksums.txt
+#18 19.76 [infisical] Infisical 0.41.90 installed (15s)
+#18 20.67 [fly] Unpacking archive flyctl_0.3.231_Linux_x86_64.tar.gz
+#18 20.67 [fly] flyctl 0.3.231 installed (16s)
+#18 21.02 
+#18 21.02 │ SUCCESS
+#18 21.02 │ Installed node, jq, direnv, yq, dagger, moon, infisical, and fly in 17 seconds!
+#18 21.02 
+#18 DONE 21.6s
 
-#36 [ccstatusline_payload 1/1] RUN BUN_INSTALL="${HOME}/.payloads/ccstatusline" 	bun install -g "ccstatusline@2.2.23"
-#36 CACHED
+#23 [development  1/19] COPY --link --from=graphify_payload --chown=1000:1000 /home/vscode/.payloads/graphify /home/vscode/.payloads/graphify
+#23 DONE 0.9s
 
-#37 [shell_payload 1/1] RUN mkdir -p "${HOME}/.local/share/zinit/zinit.git" 	&& curl --fail --location --silent --show-error 		--retry 3 --retry-all-errors --retry-max-time 180 		--connect-timeout 10 --max-time 120 		"https://github.com/zdharma-continuum/zinit/archive/e347224fb5fe77308cff9f59fbe2acca70d0a6db.tar.gz" 		-o /tmp/zinit.tar.gz 	&& printf '%s  %s\n' "96380971046cf82765dc02822dd6acf993bfce3e3a4eaf46a3f42eafdac37434" /tmp/zinit.tar.gz | sha256sum --check --status - 	&& tar xzf /tmp/zinit.tar.gz --strip-components=1 -C "${HOME}/.local/share/zinit/zinit.git" 	&& rm /tmp/zinit.tar.gz
-#37 CACHED
+#24 [development  2/19] COPY --link --from=codex_payload --chown=1000:1000 /home/vscode/.payloads/codex /home/vscode/.payloads/codex
+#24 DONE 0.4s
 
-#38 [proto_foundation 1/3] COPY --chown=vscode:vscode .devcontainer/prototools.foundation /tmp/devenv-proto-foundation/.prototools
-#38 CACHED
+#25 [development  3/19] COPY --link --from=gemini_payload --chown=1000:1000 /home/vscode/.payloads/gemini /home/vscode/.payloads/gemini
+#25 DONE 0.7s
 
-#39 [development  9/19] RUN ln -s ../../.payloads/codex/bin/codex "${HOME}/.local/bin/codex"
-#39 CACHED
+#26 [development  4/19] COPY --link --from=ccstatusline_payload --chown=1000:1000 /home/vscode/.payloads/ccstatusline /home/vscode/.payloads/ccstatusline
+#26 DONE 0.2s
 
-#40 [development  1/19] COPY --link --from=graphify_payload --chown=1000:1000 /home/vscode/.payloads/graphify /home/vscode/.payloads/graphify
-#40 CACHED
+#27 [development  5/19] COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.payloads/claude-tools /home/vscode/.payloads/claude-tools
+#27 DONE 0.3s
+
+#28 [development  6/19] COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.local/bin/claude /home/vscode/.local/bin/claude
+#28 DONE 0.3s
+
+#29 [development  7/19] COPY --link --from=shell_payload --chown=1000:1000 /home/vscode/.local/share/zinit /home/vscode/.local/share/zinit
+#29 merging
+#29 merging 0.9s done
+#29 DONE 1.0s
+
+#30 [development  8/19] RUN ln -s ../../.payloads/graphify/bin/graphify "${HOME}/.local/bin/graphify" 	&& ln -s ../../.payloads/graphify/bin/graphify-mcp "${HOME}/.local/bin/graphify-mcp"
+#30 DONE 0.8s
+
+#31 [development  9/19] RUN ln -s ../../.payloads/codex/bin/codex "${HOME}/.local/bin/codex"
+#31 DONE 0.2s
+
+#32 [development 10/19] RUN ln -s ../../.payloads/gemini/bin/gemini "${HOME}/.local/bin/gemini"
+#32 DONE 0.3s
+
+#33 [development 11/19] RUN ln -s ../../.payloads/ccstatusline/bin/ccstatusline "${HOME}/.local/bin/ccstatusline"
+#33 DONE 0.2s
+
+#34 [development 12/19] RUN ln -s ../../.payloads/claude-tools/bin/node-gyp "${HOME}/.local/bin/node-gyp"
+#34 DONE 0.2s
+
+#35 [development 13/19] RUN printf '%s\n' 		'if [ -n "${BASH_VERSION:-}" ] && [ -f "$HOME/.bashrc" ]; then . "$HOME/.bashrc"; fi' 		'export PROTO_HOME="$HOME/.proto"' 		'export PATH="/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH"' 		> "${HOME}/.profile" 	&& printf '%s\n' 'source "$HOME/.profile"' > "${HOME}/.zprofile"
+#35 DONE 0.2s
+
+#36 [development 14/19] COPY --chown=vscode:vscode .prototools /home/vscode/.prototools
+#36 DONE 0.2s
+
+#37 [development 15/19] COPY .dockerignore /tmp/devenv-definition/.dockerignore
+#37 DONE 0.1s
+
+#38 [development 16/19] COPY .prototools /tmp/devenv-definition/.prototools
+#38 DONE 0.1s
+
+#39 [development 17/19] COPY .devcontainer /tmp/devenv-definition/.devcontainer
+#39 DONE 0.1s
+
+#40 [development 18/19] RUN mkdir -p /usr/local/share/devenv-image 	&& sha256sum /tmp/devenv-definition/.prototools | awk '{print $1}' > /usr/local/share/devenv-image/prototools.sha256 	&& bash /tmp/devenv-definition/.devcontainer/devcontainer-fingerprint.sh /tmp/devenv-definition > /usr/local/share/devenv-image/definition.sha256 	&& chmod 0444 /usr/local/share/devenv-image/*.sha256 	&& rm -rf /tmp/devenv-definition
+#40 DONE 1.9s
 
 #41 [development 19/19] WORKDIR /workspace
-#41 CACHED
+#41 DONE 0.1s

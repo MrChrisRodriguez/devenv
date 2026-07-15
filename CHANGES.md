@@ -12,6 +12,8 @@ This file documents changes made to this template repository. Each entry provide
 
 The immutable remediated implementation boundary is `672701c1029a702b6a6e819608298c725ce8cdf5`; evidence-only commits follow it without changing image inputs.
 
+The replacement run `stage2-20260715t080439z-9f48b8ee` executed both supported architectures without cache, refused the shadow-Bun definition attack, measured 4,403,200 bytes of second-worktree growth against the 96,111,608-byte Stage 0 baseline, and restored the actual predecessor tree through the deterministic mainline-revert proof.
+
 **Changed files:**
 - `.devcontainer/devcontainer-fingerprint.sh`, `.devcontainer/on-create/setup-proto.sh` — absolute image-owned fingerprint execution and realpath enforcement.
 - `scripts/template/image-evidence.ts`, `scripts/template/collect-stage-two-evidence.ts`, evidence schema/tests — uncached architecture proof and non-vacuous log/Git/metric validation.

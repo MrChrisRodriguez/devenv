@@ -18,6 +18,7 @@ import {
 	sha256,
 	syntheticStageTwoMergeMetadata,
 	validateBoundStageTwoLogs,
+	validateStageTwoEvidence,
 	validateStageTwoEvidenceValue,
 } from "../image-evidence";
 
@@ -242,6 +243,61 @@ function git(root: string, command: string[]): string {
 }
 
 describe("Stage 2 image evidence", () => {
+	test("rejects fabricated committed metrics and rollback metadata", async () => {
+		const path = resolve(
+			await mkdtemp(resolve(tmpdir(), "devenv-stage2-false-evidence-")),
+			"evidence.json",
+		);
+		try {
+			const original = (await Bun.file(
+				resolve(ROOT, "evidence/stage-2-image.json"),
+			).json()) as JsonRecord;
+			const validateMutation = async (
+				mutate: (evidence: JsonRecord) => void,
+			): Promise<string[]> => {
+				const evidence = structuredClone(original);
+				mutate(evidence);
+				await Bun.write(path, `${JSON.stringify(evidence, null, 2)}\n`);
+				return validateStageTwoEvidence(ROOT, path);
+			};
+
+			expect(
+				await validateMutation((evidence) => {
+					(evidence["secondWorktreeStorage"] as JsonRecord)["observedBytes"] =
+						0;
+				}),
+			).toContain(
+				"semantic: second-worktree storage arithmetic is inconsistent",
+			);
+
+			expect(
+				await validateMutation((evidence) => {
+					const warm = (evidence["builds"] as JsonRecord)["warm"] as JsonRecord;
+					warm["cachedSteps"] = 999_999;
+				}),
+			).toContain(
+				"repository: warm-build cache count differs from its bound log",
+			);
+
+			expect(
+				await validateMutation((evidence) => {
+					const proof = (evidence["rollback"] as JsonRecord)[
+						"proof"
+					] as JsonRecord;
+					proof["syntheticMergeSha"] = "0".repeat(40);
+					proof["syntheticMergeParents"] = [
+						proof["implementationSha"],
+						proof["predecessorSha"],
+					];
+				}),
+			).toContain(
+				"repository: Stage 2 synthetic merge commit metadata drifted",
+			);
+		} finally {
+			await rm(resolve(path, ".."), { recursive: true, force: true });
+		}
+	});
+
 	test("binds multiline probe diagnostics through their JSON value", async () => {
 		const root = await mkdtemp(resolve(tmpdir(), "devenv-stage2-bound-log-"));
 		try {
