@@ -112,7 +112,7 @@ FROM proto_foundation AS graphify_payload
 # renovate: datasource=pypi depName=graphifyy
 ARG GRAPHIFY_VERSION=0.9.16
 RUN UV_TOOL_DIR="${HOME}/.payloads/graphify" \
-	UV_TOOL_BIN_DIR="${HOME}/.local/bin" \
+	UV_TOOL_BIN_DIR="${HOME}/.payloads/graphify/bin" \
 	CC="$(command -v gcc)" \
 	CXX="$(command -v g++)" \
 	uv tool install "graphifyy[gemini,sql]==${GRAPHIFY_VERSION}"
@@ -136,8 +136,7 @@ FROM proto_foundation AS codex_payload
 # renovate: datasource=npm depName=@openai/codex
 ARG CODEX_VERSION=0.144.4
 RUN BUN_INSTALL="${HOME}/.payloads/codex" \
-	bun install -g "@openai/codex@${CODEX_VERSION}" \
-	&& ln -s ../../.payloads/codex/bin/codex "${HOME}/.local/bin/codex"
+	bun install -g "@openai/codex@${CODEX_VERSION}"
 # capability:end codex
 
 # capability:start gemini
@@ -146,8 +145,7 @@ FROM proto_foundation AS gemini_payload
 # renovate: datasource=npm depName=@google/gemini-cli
 ARG GEMINI_VERSION=0.50.0
 RUN BUN_INSTALL="${HOME}/.payloads/gemini" \
-	bun install -g "@google/gemini-cli@${GEMINI_VERSION}" \
-	&& ln -s ../../.payloads/gemini/bin/gemini "${HOME}/.local/bin/gemini"
+	bun install -g "@google/gemini-cli@${GEMINI_VERSION}"
 # capability:end gemini
 
 # capability:start ccstatusline
@@ -156,8 +154,7 @@ FROM proto_foundation AS ccstatusline_payload
 # renovate: datasource=npm depName=ccstatusline
 ARG CCSTATUSLINE_VERSION=2.2.23
 RUN BUN_INSTALL="${HOME}/.payloads/ccstatusline" \
-	bun install -g "ccstatusline@${CCSTATUSLINE_VERSION}" \
-	&& ln -s ../../.payloads/ccstatusline/bin/ccstatusline "${HOME}/.local/bin/ccstatusline"
+	bun install -g "ccstatusline@${CCSTATUSLINE_VERSION}"
 # capability:end ccstatusline
 
 # capability:start claude
@@ -182,8 +179,7 @@ RUN case "$TARGETARCH" in \
 		-o "${HOME}/.local/bin/claude" \
 	&& printf '%s  %s\n' "$CLAUDE_SHA256" "${HOME}/.local/bin/claude" | sha256sum --check --status - \
 	&& chmod +x "${HOME}/.local/bin/claude" \
-	&& BUN_INSTALL="${HOME}/.payloads/claude-tools" bun install -g "node-gyp@${NODE_GYP_VERSION}" \
-	&& ln -s ../../.payloads/claude-tools/bin/node-gyp "${HOME}/.local/bin/node-gyp"
+	&& BUN_INSTALL="${HOME}/.payloads/claude-tools" bun install -g "node-gyp@${NODE_GYP_VERSION}"
 # capability:end claude
 
 FROM stable_base AS shell_payload
@@ -205,27 +201,44 @@ FROM proto_auxiliary AS development
 
 # capability:start graphify
 COPY --link --from=graphify_payload --chown=1000:1000 /home/vscode/.payloads/graphify /home/vscode/.payloads/graphify
-COPY --link --from=graphify_payload --chown=1000:1000 /home/vscode/.local/bin/graphify /home/vscode/.local/bin/graphify
-COPY --link --from=graphify_payload --chown=1000:1000 /home/vscode/.local/bin/graphify-mcp /home/vscode/.local/bin/graphify-mcp
 # capability:end graphify
 # capability:start codex
 COPY --link --from=codex_payload --chown=1000:1000 /home/vscode/.payloads/codex /home/vscode/.payloads/codex
-COPY --link --from=codex_payload --chown=1000:1000 /home/vscode/.local/bin/codex /home/vscode/.local/bin/codex
 # capability:end codex
 # capability:start gemini
 COPY --link --from=gemini_payload --chown=1000:1000 /home/vscode/.payloads/gemini /home/vscode/.payloads/gemini
-COPY --link --from=gemini_payload --chown=1000:1000 /home/vscode/.local/bin/gemini /home/vscode/.local/bin/gemini
 # capability:end gemini
 # capability:start ccstatusline
 COPY --link --from=ccstatusline_payload --chown=1000:1000 /home/vscode/.payloads/ccstatusline /home/vscode/.payloads/ccstatusline
-COPY --link --from=ccstatusline_payload --chown=1000:1000 /home/vscode/.local/bin/ccstatusline /home/vscode/.local/bin/ccstatusline
 # capability:end ccstatusline
 # capability:start claude
 COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.payloads/claude-tools /home/vscode/.payloads/claude-tools
 COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.local/bin/claude /home/vscode/.local/bin/claude
-COPY --link --from=claude_payload --chown=1000:1000 /home/vscode/.local/bin/node-gyp /home/vscode/.local/bin/node-gyp
 # capability:end claude
 COPY --link --from=shell_payload --chown=1000:1000 /home/vscode/.local/share/zinit /home/vscode/.local/share/zinit
+
+# capability:start graphify
+RUN ln -s ../../.payloads/graphify/bin/graphify "${HOME}/.local/bin/graphify" \
+	&& ln -s ../../.payloads/graphify/bin/graphify-mcp "${HOME}/.local/bin/graphify-mcp"
+# capability:end graphify
+# capability:start codex
+RUN ln -s ../../.payloads/codex/bin/codex "${HOME}/.local/bin/codex"
+# capability:end codex
+# capability:start gemini
+RUN ln -s ../../.payloads/gemini/bin/gemini "${HOME}/.local/bin/gemini"
+# capability:end gemini
+# capability:start ccstatusline
+RUN ln -s ../../.payloads/ccstatusline/bin/ccstatusline "${HOME}/.local/bin/ccstatusline"
+# capability:end ccstatusline
+# capability:start claude
+RUN ln -s ../../.payloads/claude-tools/bin/node-gyp "${HOME}/.local/bin/node-gyp"
+# capability:end claude
+RUN printf '%s\n' \
+		'if [ -n "${BASH_VERSION:-}" ] && [ -f "$HOME/.bashrc" ]; then . "$HOME/.bashrc"; fi' \
+		'export PROTO_HOME="$HOME/.proto"' \
+		'export PATH="/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH"' \
+		> "${HOME}/.profile" \
+	&& printf '%s\n' 'source "$HOME/.profile"' > "${HOME}/.zprofile"
 
 USER root
 COPY --chown=vscode:vscode .prototools /home/vscode/.prototools
