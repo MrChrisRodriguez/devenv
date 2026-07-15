@@ -610,6 +610,16 @@ export async function validateBoundStageTwoLogs(
 	}
 	const combined = (id: string): string =>
 		`${contents.get(`${id}:stdout`) ?? ""}\n${contents.get(`${id}:stderr`) ?? ""}`;
+	const boundProbeDiagnostic = (id: string): string => {
+		try {
+			const parsed = JSON.parse(contents.get(`${id}:stdout`) ?? "");
+			return isRecord(parsed) && typeof parsed["diagnostic"] === "string"
+				? (parsed["diagnostic"] as string)
+				: "";
+		} catch {
+			return "";
+		}
+	};
 	const image = recordAt(value, "image");
 	if (combined("image-inspect").trim() !== String(image["imageId"] ?? ""))
 		errors.push("repository: image identity is absent from its bound log");
@@ -630,16 +640,16 @@ export async function validateBoundStageTwoLogs(
 		errors.push("repository: warm build log contains no cache hit");
 	const stale = recordAt(value, "staleImageRefusal");
 	if (
-		!combined("stale-image-refusal").includes(String(stale["diagnostic"] ?? ""))
+		boundProbeDiagnostic("stale-image-refusal") !==
+		String(stale["diagnostic"] ?? "")
 	)
 		errors.push(
 			"repository: stale-image diagnostic is absent from its bound log",
 		);
 	const partition = recordAt(value, "partitionMutation");
 	if (
-		!combined("partition-mutation").includes(
-			String(partition["diagnostic"] ?? ""),
-		)
+		boundProbeDiagnostic("partition-mutation") !==
+		String(partition["diagnostic"] ?? "")
 	)
 		errors.push(
 			"repository: partition diagnostic is absent from its bound log",

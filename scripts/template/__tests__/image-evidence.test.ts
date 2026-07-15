@@ -15,6 +15,8 @@ import {
 import {
 	type JsonRecord,
 	STAGE_TWO_COMMAND_IDS,
+	sha256,
+	validateBoundStageTwoLogs,
 	validateStageTwoEvidenceValue,
 } from "../image-evidence";
 
@@ -216,6 +218,41 @@ function git(root: string, command: string[]): string {
 }
 
 describe("Stage 2 image evidence", () => {
+	test("binds multiline probe diagnostics through their JSON value", async () => {
+		const root = await mkdtemp(resolve(tmpdir(), "devenv-stage2-bound-log-"));
+		try {
+			const evidence = validEvidence();
+			const stale = evidence["staleImageRefusal"] as JsonRecord;
+			stale["diagnostic"] = "first diagnostic line\nsecond diagnostic line";
+			const stdout = `${JSON.stringify(stale, null, 2)}\n`;
+			const stderr = "";
+			await Bun.write(resolve(root, "stale.stdout"), stdout);
+			await Bun.write(resolve(root, "stale.stderr"), stderr);
+			const command = (evidence["commands"] as JsonRecord[]).find(
+				(entry) => entry["id"] === "stale-image-refusal",
+			);
+			expect(command).toBeDefined();
+			if (!command) throw new Error("missing stale command fixture");
+			command["stdoutPath"] = "stale.stdout";
+			command["stderrPath"] = "stale.stderr";
+			command["stdoutSha256"] = sha256(stdout);
+			command["stderrSha256"] = sha256(stderr);
+			evidence["commands"] = [command];
+
+			const validErrors = await validateBoundStageTwoLogs(root, evidence);
+			expect(validErrors).not.toContain(
+				"repository: stale-image diagnostic is absent from its bound log",
+			);
+
+			stale["diagnostic"] = "another diagnostic";
+			expect(await validateBoundStageTwoLogs(root, evidence)).toContain(
+				"repository: stale-image diagnostic is absent from its bound log",
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
 	test("accepts the complete command-bound semantic record and rejects material mutations", async () => {
 		const schema = (await Bun.file(
 			resolve(ROOT, "evidence/stage-2-image.schema.json"),
