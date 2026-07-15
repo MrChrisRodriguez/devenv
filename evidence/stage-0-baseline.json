@@ -518,6 +518,11 @@
 			"name": "fixture-identity",
 			"expected": "Reject a fixture whose embedded name differs from its requested filename",
 			"observed": "A minimal.toml mutation declaring full was rejected with both identities named."
+		},
+		{
+			"name": "git-metadata-output",
+			"expected": "Reject output paths that overlap worktree or common Git metadata",
+			"observed": "A forced .git/objects output was rejected and the worktree HEAD remained unchanged."
 		}
 	],
 	"rollback": {

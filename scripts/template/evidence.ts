@@ -31,6 +31,7 @@ const REQUIRED_MUTATIONS = [
 	"fixture-identity",
 	"generated-destination-exhaustiveness",
 	"generated-workflow-scripts",
+	"git-metadata-output",
 	"global-source-residue",
 	"invalid-fixture-atomicity",
 	"legacy-initializer",

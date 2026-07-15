@@ -494,6 +494,20 @@ describe("deterministic fixture renderer", () => {
 			await rm(temporary, { recursive: true, force: true });
 		}
 	});
+
+	test("refuses outputs that overlap worktree Git metadata", async () => {
+		const before = await Bun.$`git -C ${ROOT} rev-parse HEAD`.quiet().text();
+		await expect(
+			renderFixture({
+				root: ROOT,
+				fixtureName: "minimal",
+				output: resolve(ROOT, ".git/objects"),
+				force: true,
+			}),
+		).rejects.toThrow("overlaps protected Git metadata");
+		const after = await Bun.$`git -C ${ROOT} rev-parse HEAD`.quiet().text();
+		expect(after).toBe(before);
+	});
 });
 
 describe("ownership and generated paths", () => {

@@ -135,7 +135,11 @@ async function pathExists(path: string): Promise<boolean> {
 		await lstat(path);
 		return true;
 	} catch (error) {
-		if (error instanceof Error && "code" in error && error.code === "ENOENT")
+		if (
+			error instanceof Error &&
+			"code" in error &&
+			(error.code === "ENOENT" || error.code === "ENOTDIR")
+		)
 			return false;
 		throw error;
 	}
@@ -152,6 +156,27 @@ async function canonicalizePotentialPath(path: string): Promise<string> {
 		existing = parent;
 	}
 	return resolve(await realpath(existing), ...missing);
+}
+
+function pathsOverlap(left: string, right: string): boolean {
+	return (
+		left === right || containsPath(left, right) || containsPath(right, left)
+	);
+}
+
+async function gitMetadataPaths(root: string): Promise<string[]> {
+	const output =
+		await Bun.$`git -C ${root} rev-parse --path-format=absolute --git-dir --git-common-dir`
+			.quiet()
+			.text();
+	const paths = [resolve(root, ".git"), ...output.trim().split("\n")];
+	return [
+		...new Set(
+			await Promise.all(
+				paths.filter(Boolean).map((path) => canonicalizePotentialPath(path)),
+			),
+		),
+	].sort();
 }
 
 export async function loadTemplateOwnership(
@@ -735,6 +760,10 @@ export async function renderFixture(options: {
 	const target = await canonicalizePotentialPath(resolve(options.output));
 	if (target === root || containsPath(target, root)) {
 		throw new Error(`Unsafe output path: ${target}`);
+	}
+	for (const gitPath of await gitMetadataPaths(root)) {
+		if (pathsOverlap(target, gitPath))
+			throw new Error(`Output path overlaps protected Git metadata: ${target}`);
 	}
 	const parameters = await loadTemplateParameters(root);
 	const fixture = await loadFixtureDefinition(
