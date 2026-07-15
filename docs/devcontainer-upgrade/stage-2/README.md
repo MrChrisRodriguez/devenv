@@ -23,13 +23,13 @@ Proto at runtime.
   payload stages and their final `COPY` operations are selected by rendered
   capabilities. Disabled profiles contain no corresponding Docker residue.
 
-`.devcontainer/on-create/setup-proto.sh` compares both markers with the mounted
-checkout and verifies image-owned Proto and Bun by absolute path and resolved
-location. It passes the image-owned Proto Bun explicitly to the fingerprint
-helper and invokes lifecycle/verification shells and utilities by absolute
-system path, so workspace-local contract binaries cannot forge the definition
-marker. Any mismatch fails with a rebuild/recreate diagnostic. The scoped host cleanup
-helper removes only an exact, unattached legacy
+The Dockerfile installs `.devcontainer/on-create/setup-proto.sh` and the
+fingerprint helper into `/usr/local/share/devenv-image/`. Every lifecycle runs
+that image-owned verifier before any mounted checkout script. It compares both
+markers with the checkout and verifies image-owned Proto and Bun by absolute
+path and resolved location. Any mismatch fails with a rebuild/recreate
+diagnostic without starting checkout setup. The scoped host cleanup helper
+removes only an exact, unattached legacy
 `proto-home-<devcontainer-id>` volume.
 
 ## Validation
@@ -88,7 +88,8 @@ the first nonzero exit:
    print the baked marker and poisoned environment overrides point at a
    pristine decoy checkout plus attacker-controlled markers. The probe invokes
    the real startup-scrubbed on-create lifecycle and rejects pre-verification
-   tool, `BASH_ENV`, exported-function, and Bun-preload sentinels.
+   tool, `BASH_ENV`, exported-function, Bun-preload, mounted on-create,
+   setup-common, and fingerprint-helper sentinels.
 6. A real missing-foundation-uv partition mutation.
 7. Bash and Zsh login/non-login PATH probes.
 8. Two real containers over two worktrees, with image identity, writable-layer,

@@ -565,7 +565,7 @@ export function validateStageTwoEvidenceValue(
 		errors.push("semantic: stale image refusal was not observed");
 	if (
 		stale["mutation"] !==
-			"shadow-workspace-shell-env-tools-overrides-and-edit-definition" ||
+			"shadow-workspace-startup-tools-overrides-and-edit-definition" ||
 		stale["shadowBunPath"] !== "/workspace/node_modules/.bin/bun" ||
 		stale["shadowBashPath"] !== "/workspace/node_modules/.bin/bash" ||
 		stale["trustedRepoMount"] !== "/trusted" ||
@@ -582,6 +582,9 @@ export function validateStageTwoEvidenceValue(
 		stale["preVerificationBashEnvExecution"] !== false ||
 		stale["preVerificationExportedFunctionExecution"] !== false ||
 		stale["preVerificationBunOptionsExecution"] !== false ||
+		stale["preVerificationOnCreateExecution"] !== false ||
+		stale["preVerificationSetupCommonExecution"] !== false ||
+		stale["preVerificationFingerprintScriptExecution"] !== false ||
 		!sameValue(stale["shadowUtilityPaths"], [
 			"/workspace/node_modules/.bin/readlink",
 			"/workspace/node_modules/.bin/sha256sum",

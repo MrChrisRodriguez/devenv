@@ -5,10 +5,9 @@ set -e
 # Use `return N` for early termination, not `exit N` — `exit` from a sourced
 # script kills the parent shell and silently halts the rest of the setup chain.
 
-# Verify the image-owned Proto manifest and complete devcontainer fingerprint
-# before any lifecycle action can execute a workspace-first PATH command.
-# HARD source (not optional): every later step depends on this exact image.
-source /workspace/.devcontainer/on-create/setup-proto.sh
+# The lifecycle command verifies the image-owned Proto manifest and complete
+# devcontainer fingerprint through the image-owned verifier before this mounted
+# checkout script is allowed to start.
 
 echo "🚀 Configuring ${DEVCONTAINER_PROJECT:-development} from image-owned payloads..."
 

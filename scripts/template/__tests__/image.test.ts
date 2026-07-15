@@ -146,6 +146,16 @@ describe("devcontainer image contract", () => {
 				(source) =>
 					source.replace(
 						'repo_root="/workspace"',
+						'source /workspace/.devcontainer/on-create/setup-common.sh\nrepo_root="/workspace"',
+					),
+				"image: image verifier must not source checkout helpers",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/on-create/setup-proto.sh",
+				(source) =>
+					source.replace(
+						'repo_root="/workspace"',
 						String.raw`repo_root="\${DEVCONTAINER_REPO_ROOT:-/workspace}"`,
 					),
 				"image: setup-proto trusts forbidden DEVCONTAINER_REPO_ROOT override",
@@ -186,17 +196,13 @@ describe("devcontainer image contract", () => {
 			);
 			await mutate(
 				temporary,
-				".devcontainer/on-create.sh",
-				(source) => {
-					const verifier =
-						"source /workspace/.devcontainer/on-create/setup-proto.sh";
-					const secrets =
-						"source /workspace/.devcontainer/on-create/setup-secrets.sh";
-					return source
-						.replace(`${verifier}\n`, "")
-						.replace(secrets, `${secrets}\n${verifier}`);
-				},
-				"image: on-create must verify Proto before every other sourced lifecycle action",
+				".devcontainer/devcontainer.json",
+				(source) =>
+					source.replace(
+						"/usr/local/share/devenv-image/setup-proto.sh",
+						"/workspace/.devcontainer/on-create/setup-proto.sh",
+					),
+				"image: onCreateCommand must run the image-owned verifier before checkout code",
 			);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });

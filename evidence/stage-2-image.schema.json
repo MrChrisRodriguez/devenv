@@ -143,6 +143,9 @@
 				"preVerificationBashEnvExecution",
 				"preVerificationExportedFunctionExecution",
 				"preVerificationBunOptionsExecution",
+				"preVerificationOnCreateExecution",
+				"preVerificationSetupCommonExecution",
+				"preVerificationFingerprintScriptExecution",
 				"containerExitCode",
 				"refused",
 				"diagnostic"
@@ -150,7 +153,7 @@
 			"properties": {
 				"commandId": { "const": "stale-image-refusal" },
 				"mutation": {
-					"const": "shadow-workspace-shell-env-tools-overrides-and-edit-definition"
+					"const": "shadow-workspace-startup-tools-overrides-and-edit-definition"
 				},
 				"originalDefinitionFingerprint": { "$ref": "#/$defs/sha256" },
 				"mutatedDefinitionFingerprint": { "$ref": "#/$defs/sha256" },
@@ -196,6 +199,9 @@
 				"preVerificationBashEnvExecution": { "const": false },
 				"preVerificationExportedFunctionExecution": { "const": false },
 				"preVerificationBunOptionsExecution": { "const": false },
+				"preVerificationOnCreateExecution": { "const": false },
+				"preVerificationSetupCommonExecution": { "const": false },
+				"preVerificationFingerprintScriptExecution": { "const": false },
 				"containerExitCode": { "type": "integer", "minimum": 1 },
 				"refused": { "const": true },
 				"diagnostic": { "type": "string", "minLength": 20 }

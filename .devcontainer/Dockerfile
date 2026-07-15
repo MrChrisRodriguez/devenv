@@ -246,8 +246,10 @@ COPY .dockerignore /tmp/devenv-definition/.dockerignore
 COPY .prototools /tmp/devenv-definition/.prototools
 COPY .devcontainer /tmp/devenv-definition/.devcontainer
 RUN mkdir -p /usr/local/share/devenv-image \
+	&& install -m 0555 /tmp/devenv-definition/.devcontainer/devcontainer-fingerprint.sh /usr/local/share/devenv-image/devcontainer-fingerprint.sh \
+	&& install -m 0555 /tmp/devenv-definition/.devcontainer/on-create/setup-proto.sh /usr/local/share/devenv-image/setup-proto.sh \
 	&& sha256sum /tmp/devenv-definition/.prototools | awk '{print $1}' > /usr/local/share/devenv-image/prototools.sha256 \
-	&& bash /tmp/devenv-definition/.devcontainer/devcontainer-fingerprint.sh /tmp/devenv-definition > /usr/local/share/devenv-image/definition.sha256 \
+	&& bash /usr/local/share/devenv-image/devcontainer-fingerprint.sh /tmp/devenv-definition > /usr/local/share/devenv-image/definition.sha256 \
 	&& chmod 0444 /usr/local/share/devenv-image/*.sha256 \
 	&& rm -rf /tmp/devenv-definition
 

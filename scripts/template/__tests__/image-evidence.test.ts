@@ -136,8 +136,7 @@ function validEvidence(): JsonRecord {
 		],
 		staleImageRefusal: {
 			commandId: "stale-image-refusal",
-			mutation:
-				"shadow-workspace-shell-env-tools-overrides-and-edit-definition",
+			mutation: "shadow-workspace-startup-tools-overrides-and-edit-definition",
 			originalDefinitionFingerprint: "5".repeat(64),
 			mutatedDefinitionFingerprint: "6".repeat(64),
 			shadowBunPath: "/workspace/node_modules/.bin/bun",
@@ -162,6 +161,9 @@ function validEvidence(): JsonRecord {
 			preVerificationBashEnvExecution: false,
 			preVerificationExportedFunctionExecution: false,
 			preVerificationBunOptionsExecution: false,
+			preVerificationOnCreateExecution: false,
+			preVerificationSetupCommonExecution: false,
+			preVerificationFingerprintScriptExecution: false,
 			containerExitCode: 1,
 			refused: true,
 			diagnostic:

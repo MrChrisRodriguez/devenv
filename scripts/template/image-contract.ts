@@ -282,6 +282,12 @@ export async function validateImageContract(
 		errors.push("image: Dockerfile contains a mutable download source");
 	if (!dockerfile.includes("/etc/profile.d/devenv-path.sh"))
 		errors.push("image: login shells omit the image-owned tool PATH");
+	for (const install of [
+		"/usr/local/share/devenv-image/devcontainer-fingerprint.sh",
+		"/usr/local/share/devenv-image/setup-proto.sh",
+	])
+		if (!dockerfile.includes(install))
+			errors.push(`image: Dockerfile omits image-owned verifier ${install}`);
 	for (const owner of ["DELTA", "RTK", "CLAUDE", "ZINIT"] as const) {
 		if (!dockerfile.includes(`$${owner}_SHA256`))
 			errors.push(`image: ${owner} download does not select a checksum`);
@@ -334,7 +340,10 @@ export async function validateImageContract(
 		"NODE_OPTIONS",
 		"/bin/bash",
 		"-p",
+		"-c",
 	];
+	const imageVerifier =
+		"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh";
 	for (const lifecycle of [
 		"onCreateCommand",
 		"postCreateCommand",
@@ -347,6 +356,18 @@ export async function validateImageContract(
 		)
 			errors.push(
 				`image: ${lifecycle} must scrub shell startup code before privileged Bash`,
+			);
+		const body = Array.isArray(command)
+			? command[lifecyclePrefix.length]
+			: undefined;
+		const commandLength = Array.isArray(command) ? command.length : -1;
+		if (
+			typeof body !== "string" ||
+			commandLength !== lifecyclePrefix.length + 1 ||
+			!body.startsWith(`${imageVerifier} && `)
+		)
+			errors.push(
+				`image: ${lifecycle} must run the image-owned verifier before checkout code`,
 			);
 	}
 	if (!JSON.stringify(devcontainer["postStartCommand"]).includes("/bin/bash"))
@@ -387,6 +408,7 @@ export async function validateImageContract(
 		"/usr/bin/sha256sum",
 		"/usr/bin/awk",
 		"/usr/bin/tr",
+		'fingerprint_script="$image_contract_dir/devcontainer-fingerprint.sh"',
 		"Rebuild/recreate the devcontainer",
 	]) {
 		if (!setupProto.includes(marker))
@@ -394,6 +416,8 @@ export async function validateImageContract(
 	}
 	if (/image_bun=.*\/shims\/bun/.test(setupProto))
 		errors.push("image: setup-proto must not fingerprint through a Proto shim");
+	if (setupProto.includes("setup-common.sh"))
+		errors.push("image: image verifier must not source checkout helpers");
 	if (
 		!setupProto.includes(
 			'/usr/bin/env -i DEVCONTAINER_FINGERPRINT_BUN="$image_bun"',
@@ -424,14 +448,9 @@ export async function validateImageContract(
 	const onCreate = await Bun.file(
 		resolve(root, ".devcontainer/on-create.sh"),
 	).text();
-	const firstLifecycleSource = /^[\t ]*source[\t ]+([^\s#]+)[\t ]*$/m.exec(
-		onCreate,
-	)?.[1];
-	if (
-		firstLifecycleSource !== "/workspace/.devcontainer/on-create/setup-proto.sh"
-	)
+	if (onCreate.includes("setup-proto.sh"))
 		errors.push(
-			"image: on-create must verify Proto before every other sourced lifecycle action",
+			"image: mounted on-create must not implement the image verifier",
 		);
 	if (
 		/\$HOME\/\.proto[^\n]*(?:chown|Claim)|setup-vscode-extensions/.test(

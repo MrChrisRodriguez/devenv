@@ -24,7 +24,8 @@
 		"NODE_OPTIONS",
 		"/bin/bash",
 		"-p",
-		"/workspace/.devcontainer/on-create.sh"
+		"-c",
+		"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && exec /bin/bash -p /workspace/.devcontainer/on-create.sh"
 	],
 	"postCreateCommand": [
 		"/usr/bin/env",
@@ -39,7 +40,7 @@
 		"/bin/bash",
 		"-p",
 		"-c",
-		"export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
+		"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
 	],
 	"customizations": {
 		"vscode": {
@@ -102,7 +103,7 @@
 		"/bin/bash",
 		"-p",
 		"-c",
-		"/bin/bash /workspace/.devcontainer/on-create/setup-secrets.sh; export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
+		"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && /bin/bash /workspace/.devcontainer/on-create/setup-secrets.sh; export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$PATH\""
 	],
 	"waitFor": "postStartCommand",
 	"forwardPorts": [3000, 4000, 8080, 8787],

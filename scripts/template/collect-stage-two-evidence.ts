@@ -58,7 +58,7 @@ interface CapturedCommand {
 
 interface StaleProbe {
 	commandId: "stale-image-refusal";
-	mutation: "shadow-workspace-shell-env-tools-overrides-and-edit-definition";
+	mutation: "shadow-workspace-startup-tools-overrides-and-edit-definition";
 	originalDefinitionFingerprint: string;
 	mutatedDefinitionFingerprint: string;
 	shadowBunPath: "/workspace/node_modules/.bin/bun";
@@ -77,6 +77,9 @@ interface StaleProbe {
 	preVerificationBashEnvExecution: false;
 	preVerificationExportedFunctionExecution: false;
 	preVerificationBunOptionsExecution: false;
+	preVerificationOnCreateExecution: false;
+	preVerificationSetupCommonExecution: false;
+	preVerificationFingerprintScriptExecution: false;
 	containerExitCode: number;
 	refused: true;
 	diagnostic: string;
@@ -272,7 +275,7 @@ export async function probeStale(options_: {
 	await addWorktree(root, workspace, "HEAD");
 	try {
 		const fingerprintScript = resolve(
-			workspace,
+			root,
 			".devcontainer/devcontainer-fingerprint.sh",
 		);
 		const fingerprint = (): string =>
@@ -288,6 +291,24 @@ export async function probeStale(options_: {
 			definitionPath,
 			`${await Bun.file(definitionPath).text()}\n`,
 		);
+		for (const [path, sentinel] of [
+			[".devcontainer/on-create.sh", "PREVERIFY_ON_CREATE_EXECUTED"],
+			[
+				".devcontainer/on-create/setup-common.sh",
+				"PREVERIFY_SETUP_COMMON_EXECUTED",
+			],
+			[
+				".devcontainer/devcontainer-fingerprint.sh",
+				"PREVERIFY_FINGERPRINT_SCRIPT_EXECUTED",
+			],
+		] as const) {
+			const target = resolve(workspace, path);
+			const source = await Bun.file(target).text();
+			await Bun.write(
+				target,
+				source.replace("\n", `\n/bin/echo ${sentinel} >&2\n`),
+			);
+		}
 		const mutatedDefinitionFingerprint = fingerprint();
 		if (originalDefinitionFingerprint === mutatedDefinitionFingerprint)
 			throw new Error("Definition mutation did not change the fingerprint");
@@ -357,7 +378,8 @@ export async function probeStale(options_: {
 			"NODE_OPTIONS",
 			"/bin/bash",
 			"-p",
-			"/workspace/.devcontainer/on-create.sh",
+			"-c",
+			"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && exec /bin/bash -p /workspace/.devcontainer/on-create.sh",
 		];
 		const result = execute(command, root);
 		const diagnostic = `${result.stdout}\n${result.stderr}`.trim();
@@ -386,10 +408,18 @@ export async function probeStale(options_: {
 			throw new Error(
 				`BUN_OPTIONS preload executed before stale-image refusal:\n${diagnostic}`,
 			);
+		for (const [sentinel, label] of [
+			["PREVERIFY_ON_CREATE_EXECUTED", "Mounted on-create"],
+			["PREVERIFY_SETUP_COMMON_EXECUTED", "Mounted setup-common"],
+			["PREVERIFY_FINGERPRINT_SCRIPT_EXECUTED", "Mounted fingerprint script"],
+		] as const)
+			if (diagnostic.includes(sentinel))
+				throw new Error(
+					`${label} executed before stale-image refusal:\n${diagnostic}`,
+				);
 		return {
 			commandId: "stale-image-refusal",
-			mutation:
-				"shadow-workspace-shell-env-tools-overrides-and-edit-definition",
+			mutation: "shadow-workspace-startup-tools-overrides-and-edit-definition",
 			originalDefinitionFingerprint,
 			mutatedDefinitionFingerprint,
 			shadowBunPath: "/workspace/node_modules/.bin/bun",
@@ -409,6 +439,9 @@ export async function probeStale(options_: {
 			preVerificationBashEnvExecution: false,
 			preVerificationExportedFunctionExecution: false,
 			preVerificationBunOptionsExecution: false,
+			preVerificationOnCreateExecution: false,
+			preVerificationSetupCommonExecution: false,
+			preVerificationFingerprintScriptExecution: false,
 			containerExitCode: result.exitCode,
 			refused: true,
 			diagnostic,
