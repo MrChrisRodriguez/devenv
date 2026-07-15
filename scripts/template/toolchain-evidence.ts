@@ -121,6 +121,22 @@ function git(root: string, args: string[]): number {
 	}).exitCode;
 }
 
+function gitOutput(
+	root: string,
+	args: string[],
+): { exitCode: number; stdout: string } {
+	const result = Bun.spawnSync({
+		cmd: ["git", ...args],
+		cwd: root,
+		stdout: "pipe",
+		stderr: "ignore",
+	});
+	return {
+		exitCode: result.exitCode,
+		stdout: result.stdout.toString().trim(),
+	};
+}
+
 export function validateStageOneEvidenceValue(
 	value: unknown,
 	schema: JsonRecord,
@@ -330,6 +346,7 @@ export async function validateStageOneEvidence(
 		errors.push("repository: evidence feature lock count is inconsistent");
 
 	const baseSha = recordAt(value, "source")["baseSha"];
+	const implementationSha = recordAt(value, "source")["implementationSha"];
 	if (typeof baseSha !== "string")
 		errors.push("repository: Stage 1 base commit is unavailable");
 	else {
@@ -338,6 +355,72 @@ export async function validateStageOneEvidence(
 		if (git(root, ["merge-base", "--is-ancestor", baseSha, "HEAD"]) !== 0)
 			errors.push("repository: Stage 1 base commit is not an ancestor of HEAD");
 	}
+	if (implementationSha !== undefined) {
+		if (typeof implementationSha !== "string")
+			errors.push("repository: Stage 1 implementation commit is unavailable");
+		else {
+			if (git(root, ["cat-file", "-e", `${implementationSha}^{commit}`]) !== 0)
+				errors.push(
+					`repository: Stage 1 implementation commit ${implementationSha} is unavailable`,
+				);
+			if (
+				typeof baseSha === "string" &&
+				git(root, [
+					"merge-base",
+					"--is-ancestor",
+					baseSha,
+					implementationSha,
+				]) !== 0
+			)
+				errors.push(
+					"repository: Stage 1 base is not an ancestor of implementation",
+				);
+			if (
+				git(root, [
+					"merge-base",
+					"--is-ancestor",
+					implementationSha,
+					"HEAD",
+				]) !== 0
+			)
+				errors.push(
+					"repository: Stage 1 implementation is not an ancestor of HEAD",
+				);
+			const boundaryDiff = gitOutput(root, [
+				"diff",
+				"--name-only",
+				implementationSha,
+				"HEAD",
+			]);
+			if (boundaryDiff.exitCode !== 0)
+				errors.push(
+					"repository: Stage 1 evidence boundary could not be inspected",
+				);
+			else {
+				for (const path of boundaryDiff.stdout.split("\n").filter(Boolean)) {
+					if (
+						path !== "evidence/stage-1-toolchain.json" &&
+						path !== "evidence/stage-1-toolchain.schema.json"
+					)
+						errors.push(
+							`repository: post-implementation boundary changes non-evidence path ${path}`,
+						);
+				}
+			}
+		}
+	}
+	if (
+		recordAt(value, "source")["featureTreeClean"] === true &&
+		git(root, [
+			"diff",
+			"--quiet",
+			"HEAD",
+			"--",
+			".",
+			":(exclude)graphify-out/**",
+		]) !== 0
+	)
+		errors.push("repository: non-Graphify feature tree is not clean");
 
 	return [...new Set(errors)].sort();
 }
