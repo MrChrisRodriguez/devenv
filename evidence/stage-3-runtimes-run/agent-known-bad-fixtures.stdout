@@ -1,0 +1,36 @@
+bun test v1.3.13 (bf2e2cec)
+[stage2-observed] image: Proto partition duplicates tools.bun
+[stage2-observed] image: Proto partition tool union differs from .prototools
+[stage2-observed] image: delta arm64 checksum is missing or malformed
+[stage2-observed] image: Dockerfile contains a mutable download source
+[stage2-observed] image: login shells omit the image-owned tool PATH
+[stage2-observed] image: setup-proto mutates the image-owned toolchain
+[stage2-observed] image: setup-proto omits DEVCONTAINER_FINGERPRINT_BUN
+[stage2-observed] image: setup-proto must not fingerprint through a Proto shim
+[stage2-observed] image: setup-proto must isolate the fingerprint environment
+[stage2-observed] image: image verifier must not source checkout helpers
+[stage2-observed] image: setup-proto trusts forbidden DEVCONTAINER_REPO_ROOT override
+[stage2-observed] image: setup-proto trusts forbidden DEVCONTAINER_IMAGE_CONTRACT_DIR override
+[stage2-observed] image: onCreateCommand must scrub shell startup code before privileged Bash
+[stage2-observed] image: onCreateCommand must scrub shell startup code before privileged Bash
+[stage2-observed] image: active devcontainer must not mount Proto storage
+[stage2-observed] image: onCreateCommand must run the image-owned verifier before checkout code
+[stage2-observed] agents: CONTEXT7_VERSION must have one immutable Docker authority
+[stage2-observed] agents: OCTOPUS_COMMIT must have one immutable Docker authority
+[stage2-observed] agents: WARP_SHA256 must have one immutable Docker authority
+[stage2-observed] agents: setup-claude-octopus.sh contains a floating runtime fetch
+[stage2-observed] agents: setup-claude-octopus.sh must reject project/shared skill collisions
+[stage2-observed] agents: setup-claude-octopus.sh must reject project/shared skill collisions
+[stage2-observed] agents: setup-claude-warp.sh must verify local marketplace and installed source authorities
+[stage2-observed] agents: setup-claude-warp.sh must fail closed on registration errors
+[stage2-observed] agents: .claude/settings.json must invoke the image-owned Context7 launcher
+[stage2-observed] agents: bash non-login PATH must prefer workspace and Proto before image launchers
+[stage2-observed] agents: Gemini watchdog omits absolute real payload
+[stage2-observed] agents: Gemini watchdog omits dedicated child process group
+[stage2-observed] agents: Gemini watchdog omits pass-through classification
+[stage2-observed] agents: Gemini watchdog must not permit payload substitution
+[stage2-observed] agents: Dockerfile must install the Gemini watchdog at /home/vscode/.local/bin/gemini
+[stage2-observed] agents: setup-gemini must verify watchdog and real payload
+[stage2-observed] agents: Gemini watchdog ownership must require Gemini
+[stage2-observed] amd64 and arm64 checksum branches are complete and independently selected
+[stage2-observed] complete definition fingerprint is deterministic and detects mutation

@@ -42,6 +42,7 @@ export interface PackageRule {
 	capability: string;
 	sections: string[];
 	packages: string[];
+	scripts?: string[];
 }
 
 export interface CapabilitySignature {
@@ -338,11 +339,34 @@ async function renderDevcontainer(
 	) as Record<string, unknown>;
 	transformed["name"] = parameters.project.display_name;
 	const build = transformed["build"] as Record<string, unknown>;
-	build["target"] = parameters.capabilities.defaults["playwright"]
-		? "development_browser"
-		: "development";
+	const playwrightEnabled = parameters.capabilities.defaults["playwright"];
+	build["target"] = playwrightEnabled ? "development_browser" : "development";
+	if (playwrightEnabled) {
+		const postCreate = transformed["postCreateCommand"];
+		const shellBodyIndex = Array.isArray(postCreate)
+			? postCreate.lastIndexOf("-c") + 1
+			: -1;
+		if (
+			!Array.isArray(postCreate) ||
+			shellBodyIndex <= 0 ||
+			shellBodyIndex !== postCreate.length - 1 ||
+			typeof postCreate[shellBodyIndex] !== "string"
+		) {
+			throw new Error(
+				"Browser-enabled fixture requires a shell postCreateCommand",
+			);
+		}
+		postCreate[shellBodyIndex] =
+			`${postCreate[shellBodyIndex]} && bun run browser:preflight`;
+	}
 	const containerEnv = transformed["containerEnv"] as Record<string, unknown>;
 	containerEnv["DEVCONTAINER_PROJECT"] = parameters.project.slug;
+	if (!parameters.capabilities.defaults["claude_octopus"])
+		delete containerEnv["OCTO_ALLOWED_PROVIDERS"];
+	if (!parameters.capabilities.defaults["claude_warp"]) {
+		delete transformed["initializeCommand"];
+		delete transformed["_comment_warp"];
+	}
 	const ports = parameters.advertised_ports
 		.filter(
 			(port) =>
@@ -404,6 +428,14 @@ async function renderPackage(
 	}
 	for (const rule of ownership.packageRules) {
 		if (parameters.capabilities.defaults[rule.capability] === true) continue;
+		if (
+			typeof scripts === "object" &&
+			scripts !== null &&
+			!Array.isArray(scripts)
+		) {
+			for (const script of rule.scripts ?? [])
+				delete (scripts as Record<string, unknown>)[script];
+		}
 		for (const sectionPath of rule.sections) {
 			let section: unknown = value;
 			for (const segment of sectionPath.split(".")) {
@@ -461,17 +493,25 @@ export function filterCapabilityBlocks(
 	let block: string | undefined;
 	let retain = false;
 	for (const line of source.split("\n")) {
-		const start = /^\s*(?:\/\/|#) capability:start ([a-z0-9_]+)$/.exec(line);
-		const end = /^\s*(?:\/\/|#) capability:end ([a-z0-9_]+)$/.exec(line);
-		if (start?.[1]) {
-			if (block) throw new Error(`Nested capability block ${start[1]}`);
-			block = start[1];
+		const start =
+			/^\s*(?:(?:\/\/|#)\s*capability:start\s+([a-z0-9_]+)|<!--\s*capability:start\s+([a-z0-9_]+)\s*-->)\s*$/.exec(
+				line,
+			);
+		const end =
+			/^\s*(?:(?:\/\/|#)\s*capability:end\s+([a-z0-9_]+)|<!--\s*capability:end\s+([a-z0-9_]+)\s*-->)\s*$/.exec(
+				line,
+			);
+		const startName = start?.[1] ?? start?.[2];
+		const endName = end?.[1] ?? end?.[2];
+		if (startName) {
+			if (block) throw new Error(`Nested capability block ${startName}`);
+			block = startName;
 			retain = capabilities[block] === true;
 			continue;
 		}
-		if (end?.[1]) {
-			if (block !== end[1])
-				throw new Error(`Mismatched capability block ${end[1]}`);
+		if (endName) {
+			if (block !== endName)
+				throw new Error(`Mismatched capability block ${endName}`);
 			block = undefined;
 			retain = false;
 			continue;
@@ -538,6 +578,15 @@ function filterAgentRuleLines(
 		.split("\n")
 		.filter((line) => {
 			if (
+				!parameters.capabilities.defaults["playwright"] &&
+				(line.includes("Browser Runtime Ownership") ||
+					line.includes("Playwright") ||
+					line.includes("browser-enabled") ||
+					line.includes("browser:check"))
+			) {
+				return false;
+			}
+			if (
 				!parameters.capabilities.defaults["cloudflare_workers"] &&
 				line.includes("Cloudflare package family")
 			) {
@@ -599,6 +648,7 @@ function filterOnCreateLines(
 		["setup-claude-octopus.sh", "claude_octopus"],
 		["setup-claude-warp.sh", "claude_warp"],
 		["setup-claude.sh", "claude"],
+		["setup-context7.sh", "context7"],
 		["setup-codex.sh", "codex"],
 		["setup-gemini.sh", "gemini"],
 		["setup-graphify.sh", "graphify"],
@@ -676,15 +726,12 @@ async function renderContent(
 	} catch {
 		return bytes;
 	}
-	content = stripTemplateOnlyBlocks(content)
+	content = filterCapabilityBlocks(
+		stripTemplateOnlyBlocks(content),
+		parameters.capabilities.defaults,
+	)
 		.replaceAll("/workspace", parameters.paths.container_workspace)
 		.replaceAll("@confiador/", `@${parameters.project.slug}/`);
-	if (
-		entry.path === "scripts/template/toolchain.ts" ||
-		entry.path === "scripts/template/image-contract.ts" ||
-		entry.path === ".devcontainer/Dockerfile"
-	)
-		content = filterCapabilityBlocks(content, parameters.capabilities.defaults);
 	if (entry.path === "AGENTS.md")
 		content = filterAgentRuleLines(content, parameters);
 	if (entry.path === ".devcontainer/on-create.sh") {

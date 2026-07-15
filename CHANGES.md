@@ -4,6 +4,20 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-07-15 — Add: reproducible Stage 3 acceptance evidence
+
+**Goal:** Bind the Stage 3 browser, agent payload, watchdog, shell, plugin-repair, performance, storage, and rollback acceptance results to exact commands and raw logs from the reviewed image.
+
+**How to implement:** Capture the warm browser image build, then inspect and bind the post-build manifest-list identity before running the repository-pinned browser launch, enabled launcher paths, local plugin source repair, Bash/Zsh login and non-login PATHs, existing known-bad fixture suites, second-worktree storage, and a synthetic mainline-revert proof through one Bun collector. Record exact argv, timestamps, image/source identities, log paths, and log SHA-256 values in a strict machine-readable schema. Revalidate the evidence against the current Docker/package authorities, runtime source markers, bound logs, committed Stage 2 comparison values, and an implementation boundary that remains ancestral to the PR head. Keep the cloud browser profile as an explicit Stage 4 handoff and roll back the complete Stage 3 merge atomically.
+
+The committed run `stage3-20260715t150405z-af2ac5b2` passed all 14 commands against post-build ARM64 image `sha256:9010dd4ed9ca43be94025199d47c02fff5755f5f9c522321a77963dffe33c5ff`. Its warm build was 2,345 ms, browser preflight was 1,756 ms, second-worktree growth was 4,775,936 bytes versus the 96,111,608-byte Stage 0 baseline, and the synthetic mainline revert restored the exact Stage 2 predecessor tree.
+
+## 2026-07-15 — Fix: integrate Stage 3 runtimes with the verified lifecycle
+
+**Goal:** Preserve Stage 2 lifecycle verification while making browser and agent payload behavior capability-complete and reliable in generated environments.
+
+**How to implement:** Append browser preflight to the final `-c` lifecycle body with `&&`, retaining the complete startup-scrub and image-verifier prefix. Mark the baked Playwright payload with its exact package version and require preflight to match that marker before launching the single headless shell, with no package-default fallback. Treat non-TTY Gemini stdin as headless, keep the shipped real-binary path fixed, and patch only temporary wrapper copies in hermetic tests. Omit Graphify stages, setup, and all three agent-specific skill copies when disabled; do not model an unowned Cursor Graphify root. Remove only Octopus's exact legacy shared link before rejecting project and user shared-root skill collisions. Prove each integration rule with a known-bad mutation, the Graphify-disabled minimal fixture, focused runtime tests, and the combined browser image smoke.
+
 ## 2026-07-14 — Fix: close Stage 2 adversarial evidence gaps
 
 **Goal:** Prevent a workspace binary from forging the image-definition check and make the recorded architecture, storage, cache, and rollback evidence reject cached or fabricated observations.
@@ -18,6 +32,40 @@ The replacement run `stage2-20260715t142339z-b2e18c63` executed both supported a
 - `.devcontainer/Dockerfile`, `.devcontainer/devcontainer.json`, `.devcontainer/devcontainer-fingerprint.sh`, `.devcontainer/on-create/setup-proto.sh` — image-owned verification before mounted checkout setup, absolute fingerprint execution, and realpath enforcement.
 - `scripts/template/image-evidence.ts`, `scripts/template/collect-stage-two-evidence.ts`, evidence schema/tests — uncached architecture proof and non-vacuous log/Git/metric validation.
 - `docs/devcontainer-upgrade/stage-2/README.md`, `scripts/template/image-contract.ts`, image tests — operator contract and regression guards.
+## 2026-07-15 — Add: bounded Gemini headless watchdog
+
+**Goal:** Prevent unattended Gemini prompts from hanging indefinitely without changing interactive behavior, caller-selected output formats, or the exact-pinned Gemini payload. Idle or signalled runs must terminate every process in the child group, report stable exit codes, and never treat malformed output as progress.
+
+**How to implement:** Keep the real CLI at `/home/vscode/.payloads/gemini/bin/gemini` and copy the Proto-Bun watchdog from `.devcontainer/configs/gemini-watchdog` to `/home/vscode/.local/bin/gemini`, where the existing PATH contract shadows the payload. Pass interactive, help/version, prompt-interactive, explicit-format, and `GEMINI_WATCHDOG_BYPASS=1` calls through unchanged. Add `stream-json` only to `-p`/`--prompt` runs; decode JSONL with a bounded partial line, sanitize assistant text, and reset the configurable idle deadline only for valid assistant or tool activity. Run the real CLI in a dedicated process group; on timeout, forwarded signal, or a leader that leaves descendants, signal the group, wait the bounded grace period, escalate to KILL, and reap it. Preserve timeout `124`, missing-binary `127`, configuration `2`, normal child, and `128 + signal` exits. Capability-own the wrapper source, verify both wrapper and payload during on-create, guard the Docker destination and process semantics, and cover pass-through, output, activity, malformed/oversized streams, TERM resistance, signals, and orphan cleanup with a hermetic fake Gemini. Roll back the eventual Stage 3 merge atomically; a temporary operational bypass may set `GEMINI_WATCHDOG_BYPASS=1` while retaining the exact image payload.
+
+**Changed files:**
+- `.devcontainer/configs/gemini-watchdog`, `.devcontainer/Dockerfile`, `.devcontainer/on-create/setup-gemini.sh` — bounded stream watchdog, image shadow path, and fail-closed verification.
+- `scripts/template/agent-payload-contract.ts`, image/watchdog tests and fake Gemini fixture, ownership inventory — structural, capability, mutation, process-group, and exit-code proof.
+- `docs/devcontainer-upgrade/stage-3/agent-payloads.md`, `AGENTS.md` — operator variables, runtime boundary, maintenance rule, and rollback.
+
+## 2026-07-15 — Add: exact agent and local plugin payload contract
+
+**Goal:** Finish the agent-runtime portion of the Stage 3 image without mutable first-run downloads, duplicate skill discovery, or shell-dependent launcher selection. Codex, Gemini, Claude, Graphify, ccstatusline, Context7, Claude Octopus, and Warp must each have one exact image authority and remain capability-complete when rendered.
+
+**How to implement:** Keep the reviewed Codex `0.144.4`, Gemini `0.50.0`, Claude `2.1.210`, Graphify `0.9.16`, ccstatusline `2.2.23`, and node-gyp `13.0.1` payloads isolated. Add Context7 MCP `3.2.3` as its own Bun payload and replace floating `bunx` MCP commands with the image launcher. Download Claude Octopus commit `f42f34a8f9a7ee5b9324e8b2d23159878c132b02` and Warp commit `58c823da195346a7e6645fd2d9484d0e38db6bc2` only through immutable archive URLs, verify the reviewed SHA-256 digests, and rewrite Octopus's local marketplace entry so bounded on-create registration never reaches GitHub. Require persisted Claude marketplaces to point at the image directories and compare installed plugin source markers with their image authorities, reinstalling locally when an older cache differs. Move the Codex Graphify skill from the shared `.agents` root to `.codex/skills/graphify`, retain Claude/Gemini-specific copies, model every effective discovery root, refuse duplicate names, and link Octopus skills collision-safely into Codex's own user root. Disable nonessential updater/telemetry behavior for unattended setup and normalize Bash/Zsh login, non-login, editor, and on-create PATH authority to workspace binaries, Proto shims, Proto binaries, then image launchers. Render Context7, Octopus, and Warp stages/setup/config only when selected; prove omission with the minimal fixture and inclusion with the full fixture. Guard exact versions/commits/checksums, Renovate matching, local-only registration, launcher ownership, MCP commands, PATH ordering, and duplicate skills with positive and known-bad tests. Roll back this agent payload bundle atomically with `git revert -m 1 <stage-3-pr-merge-commit>`; do not restore the floating setup scripts independently.
+
+**Changed files:**
+- `.devcontainer/Dockerfile`, `renovate.json` — exact Context7 package payload plus checksum-verified Octopus/Warp source stages and isolated update authorities.
+- `.devcontainer/on-create/**`, `.devcontainer/devcontainer.json`, shell config, MCP settings — bounded local registration, unattended environment, direct Context7 launcher, and consistent PATH ownership.
+- `.codex/skills/graphify`, `.claude/skills/graphify`, `.gemini/skills/graphify` — agent-specific Graphify discovery without the duplicate shared root.
+- `scripts/template/agent-payload-contract.ts`, image contract/tests, fixture/ownership renderer — structural, mutation, skill-discovery, PATH, and capability omission proof.
+- `docs/devcontainer-upgrade/stage-3/agent-payloads.md`, `AGENTS.md`, `README.md` — maintenance, verification, and rollback contract.
+## 2026-07-15 — Add: capability-owned Playwright browser runtime
+
+**Goal:** Make the optional browser profile reproducible and executable instead of treating an installed package or downloaded browser directory as proof of health. The Playwright package family, Docker payload, system libraries, generated profile, and runtime launch now form one capability-owned contract while browser-disabled projects contain no related residue.
+
+**How to implement:** Keep `@playwright/test`, `playwright`, and `playwright-core` at one exact catalog/lock version and require the Docker `PLAYWRIGHT_VERSION` to match it. Build only Chromium's headless shell plus Playwright's matching FFmpeg in the isolated browser payload, assert both executables exist, and assemble them with the complete Debian runtime/font library set only in `development_browser`. Use the repository-local `browser:preflight` command to locate the single image-owned headless shell under `PLAYWRIGHT_BROWSERS_PATH` and pass that exact path to Playwright; `chromium.executablePath()` names the absent full-Chromium binary when only the shell is installed. Launch headlessly, load and verify a network-free data page, and close the page and browser. Render the guard, dependencies, scripts, Docker stages, generated post-create invocation, and CI browser-build/launch job only when Playwright is selected. The template source keeps its non-browser default but CI renders the full fixture and launches its baked payload. Run `browser:check`, the known-bad mutation tests, and a real `development_browser` container preflight. Roll back the package/lock/Docker/runtime/rendering bundle together; never install a system browser or unpinned fallback. The implementation was adapted from the reviewed Trading Games browser contract at commit `772996964cea7b2ac812e99ec3f8f9d490124630`.
+
+**Changed files:**
+- `.devcontainer/Dockerfile` — isolated exact browser/FFmpeg payload verification and complete runtime libraries.
+- `scripts/browser-preflight.ts`, `scripts/template/browser-contract.ts`, `scripts/template/validate-browser.ts` — real launch check and dedicated coherence guard.
+- `package.json`, `.github/workflows/ci.yml`, renderer/ownership/tests — capability-complete scripts, post-create/CI wiring, omission, and mutation proof.
+- `AGENTS.md` — ongoing atomic Playwright ownership and validation rules.
 
 ## 2026-07-14 — Add: reproducible payload-oriented devcontainer image
 

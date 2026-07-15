@@ -71,6 +71,27 @@ scripts/   # one-off tooling scripts
 - The active devcontainer must not mount `~/.proto`; use only `.devcontainer/host/cleanup-legacy-proto-volume.sh` with an exact devcontainer ID for old volumes.
 - Run `bun run image:check` plus the clean image build after changing Docker stages, payload pins, derived Proto manifests, mounts, or on-create ownership.
 - Stage 2 evidence is command-bound to its immutable implementation boundary. Do not hand-edit `evidence/stage-2-image.json` or its raw logs; rerun the documented collector so schema, semantic, digest, architecture, storage, and rollback proofs remain aligned.
+- Agent CLIs are exact image payloads. Runtime setup may verify them but must never download or repair a global agent tool.
+<!-- capability:start gemini -->
+- Gemini's real CLI remains `/home/vscode/.payloads/gemini/bin/gemini`; `/home/vscode/.local/bin/gemini` is the image-owned watchdog. Keep TTY-interactive, version, explicit-output-format, and bypass calls pass-through, and treat non-TTY stdin plus explicit prompts as bounded headless runs.
+<!-- capability:end gemini -->
+<!-- capability:start context7 -->
+- Context7 is an exact image payload; MCP settings invoke its launcher directly instead of a floating `bunx` package.
+<!-- capability:end context7 -->
+<!-- capability:start claude_octopus -->
+- Claude Octopus is a checksum-verified image payload. Runtime setup may only perform bounded registration from its local directory; it must never fetch a marketplace or clone a repository.
+<!-- capability:end claude_octopus -->
+<!-- capability:start claude_warp -->
+- Claude Warp is a checksum-verified image payload. Runtime setup may only perform bounded registration from its local directory; it must never fetch a marketplace or clone a repository.
+<!-- capability:end claude_warp -->
+- Skill names must be unique across each agent's effective project/shared discovery roots. Graphify is agent-specific at `.codex/skills/graphify`, `.claude/skills/graphify`, and `.gemini/skills/graphify`; do not restore `.agents/skills/graphify`.
+
+## Browser Runtime Ownership
+
+- The Playwright catalog pin, `@playwright/test`/`playwright`/`playwright-core` lock resolutions, Docker `PLAYWRIGHT_VERSION`, baked headless shell, and FFmpeg payload are one atomic version family.
+- Browser-enabled profiles use only `scripts/browser-preflight.ts` for launch verification. It must require `PLAYWRIGHT_BROWSERS_PATH`, match its payload marker to the repository package pin, launch the one baked headless shell, verify a repository-local page, and close the page and browser.
+- Playwright dependencies, image stages, package scripts, preflight, CI job, post-create wiring, documentation, and agent rules must all be omitted when the capability is disabled.
+- Run `bun run browser:check` and the real `development_browser` image preflight after changing any Playwright authority, browser library, renderer rule, or browser-profile command.
 
 ## Commit Policy
 

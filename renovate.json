@@ -13,10 +13,10 @@
 		},
 		{
 			"customType": "regex",
-			"description": "Immutable Zinit source commit.",
+			"description": "Immutable source commits for Zinit and agent plugin payloads.",
 			"managerFilePatterns": ["/^\\.devcontainer\\/Dockerfile$/"],
 			"matchStrings": [
-				"# renovate: datasource=(?<datasource>git-refs) depName=(?<depName>\\S+) packageName=(?<packageName>\\S+)\\s+ARG ZINIT_COMMIT=(?<currentValue>[0-9a-f]{40})\\s"
+				"# renovate: datasource=(?<datasource>git-refs) depName=(?<depName>\\S+) packageName=(?<packageName>\\S+)\\s+ARG (?:ZINIT|OCTOPUS|WARP)_COMMIT=(?<currentValue>[0-9a-f]{40})\\s"
 			]
 		}
 	],

@@ -24,11 +24,11 @@
 
 ## 4. Stage 3 PR — Browser and Agent Runtime Payloads
 
-- [ ] 4.1 Implement capability-gated Playwright package/lock/Docker pin coherence and bake the matching headless shell, FFmpeg, and libraries into its isolated image stage
-- [ ] 4.2 Add a repository-local browser preflight that launches, loads/verifies a page, closes cleanly, and runs after creation plus in CI/cloud browser profiles
-- [ ] 4.3 Exact-pin enabled Codex, Gemini, Claude, Graphify, ccstatusline, Context7, and Octopus payloads; remove duplicate skill paths and floating first-run/runtime installs
-- [ ] 4.4 Implement the Gemini headless watchdog with pass-through, streaming JSON activity, bounded partial lines, timeout 124, signal escalation, child-code propagation, bypass, and process-group cleanup
-- [ ] 4.5 Run pin/runtime/watchdog known-bad fixtures and real bounded smoke, verify login/non-login PATH ownership, record rollback/evidence, and update rules/docs/`CHANGES.md`
+ - [x] 4.1 Implement capability-gated Playwright package/lock/Docker pin coherence and bake the matching headless shell, FFmpeg, and libraries into its isolated image stage
+ - [x] 4.2 Add a repository-local browser preflight that launches, loads/verifies a page, closes cleanly, and runs after creation plus in CI/cloud browser profiles
+ - [x] 4.3 Exact-pin enabled Codex, Gemini, Claude, Graphify, ccstatusline, Context7, and Octopus payloads; remove duplicate skill paths and floating first-run/runtime installs
+ - [x] 4.4 Implement the Gemini headless watchdog with pass-through, streaming JSON activity, bounded partial lines, timeout 124, signal escalation, child-code propagation, bypass, and process-group cleanup
+- [x] 4.5 Run pin/runtime/watchdog known-bad fixtures and real bounded smoke, verify login/non-login PATH ownership, record rollback/evidence, and update rules/docs/`CHANGES.md`
 
 ## 5. Stage 4 PR — Codex Cloud Parity
 

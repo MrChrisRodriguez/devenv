@@ -142,6 +142,27 @@
 			"sourceOfTruth": "devcontainer image contract"
 		},
 		{
+			"pattern": "scripts/template/agent-payload-contract.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "agent payload and skill-discovery contract"
+		},
+		{
+			"pattern": "scripts/template/validate-browser.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "browser runtime contract entrypoint"
+		},
+		{
+			"pattern": "scripts/template/browser-contract.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "browser runtime contract"
+		},
+		{
 			"pattern": "scripts/template/**",
 			"classification": "template-tooling",
 			"syncPolicy": "merge",
@@ -269,7 +290,23 @@
 			"pattern": "tsconfig.stagehand.base.json",
 			"requiresAll": ["playwright"]
 		},
+		{
+			"pattern": "scripts/browser-preflight.ts",
+			"requiresAll": ["playwright"]
+		},
+		{
+			"pattern": "scripts/template/browser-contract.ts",
+			"requiresAll": ["playwright"]
+		},
+		{
+			"pattern": "scripts/template/validate-browser.ts",
+			"requiresAll": ["playwright"]
+		},
 		{ "pattern": ".codex/**", "requiresAll": ["codex"] },
+		{
+			"pattern": ".codex/skills/graphify/**",
+			"requiresAll": ["graphify"]
+		},
 		{ "pattern": ".codex/skills/openspec-*/**", "requiresAll": ["openspec"] },
 		{ "pattern": ".gemini/**", "requiresAll": ["gemini"] },
 		{ "pattern": ".gemini/commands/opsx/**", "requiresAll": ["openspec"] },
@@ -280,14 +317,12 @@
 		{ "pattern": ".claude/skills/graphify/**", "requiresAll": ["graphify"] },
 		{ "pattern": ".cursor/commands/opsx-*.md", "requiresAll": ["openspec"] },
 		{ "pattern": ".cursor/skills/openspec-*/**", "requiresAll": ["openspec"] },
-		{ "pattern": ".cursor/skills/graphify/**", "requiresAll": ["graphify"] },
 		{ "pattern": "CLAUDE.md", "requiresAll": ["claude"] },
 		{
 			"pattern": ".cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc",
 			"requiresAll": ["claude"]
 		},
 		{ "pattern": "GEMINI.md", "requiresAll": ["gemini"] },
-		{ "pattern": ".agents/skills/graphify/**", "requiresAll": ["graphify"] },
 		{
 			"pattern": ".devcontainer/ccstatusline-settings.json",
 			"requiresAll": ["ccstatusline"]
@@ -305,8 +340,16 @@
 			"requiresAll": ["claude_warp"]
 		},
 		{
+			"pattern": ".devcontainer/host/capture-warp-env.sh",
+			"requiresAll": ["claude_warp"]
+		},
+		{
 			"pattern": ".devcontainer/on-create/setup-claude.sh",
 			"requiresAll": ["claude"]
+		},
+		{
+			"pattern": ".devcontainer/on-create/setup-context7.sh",
+			"requiresAll": ["context7"]
 		},
 		{
 			"pattern": ".devcontainer/on-create/setup-codex.sh",
@@ -314,6 +357,10 @@
 		},
 		{
 			"pattern": ".devcontainer/on-create/setup-gemini.sh",
+			"requiresAll": ["gemini"]
+		},
+		{
+			"pattern": ".devcontainer/configs/gemini-watchdog",
 			"requiresAll": ["gemini"]
 		},
 		{
@@ -348,7 +395,8 @@
 		{
 			"capability": "playwright",
 			"sections": ["workspaces.catalog", "devDependencies"],
-			"packages": ["@playwright/test"]
+			"packages": ["@playwright/test"],
+			"scripts": ["browser:check", "browser:preflight"]
 		},
 		{
 			"capability": "rhf_zod",
@@ -374,13 +422,35 @@
 			"paths": [],
 			"tokens": ["context7", "CONTEXT7_API_KEY", "@upstash/context7-mcp"]
 		},
+		"gemini": {
+			"paths": [
+				".devcontainer/configs/gemini-watchdog",
+				".devcontainer/on-create/setup-gemini.sh",
+				".gemini/**",
+				"GEMINI.md"
+			],
+			"tokens": ["gemini_payload", "GEMINI_VERSION", "GEMINI_WATCHDOG"]
+		},
+		"claude_octopus": {
+			"paths": [".devcontainer/on-create/setup-claude-octopus.sh"],
+			"tokens": ["octopus_payload", "OCTOPUS_COMMIT", "Claude Octopus"]
+		},
+		"claude_warp": {
+			"paths": [".devcontainer/on-create/setup-claude-warp.sh"],
+			"tokens": ["warp_payload", "WARP_COMMIT", "Claude Code Warp"]
+		},
 		"moon_affected_selection": {
 			"paths": ["ci-matrix-universes.json", "scripts/ci/affected-matrices.sh"],
 			"tokens": ["MOON_AFFECTED_MODE"]
 		},
 		"openspec": { "paths": [], "tokens": ["@fission-ai/openspec"] },
 		"playwright": {
-			"paths": ["tsconfig.stagehand.base.json", "scripts/browser-preflight.ts"],
+			"paths": [
+				"tsconfig.stagehand.base.json",
+				"scripts/browser-preflight.ts",
+				"scripts/template/browser-contract.ts",
+				"scripts/template/validate-browser.ts"
+			],
 			"tokens": ["playwright"]
 		},
 		"rhf_zod": {
@@ -459,16 +529,22 @@
 			"runtimeMutation": true
 		},
 		{
+			"source": "Dockerfile#CONTEXT7_VERSION and committed MCP settings",
+			"destination": "$HOME/.payloads/context7 and $HOME/.local/bin/context7-mcp",
+			"generator": ".devcontainer/on-create/setup-context7.sh",
+			"runtimeMutation": false
+		},
+		{
 			"source": ".devcontainer/ccstatusline-settings.json",
 			"destination": "$HOME/.config/ccstatusline/settings.json and $HOME/.claude/settings.json",
 			"generator": ".devcontainer/on-create/setup-ccstatusline.sh",
 			"runtimeMutation": true
 		},
 		{
-			"source": "Gemini package authority",
-			"destination": "$HOME/.bun global package state and $HOME/.bun/bin/gemini",
+			"source": "Dockerfile#GEMINI_VERSION and .devcontainer/configs/gemini-watchdog",
+			"destination": "$HOME/.payloads/gemini/bin/gemini and $HOME/.local/bin/gemini",
 			"generator": ".devcontainer/on-create/setup-gemini.sh",
-			"runtimeMutation": true
+			"runtimeMutation": false
 		},
 		{
 			"source": "Codex package authority",

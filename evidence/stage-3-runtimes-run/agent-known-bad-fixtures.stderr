@@ -1,0 +1,12 @@
+
+scripts/template/__tests__/image.test.ts:
+(pass) devcontainer image contract > passes the real tree and rejects known-bad image mutations [166.99ms]
+(pass) devcontainer image contract > selects independently pinned checksum branches [0.56ms]
+(pass) devcontainer image contract > fingerprint is deterministic and changes with a definition input [60.80ms]
+(pass) devcontainer image contract > Gemini capability owns and renders the watchdog atomically [4.08ms]
+(pass) devcontainer image contract > rendered minimal and full images match capability selection [333.59ms]
+
+ 5 pass
+ 0 fail
+ 110 expect() calls
+Ran 5 tests across 1 file. [577.00ms]

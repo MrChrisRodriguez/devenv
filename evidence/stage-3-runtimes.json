@@ -1,0 +1,518 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-3-browser-agent-runtimes",
+	"capturedAt": "2026-07-15T15:04:27.782Z",
+	"run": {
+		"id": "stage3-20260715t150405z-af2ac5b2",
+		"logRoot": "evidence/stage-3-runtimes-run",
+		"temporaryRoot": "/tmp/devenv-stage2-stage3-20260715t150405z-af2ac5b2"
+	},
+	"source": {
+		"baseSha": "2a2d4ab71723a608e7170d93a47622b6d92d2fac",
+		"implementationSha": "af2ac5b288c226e8ee5c86e30325ecb2ae46b45c",
+		"featureTreeClean": true
+	},
+	"image": {
+		"tag": "devenv-stage3-edaa9dd",
+		"imageId": "sha256:9010dd4ed9ca43be94025199d47c02fff5755f5f9c522321a77963dffe33c5ff",
+		"architecture": "arm64",
+		"os": "linux",
+		"pins": {
+			"playwright": "1.59.1",
+			"codex": "0.144.4",
+			"gemini": "0.50.0",
+			"graphify": "0.9.16",
+			"claude": "2.1.210",
+			"ccstatusline": "2.2.23",
+			"context7": "3.2.3",
+			"octopusCommit": "f42f34a8f9a7ee5b9324e8b2d23159878c132b02",
+			"octopusSha256": "64104245973939c1508babb4503bef56fdf455ffe57370758a8d07fbc0866263",
+			"warpCommit": "58c823da195346a7e6645fd2d9484d0e38db6bc2",
+			"warpSha256": "054607a80b7eb5571615925a6991082091d063b4eac591499177716421f76557"
+		}
+	},
+	"commands": [
+		{
+			"id": "warm-browser-build",
+			"command": [
+				"docker",
+				"buildx",
+				"build",
+				"--file",
+				".devcontainer/Dockerfile",
+				"--platform",
+				"linux/arm64",
+				"--target",
+				"development_browser",
+				"--tag",
+				"devenv-stage3-edaa9dd",
+				"--progress",
+				"plain",
+				"--load",
+				"."
+			],
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:05.779Z",
+			"completedAt": "2026-07-15T15:04:08.124Z",
+			"durationMs": 2345,
+			"stdoutPath": "evidence/stage-3-runtimes-run/warm-browser-build.stdout",
+			"stderrPath": "evidence/stage-3-runtimes-run/warm-browser-build.stderr",
+			"stdoutSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"stderrSha256": "95cb124ebec085965c08006f0d626480b5a07fa3baad335924cca2d267e027c2",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "image-inspect",
+			"command": [
+				"docker",
+				"image",
+				"inspect",
+				"--format",
+				"{{json .Id}}|{{json .Architecture}}|{{json .Os}}",
+				"devenv-stage3-edaa9dd"
+			],
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:08.126Z",
+			"completedAt": "2026-07-15T15:04:08.420Z",
+			"durationMs": 294,
+			"stdoutPath": "evidence/stage-3-runtimes-run/image-inspect.stdout",
+			"stderrPath": "evidence/stage-3-runtimes-run/image-inspect.stderr",
+			"stdoutSha256": "d01a01822647e33b1cbde20ef3b77b8c31389af261af2d84e34bbce3e9a14a8f",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "browser-preflight",
+			"command": [
+				"docker",
+				"run",
+				"--rm",
+				"--mount",
+				"type=bind,src=.,dst=/workspace,readonly",
+				"--workdir",
+				"/workspace",
+				"devenv-stage3-edaa9dd",
+				"/usr/bin/env",
+				"-u",
+				"BASH_ENV",
+				"-u",
+				"ENV",
+				"-u",
+				"BUN_OPTIONS",
+				"-u",
+				"NODE_OPTIONS",
+				"/bin/bash",
+				"-p",
+				"-c",
+				"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && bun run browser:preflight"
+			],
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:08.421Z",
+			"completedAt": "2026-07-15T15:04:10.177Z",
+			"durationMs": 1756,
+			"stdoutPath": "evidence/stage-3-runtimes-run/browser-preflight.stdout",
+			"stderrPath": "evidence/stage-3-runtimes-run/browser-preflight.stderr",
+			"stdoutSha256": "f41c987dc8f984cf19c48cc2e56a2defe105b375d316ec1e8241e9ca871b6093",
+			"stderrSha256": "ad36c27c7a0b8d3fe0754fcbbd0879eec89f1730d81cb8c25861ecc40d7347b2",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "launcher-smoke",
+			"command": [
+				"docker",
+				"run",
+				"--rm",
+				"--mount",
+				"type=bind,src=.,dst=/workspace,readonly",
+				"--workdir",
+				"/workspace",
+				"--entrypoint",
+				"/bin/bash",
+				"devenv-stage3-edaa9dd",
+				"-p",
+				"-c",
+				"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && /bin/bash -p /workspace/scripts/template/run-stage-three-image-smoke.sh launchers"
+			],
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:10.180Z",
+			"completedAt": "2026-07-15T15:04:10.678Z",
+			"durationMs": 498,
+			"stdoutPath": "evidence/stage-3-runtimes-run/launcher-smoke.stdout",
+			"stderrPath": "evidence/stage-3-runtimes-run/launcher-smoke.stderr",
+			"stdoutSha256": "f5e7d40bdd80cef22ddc075e917db8f0fe94312c9204d0488f8d2dfd164bb543",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "plugin-repair-smoke",
+			"command": [
+				"docker",
+				"run",
+				"--rm",
+				"--mount",
+				"type=bind,src=.,dst=/workspace,readonly",
+				"--workdir",
+				"/workspace",
+				"--tmpfs",
+				"/home/vscode/.claude:uid=1000,gid=1000,mode=0755",
+				"--tmpfs",
+				"/home/vscode/.codex:uid=1000,gid=1000,mode=0755",
+				"--entrypoint",
+				"/bin/bash",
+				"devenv-stage3-edaa9dd",
+				"-p",
+				"-c",
+				"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && /bin/bash -p /workspace/scripts/template/run-stage-three-image-smoke.sh plugins"
+			],
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:10.678Z",
+			"completedAt": "2026-07-15T15:04:19.986Z",
+			"durationMs": 9308,
+			"stdoutPath": "evidence/stage-3-runtimes-run/plugin-repair-smoke.stdout",
+			"stderrPath": "evidence/stage-3-runtimes-run/plugin-repair-smoke.stderr",
+			"stdoutSha256": "9d296830f5e9eedac63e95041db074a6b37e64dc733eb97c1ff9d0ce6e60980b",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "shell-bash-login",
+			"command": [
+				"docker",
+				"run",
+				"--rm",
+				"devenv-stage3-edaa9dd",
+				"bash",
+				"-lc",
+				"command -v bun; command -v proto; command -v codex; printf \"%s\\n\" \"$PATH\""
+			],
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:19.987Z",
+			"completedAt": "2026-07-15T15:04:20.437Z",
+			"durationMs": 450,
+			"stdoutPath": "evidence/stage-3-runtimes-run/shell-bash-login.stdout",
+			"stderrPath": "evidence/stage-3-runtimes-run/shell-bash-login.stderr",
+			"stdoutSha256": "1e679d68195328a2fba46587c2bee7357ab05f9f985729554f2e4ba01946b3c2",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "shell-bash-non-login",
+			"command": [
+				"docker",
+				"run",
+				"--rm",
+				"devenv-stage3-edaa9dd",
+				"bash",
+				"-c",
+				"command -v bun; command -v proto; command -v codex; printf \"%s\\n\" \"$PATH\""
+			],
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:20.438Z",
+			"completedAt": "2026-07-15T15:04:20.871Z",
+			"durationMs": 433,
+			"stdoutPath": "evidence/stage-3-runtimes-run/shell-bash-non-login.stdout",
+			"stderrPath": "evidence/stage-3-runtimes-run/shell-bash-non-login.stderr",
+			"stdoutSha256": "e7790aac356ddfb6b287b321e14f35950478ee745ae63438600b5c3d98f903c7",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "shell-zsh-login",
+			"command": [
+				"docker",
+				"run",
+				"--rm",
+				"devenv-stage3-edaa9dd",
+				"zsh",
+				"-lc",
+				"command -v bun; command -v proto; command -v codex; printf \"%s\\n\" \"$PATH\""
+			],
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:20.872Z",
+			"completedAt": "2026-07-15T15:04:21.278Z",
+			"durationMs": 406,
+			"stdoutPath": "evidence/stage-3-runtimes-run/shell-zsh-login.stdout",
+			"stderrPath": "evidence/stage-3-runtimes-run/shell-zsh-login.stderr",
+			"stdoutSha256": "74481b0110b9e92ee693b9f593d9cd0de03e4df2dfc358a15014dbb339d36024",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "shell-zsh-non-login",
+			"command": [
+				"docker",
+				"run",
+				"--rm",
+				"devenv-stage3-edaa9dd",
+				"zsh",
+				"-c",
+				"command -v bun; command -v proto; command -v codex; printf \"%s\\n\" \"$PATH\""
+			],
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:21.278Z",
+			"completedAt": "2026-07-15T15:04:21.670Z",
+			"durationMs": 392,
+			"stdoutPath": "evidence/stage-3-runtimes-run/shell-zsh-non-login.stdout",
+			"stderrPath": "evidence/stage-3-runtimes-run/shell-zsh-non-login.stderr",
+			"stdoutSha256": "e7790aac356ddfb6b287b321e14f35950478ee745ae63438600b5c3d98f903c7",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "browser-known-bad-fixtures",
+			"command": ["bun", "test", "scripts/template/__tests__/browser.test.ts"],
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:21.670Z",
+			"completedAt": "2026-07-15T15:04:22.716Z",
+			"durationMs": 1046,
+			"stdoutPath": "evidence/stage-3-runtimes-run/browser-known-bad-fixtures.stdout",
+			"stderrPath": "evidence/stage-3-runtimes-run/browser-known-bad-fixtures.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "692cc5d49f7cd3cc95d2a436f8407b34d7890172c57d5a3d67242326cd1f6fbe",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "agent-known-bad-fixtures",
+			"command": ["bun", "test", "scripts/template/__tests__/image.test.ts"],
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:22.716Z",
+			"completedAt": "2026-07-15T15:04:23.301Z",
+			"durationMs": 585,
+			"stdoutPath": "evidence/stage-3-runtimes-run/agent-known-bad-fixtures.stdout",
+			"stderrPath": "evidence/stage-3-runtimes-run/agent-known-bad-fixtures.stderr",
+			"stdoutSha256": "f879e264a80a96436679609079e8f291f722b891f40ab3c503be8f1fea8f76ff",
+			"stderrSha256": "378a8f498b21637a206683642702f170d46aa65ca40d28d61656d6bdbce49300",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "watchdog-known-bad-fixtures",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/gemini-watchdog.test.ts"
+			],
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:23.302Z",
+			"completedAt": "2026-07-15T15:04:25.214Z",
+			"durationMs": 1912,
+			"stdoutPath": "evidence/stage-3-runtimes-run/watchdog-known-bad-fixtures.stdout",
+			"stderrPath": "evidence/stage-3-runtimes-run/watchdog-known-bad-fixtures.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "1d2019e7ae26917419dd4fb687fb407aab3165c2424679fd1e215f04079fa1e0",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "second-worktree-storage",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-two-evidence.ts",
+				"probe-storage",
+				"--image",
+				"devenv-stage3-edaa9dd",
+				"--run-id",
+				"stage3-20260715t150405z-af2ac5b2",
+				"--implementation",
+				"af2ac5b288c226e8ee5c86e30325ecb2ae46b45c",
+				"--workspace",
+				"/tmp/devenv-stage2-stage3-20260715t150405z-af2ac5b2-storage"
+			],
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:25.214Z",
+			"completedAt": "2026-07-15T15:04:27.312Z",
+			"durationMs": 2098,
+			"stdoutPath": "evidence/stage-3-runtimes-run/second-worktree-storage.stdout",
+			"stderrPath": "evidence/stage-3-runtimes-run/second-worktree-storage.stderr",
+			"stdoutSha256": "062f371a81a5788dbc0644474d8d6c86c66bf64e78385fd90c86d0d1546168e8",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rollback-proof",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-two-evidence.ts",
+				"probe-rollback",
+				"--base",
+				"2a2d4ab71723a608e7170d93a47622b6d92d2fac",
+				"--implementation",
+				"af2ac5b288c226e8ee5c86e30325ecb2ae46b45c",
+				"--workspace",
+				"/tmp/devenv-stage2-stage3-20260715t150405z-af2ac5b2-rollback"
+			],
+			"runId": "stage3-20260715t150405z-af2ac5b2",
+			"startedAt": "2026-07-15T15:04:27.313Z",
+			"completedAt": "2026-07-15T15:04:27.781Z",
+			"durationMs": 468,
+			"stdoutPath": "evidence/stage-3-runtimes-run/rollback-proof.stdout",
+			"stderrPath": "evidence/stage-3-runtimes-run/rollback-proof.stderr",
+			"stdoutSha256": "3ec4be6a8696084e18d6514289259f6dcdff9fe16c21b8a5ff11515c572ace1a",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		}
+	],
+	"browser": {
+		"commandId": "browser-preflight",
+		"markerPath": "/home/vscode/.payloads/browser/.devenv-playwright-version",
+		"markerVersion": "1.59.1",
+		"executablePath": "/home/vscode/.payloads/browser/chromium_headless_shell-1217/chrome-linux/headless_shell",
+		"launchPassed": true
+	},
+	"launchers": {
+		"codex": "/home/vscode/.local/bin/codex",
+		"gemini": "/home/vscode/.local/bin/gemini",
+		"graphify": "/home/vscode/.local/bin/graphify",
+		"claude": "/home/vscode/.local/bin/claude",
+		"ccstatusline": "/home/vscode/.local/bin/ccstatusline",
+		"context7-mcp": "/home/vscode/.local/bin/context7-mcp"
+	},
+	"shellPaths": [
+		{
+			"shell": "bash",
+			"mode": "login",
+			"commandId": "shell-bash-login",
+			"bun": "/home/vscode/.proto/shims/bun",
+			"proto": "/home/vscode/.proto/bin/proto",
+			"codex": "/home/vscode/.local/bin/codex",
+			"path": "/workspace/node_modules/.bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/workspace/node_modules/.bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/usr/local/bin:/usr/bin:/bin:/usr/local/games:/usr/games"
+		},
+		{
+			"shell": "bash",
+			"mode": "non-login",
+			"commandId": "shell-bash-non-login",
+			"bun": "/home/vscode/.proto/shims/bun",
+			"proto": "/home/vscode/.proto/bin/proto",
+			"codex": "/home/vscode/.local/bin/codex",
+			"path": "/workspace/node_modules/.bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+		},
+		{
+			"shell": "zsh",
+			"mode": "login",
+			"commandId": "shell-zsh-login",
+			"bun": "/home/vscode/.proto/shims/bun",
+			"proto": "/home/vscode/.proto/bin/proto",
+			"codex": "/home/vscode/.local/bin/codex",
+			"path": "/workspace/node_modules/.bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/workspace/node_modules/.bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+		},
+		{
+			"shell": "zsh",
+			"mode": "non-login",
+			"commandId": "shell-zsh-non-login",
+			"bun": "/home/vscode/.proto/shims/bun",
+			"proto": "/home/vscode/.proto/bin/proto",
+			"codex": "/home/vscode/.local/bin/codex",
+			"path": "/workspace/node_modules/.bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/home/vscode/.proto/shims:/home/vscode/.proto/bin:/home/vscode/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+		}
+	],
+	"plugins": {
+		"commandId": "plugin-repair-smoke",
+		"octopusInstallPath": "/home/vscode/.claude/plugins/cache/nyldn-plugins/octo/9.52.0",
+		"warpInstallPath": "/home/vscode/.claude/plugins/cache/claude-code-warp/warp/2.1.0",
+		"persistedSourceRepair": true,
+		"sharedGraphifyResidue": false
+	},
+	"knownBadFixtures": {
+		"browser": "browser-known-bad-fixtures",
+		"agents": "agent-known-bad-fixtures",
+		"watchdog": "watchdog-known-bad-fixtures",
+		"watchdogTestCount": 14,
+		"idleTimeoutExitCode": 124,
+		"processGroupCleanup": true
+	},
+	"comparison": {
+		"warmBuildCommandId": "warm-browser-build",
+		"warmBuildDurationMs": 2345,
+		"stageTwoWarmBuildDurationMs": 3469,
+		"browserPreflightDurationMs": 1756,
+		"storageCommandId": "second-worktree-storage",
+		"secondWorktreeObservedBytes": 4775936,
+		"stageTwoSecondWorktreeObservedBytes": 4472832,
+		"stageZeroSecondWorktreeBaselineBytes": 96111608
+	},
+	"cloudHandoff": {
+		"ownerStage": "stage-4-codex-cloud-parity",
+		"requiredProfile": "browser",
+		"requiredCommand": "bun run browser:preflight",
+		"requiredMarkerPath": "/home/vscode/.payloads/browser/.devenv-playwright-version",
+		"requiredEnvironment": "PLAYWRIGHT_BROWSERS_PATH"
+	},
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-3-pr-merge-commit>"],
+		"runtimeCleanup": ["docker", "image", "rm", "devenv-stage3-edaa9dd"],
+		"scope": "Revert browser, agent payload, watchdog, setup, tests, evidence, and documentation as one Stage 3 bundle; then rebuild and recreate the devcontainer.",
+		"proof": {
+			"commandId": "rollback-proof",
+			"predecessorSha": "2a2d4ab71723a608e7170d93a47622b6d92d2fac",
+			"implementationSha": "af2ac5b288c226e8ee5c86e30325ecb2ae46b45c",
+			"syntheticMergeSha": "2cf50c7dafb7513796a739d0b4c4549a50fc9af7",
+			"syntheticMergeTree": "bcb319dad2bd33ddaeb923c942d8506af9509708",
+			"syntheticMergeParents": [
+				"2a2d4ab71723a608e7170d93a47622b6d92d2fac",
+				"af2ac5b288c226e8ee5c86e30325ecb2ae46b45c"
+			],
+			"predecessorTree": "5b23f4511557aba50b6ac8280f6abb4ef909feb4",
+			"revertedTree": "5b23f4511557aba50b6ac8280f6abb4ef909feb4",
+			"treeMatchesPredecessor": true,
+			"operations": [
+				["git", "rev-parse", "2a2d4ab71723a608e7170d93a47622b6d92d2fac^{tree}"],
+				["git", "rev-parse", "af2ac5b288c226e8ee5c86e30325ecb2ae46b45c^{tree}"],
+				[
+					"git",
+					"worktree",
+					"add",
+					"--detach",
+					"/tmp/devenv-stage2-stage3-20260715t150405z-af2ac5b2-rollback",
+					"2a2d4ab71723a608e7170d93a47622b6d92d2fac"
+				],
+				[
+					"git",
+					"commit-tree",
+					"bcb319dad2bd33ddaeb923c942d8506af9509708",
+					"-p",
+					"2a2d4ab71723a608e7170d93a47622b6d92d2fac",
+					"-p",
+					"af2ac5b288c226e8ee5c86e30325ecb2ae46b45c",
+					"-m",
+					"Stage 2 synthetic merge"
+				],
+				["git", "rev-parse", "2cf50c7dafb7513796a739d0b4c4549a50fc9af7^{tree}"],
+				[
+					"git",
+					"show",
+					"-s",
+					"--format=%P",
+					"2cf50c7dafb7513796a739d0b4c4549a50fc9af7"
+				],
+				[
+					"git",
+					"checkout",
+					"--detach",
+					"2cf50c7dafb7513796a739d0b4c4549a50fc9af7"
+				],
+				[
+					"git",
+					"revert",
+					"--no-edit",
+					"-m",
+					"1",
+					"2cf50c7dafb7513796a739d0b4c4549a50fc9af7"
+				],
+				["git", "rev-parse", "HEAD^{tree}"]
+			]
+		}
+	}
+}

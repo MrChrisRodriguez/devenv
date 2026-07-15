@@ -1,0 +1,21 @@
+
+scripts/template/__tests__/gemini-watchdog.test.ts:
+(pass) Gemini headless watchdog > passes explicit interactive, version, output-format, and bypass calls through unchanged [138.18ms]
+(pass) Gemini headless watchdog > applies the watchdog to a non-TTY stdin prompt without -p [42.21ms]
+(pass) Gemini headless watchdog > adds stream-json only for a headless prompt [39.30ms]
+(pass) Gemini headless watchdog > re-emits only sanitized assistant text [40.04ms]
+(pass) Gemini headless watchdog > valid assistant and tool activity reset the idle bound [406.70ms]
+(pass) Gemini headless watchdog > malformed events do not reset the idle bound or leak to stdout [273.90ms]
+(pass) Gemini headless watchdog > continues safely after a malformed event when valid text follows [43.28ms]
+(pass) Gemini headless watchdog > discards an oversized partial line within the configured bound [266.10ms]
+(pass) Gemini headless watchdog > idle timeout TERM/grace/KILL removes a resistant process group [334.36ms]
+(pass) Gemini headless watchdog > a missing real binary exits 127 [20.13ms]
+(pass) Gemini headless watchdog > propagates normal and signal child exits [96.47ms]
+(pass) Gemini headless watchdog > forwarded TERM cleans the full child group and exits 143 [114.90ms]
+(pass) Gemini headless watchdog > normal leader exit still leaves no descendant behind [57.90ms]
+(pass) Gemini headless watchdog > rejects invalid watchdog bounds without starting Gemini [20.29ms]
+
+ 14 pass
+ 0 fail
+ 45 expect() calls
+Ran 14 tests across 1 file. [1.91s]

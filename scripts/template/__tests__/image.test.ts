@@ -7,7 +7,12 @@ import {
 	selectArchitectureChecksums,
 	validateImageContract,
 } from "../image-contract";
-import { renderFixture } from "../render-fixture";
+import { loadTemplateParameters } from "../parameters";
+import {
+	filterCapabilityBlocks,
+	loadTemplateOwnership,
+	renderFixture,
+} from "../render-fixture";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 
@@ -17,7 +22,15 @@ const CONTRACT_FILES = [
 	"package.json",
 	"renovate.json",
 	"template-parameters.toml",
+	"docs/devcontainer-upgrade/stage-0/template-ownership.json",
+	".claude/settings.json",
+	".cursor/mcp.json",
+	".claude/skills/graphify/SKILL.md",
+	".codex/skills/graphify/SKILL.md",
+	".gemini/skills/graphify/SKILL.md",
 	".devcontainer/Dockerfile",
+	".devcontainer/configs/.shell_common",
+	".devcontainer/configs/gemini-watchdog",
 	".devcontainer/devcontainer-fingerprint.sh",
 	".devcontainer/devcontainer-lock.json",
 	".devcontainer/devcontainer.json",
@@ -25,7 +38,11 @@ const CONTRACT_FILES = [
 	".devcontainer/prototools.foundation",
 	".devcontainer/on-create.sh",
 	".devcontainer/on-create/setup-ccstatusline.sh",
+	".devcontainer/on-create/setup-claude-octopus.sh",
+	".devcontainer/on-create/setup-claude-warp.sh",
 	".devcontainer/on-create/setup-claude.sh",
+	".devcontainer/on-create/setup-common.sh",
+	".devcontainer/on-create/setup-context7.sh",
 	".devcontainer/on-create/setup-codex.sh",
 	".devcontainer/on-create/setup-gemini.sh",
 	".devcontainer/on-create/setup-graphify.sh",
@@ -204,6 +221,166 @@ describe("devcontainer image contract", () => {
 					),
 				"image: onCreateCommand must run the image-owned verifier before checkout code",
 			);
+			await mutate(
+				temporary,
+				".devcontainer/Dockerfile",
+				(source) =>
+					source.replace("CONTEXT7_VERSION=3.2.3", "CONTEXT7_VERSION=latest"),
+				"agents: CONTEXT7_VERSION must have one immutable Docker authority",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/Dockerfile",
+				(source) =>
+					source.replace("OCTOPUS_COMMIT=f42f34a8", "OCTOPUS_COMMIT=mutable__"),
+				"agents: OCTOPUS_COMMIT must have one immutable Docker authority",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/Dockerfile",
+				(source) =>
+					source.replace("WARP_SHA256=054607a8", "WARP_SHA256=invalid_"),
+				"agents: WARP_SHA256 must have one immutable Docker authority",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/on-create/setup-claude-octopus.sh",
+				(source) => `${source}\ngit clone https://example.invalid/octopus\n`,
+				"agents: setup-claude-octopus.sh contains a floating runtime fetch",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/on-create/setup-claude-octopus.sh",
+				(source) =>
+					source.replace(
+						"/workspace/.codex/skills",
+						"/workspace/.missing-codex-skills",
+					),
+				"agents: setup-claude-octopus.sh must reject project/shared skill collisions",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/on-create/setup-claude-octopus.sh",
+				(source) =>
+					source.replaceAll(
+						"$HOME/.agents/skills",
+						"$HOME/.missing-agent-skills",
+					),
+				"agents: setup-claude-octopus.sh must reject project/shared skill collisions",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/on-create/setup-claude-warp.sh",
+				(source) => source.replace("cmp -s", "test -r"),
+				"agents: setup-claude-warp.sh must verify local marketplace and installed source authorities",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/on-create/setup-claude-warp.sh",
+				(source) => `${source}\ntimeout 30s claude plugin list --json\n`,
+				"agents: setup-claude-warp.sh must fail closed on registration errors",
+			);
+			await mutate(
+				temporary,
+				".claude/settings.json",
+				(source) =>
+					source.replace('"command": "context7-mcp"', '"command": "bunx"'),
+				"agents: .claude/settings.json must invoke the image-owned Context7 launcher",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/configs/.shell_common",
+				(source) =>
+					source.replace(
+						"$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin",
+						"$HOME/.local/bin:$HOME/.proto/shims:$HOME/.proto/bin",
+					),
+				"agents: bash non-login PATH must prefer workspace and Proto before image launchers",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/configs/gemini-watchdog",
+				(source) =>
+					source.replace(
+						"/home/vscode/.payloads/gemini/bin/gemini",
+						"/home/vscode/.local/bin/gemini-real",
+					),
+				"agents: Gemini watchdog omits absolute real payload",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/configs/gemini-watchdog",
+				(source) => source.replace("detached: true", "detached: false"),
+				"agents: Gemini watchdog omits dedicated child process group",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/configs/gemini-watchdog",
+				(source) =>
+					source.replace(
+						"process.stdin.isTTY === true",
+						"process.stdin.isTTY !== true",
+					),
+				"agents: Gemini watchdog omits pass-through classification",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/configs/gemini-watchdog",
+				(source) => `${source}\n// GEMINI_WATCHDOG_REAL_BINARY\n`,
+				"agents: Gemini watchdog must not permit payload substitution",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/Dockerfile",
+				(source) =>
+					source.replace(
+						"/home/vscode/.local/bin/gemini",
+						"/home/vscode/.local/bin/gemini-watchdog",
+					),
+				"agents: Dockerfile must install the Gemini watchdog at /home/vscode/.local/bin/gemini",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/on-create/setup-gemini.sh",
+				(source) =>
+					source.replace(
+						'cmp -s "$gemini_wrapper_source" "$gemini_wrapper"',
+						'test -x "$gemini_wrapper"',
+					),
+				"agents: setup-gemini must verify watchdog and real payload",
+			);
+			await mutate(
+				temporary,
+				"docs/devcontainer-upgrade/stage-0/template-ownership.json",
+				(source) =>
+					source.replace(
+						'"pattern": ".devcontainer/configs/gemini-watchdog",\n\t\t\t"requiresAll": ["gemini"]',
+						'"pattern": ".devcontainer/configs/gemini-watchdog",\n\t\t\t"requiresAll": []',
+					),
+				"agents: Gemini watchdog ownership must require Gemini",
+			);
+
+			const sharedGraphify = resolve(
+				temporary,
+				".agents/skills/graphify/SKILL.md",
+			);
+			await mkdir(dirname(sharedGraphify), { recursive: true });
+			await copyFile(
+				resolve(ROOT, ".codex/skills/graphify/SKILL.md"),
+				sharedGraphify,
+			);
+			const duplicateSkills = await validateImageContract(temporary);
+			expect(duplicateSkills).toContain(
+				"agents: codex discovers duplicate skill graphify: .agents/skills/graphify/SKILL.md, .codex/skills/graphify/SKILL.md",
+			);
+			expect(duplicateSkills).toContain(
+				"agents: shared .agents/skills/graphify duplicates agent-specific discovery",
+			);
+			await rm(resolve(temporary, ".agents"), {
+				recursive: true,
+				force: true,
+			});
+			expect(await validateImageContract(temporary)).toEqual([]);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
@@ -263,6 +440,24 @@ describe("devcontainer image contract", () => {
 		}
 	});
 
+	test("Gemini capability owns and renders the watchdog atomically", async () => {
+		const parameters = await loadTemplateParameters(ROOT);
+		const capabilities = structuredClone(parameters.capabilities.defaults);
+		capabilities["gemini"] = false;
+		const dockerfile = await Bun.file(
+			resolve(ROOT, ".devcontainer/Dockerfile"),
+		).text();
+		const disabled = filterCapabilityBlocks(dockerfile, capabilities);
+		expect(disabled).not.toContain("gemini_payload");
+		expect(disabled).not.toContain("gemini-watchdog");
+
+		const ownership = await loadTemplateOwnership(ROOT);
+		expect(ownership.artifactRules).toContainEqual({
+			pattern: ".devcontainer/configs/gemini-watchdog",
+			requiresAll: ["gemini"],
+		});
+	});
+
 	test("rendered minimal and full images match capability selection", async () => {
 		const temporary = await mkdtemp(resolve(tmpdir(), "devenv-image-render-"));
 		try {
@@ -280,10 +475,50 @@ describe("devcontainer image contract", () => {
 				resolve(minimal, ".devcontainer/Dockerfile"),
 			).text();
 			expect(minimalDockerfile).not.toContain("playwright_browser");
+			expect(minimalDockerfile).not.toContain("graphify_payload");
+			expect(minimalDockerfile).not.toContain("context7_payload");
+			expect(minimalDockerfile).not.toContain("octopus_payload");
+			expect(minimalDockerfile).not.toContain("warp_payload");
+			expect(minimalDockerfile).toContain(
+				".devcontainer/configs/gemini-watchdog /home/vscode/.local/bin/gemini",
+			);
+			expect(
+				await Bun.file(
+					resolve(minimal, ".devcontainer/configs/gemini-watchdog"),
+				).exists(),
+			).toBe(true);
+			expect(
+				await Bun.file(
+					resolve(minimal, ".devcontainer/on-create/setup-context7.sh"),
+				).exists(),
+			).toBe(false);
+			expect(
+				await Bun.file(
+					resolve(minimal, ".devcontainer/on-create/setup-claude-octopus.sh"),
+				).exists(),
+			).toBe(false);
+			expect(
+				await Bun.file(
+					resolve(minimal, ".devcontainer/on-create/setup-claude-warp.sh"),
+				).exists(),
+			).toBe(false);
+			for (const path of [
+				".codex/skills/graphify/SKILL.md",
+				".claude/skills/graphify/SKILL.md",
+				".gemini/skills/graphify/SKILL.md",
+				".devcontainer/on-create/setup-graphify.sh",
+			])
+				expect(await Bun.file(resolve(minimal, path)).exists()).toBe(false);
 			const fullDockerfile = await Bun.file(
 				resolve(full, ".devcontainer/Dockerfile"),
 			).text();
 			expect(fullDockerfile).toContain("development_browser");
+			expect(fullDockerfile).toContain("context7_payload");
+			expect(fullDockerfile).toContain("octopus_payload");
+			expect(fullDockerfile).toContain("warp_payload");
+			expect(fullDockerfile).toContain(
+				".devcontainer/configs/gemini-watchdog /home/vscode/.local/bin/gemini",
+			);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}

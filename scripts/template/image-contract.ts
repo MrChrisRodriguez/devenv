@@ -1,5 +1,6 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Contract records use dynamic keys.
 import { resolve } from "node:path";
+import { validateAgentPayloadContract } from "./agent-payload-contract";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -458,6 +459,8 @@ export async function validateImageContract(
 		)
 	)
 		errors.push("image: on-create retains obsolete mutable image setup");
+
+	errors.push(...(await validateAgentPayloadContract(root)));
 
 	return [...new Set(errors)].sort();
 }

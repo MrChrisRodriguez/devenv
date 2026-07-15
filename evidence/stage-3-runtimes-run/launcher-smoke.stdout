@@ -1,0 +1,13 @@
+✅ Image-owned Proto contract verified (eeab37d69917; 7b07fca29e99)
+codex=/home/vscode/.local/bin/codex
+gemini=/home/vscode/.local/bin/gemini
+graphify=/home/vscode/.local/bin/graphify
+claude=/home/vscode/.local/bin/claude
+ccstatusline=/home/vscode/.local/bin/ccstatusline
+context7-mcp=/home/vscode/.local/bin/context7-mcp
+playwright=1.59.1
+browserExecutable=/home/vscode/.payloads/browser/chromium_headless_shell-1217/chrome-linux/headless_shell
+octopusCommit=f42f34a8f9a7ee5b9324e8b2d23159878c132b02
+octopusSha256=64104245973939c1508babb4503bef56fdf455ffe57370758a8d07fbc0866263
+warpCommit=58c823da195346a7e6645fd2d9484d0e38db6bc2
+warpSha256=054607a80b7eb5571615925a6991082091d063b4eac591499177716421f76557

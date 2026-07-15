@@ -37,14 +37,6 @@ fi
 echo "🔧 Setting up Claude Code IDE directory..."
 mkdir -p "$HOME/.claude/ide"
 
-# Register Context7 MCP server at user scope (writes to CLAUDE_CONFIG_DIR volume)
-echo "🔌 Registering Context7 MCP server..."
-if claude mcp get context7 &> /dev/null; then
-    echo "   context7 MCP server already registered, skipping"
-else
-    claude mcp add --scope user context7 -- bunx @upstash/context7-mcp
-fi
-
 # Configure RTK hook for Claude Code (token compression on bash output)
 if command -v rtk &> /dev/null; then
     echo "🔧 Configuring RTK hook for Claude Code..."

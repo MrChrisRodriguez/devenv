@@ -54,7 +54,7 @@ alias claude-auto='claude --dangerously-skip-permissions'
 
 # Proto configuration
 export PROTO_HOME="$HOME/.proto"
-export PATH="/workspace/node_modules/.bin:$HOME/.local/bin:$HOME/.proto/shims:$HOME/.proto/bin:/home/vscode/.bun/bin:/home/vscode/.bun/install/global/node_modules/.bin:$PATH"
+export PATH="/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH"
 
 # Common function to load tool completions
 load_completions() {
@@ -82,6 +82,7 @@ set -a
     && source "/run/devcontainer-config/secrets.d/${DEVCONTAINER_PROJECT}"
 set +a
 
+# capability:start claude_warp
 # 3. Warp ACP signals — captured on the host by initializeCommand
 #    (.devcontainer/host/capture-warp-env.sh), refreshed on every `devpod up`.
 #    `set -a` exports them so Claude Code (a child of this shell) inherits the
@@ -93,3 +94,4 @@ if [[ -f /run/devcontainer-config/warp-env ]]; then
     source /run/devcontainer-config/warp-env
     set +a
 fi
+# capability:end claude_warp

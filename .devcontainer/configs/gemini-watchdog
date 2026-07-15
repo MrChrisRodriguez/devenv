@@ -1,0 +1,497 @@
+#!/home/vscode/.proto/shims/bun
+
+const DEFAULT_REAL_BINARY = "/home/vscode/.payloads/gemini/bin/gemini";
+const DEFAULT_IDLE_SECONDS = 300;
+const DEFAULT_TERM_GRACE_SECONDS = 5;
+const DEFAULT_MAX_PARTIAL_BYTES = 64 * 1024;
+const MAX_DIAGNOSTICS = 3;
+
+type ForwardedSignal = "SIGHUP" | "SIGINT" | "SIGTERM";
+
+interface ChildProcessGroup {
+	pid: number;
+	exited: Promise<number>;
+	exitCode: number | null;
+	signalCode: NodeJS.Signals | null;
+}
+
+interface StreamEvent {
+	type: unknown;
+	[key: string]: unknown;
+}
+
+const SIGNAL_NUMBERS: Partial<Record<NodeJS.Signals, number>> = {
+	SIGHUP: 1,
+	SIGINT: 2,
+	SIGQUIT: 3,
+	SIGABRT: 6,
+	SIGKILL: 9,
+	SIGALRM: 14,
+	SIGTERM: 15,
+};
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isEnabled(value: string | undefined): boolean {
+	return value === "1" || value === "true";
+}
+
+function parsePositiveNumber(
+	name: string,
+	fallback: number,
+	maximum: number,
+): number {
+	const source = process.env[name];
+	if (source === undefined || source === "") return fallback;
+	const value = Number(source);
+	if (!Number.isFinite(value) || value <= 0 || value > maximum) {
+		throw new Error(`${name} must be greater than 0 and at most ${maximum}`);
+	}
+	return value;
+}
+
+function parsePositiveInteger(
+	name: string,
+	fallback: number,
+	maximum: number,
+): number {
+	const value = parsePositiveNumber(name, fallback, maximum);
+	if (!Number.isInteger(value)) throw new Error(`${name} must be an integer`);
+	return value;
+}
+
+function hasVersionOrHelpQuery(args: string[]): boolean {
+	return args.some((arg) =>
+		["-v", "--version", "-h", "--help"].includes(arg),
+	);
+}
+
+function hasExplicitOutputFormat(args: string[]): boolean {
+	return args.some(
+		(arg) =>
+			arg === "-o" ||
+			arg === "--output-format" ||
+			arg.startsWith("--output-format=") ||
+			/^-o(?:=)?(?:text|json|stream-json)$/.test(arg),
+	);
+}
+
+function hasInteractivePrompt(args: string[]): boolean {
+	return args.some(
+		(arg) =>
+			arg === "-i" ||
+			arg === "--prompt-interactive" ||
+			arg.startsWith("--prompt-interactive="),
+	);
+}
+
+function hasHeadlessPrompt(args: string[]): boolean {
+	return args.some(
+		(arg) =>
+			arg === "-p" ||
+			arg === "--prompt" ||
+			arg.startsWith("--prompt=") ||
+			/^-p.+/.test(arg),
+	);
+}
+
+function shouldPassThrough(args: string[]): boolean {
+	return (
+		isEnabled(process.env["GEMINI_WATCHDOG_BYPASS"]) ||
+		hasVersionOrHelpQuery(args) ||
+		hasExplicitOutputFormat(args) ||
+		hasInteractivePrompt(args) ||
+		(!hasHeadlessPrompt(args) && process.stdin.isTTY === true)
+	);
+}
+
+function sanitizeText(source: string): string {
+	return source
+		.replace(/\u001B(?:\[[0-?]*[ -/]*[@-~]|[@-_])/g, "")
+		.replace(
+			/[\u0000-\u0008\u000B\u000C\u000D\u000E-\u001A\u001C-\u001F\u007F]/g,
+			"",
+		);
+}
+
+function signalExitCode(signal: NodeJS.Signals | null): number {
+	return 128 + (signal ? (SIGNAL_NUMBERS[signal] ?? 1) : 1);
+}
+
+function groupExists(pid: number): boolean {
+	try {
+		process.kill(-pid, 0);
+		return true;
+	} catch (error) {
+		if (isRecord(error) && error["code"] === "ESRCH") return false;
+		return true;
+	}
+}
+
+function signalGroup(pid: number, signal: NodeJS.Signals): void {
+	try {
+		process.kill(-pid, signal);
+	} catch (error) {
+		if (isRecord(error) && error["code"] === "ESRCH") return;
+		throw error;
+	}
+}
+
+async function waitForGroupExit(pid: number, boundMs: number): Promise<boolean> {
+	const deadline = performance.now() + boundMs;
+	while (groupExists(pid) && performance.now() < deadline) {
+		await Bun.sleep(Math.min(25, Math.max(1, deadline - performance.now())));
+	}
+	return !groupExists(pid);
+}
+
+async function terminateProcessGroup(
+	child: ChildProcessGroup,
+	firstSignal: NodeJS.Signals,
+	graceMs: number,
+): Promise<void> {
+	if (!groupExists(child.pid)) {
+		await child.exited.catch(() => undefined);
+		return;
+	}
+	signalGroup(child.pid, firstSignal);
+	if (!(await waitForGroupExit(child.pid, graceMs))) {
+		signalGroup(child.pid, "SIGKILL");
+		await waitForGroupExit(child.pid, Math.max(graceMs, 250));
+	}
+	await child.exited.catch(() => undefined);
+}
+
+function signalLatch(): {
+	promise: Promise<ForwardedSignal>;
+	remove: () => void;
+} {
+	let resolveSignal: ((signal: ForwardedSignal) => void) | undefined;
+	const promise = new Promise<ForwardedSignal>((resolve) => {
+		resolveSignal = resolve;
+	});
+	const handlers = new Map<ForwardedSignal, () => void>();
+	for (const signal of ["SIGHUP", "SIGINT", "SIGTERM"] as const) {
+		const handler = () => resolveSignal?.(signal);
+		handlers.set(signal, handler);
+		process.on(signal, handler);
+	}
+	return {
+		promise,
+		remove: () => {
+			for (const [signal, handler] of handlers) process.off(signal, handler);
+		},
+	};
+}
+
+function idleLatch(idleMs: number): {
+	promise: Promise<"timeout">;
+	reset: () => void;
+	clear: () => void;
+} {
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	let resolveTimeout: (() => void) | undefined;
+	const promise = new Promise<"timeout">((resolve) => {
+		resolveTimeout = () => resolve("timeout");
+	});
+	const reset = () => {
+		if (timer) clearTimeout(timer);
+		timer = setTimeout(() => resolveTimeout?.(), idleMs);
+	};
+	reset();
+	return {
+		promise,
+		reset,
+		clear: () => {
+			if (timer) clearTimeout(timer);
+		},
+	};
+}
+
+function diagnosticReporter(): (message: string) => void {
+	let emitted = 0;
+	return (message: string) => {
+		if (emitted < MAX_DIAGNOSTICS) {
+			process.stderr.write(`gemini watchdog: ${message}\n`);
+			emitted += 1;
+			if (emitted === MAX_DIAGNOSTICS) {
+				process.stderr.write(
+					"gemini watchdog: further stream diagnostics suppressed\n",
+				);
+			}
+		}
+	};
+}
+
+function processEvent(
+	event: StreamEvent,
+	onActivity: () => void,
+	report: (message: string) => void,
+	outputState: { wroteText: boolean; endedWithNewline: boolean },
+): void {
+	switch (event.type) {
+		case "message": {
+			if (event["role"] !== "assistant" || typeof event["content"] !== "string") {
+				if (event["role"] !== "user") report("ignored malformed message event");
+				return;
+			}
+			const text = sanitizeText(event["content"]);
+			if (text.trim().length > 0) onActivity();
+			if (text.length > 0) {
+				process.stdout.write(text);
+				outputState.wroteText = true;
+				outputState.endedWithNewline = text.endsWith("\n");
+			}
+			return;
+		}
+		case "tool_use":
+			if (
+				typeof event["tool_id"] === "string" &&
+				event["tool_id"].length > 0 &&
+				typeof event["tool_name"] === "string" &&
+				event["tool_name"].length > 0
+			) {
+				onActivity();
+			} else {
+				report("ignored malformed tool_use event");
+			}
+			return;
+		case "tool_result":
+			if (
+				typeof event["tool_id"] === "string" &&
+				event["tool_id"].length > 0 &&
+				(event["status"] === "success" || event["status"] === "error")
+			) {
+				onActivity();
+			} else {
+				report("ignored malformed tool_result event");
+			}
+			return;
+		case "error": {
+			const error = event["error"];
+			const source =
+				typeof event["message"] === "string"
+					? event["message"]
+					: isRecord(error) && typeof error["message"] === "string"
+						? error["message"]
+						: "";
+			const message = sanitizeText(source);
+			if (message) {
+				const severity = event["severity"] === "error" ? "ERROR" : "WARNING";
+				process.stderr.write(`[${severity}] ${message}\n`);
+			}
+			return;
+		}
+		case "init":
+		case "result":
+			return;
+		default:
+			report("ignored unknown stream event");
+	}
+}
+
+async function consumeStream(
+	stream: ReadableStream<Uint8Array>,
+	maxPartialBytes: number,
+	onActivity: () => void,
+): Promise<void> {
+	const report = diagnosticReporter();
+	const decoder = new TextDecoder("utf-8", { fatal: true });
+	const reader = stream.getReader();
+	const outputState = { wroteText: false, endedWithNewline: false };
+	let pending: number[] = [];
+	let droppingOversizedLine = false;
+
+	const acceptLine = (bytes: number[]) => {
+		if (bytes.at(-1) === 13) bytes.pop();
+		if (bytes.length === 0) return;
+		try {
+			const parsed = JSON.parse(decoder.decode(Uint8Array.from(bytes))) as unknown;
+			if (!isRecord(parsed)) {
+				report("ignored non-object stream event");
+				return;
+			}
+			processEvent(parsed as StreamEvent, onActivity, report, outputState);
+		} catch {
+			report("ignored malformed JSON stream event");
+		}
+	};
+
+	try {
+		while (true) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			for (const byte of value) {
+				if (droppingOversizedLine) {
+					if (byte === 10) droppingOversizedLine = false;
+					continue;
+				}
+				if (byte === 10) {
+					acceptLine(pending);
+					pending = [];
+					continue;
+				}
+				if (pending.length >= maxPartialBytes) {
+					pending = [];
+					droppingOversizedLine = true;
+					report(`discarded stream line larger than ${maxPartialBytes} bytes`);
+					continue;
+				}
+				pending.push(byte);
+			}
+		}
+		if (!droppingOversizedLine && pending.length > 0) acceptLine(pending);
+	} finally {
+		reader.releaseLock();
+	}
+	if (outputState.wroteText && !outputState.endedWithNewline) {
+		process.stdout.write("\n");
+	}
+}
+
+async function spawnReal(
+	realBinary: string,
+	args: string[],
+	streaming: boolean,
+): Promise<
+	| { child: ReturnType<typeof Bun.spawn>; errorCode?: never }
+	| { child?: never; errorCode: number }
+> {
+	if (!(await Bun.file(realBinary).exists())) {
+		process.stderr.write(
+			`gemini watchdog: real Gemini binary is missing at ${realBinary}\n`,
+		);
+		return { errorCode: 127 };
+	}
+	try {
+		return {
+			child: Bun.spawn({
+				cmd: [realBinary, ...args],
+				stdin: "inherit",
+				stdout: streaming ? "pipe" : "inherit",
+				stderr: "inherit",
+				env: process.env,
+				detached: true,
+			}),
+		};
+	} catch (error) {
+		const code = isRecord(error) ? error["code"] : undefined;
+		const missing = code === "ENOENT";
+		process.stderr.write(
+			`gemini watchdog: could not execute real Gemini binary (${missing ? "missing" : "not executable"})\n`,
+		);
+		return { errorCode: missing ? 127 : 126 };
+	}
+}
+
+async function runPassThrough(realBinary: string, args: string[]): Promise<number> {
+	const spawned = await spawnReal(realBinary, args, false);
+	if (!spawned.child) return spawned.errorCode;
+	const child = spawned.child;
+	const signals = signalLatch();
+	const outcome = await Promise.race([
+		child.exited.then(() => ({ kind: "exit" as const })),
+		signals.promise.then((signal) => ({ kind: "signal" as const, signal })),
+	]);
+	signals.remove();
+	if (outcome.kind === "signal") {
+		await terminateProcessGroup(child, outcome.signal, 5_000);
+		return signalExitCode(outcome.signal);
+	}
+	await terminateProcessGroup(child, "SIGTERM", 250);
+	return child.exitCode ?? signalExitCode(child.signalCode);
+}
+
+async function runWatchdog(realBinary: string, args: string[]): Promise<number> {
+	let idleMs: number;
+	let graceMs: number;
+	let maxPartialBytes: number;
+	try {
+		idleMs =
+			parsePositiveNumber(
+				"GEMINI_WATCHDOG_IDLE_SECONDS",
+				DEFAULT_IDLE_SECONDS,
+				3_600,
+			) * 1_000;
+		graceMs =
+			parsePositiveNumber(
+				"GEMINI_WATCHDOG_TERM_GRACE_SECONDS",
+				DEFAULT_TERM_GRACE_SECONDS,
+				60,
+			) * 1_000;
+		maxPartialBytes = parsePositiveInteger(
+			"GEMINI_WATCHDOG_MAX_PARTIAL_BYTES",
+			DEFAULT_MAX_PARTIAL_BYTES,
+			1024 * 1024,
+		);
+	} catch (error) {
+		process.stderr.write(
+			`gemini watchdog: ${error instanceof Error ? error.message : String(error)}\n`,
+		);
+		return 2;
+	}
+
+	const childArgs = [...args, "--output-format", "stream-json"];
+	const spawned = await spawnReal(realBinary, childArgs, true);
+	if (!spawned.child) return spawned.errorCode;
+	const child = spawned.child;
+	const idle = idleLatch(idleMs);
+	const signals = signalLatch();
+	const stdout = child.stdout;
+	if (!(stdout instanceof ReadableStream)) {
+		idle.clear();
+		signals.remove();
+		await terminateProcessGroup(child, "SIGTERM", graceMs);
+		process.stderr.write("gemini watchdog: failed to capture Gemini output\n");
+		return 1;
+	}
+	const streamTask = consumeStream(stdout, maxPartialBytes, idle.reset);
+	const streamFailure = streamTask.then(
+		() => new Promise<never>(() => undefined),
+		(error) => ({ kind: "stream-error" as const, error }),
+	);
+	const outcome = await Promise.race([
+		child.exited.then(() => ({ kind: "exit" as const })),
+		idle.promise.then(() => ({ kind: "timeout" as const })),
+		signals.promise.then((signal) => ({ kind: "signal" as const, signal })),
+		streamFailure,
+	]);
+	idle.clear();
+	signals.remove();
+
+	if (outcome.kind === "timeout") {
+		process.stderr.write(
+			`gemini watchdog: no valid text or tool activity for ${idleMs / 1_000}s; terminating process group\n`,
+		);
+		await terminateProcessGroup(child, "SIGTERM", graceMs);
+		await streamTask.catch(() => undefined);
+		return 124;
+	}
+	if (outcome.kind === "signal") {
+		await terminateProcessGroup(child, outcome.signal, graceMs);
+		await streamTask.catch(() => undefined);
+		return signalExitCode(outcome.signal);
+	}
+	if (outcome.kind === "stream-error") {
+		await terminateProcessGroup(child, "SIGTERM", graceMs);
+		process.stderr.write(
+			`gemini watchdog: failed to read Gemini stream: ${String(outcome.error)}\n`,
+		);
+		return 1;
+	}
+
+	await terminateProcessGroup(child, "SIGTERM", graceMs);
+	await streamTask.catch(() => undefined);
+	return child.exitCode ?? signalExitCode(child.signalCode);
+}
+
+async function main(): Promise<number> {
+	const args = process.argv.slice(2);
+	return shouldPassThrough(args)
+		? runPassThrough(DEFAULT_REAL_BINARY, args)
+		: runWatchdog(DEFAULT_REAL_BINARY, args);
+}
+
+process.exit(await main());
