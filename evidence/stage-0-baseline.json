@@ -524,11 +524,16 @@
 			"name": "git-metadata-output",
 			"expected": "Reject output paths that overlap worktree or common Git metadata",
 			"observed": "A forced .git/objects output was rejected and the worktree HEAD remained unchanged."
+		},
+		{
+			"name": "rollback-merge-mainline",
+			"expected": "Require the Stage 0 merge rollback to select the base-branch mainline",
+			"observed": "A rollback command without git revert -m 1 was rejected by semantic evidence validation."
 		}
 	],
 	"rollback": {
 		"mode": "observational",
-		"command": ["git", "revert", "<stage-0-pr-merge-commit>"],
+		"command": ["git", "revert", "-m", "1", "<stage-0-pr-merge-commit>"],
 		"proof": "The diff from preMigrationSha to baseSha is spec-only, and the validator rejects .devcontainer/** or .prototools changes from baseSha through the immutable runtimeBoundarySha. Reverting the Stage 0 merge removes metadata, fixtures, gates, and evidence while the pre-migration runtime remains recoverable at 3577ee33903eb37a45e1baa8b89917e0d408493e."
 	},
 	"cleanup": {

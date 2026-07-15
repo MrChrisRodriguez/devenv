@@ -37,6 +37,7 @@ const REQUIRED_MUTATIONS = [
 	"legacy-initializer",
 	"canonical-output-alias",
 	"protected-output",
+	"rollback-merge-mainline",
 	"runtime-diff-guard",
 	"schema-required-and-unique",
 	"service-graph",
@@ -67,6 +68,14 @@ const OBSERVATIONAL_BASELINE_PATHS = [
 ] as const;
 
 const ACTIVE_RUNTIME_PATHS = [".devcontainer/", ".prototools"] as const;
+
+const REQUIRED_ROLLBACK_COMMAND = [
+	"git",
+	"revert",
+	"-m",
+	"1",
+	"<stage-0-pr-merge-commit>",
+] as const;
 
 export function activeRuntimePathChanges(paths: string[]): string[] {
 	return paths
@@ -256,6 +265,17 @@ export function validateStageZeroEvidenceValue(
 		errors.push("semantic: raw evidence logs were not deleted");
 	if (cleanup["dockerPruneUsed"] !== false)
 		errors.push("semantic: Docker prune must not be used for evidence cleanup");
+
+	const rollback = recordAt(value, "rollback");
+	const rollbackCommand = rollback["command"];
+	if (
+		!Array.isArray(rollbackCommand) ||
+		commandKey(rollbackCommand as string[]) !==
+			commandKey(REQUIRED_ROLLBACK_COMMAND)
+	)
+		errors.push(
+			"semantic: Stage 0 merge rollback must select mainline parent 1",
+		);
 
 	return errors.sort();
 }

@@ -248,6 +248,16 @@ describe("stage zero evidence", () => {
 		expect(validateStageZeroEvidenceValue(emptyLatency, schema)).toContain(
 			"semantic: failed-lifecycle latency samples are vacuous",
 		);
+
+		const invalidRollback = structuredClone(evidence);
+		(invalidRollback["rollback"] as Record<string, unknown>)["command"] = [
+			"git",
+			"revert",
+			"<stage-0-pr-merge-commit>",
+		];
+		expect(validateStageZeroEvidenceValue(invalidRollback, schema)).toContain(
+			"semantic: Stage 0 merge rollback must select mainline parent 1",
+		);
 		expect(
 			activeRuntimePathChanges([
 				"scripts/template/evidence.ts",
