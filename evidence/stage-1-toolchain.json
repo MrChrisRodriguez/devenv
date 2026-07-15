@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 1,
 	"stage": "stage-1-toolchain-contract",
-	"capturedAt": "2026-07-15T05:36:00Z",
+	"capturedAt": "2026-07-15T05:38:03Z",
 	"run": {
 		"id": "stage1-20260715T052419Z-darwin-arm64",
 		"results": {
@@ -28,7 +28,7 @@
 	},
 	"source": {
 		"baseSha": "94863ed1b12d261e432702a76848916d92f89450",
-		"implementationSha": "a7c06919e8483d970eb213537c2d8a670e7922bd",
+		"implementationSha": "0e4594dc74a6c0eb16c3078f2a872f765c469573",
 		"featureTreeClean": true
 	},
 	"proto": {
