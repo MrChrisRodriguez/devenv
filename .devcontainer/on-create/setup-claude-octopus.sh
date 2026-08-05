@@ -66,7 +66,24 @@ else
 			echo "ERROR: Claude Octopus could not install from its local marketplace" >&2
 			return 1
 		fi
+		install_path="$(timeout 30s claude plugin list --json 2>/dev/null \
+			| jq -r '.[]? | select(.id == "octo@nyldn-plugins") | .installPath' || true)"
 	fi
+fi
+
+# Disable octo's harness-incompatible hook layer in the freshly installed cache.
+# octo v9.52.0 ships PreToolUse `type: prompt` hooks on a Bash matcher, which the
+# harness treats as model-judged permission GATES — they are judged prompt-injection
+# and `deny` EVERY Bash call — plus ~41 `type: command` hooks emitting the legacy
+# `{"decision": …}` output schema the harness rejects as "Invalid input" on nearly
+# every event. The sanitizer empties octo's event map; its skills, commands and
+# agents live outside the hooks manifest and are unaffected. See that script's header
+# for the full rationale. Idempotent and version-agnostic, so it re-heals after an
+# octo bump and is a safe no-op when the cache is already clean. Run as a child
+# process (not sourced) so a failure degrades to a warning instead of aborting this
+# sourced, `set -e` setup chain.
+if ! bash /workspace/.devcontainer/on-create/sanitize-octo-hooks.sh "${install_path:-}"; then
+	echo "⚠️  Claude Octopus hook sanitize failed; octo may deny Bash / spam hook errors until re-run" >&2
 fi
 
 # Remove only the exact legacy shared-root link created by older templates
