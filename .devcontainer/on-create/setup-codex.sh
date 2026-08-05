@@ -29,4 +29,16 @@ if ! "$codex_binary" --version >/dev/null 2>&1; then
 fi
 
 mkdir -p "$HOME/.codex"
+
+# Persist the Codex login across the project's worktrees: seed ~/.codex/auth.json
+# from the shared host snapshot when this container has none, and capture a newer
+# local login back to it. ~/.codex's live SQLite/state (logs_*, state_*, memories_*)
+# stays isolated per worktree. The logic lives in codex-auth-snapshot.sh so the
+# SessionStart hook (wired in .claude/settings.json) can reuse it — a fresh
+# `codex login` then propagates without waiting for a full recreate. See
+# AUTH-PERSISTENCE.md. (~/.codex ownership is already claimed for vscode by
+# on-create.sh's volume-claim loop before this script runs.)
+bash /workspace/.devcontainer/on-create/codex-auth-snapshot.sh \
+	|| echo "⚠️  codex auth snapshot step did not complete cleanly"
+
 echo "✅ Image-owned Codex CLI verified"
