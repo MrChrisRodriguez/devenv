@@ -1,5 +1,12 @@
 #!/usr/bin/env bash
 # Prepare the validated Docker --env-file used by every container process.
+#
+# Runs on the HOST via the UNCONDITIONAL `prepare-container-env` entry of
+# devcontainer.json's `initializeCommand` object, on every `devpod up` including
+# rebuilds. It must stay unconditional: `runArgs` names the file it writes with
+# `--env-file`, so `docker run` fails at create if nothing generated it. Anything
+# the host must guarantee regardless of optional capabilities belongs here — not
+# in the capability-gated sibling host/capture-warp-env.sh.
 
 set -euo pipefail
 
@@ -12,6 +19,18 @@ OUTPUT_FILE="${DEVCONTAINER_ENV_OUTPUT_FILE:-$CONFIG_DIR/container-env/$PROJECT.
 
 # shellcheck source=../lib/env-file.sh
 source "$SCRIPT_DIR/../lib/env-file.sh"
+
+# The host-side config root and every bind-mount source devcontainer.json names
+# must exist before `docker run`, whatever the enabled capability set.
+mkdir -p "$CONFIG_DIR"
+
+# Ensure the Codex auth snapshot dir exists on the host so the read-write bind
+# mount in devcontainer.json has a source owned by the host user. Without it
+# Docker auto-creates the source root-owned and the container's vscode (uid 1000)
+# cannot write the captured-back token. Non-fatal (`|| true`) under this script's
+# `set -e`: a mkdir failure must never block `devcontainer up`. The leaf name is
+# the project slug and must match the mount source in devcontainer.json.
+mkdir -p "$CONFIG_DIR/codex-auth/$PROJECT" || true
 
 mkdir -p "$(dirname "$OUTPUT_FILE")"
 umask 077

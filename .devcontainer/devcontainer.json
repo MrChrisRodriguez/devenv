@@ -5,13 +5,23 @@
 		"context": "..",
 		"target": "development"
 	},
+	"runArgs": [
+		"--env-file",
+		"${localEnv:HOME}/.config/devcontainer/container-env/devenv.env"
+	],
 	"features": {
 		"ghcr.io/devcontainers/features/github-cli:1": {}
 	},
-	"initializeCommand": [
-		"bash",
-		"${localWorkspaceFolder}/.devcontainer/host/capture-warp-env.sh"
-	],
+	"initializeCommand": {
+		"prepare-container-env": [
+			"bash",
+			"${localWorkspaceFolder}/.devcontainer/host/prepare-container-env.sh"
+		],
+		"capture-warp-env": [
+			"bash",
+			"${localWorkspaceFolder}/.devcontainer/host/capture-warp-env.sh"
+		]
+	},
 	"onCreateCommand": [
 		"/usr/bin/env",
 		"-u",
@@ -103,7 +113,7 @@
 		"/bin/bash",
 		"-p",
 		"-c",
-		"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && /bin/bash /workspace/.devcontainer/on-create/setup-secrets.sh; export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH\""
+		"/usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && export PATH=\"/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH\""
 	],
 	"waitFor": "postStartCommand",
 	"forwardPorts": [3000, 4000, 8080, 8787],
@@ -135,7 +145,8 @@
 		"source=gemini-home-${devcontainerId},target=/home/vscode/.gemini,type=volume",
 		"source=config-home-${devcontainerId},target=/home/vscode/.config,type=volume",
 		"source=${localEnv:HOME}/.ssh,target=/mnt/host-ssh,type=bind,readonly,consistency=cached",
-		"source=${localEnv:HOME}/.config/devcontainer,target=/run/devcontainer-config,type=bind,readonly,consistency=cached"
+		"source=${localEnv:HOME}/.config/devcontainer,target=/run/devcontainer-config,type=bind,readonly,consistency=cached",
+		"source=${localEnv:HOME}/.config/devcontainer/codex-auth/devenv,target=/home/vscode/.config/devcontainer/codex-auth,type=bind,consistency=cached"
 	],
 	"containerEnv": {
 		"DEVCONTAINER": "true",
@@ -158,6 +169,6 @@
 		"CLAUDE_CONFIG_DIR": "/home/vscode/.claude",
 		"GITHUB_TOKEN": "${localEnv:GITHUB_TOKEN}"
 	},
-	"_comment_warp": "Warp ACP signals (TERM_PROGRAM, WARP_CLIENT_VERSION, WARP_CLI_AGENT_PROTOCOL_VERSION) are NOT forwarded here via remoteEnv ${localEnv:...} — that blanks out on every rebuild because DevPod resolves localEnv against its own (often GUI-launched) process env, which lacks Warp's per-terminal vars. Instead, initializeCommand runs .devcontainer/host/capture-warp-env.sh on the host to persist them to ~/.config/devcontainer/warp-env (visible in-container at /run/devcontainer-config/warp-env), and configs/.shell_common sources+exports that file in every interactive shell so Claude Code inherits it. Seed it by running `devpod up .` from a Warp terminal at least once.",
-	"_comment_secrets": "Two-tier secrets — both files use KEY=value format (one per line, # for comments). (1) Common: ~/.config/devcontainer/secrets — loaded in every project; good for shared keys like GITHUB_TOKEN (raises proto/GitHub API rate limit from 60 to 5000 req/hr) and CONTEXT7_API_KEY. (2) Per-project: ~/.config/devcontainer/secrets.d/<DEVCONTAINER_PROJECT> — loaded only for this container; good for project-specific tokens. Per-project values override common ones when the same key appears in both. Update DEVCONTAINER_PROJECT to a short lowercase slug matching your project when creating a new project from this template. GITHUB_TOKEN is also auto-passed from the host shell via remoteEnv if already set there."
+	"_comment_warp": "Warp ACP signals (TERM_PROGRAM, WARP_CLIENT_VERSION, WARP_CLI_AGENT_PROTOCOL_VERSION) are NOT forwarded here via remoteEnv ${localEnv:...} — that blanks out on every rebuild because DevPod resolves localEnv against its own (often GUI-launched) process env, which lacks Warp's per-terminal vars. Instead, the initializeCommand entry `capture-warp-env` runs .devcontainer/host/capture-warp-env.sh on the host to persist them to ~/.config/devcontainer/warp-env (visible in-container at /run/devcontainer-config/warp-env), and configs/.shell_common sources+exports that file in every interactive shell so Claude Code inherits it. Seed it by running `devpod up .` from a Warp terminal at least once.",
+	"_comment_secrets": "Two-tier secrets — both files use KEY=value format (one per line, # for comments). (1) Common: ~/.config/devcontainer/secrets — loaded in every project; good for shared keys like GITHUB_TOKEN (raises proto/GitHub API rate limit from 60 to 5000 req/hr) and CONTEXT7_API_KEY. (2) Per-project: ~/.config/devcontainer/secrets.d/<DEVCONTAINER_PROJECT> — loaded only for this container; good for project-specific tokens. Per-project values override common ones when the same key appears in both. Update DEVCONTAINER_PROJECT to a short lowercase slug matching your project when creating a new project from this template. GITHUB_TOKEN is also auto-passed from the host shell via remoteEnv if already set there. Delivery: the unconditional initializeCommand entry `prepare-container-env` runs .devcontainer/host/prepare-container-env.sh, which validates both sources through the strict KEY=value parser and atomically writes the mode-0600 Docker env file named in runArgs (--env-file), so PID 1 and every process it spawns — including the editor extension host and MCP subprocesses — inherit the keys without any /etc/environment mutation. .devcontainer/environment.sh re-reads the same mounted sources on every shell bootstrap, so keys added after create reach new shells without a rebuild."
 }

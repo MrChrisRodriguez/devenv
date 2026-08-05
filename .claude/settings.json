@@ -28,6 +28,14 @@
 						"command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.devcontainer/on-create/codex-auth-snapshot.sh\" >/dev/null 2>&1 || true"
 					}
 				]
+			},
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "bash \"${CLAUDE_PROJECT_DIR:-.}/.devcontainer/on-create/sanitize-octo-hooks.sh\""
+					}
+				]
 			}
 		]
 	},

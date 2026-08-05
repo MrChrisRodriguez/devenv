@@ -36,7 +36,9 @@ CLI. Two questions decide it:
 | **Claude Code** | Long-lived token (`claude setup-token`, subscription) | **Env secret** — `CLAUDE_CODE_OAUTH_TOKEN` (Mechanism 1) | `~/.claude` stays a per-`${devcontainerId}` volume (isolated per worktree) |
 | **Gemini** | API key | **Env secret** — `GEMINI_API_KEY` (Mechanism 1) | `~/.gemini` volume holds only settings/history |
 | **Codex** | Rotating `refresh_token` in `auth.json` (no static token) | **Seed-on-create** — share only `auth.json` via a host snapshot (Mechanism 3) | `~/.codex` stays a per-`${devcontainerId}` volume; live SQLite/state never shared |
+<!-- capability:start context7 -->
 | **Context7 MCP** | API key | **Env secret** — `CONTEXT7_API_KEY` (Mechanism 1) | none (stateless launcher) |
+<!-- capability:end context7 -->
 | **GitHub (push)** | PAT per org | **Env secret** — routed at push time (see [GitHub push auth](#github-push-auth-credential-routing-by-org)) | none (never written to disk) |
 
 **Parallel-worktree live-state isolation guarantee.** The normal workflow runs
@@ -67,7 +69,7 @@ persistent path and needs no interactive login at all.
 ### Mechanism 1 — API keys and long-lived tokens via host secrets files
 
 Any credential that has a **static, non-refreshing** form persists this way — a
-pasteable API key (`GEMINI_API_KEY`, `CONTEXT7_API_KEY`, `OPENAI_API_KEY`, …) *or*
+pasteable API key (`GEMINI_API_KEY`, `OPENAI_API_KEY`, …) *or*
 a purpose-built long-lived login token. Claude Code's `CLAUDE_CODE_OAUTH_TOKEN`
 (from `claude setup-token`) is the token case: it never refreshes to a file, so
 the env-var path is both the simplest (one line in an existing file) and the most
@@ -81,7 +83,8 @@ Two tiers, both literal, single-line `KEY=value` (see
 - **Common** — `~/.config/devcontainer/secrets` — shared across *all* your projects.
 - **Per-project** — `~/.config/devcontainer/secrets.d/<DEVCONTAINER_PROJECT>` — overrides common for *this* container only.
 
-The host `initializeCommand` chain runs
+`devcontainer.json` → `initializeCommand` is an **object of named host entries**,
+and its unconditional `prepare-container-env` entry runs
 [`host/prepare-container-env.sh`](./host/prepare-container-env.sh), which
 validates common first and project second (project wins), then atomically writes a
 mode-`0600` Docker environment file at
@@ -92,12 +95,16 @@ the editor extension host, MCP subprocesses, `docker exec` sessions, and
 long-running dev servers. There is no `/etc/environment` mirror and no
 `postStart` re-sync — the container's environment *is* the prepared file.
 
-**The env file is a creation-time snapshot.** Adding or rotating a key on the
-host has no effect on a running container: rerun `initializeCommand` (any
-`devpod up` / rebuild) so the file is regenerated, and **restart/recreate the
-container** so Docker re-applies it. That is the only refresh path, and it is a
-deliberate trade for having exactly one authority for every process instead of a
-per-surface patchwork.
+**The env file is a creation-time snapshot; shells refresh sooner.** A key added
+or rotated on the host reaches **new shells immediately** — `environment.sh`
+re-reads the same mounted sources under `/run/devcontainer-config` through
+`lib/env-file.sh` on every shell bootstrap, so any bash/zsh started after the
+edit (and anything launched from it) sees the new value with no rebuild. What
+does *not* refresh is the PID-1 snapshot every non-shell surface inherits:
+already-running processes, the editor extension host, MCP subprocesses, and
+long-running dev servers keep the environment Docker applied at creation. For
+those, rerun `initializeCommand` (any `devpod up` / rebuild) so the file is
+regenerated, and **restart/recreate the container** so Docker re-applies it.
 
 **The parser never evaluates secret files as shell code.**
 [`lib/env-file.sh`](./lib/env-file.sh) reads them line by line: blank lines and
@@ -187,13 +194,17 @@ else stays on the per-`${devcontainerId}` volume:
   deliberately so: binding a whole churny home dir to a shared host path is a
   corruption bug; binding **one** credential file is not, because no live state
   travels with it.
-- The host dir is pre-created by [`host/capture-warp-env.sh`](./host/capture-warp-env.sh)
-  (already run by `initializeCommand`) with a non-fatal `mkdir -p`, so it is owned
-  by the host user and writable by the container's `vscode` (uid 1000). If that
-  mkdir is ever skipped, Docker auto-creates the source root-owned and on-create's
-  volume-claim loop repairs ownership on the next create. The mkdir lives in the
-  script rather than an inline `&&`-chained `initializeCommand` on purpose: a
-  chained mkdir failure would abort `devcontainer up` entirely.
+- The host dir is pre-created by
+  [`host/prepare-container-env.sh`](./host/prepare-container-env.sh) (the
+  unconditional `prepare-container-env` entry of `initializeCommand`) with a
+  non-fatal `mkdir -p`, so it is owned by the host user and writable by the
+  container's `vscode` (uid 1000). It lives in *that* script, not the
+  capability-gated `capture-warp-env` one, because the Codex bind mount exists
+  whether or not Warp support is rendered. If the mkdir is ever skipped, Docker
+  auto-creates the source root-owned and on-create's volume-claim loop repairs
+  ownership on the next create. The mkdir lives in the script rather than an
+  inline `&&`-chained `initializeCommand` on purpose: a chained mkdir failure
+  would abort `devcontainer up` entirely.
 
 [`on-create/codex-auth-snapshot.sh`](./on-create/codex-auth-snapshot.sh) runs two
 guarded steps. It runs from **two triggers** so a login propagates promptly: on
@@ -274,7 +285,8 @@ Code reads them to switch to ACP structured output. Forwarding via `remoteEnv`
 (often GUI-launched) process env on every rebuild, finds the vars absent, and bakes
 in empty values — so detection silently reverts to plain ANSI.
 
-Instead, `initializeCommand` runs [`host/capture-warp-env.sh`](./host/capture-warp-env.sh)
+Instead, the `capture-warp-env` entry of `initializeCommand` runs
+[`host/capture-warp-env.sh`](./host/capture-warp-env.sh)
 **on the host** before each `devpod up`. It writes whatever Warp vars are present
 to `~/.config/devcontainer/warp-env`, overwriting a key only when a fresh non-empty
 value exists (so a value seeded from one Warp-terminal launch survives later
@@ -287,9 +299,14 @@ immediately), and it never touches non-interactive contexts. **Seed it by runnin
 `devpod up .` from a Warp terminal at least once**; there's no way to obtain Warp's
 per-terminal vars without going through a Warp terminal once.
 
-This host script is also where the other host-side preparation hangs: it invokes
-`host/prepare-container-env.sh` (Mechanism 1) and pre-creates the project-slug
-bind sources (Mechanism 3), so `initializeCommand` stays a single entry point.
+This script is deliberately Warp-only. `initializeCommand` is an **object of named
+entries**, so the host-side work that must happen regardless of capabilities —
+writing the `--env-file` (Mechanism 1) and pre-creating the project-slug bind
+sources (Mechanism 3) — lives in the separate, unconditional
+`prepare-container-env` entry. That separation is what lets a Warp-disabled
+render drop this file *and* its entry while the container still creates: gating
+the only `initializeCommand` would leave `runArgs --env-file` pointing at a file
+nothing writes, and `docker run` would fail at create.
 
 ## What this container persists today
 
@@ -301,7 +318,9 @@ bind sources (Mechanism 3), so `initializeCommand` stays a single entry point.
 | `~/.gemini` | `gemini-home-${devcontainerId}` | Gemini settings + history only | ✅ persisted |
 | `~/.codex` | `codex-home-${devcontainerId}` | Codex live state (`logs_*`/`state_*`/`memories_*` SQLite); `auth.json` seeded on create | ✅ persisted per worktree (isolated live state) |
 | `~/.config/devcontainer/codex-auth` | host bind → `~/.config/devcontainer/codex-auth/devenv` | Codex `auth.json` snapshot (login) | ✅ persisted (survives volume wipe; **shared** across worktrees, isolated per project — Mechanism 3) |
+<!-- capability:start context7 -->
 | `CONTEXT7_API_KEY` | — (env secret, Mechanism 1) | Context7 MCP server key | ✅ persisted |
+<!-- capability:end context7 -->
 | `~/.config` | `config-home-${devcontainerId}` | XDG config for other CLIs (catch-all) | ✅ persisted |
 | `~/.proto` | Image layer (**no volume**) | Proto-managed toolchain | ✅ rebuilt from `.prototools`; not duplicated per worktree |
 | `/commandhistory` | `claude-code-shellhistory-${devcontainerId}` | shell history | ✅ persisted |
@@ -412,21 +431,25 @@ repo-specific, and nothing to commit — routing is by the remote's org, and eac
    canonical slug everything else must match.
 2. Per-project keys → `~/.config/devcontainer/secrets.d/<that-slug>` on your host;
    identity and shared keys stay in the common `~/.config/devcontainer/secrets`.
-3. **Keep the slug in sync across the five places it appears.** Static JSON can't
+3. **Keep the slug in sync across the four places it appears.** Static JSON can't
    reference `DEVCONTAINER_PROJECT` from a mount or `runArgs` string, so the
    literal is unavoidably repeated — hence this checklist:
    1. `DEVCONTAINER_PROJECT` in `containerEnv` (the canonical slug),
    2. the `--env-file` path `…/container-env/<slug>.env` in `runArgs`,
    3. the `PROJECT="${DEVCONTAINER_PROJECT:-<slug>}"` default in
-      `host/prepare-container-env.sh`,
-   4. the mount `source=…/codex-auth/<slug>` in `devcontainer.json`, and
-   5. the `mkdir -p "${CONFIG_DIR}/codex-auth/<slug>"` in `host/capture-warp-env.sh`.
+      `host/prepare-container-env.sh` — which also drives that script's
+      `mkdir -p "$CONFIG_DIR/codex-auth/$PROJECT"`, so the snapshot dir needs no
+      separate edit, and
+   4. the mount `source=…/codex-auth/<slug>` in `devcontainer.json`.
 
    Same slug across a repo's worktrees = shared login snapshot; a different slug
    per repo = isolation.
-4. Keep the `host/prepare-container-env.sh` call inside `capture-warp-env.sh` (or
-   the target's equivalent `initializeCommand` entry point) — without it the
-   `--env-file` is never generated and container creation fails.
+4. Copy `initializeCommand` as an **object of named entries** and keep the
+   `prepare-container-env` entry unconditional — it is what generates the
+   `--env-file` named in `runArgs`, and without it container creation fails
+   outright. Capability-gated host work (such as `capture-warp-env`) belongs in
+   *additional* named entries that can be dropped independently; never make the
+   env-file preparation ride inside one of them.
 5. Device-auth / stateful tools → add one `…-${devcontainerId}` volume line per
    tool to `mounts`, then log in once. Never mount `~/.proto`.
 6. Claude login → add `CLAUDE_CODE_OAUTH_TOKEN` to your **common** secrets file
