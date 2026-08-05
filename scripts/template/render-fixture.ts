@@ -364,7 +364,29 @@ async function renderDevcontainer(
 	if (!parameters.capabilities.defaults["claude_octopus"])
 		delete containerEnv["OCTO_ALLOWED_PROVIDERS"];
 	if (!parameters.capabilities.defaults["claude_warp"]) {
-		delete transformed["initializeCommand"];
+		// initializeCommand is an object of named host entries. Only the
+		// claude_warp-gated `capture-warp-env` entry may be dropped: the
+		// `prepare-container-env` entry writes the Docker --env-file that runArgs
+		// names, so removing the whole key would make `docker run` fail at create.
+		const initialize = transformed["initializeCommand"];
+		if (
+			typeof initialize !== "object" ||
+			initialize === null ||
+			Array.isArray(initialize)
+		) {
+			throw new Error(
+				"devcontainer.json initializeCommand must be an object of named entries",
+			);
+		}
+		const entries = initialize as Record<string, unknown>;
+		delete entries["capture-warp-env"];
+		if (!entries["prepare-container-env"]) {
+			throw new Error(
+				"devcontainer.json initializeCommand must keep the unconditional prepare-container-env entry",
+			);
+		}
+		if (Object.keys(entries).length === 0)
+			delete transformed["initializeCommand"];
 		delete transformed["_comment_warp"];
 	}
 	const ports = parameters.advertised_ports
@@ -522,6 +544,66 @@ export function filterCapabilityBlocks(
 	return output.join("\n");
 }
 
+// Setup and maintenance scripts whose presence in a rendered project is owned by
+// a capability. One map serves both the on-create.sh invocation lines and the
+// .claude/settings.json hooks that call the same scripts, so a disabled
+// capability never leaves behind a reference to a file the render omitted.
+const CAPABILITY_SCRIPT_OWNERS: Array<[string, string]> = [
+	["setup-ccstatusline.sh", "ccstatusline"],
+	["setup-claude-octopus.sh", "claude_octopus"],
+	["sanitize-octo-hooks.sh", "claude_octopus"],
+	["setup-claude-warp.sh", "claude_warp"],
+	["setup-claude.sh", "claude"],
+	["setup-context7.sh", "context7"],
+	["setup-codex.sh", "codex"],
+	["codex-auth-snapshot.sh", "codex"],
+	["setup-gemini.sh", "gemini"],
+	["setup-graphify.sh", "graphify"],
+	["setup-openspec.sh", "openspec"],
+];
+
+function referencesDisabledScript(
+	invocation: string,
+	capabilities: CapabilityMap,
+): boolean {
+	return CAPABILITY_SCRIPT_OWNERS.some(
+		([filename, capability]) =>
+			invocation.includes(filename) && capabilities[capability] !== true,
+	);
+}
+
+// Drop hook commands that invoke a script this fixture omits, then prune the
+// entries and event lists that become empty.
+function filterSettingsHooks(
+	value: Record<string, unknown>,
+	capabilities: CapabilityMap,
+): void {
+	const events = value["hooks"];
+	if (typeof events !== "object" || events === null || Array.isArray(events))
+		return;
+	const eventMap = events as Record<string, unknown>;
+	for (const [event, entries] of Object.entries(eventMap)) {
+		if (!Array.isArray(entries)) continue;
+		const kept = entries.filter((entry) => {
+			const record = entry as Record<string, unknown>;
+			const commands = record["hooks"];
+			if (!Array.isArray(commands)) return true;
+			const retained = commands.filter((command) => {
+				const invocation = (command as Record<string, unknown>)["command"];
+				return (
+					typeof invocation !== "string" ||
+					!referencesDisabledScript(invocation, capabilities)
+				);
+			});
+			record["hooks"] = retained;
+			return retained.length > 0;
+		});
+		if (kept.length > 0) eventMap[event] = kept;
+		else delete eventMap[event];
+	}
+	if (Object.keys(eventMap).length === 0) delete value["hooks"];
+}
+
 async function renderMcpSettings(
 	source: string,
 	parameters: TemplateParameters,
@@ -536,6 +618,7 @@ async function renderMcpSettings(
 	) {
 		delete (servers as Record<string, unknown>)["context7"];
 	}
+	filterSettingsHooks(value, parameters.capabilities.defaults);
 	return json(value);
 }
 
@@ -643,26 +726,9 @@ function filterOnCreateLines(
 	source: string,
 	capabilities: CapabilityMap,
 ): string {
-	const owners: Array<[string, string]> = [
-		["setup-ccstatusline.sh", "ccstatusline"],
-		["setup-claude-octopus.sh", "claude_octopus"],
-		["setup-claude-warp.sh", "claude_warp"],
-		["setup-claude.sh", "claude"],
-		["setup-context7.sh", "context7"],
-		["setup-codex.sh", "codex"],
-		["setup-gemini.sh", "gemini"],
-		["setup-graphify.sh", "graphify"],
-		["setup-openspec.sh", "openspec"],
-	];
 	return source
 		.split("\n")
-		.filter(
-			(line) =>
-				!owners.some(
-					([filename, capability]) =>
-						line.includes(filename) && capabilities[capability] !== true,
-				),
-		)
+		.filter((line) => !referencesDisabledScript(line, capabilities))
 		.join("\n");
 }
 

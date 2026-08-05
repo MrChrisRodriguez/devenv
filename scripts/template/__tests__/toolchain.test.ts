@@ -1,4 +1,5 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Mutation fixtures use strict JSON records.
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: Mutation fixtures quote shell parameter expansions verbatim.
 import { describe, expect, test } from "bun:test";
 import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -17,6 +18,9 @@ const CONTRACT_FILES = [
 	"bun.lock",
 	"template-parameters.toml",
 	".devcontainer/configs/.shell_common",
+	".devcontainer/environment.sh",
+	".devcontainer/lib/env-file.sh",
+	".devcontainer/host/prepare-container-env.sh",
 	".devcontainer/devcontainer-lock.json",
 	".devcontainer/devcontainer.json",
 	".devcontainer/on-create/setup-common.sh",
@@ -287,13 +291,13 @@ describe("repository toolchain contract", () => {
 			);
 			await mutate(
 				temporary,
-				".devcontainer/configs/.shell_common",
+				".devcontainer/environment.sh",
 				(source) =>
 					source.replace(
-						"/workspace/node_modules/.bin:$HOME/.proto/shims",
-						"$HOME/.proto/shims:/workspace/node_modules/.bin",
+						'devcontainer_environment_path_prepend "${PROTO_HOME}/shims"\n\tdevcontainer_environment_path_prepend "${_devcontainer_workspace_root}/node_modules/.bin"',
+						'devcontainer_environment_path_prepend "${_devcontainer_workspace_root}/node_modules/.bin"\n\tdevcontainer_environment_path_prepend "${PROTO_HOME}/shims"',
 					),
-				"path: .shell_common resolves Proto before workspace binaries",
+				"path: environment.sh resolves Proto before workspace binaries",
 			);
 
 			const nestedLock = resolve(temporary, "apps/example/bun.lock");

@@ -1,4 +1,5 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Contract records intentionally use dynamic JSON keys.
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: PATH expectations quote shell parameter expansions verbatim.
 import { dirname, resolve } from "node:path";
 
 type JsonRecord = Record<string, unknown>;
@@ -281,8 +282,8 @@ export async function validateAgentShellPaths(root: string): Promise<string[]> {
 	const dockerfile = await Bun.file(
 		resolve(root, ".devcontainer/Dockerfile"),
 	).text();
-	const shellCommon = await Bun.file(
-		resolve(root, ".devcontainer/configs/.shell_common"),
+	const environment = await Bun.file(
+		resolve(root, ".devcontainer/environment.sh"),
 	).text();
 	const setupCommon = await Bun.file(
 		resolve(root, ".devcontainer/on-create/setup-common.sh"),
@@ -297,11 +298,34 @@ export async function validateAgentShellPaths(root: string): Promise<string[]> {
 	for (const [shellCase, source] of [
 		["bash login", dockerfile],
 		["zsh login", dockerfile],
-		["bash non-login", shellCommon],
-		["zsh non-login", shellCommon],
 		["on-create", setupCommon],
 	] as const) {
 		if (!source.includes(homePrefix))
+			errors.push(
+				`agents: ${shellCase} PATH must prefer workspace and Proto before image launchers`,
+			);
+	}
+	// Non-login bash and zsh no longer carry a literal PATH assignment: .bashrc
+	// and .zshrc source .devcontainer/environment.sh, which builds the same order
+	// from ordered `path_prepend` calls. Each call prepends, so PATH priority is
+	// the REVERSE of the call order — the expected sequence therefore runs from
+	// the lowest-priority image launchers up to the workspace binaries, and any
+	// reordering, omission, or extra entry is a contract break.
+	const prependOrder = [
+		"${HOME}/.local/bin",
+		"${PROTO_HOME}/bin",
+		"${PROTO_HOME}/shims",
+		"${_devcontainer_workspace_root}/node_modules/.bin",
+	].join("\n");
+	const prepends = [
+		...environment.matchAll(
+			/devcontainer_environment_path_prepend\s+"([^"]*)"/g,
+		),
+	]
+		.map((match) => match[1] ?? "")
+		.join("\n");
+	for (const shellCase of ["bash non-login", "zsh non-login"] as const) {
+		if (prepends !== prependOrder)
 			errors.push(
 				`agents: ${shellCase} PATH must prefer workspace and Proto before image launchers`,
 			);

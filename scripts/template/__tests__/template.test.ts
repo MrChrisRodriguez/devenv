@@ -692,12 +692,19 @@ describe("ownership and generated paths", () => {
 		const onCreate = await Bun.file(
 			resolve(ROOT, ".devcontainer/on-create.sh"),
 		).text();
+		// setup-common.sh is a pure function library on-create.sh sources for its
+		// own shell (install_workspace_dependencies runs before any setup step
+		// sources it). It installs and generates nothing, so it has — and must
+		// have — no generatedDestinations entry.
+		const sourcedHelpers = new Set([".devcontainer/on-create/setup-common.sh"]);
 		const invoked = new Set(
 			[
 				...onCreate.matchAll(
 					/\/workspace\/(\.devcontainer\/(?:on-create\/setup-[a-z0-9-]+|scripts\/sync-extensions-json)\.sh)/g,
 				),
-			].flatMap((match) => (match[1] ? [match[1]] : [])),
+			].flatMap((match) =>
+				match[1] && !sourcedHelpers.has(match[1]) ? [match[1]] : [],
+			),
 		);
 		const devcontainerSource = await Bun.file(
 			resolve(ROOT, ".devcontainer/devcontainer.json"),

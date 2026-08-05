@@ -336,6 +336,10 @@
 			"requiresAll": ["claude_octopus"]
 		},
 		{
+			"pattern": ".devcontainer/on-create/sanitize-octo-hooks.sh",
+			"requiresAll": ["claude_octopus"]
+		},
+		{
 			"pattern": ".devcontainer/on-create/setup-claude-warp.sh",
 			"requiresAll": ["claude_warp"]
 		},
@@ -353,6 +357,10 @@
 		},
 		{
 			"pattern": ".devcontainer/on-create/setup-codex.sh",
+			"requiresAll": ["codex"]
+		},
+		{
+			"pattern": ".devcontainer/on-create/codex-auth-snapshot.sh",
 			"requiresAll": ["codex"]
 		},
 		{
@@ -432,7 +440,10 @@
 			"tokens": ["gemini_payload", "GEMINI_VERSION", "GEMINI_WATCHDOG"]
 		},
 		"claude_octopus": {
-			"paths": [".devcontainer/on-create/setup-claude-octopus.sh"],
+			"paths": [
+				".devcontainer/on-create/setup-claude-octopus.sh",
+				".devcontainer/on-create/sanitize-octo-hooks.sh"
+			],
 			"tokens": ["octopus_payload", "OCTOPUS_COMMIT", "Claude Octopus"]
 		},
 		"claude_warp": {
@@ -506,8 +517,14 @@
 		},
 		{
 			"source": ".devcontainer/secrets.example",
-			"destination": "/etc/environment",
-			"generator": ".devcontainer/on-create/setup-secrets.sh",
+			"destination": "$HOME/.config/devcontainer/container-env/devenv.env on the host",
+			"generator": ".devcontainer/host/prepare-container-env.sh",
+			"runtimeMutation": true
+		},
+		{
+			"source": ".devcontainer/devcontainer.json#mounts codex-auth bind source",
+			"destination": "$HOME/.config/devcontainer/codex-auth/devenv on the host",
+			"generator": ".devcontainer/host/prepare-container-env.sh",
 			"runtimeMutation": true
 		},
 		{
@@ -717,6 +734,7 @@
 		"scripts/sync-devcontainer.sh excludes every scripts/* path except itself, so future template-owned scripts require an explicit ownership manifest cutover.",
 		"The sync script can advance .template-ref despite unresolved conflicts or review-only outcomes.",
 		"The sync script --dry-run still mutates Git remotes and fetch state.",
-		"init-new-project.sh validates neither repository identity nor all generated paths before destructive writes."
+		"init-new-project.sh validates neither repository identity nor all generated paths before destructive writes.",
+		".devcontainer/devcontainer.json#initializeCommand is an object of named host entries and only the capture-warp-env entry is capability-gated (claude_warp). The prepare-container-env entry is core: it must never be gated, renamed, or folded into a gated sibling, because runArgs names the --env-file it writes — a render that drops it produces a devcontainer whose docker run fails at create."
 	]
 }
