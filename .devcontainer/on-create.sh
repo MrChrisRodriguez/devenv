@@ -11,15 +11,42 @@ set -e
 
 echo "🚀 Configuring ${DEVCONTAINER_PROJECT:-development} from image-owned payloads..."
 
-# ── Secrets ──────────────────────────────────────────────────────────────────
-# Two-tier secrets from the host bind-mount at /run/devcontainer-config (common +
-# per-project, KEY=value, # lines ignored). setup-secrets.sh exports them into
-# THIS shell (so the tool installers below inherit API keys like GEMINI_API_KEY)
-# and idempotently mirrors them into /etc/environment for non-shell readers (VS
-# Code/Cursor extension hosts, MCP subprocesses). It is SOURCED here — not run via
-# optional() — so the exports land in this process; the same script re-runs on
-# postStartCommand to re-sync keys added after create. Per-project overrides common.
-source /workspace/.devcontainer/on-create/setup-secrets.sh
+# ── Environment ──────────────────────────────────────────────────────────────
+# Establish the same quiet exported environment every canonical container command
+# uses. Container-wide secret inheritance already comes from the Docker
+# --env-file that host/prepare-container-env.sh wrote before create (PID 1 and
+# every child, including this script); sourcing environment.sh additionally
+# re-reads the mounted /run/devcontainer-config sources through the strict
+# KEY=value parser in lib/env-file.sh, so keys added after the last `devpod up`
+# still reach the tool installers below (they need API keys like GEMINI_API_KEY
+# present during setup). Nothing is written to /etc/environment and no value is
+# ever echoed. Proto activation then supplies every versioned companion tool.
+# shellcheck source=environment.sh
+source /workspace/.devcontainer/environment.sh
+devcontainer_environment_activate_proto
+
+# Shared helper definitions (install_workspace_dependencies, setup_proto_env).
+# Each on-create/setup-*.sh sources this file for itself, but the first call site
+# below (install_workspace_dependencies) runs BEFORE any of them, so this shell
+# needs its own copy — without it `set -e` aborts the whole create chain with
+# exit 127. The file defines functions only; sourcing it has no side effects.
+# shellcheck source=on-create/setup-common.sh
+source /workspace/.devcontainer/on-create/setup-common.sh
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Git identity ─────────────────────────────────────────────────────────────
+# $HOME/.gitconfig lives on the ephemeral writable layer (wiped on rebuild), so
+# git identity must be re-derived at boot from the persistent host secrets —
+# Mechanism 1 in AUTH-PERSISTENCE.md. Set GIT_USER_NAME / GIT_USER_EMAIL in your
+# common secrets file (~/.config/devcontainer/secrets); this rewrites the global
+# gitconfig on every create so `git commit` works without "Author identity unknown".
+if [ -n "${GIT_USER_NAME:-}" ] && [ -n "${GIT_USER_EMAIL:-}" ]; then
+    echo "🔧 Setting git identity: ${GIT_USER_NAME} <${GIT_USER_EMAIL}>"
+    git -C "$HOME" config --global user.name "$GIT_USER_NAME"
+    git -C "$HOME" config --global user.email "$GIT_USER_EMAIL"
+else
+    echo "ℹ️  GIT_USER_NAME / GIT_USER_EMAIL not set — skipping git identity (commits will fail until set)"
+fi
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Claim mutable volume-mounted home dirs ───────────────────────────────────

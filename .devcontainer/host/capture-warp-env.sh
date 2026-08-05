@@ -10,14 +10,24 @@
 # PERSISTS the values to ~/.config/devcontainer/warp-env, overwriting a key only when a
 # fresh non-empty value is available. So one `devpod up .` from a Warp terminal seeds the
 # file, later rebuilds refresh it when run from Warp, and GUI-launched rebuilds keep the
-# last good value instead of clobbering it. on-create.sh loads this file into
-# /etc/environment so every container process inherits it.
+# last good value instead of clobbering it. configs/.shell_common sources and exports
+# the file (visible in-container at /run/devcontainer-config/warp-env) in every
+# interactive shell, so Claude Code inherits the signals.
+#
+# This script is the `capture-warp-env` entry of devcontainer.json's
+# `initializeCommand` object and is gated on the claude_warp capability — a
+# claude_warp-disabled render drops both the file and the entry. It must
+# therefore stay Warp-only: unconditional host preparation (the Docker
+# --env-file, the bind-mount source dirs) lives in the sibling
+# `prepare-container-env` entry, host/prepare-container-env.sh.
 set -eu
 
 CONFIG_DIR="${HOME}/.config/devcontainer"
 ENV_FILE="${CONFIG_DIR}/warp-env"
 KEYS="TERM_PROGRAM WARP_CLIENT_VERSION WARP_CLI_AGENT_PROTOCOL_VERSION"
 
+# Idempotent: prepare-container-env.sh guarantees this too, but this script must
+# not depend on the other entry's ordering to write its own file.
 mkdir -p "$CONFIG_DIR"
 
 # Read the previously-saved value for a key from the existing file (empty if absent).

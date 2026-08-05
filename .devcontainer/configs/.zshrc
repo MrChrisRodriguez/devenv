@@ -1,5 +1,8 @@
-# Load shared shell configuration
-source /workspace/.devcontainer/configs/.shell_common
+# Load the exported environment before any interactive-only configuration.
+_devcontainer_workspace_root="${DEVCONTAINER_WORKSPACE_ROOT:-/workspace}"
+source "${_devcontainer_workspace_root}/.devcontainer/environment.sh"
+source "${_devcontainer_workspace_root}/.devcontainer/configs/.shell_common"
+unset _devcontainer_workspace_root
 
 # Shell-specific proto activation
 eval "$(proto activate zsh)"

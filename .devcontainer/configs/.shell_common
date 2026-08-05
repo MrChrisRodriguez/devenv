@@ -52,9 +52,10 @@ alias claude-auto='claude --dangerously-skip-permissions'
 # Default working directory (SSH lands in $HOME; this brings us to the workspace)
 [[ "$PWD" == "$HOME" ]] && cd /workspace
 
-# Proto configuration
-export PROTO_HOME="$HOME/.proto"
-export PATH="/workspace/node_modules/.bin:$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin:$PATH"
+# PROTO_HOME and PATH are NOT set here. The image bakes them as ENV and
+# .devcontainer/environment.sh (sourced by .bashrc/.zshrc before this file)
+# re-asserts them idempotently. This file stays interactive-only: aliases,
+# completions, and terminal-scoped signals.
 
 # Common function to load tool completions
 load_completions() {
@@ -67,31 +68,30 @@ load_completions() {
 # Load Claude Code configuration
 [[ -f ~/.clauderc ]] && source ~/.clauderc
 
-# Load devcontainer secrets (host-mounted at /run/devcontainer-config).
-# Belt-and-suspenders for terminal sessions; /etc/environment covers extension hosts.
-# `set -a` exports them — exactly like the warp-env block below — so child
-# processes (Claude Code, wrangler, `!`-bash shells, tool subshells) inherit them.
-# A plain `source` would keep the values local to this one interactive shell. This
-# also picks up keys added to the secrets file AFTER container create, which the
-# create-time /etc/environment copy misses until a re-sync (see setup-secrets.sh).
-set -a
-# 1. Common secrets — shared across all projects
-[[ -f /run/devcontainer-config/secrets ]] && source /run/devcontainer-config/secrets
-# 2. Per-project secrets — overrides common values for this container only
-[[ -n "${DEVCONTAINER_PROJECT:-}" && -f "/run/devcontainer-config/secrets.d/${DEVCONTAINER_PROJECT}" ]] \
-    && source "/run/devcontainer-config/secrets.d/${DEVCONTAINER_PROJECT}"
-set +a
+# Secrets are NOT sourced here. They arrive two ways, both value-safe:
+#   • Docker --env-file (host-side .devcontainer/host/prepare-container-env.sh)
+#     puts them in the container's process environment for every reader,
+#     including the VS Code/Cursor extension host and MCP subprocesses.
+#   • .devcontainer/environment.sh re-reads the host bind-mount at
+#     /run/devcontainer-config through the strict KEY=value parser in
+#     .devcontainer/lib/env-file.sh, so keys added AFTER container create reach
+#     new shells without a rebuild. Neither path evaluates the file as shell.
 
 # capability:start claude_warp
-# 3. Warp ACP signals — captured on the host by initializeCommand
-#    (.devcontainer/host/capture-warp-env.sh), refreshed on every `devpod up`.
-#    `set -a` exports them so Claude Code (a child of this shell) inherits the
-#    Warp signals and switches to ACP structured output. Sourced here rather than
-#    written to /etc/environment because they're only needed in interactive shells,
-#    and this picks up refreshed values on every new shell with no rebuild.
+# Warp ACP signals — captured on the host by initializeCommand
+# (.devcontainer/host/capture-warp-env.sh), refreshed on every `devpod up`.
+# `set -a` exports them so Claude Code (a child of this shell) inherits the
+# Warp signals and switches to ACP structured output. Sourced here rather than
+# in environment.sh because they're only needed in interactive shells, and this
+# picks up refreshed values on every new shell with no rebuild. The snapshot of
+# `$-` keeps `set +a` from clearing allexport for a caller that already had it
+# on (a sourcing script running under `set -a`).
 if [[ -f /run/devcontainer-config/warp-env ]]; then
+    _warp_allexport_was_on=""
+    case "$-" in *a*) _warp_allexport_was_on=1 ;; esac
     set -a
     source /run/devcontainer-config/warp-env
-    set +a
+    [[ -n "$_warp_allexport_was_on" ]] || set +a
+    unset _warp_allexport_was_on
 fi
 # capability:end claude_warp

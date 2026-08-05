@@ -122,6 +122,30 @@ function validatePathPriority(
 		errors.push(`path: ${label} resolves Proto before workspace binaries`);
 }
 
+// environment.sh assembles PATH from ordered `path_prepend` calls instead of a
+// single literal assignment, so priority is the REVERSE of the call order: the
+// last entry prepended ends up first on PATH. Same two failures as
+// validatePathPriority, judged against the call sequence.
+function validatePathPrependOrder(
+	value: string,
+	label: string,
+	errors: string[],
+): void {
+	const prepends = [
+		...value.matchAll(/devcontainer_environment_path_prepend\s+"([^"]*)"/g),
+	].map((match) => match[1] ?? "");
+	let local = -1;
+	let proto = -1;
+	for (const [index, entry] of prepends.entries()) {
+		if (entry.includes("node_modules/.bin")) local = index;
+		if (entry.includes("/shims")) proto = index;
+	}
+	if (local < 0)
+		errors.push(`path: ${label} omits workspace-local node_modules/.bin`);
+	else if (proto >= 0 && proto > local)
+		errors.push(`path: ${label} resolves Proto before workspace binaries`);
+}
+
 async function workspacePackagePaths(
 	root: string,
 	_packageValue: JsonRecord,
@@ -526,13 +550,13 @@ export async function validateToolchainContract(
 	if (!baseTsconfig.includes(`\${configDir}/../../libs/*/src`))
 		errors.push("typescript: project alias is not config-relative");
 
-	const shellCommon = await Bun.file(
-		resolve(root, ".devcontainer/configs/.shell_common"),
+	const environment = await Bun.file(
+		resolve(root, ".devcontainer/environment.sh"),
 	).text();
 	const setupCommon = await Bun.file(
 		resolve(root, ".devcontainer/on-create/setup-common.sh"),
 	).text();
-	validatePathPriority(shellCommon, ".shell_common", errors);
+	validatePathPrependOrder(environment, "environment.sh", errors);
 	validatePathPriority(setupCommon, "setup-common.sh", errors);
 	const remoteEnvironment = recordAt(devcontainer, "remoteEnv");
 	validatePathPriority(

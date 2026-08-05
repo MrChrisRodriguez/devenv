@@ -1,4 +1,5 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Mutation fixtures use dynamic keys.
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: Mutation fixtures quote shell parameter expansions verbatim.
 import { describe, expect, test } from "bun:test";
 import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -31,6 +32,9 @@ const CONTRACT_FILES = [
 	".devcontainer/Dockerfile",
 	".devcontainer/configs/.shell_common",
 	".devcontainer/configs/gemini-watchdog",
+	".devcontainer/environment.sh",
+	".devcontainer/lib/env-file.sh",
+	".devcontainer/host/prepare-container-env.sh",
 	".devcontainer/devcontainer-fingerprint.sh",
 	".devcontainer/devcontainer-lock.json",
 	".devcontainer/devcontainer.json",
@@ -289,11 +293,11 @@ describe("devcontainer image contract", () => {
 			);
 			await mutate(
 				temporary,
-				".devcontainer/configs/.shell_common",
+				".devcontainer/environment.sh",
 				(source) =>
 					source.replace(
-						"$HOME/.proto/shims:$HOME/.proto/bin:$HOME/.local/bin",
-						"$HOME/.local/bin:$HOME/.proto/shims:$HOME/.proto/bin",
+						'devcontainer_environment_path_prepend "${PROTO_HOME}/shims"\n\tdevcontainer_environment_path_prepend "${_devcontainer_workspace_root}/node_modules/.bin"',
+						'devcontainer_environment_path_prepend "${_devcontainer_workspace_root}/node_modules/.bin"\n\tdevcontainer_environment_path_prepend "${PROTO_HOME}/shims"',
 					),
 				"agents: bash non-login PATH must prefer workspace and Proto before image launchers",
 			);
