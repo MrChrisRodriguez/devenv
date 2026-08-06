@@ -1,0 +1,76 @@
+{
+  "commandId": "rollback-proof",
+  "predecessorSha": "3a7f06415fe160e17c7c2592e04f7aa98c361d71",
+  "implementationSha": "fe433334f63a2c01e45b6a55c97dca057e00ea57",
+  "syntheticMergeSha": "29b327181e5ad609cee78672f066b536f2899e70",
+  "syntheticMergeTree": "015e9f4877e31c4b40230385c6a02043df2d5b4a",
+  "syntheticMergeParents": [
+    "3a7f06415fe160e17c7c2592e04f7aa98c361d71",
+    "fe433334f63a2c01e45b6a55c97dca057e00ea57"
+  ],
+  "predecessorTree": "6ec6b6f263b02e7bdb333a1ba63e219ae254faa7",
+  "revertedTree": "6ec6b6f263b02e7bdb333a1ba63e219ae254faa7",
+  "treeMatchesPredecessor": true,
+  "operations": [
+    [
+      "git",
+      "rev-parse",
+      "3a7f06415fe160e17c7c2592e04f7aa98c361d71^{tree}"
+    ],
+    [
+      "git",
+      "rev-parse",
+      "fe433334f63a2c01e45b6a55c97dca057e00ea57^{tree}"
+    ],
+    [
+      "git",
+      "worktree",
+      "add",
+      "--detach",
+      "/tmp/devenv-stage2-stage4-20260806t033046z-fe433334-rollback",
+      "3a7f06415fe160e17c7c2592e04f7aa98c361d71"
+    ],
+    [
+      "git",
+      "commit-tree",
+      "015e9f4877e31c4b40230385c6a02043df2d5b4a",
+      "-p",
+      "3a7f06415fe160e17c7c2592e04f7aa98c361d71",
+      "-p",
+      "fe433334f63a2c01e45b6a55c97dca057e00ea57",
+      "-m",
+      "Stage 2 synthetic merge"
+    ],
+    [
+      "git",
+      "rev-parse",
+      "29b327181e5ad609cee78672f066b536f2899e70^{tree}"
+    ],
+    [
+      "git",
+      "show",
+      "-s",
+      "--format=%P",
+      "29b327181e5ad609cee78672f066b536f2899e70"
+    ],
+    [
+      "git",
+      "checkout",
+      "--detach",
+      "29b327181e5ad609cee78672f066b536f2899e70"
+    ],
+    [
+      "git",
+      "revert",
+      "--no-edit",
+      "-m",
+      "1",
+      "29b327181e5ad609cee78672f066b536f2899e70"
+    ],
+    [
+      "git",
+      "rev-parse",
+      "HEAD^{tree}"
+    ]
+  ]
+}

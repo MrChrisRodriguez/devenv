@@ -1,0 +1,11 @@
+
+scripts/template/__tests__/cloud.test.ts:
+(pass) codex cloud contract > passes the source tree and rejects known-bad cloud contract mutations [200.00ms]
+(pass) codex cloud contract > runs the hermetic cloud bootstrap selftest [986.00ms]
+(pass) codex cloud contract > rejects unsupported doctor and exec arguments [4.00ms]
+(pass) codex cloud contract > rejects an unsupported bootstrap profile [3.00ms]
+
+ 4 pass
+ 0 fail
+ 53 expect() calls
+Ran 4 tests across 1 file. [1222.00ms]

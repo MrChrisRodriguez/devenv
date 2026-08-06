@@ -1,0 +1,72 @@
+Resolved 52 packages in 3.82s
+Downloading networkx (2.0MiB)
+Downloading numpy (14.5MiB)
+Downloading pydantic-core (1.9MiB)
+Downloading openai (1.6MiB)
+Downloading rapidfuzz (1.3MiB)
+Downloading tiktoken (1.1MiB)
+Downloading graphifyy (1.0MiB)
+ Downloading graphifyy
+ Downloading tiktoken
+ Downloading rapidfuzz
+ Downloading openai
+ Downloading pydantic-core
+ Downloading networkx
+ Downloading numpy
+Prepared 52 packages in 2.88s
+Installed 52 packages in 267ms
+ + annotated-types==0.8.0
+ + anyio==4.14.2
+ + certifi==2026.7.22
+ + charset-normalizer==3.4.9
+ + distro==1.9.0
+ + graphifyy==0.9.16
+ + h11==0.16.0
+ + httpcore==1.0.9
+ + httpx==0.28.1
+ + idna==3.18
+ + jiter==0.16.0
+ + networkx==3.6.1
+ + numpy==2.5.1
+ + openai==2.53.0
+ + pydantic==2.13.4
+ + pydantic-core==2.46.4
+ + rapidfuzz==3.14.5
+ + regex==2026.7.19
+ + requests==2.34.2
+ + sniffio==1.3.1
+ + tiktoken==0.13.0
+ + tqdm==4.70.0
+ + tree-sitter==0.25.2
+ + tree-sitter-bash==0.25.1
+ + tree-sitter-c==0.24.2
+ + tree-sitter-c-sharp==0.23.5
+ + tree-sitter-cpp==0.23.4
+ + tree-sitter-elixir==0.3.5
+ + tree-sitter-fortran==0.6.0
+ + tree-sitter-go==0.25.0
+ + tree-sitter-groovy==0.1.2
+ + tree-sitter-java==0.23.5
+ + tree-sitter-javascript==0.25.0
+ + tree-sitter-json==0.24.8
+ + tree-sitter-julia==0.23.1
+ + tree-sitter-kotlin==1.1.0
+ + tree-sitter-lua==0.5.0
+ + tree-sitter-objc==3.0.2
+ + tree-sitter-php==0.24.1
+ + tree-sitter-powershell==0.26.4
+ + tree-sitter-python==0.25.0
+ + tree-sitter-ruby==0.23.1
+ + tree-sitter-rust==0.24.2
+ + tree-sitter-scala==0.26.0
+ + tree-sitter-sql==0.3.11
+ + tree-sitter-swift==0.7.3
+ + tree-sitter-typescript==0.23.2
+ + tree-sitter-verilog==1.0.3
+ + tree-sitter-zig==1.1.2
+ + typing-extensions==4.16.0
+ + typing-inspection==0.4.2
+ + urllib3==2.7.0
+Installed 2 executables: graphify, graphify-mcp
+
+$ husky

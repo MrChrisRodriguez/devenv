@@ -1,0 +1,284 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"stage",
+		"capturedAt",
+		"run",
+		"source",
+		"host",
+		"contract",
+		"commands",
+		"idempotency",
+		"browser",
+		"boundary",
+		"knownBadFixtures",
+		"rollback"
+	],
+	"properties": {
+		"schemaVersion": { "const": 1 },
+		"stage": { "const": "stage-4-codex-cloud-parity" },
+		"capturedAt": { "type": "string", "format": "date-time" },
+		"run": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "logRoot", "temporaryRoot"],
+			"properties": {
+				"id": {
+					"type": "string",
+					"pattern": "^stage4-[0-9]{8}t[0-9]{6}z-[0-9a-f]{8}$"
+				},
+				"logRoot": { "const": "evidence/stage-4-cloud-run" },
+				"temporaryRoot": {
+					"type": "string",
+					"pattern": "^/tmp/devenv-stage2-stage4-[0-9a-z-]+$"
+				}
+			}
+		},
+		"source": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["baseSha", "implementationSha", "cloudTreeClean"],
+			"properties": {
+				"baseSha": { "$ref": "#/$defs/gitSha" },
+				"implementationSha": { "$ref": "#/$defs/gitSha" },
+				"cloudTreeClean": { "const": true }
+			}
+		},
+		"host": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["os", "architecture", "kernel", "home"],
+			"properties": {
+				"os": { "const": "linux" },
+				"architecture": { "enum": ["x86_64", "aarch64"] },
+				"kernel": { "type": "string", "minLength": 1 },
+				"home": { "type": "string", "pattern": "^/[^\\s]*[^/\\s]$" }
+			}
+		},
+		"contract": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"path",
+				"version",
+				"defaultProfile",
+				"profiles",
+				"tools",
+				"protoChecksums",
+				"browserPin",
+				"graphifyPin",
+				"secretAllowList",
+				"fingerprintInputs"
+			],
+			"properties": {
+				"path": { "const": ".codex/cloud/contract.toml" },
+				"version": { "const": 1 },
+				"defaultProfile": { "const": "core" },
+				"profiles": {
+					"type": "array",
+					"minItems": 2,
+					"maxItems": 2,
+					"items": { "enum": ["core", "browser"] }
+				},
+				"tools": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["proto", "bun", "node", "moon", "python", "uv", "jq"],
+					"properties": {
+						"proto": { "$ref": "#/$defs/version" },
+						"bun": { "$ref": "#/$defs/version" },
+						"node": { "$ref": "#/$defs/version" },
+						"moon": { "$ref": "#/$defs/version" },
+						"python": { "$ref": "#/$defs/version" },
+						"uv": { "$ref": "#/$defs/version" },
+						"jq": { "$ref": "#/$defs/version" }
+					}
+				},
+				"protoChecksums": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"],
+					"properties": {
+						"x86_64-unknown-linux-gnu": { "$ref": "#/$defs/sha256" },
+						"aarch64-unknown-linux-gnu": { "$ref": "#/$defs/sha256" }
+					}
+				},
+				"browserPin": { "$ref": "#/$defs/version" },
+				"graphifyPin": { "$ref": "#/$defs/version" },
+				"secretAllowList": {
+					"type": "array",
+					"minItems": 8,
+					"maxItems": 8,
+					"items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" }
+				},
+				"fingerprintInputs": {
+					"type": "array",
+					"minItems": 10,
+					"items": { "type": "string", "minLength": 1 }
+				}
+			}
+		},
+		"commands": {
+			"type": "array",
+			"minItems": 13,
+			"items": { "$ref": "#/$defs/commandResult" }
+		},
+		"idempotency": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"coldCommandId",
+				"warmCommandId",
+				"freshShellCommandId",
+				"fingerprint",
+				"bashrcSourceLines",
+				"coldDurationMs",
+				"warmDurationMs"
+			],
+			"properties": {
+				"coldCommandId": { "const": "cold-bootstrap-core" },
+				"warmCommandId": { "const": "warm-bootstrap-core" },
+				"freshShellCommandId": { "const": "fresh-shell-core" },
+				"fingerprint": { "$ref": "#/$defs/sha256" },
+				"bashrcSourceLines": { "const": 1 },
+				"coldDurationMs": { "type": "integer", "minimum": 1 },
+				"warmDurationMs": { "type": "integer", "minimum": 1 }
+			}
+		},
+		"browser": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"commandId",
+				"profile",
+				"environment",
+				"payloadRoot",
+				"markerPath",
+				"markerVersion",
+				"referenceMarkerPath",
+				"requiredCommand",
+				"launchPassed"
+			],
+			"properties": {
+				"commandId": { "const": "doctor-browser" },
+				"profile": { "const": "browser" },
+				"environment": { "const": "PLAYWRIGHT_BROWSERS_PATH" },
+				"payloadRoot": {
+					"type": "string",
+					"pattern": "^/[^\\s]*/\\.payloads/browser$"
+				},
+				"markerPath": {
+					"type": "string",
+					"pattern": "^/[^\\s]*/\\.payloads/browser/\\.devenv-playwright-version$"
+				},
+				"markerVersion": { "$ref": "#/$defs/version" },
+				"referenceMarkerPath": {
+					"const": "/home/vscode/.payloads/browser/.devenv-playwright-version"
+				},
+				"requiredCommand": { "const": "bun run browser:preflight" },
+				"launchPassed": { "const": true }
+			}
+		},
+		"boundary": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"staleCommandId",
+				"refusalCommandId",
+				"unhealthyExecExitCode",
+				"execRefusalExitCode",
+				"commandExecuted"
+			],
+			"properties": {
+				"staleCommandId": { "const": "stale-fingerprint-refusal" },
+				"refusalCommandId": { "const": "exec-boundary-refusal" },
+				"unhealthyExecExitCode": { "type": "integer", "minimum": 1 },
+				"execRefusalExitCode": { "const": 3 },
+				"commandExecuted": { "const": false }
+			}
+		},
+		"knownBadFixtures": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["contract", "template"],
+			"properties": {
+				"contract": { "const": "contract-known-bad-fixtures" },
+				"template": { "const": "template-known-bad-fixtures" }
+			}
+		},
+		"rollback": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["mode", "command", "runtimeCleanup", "scope", "proof"],
+			"properties": {
+				"mode": { "const": "atomic" },
+				"command": { "$ref": "#/$defs/command" },
+				"runtimeCleanup": { "$ref": "#/$defs/command" },
+				"scope": { "type": "string", "minLength": 40 },
+				"proof": {
+					"type": "object",
+					"required": [
+						"commandId",
+						"predecessorSha",
+						"implementationSha",
+						"treeMatchesPredecessor"
+					]
+				}
+			}
+		}
+	},
+	"$defs": {
+		"gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+		"sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+		"version": {
+			"type": "string",
+			"pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+(?:-[0-9A-Za-z.-]+)?$"
+		},
+		"command": {
+			"type": "array",
+			"minItems": 1,
+			"items": { "type": "string", "minLength": 1 }
+		},
+		"commandResult": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"command",
+				"runId",
+				"startedAt",
+				"completedAt",
+				"durationMs",
+				"stdoutPath",
+				"stderrPath",
+				"stdoutSha256",
+				"stderrSha256",
+				"exitCode",
+				"status"
+			],
+			"properties": {
+				"id": { "type": "string", "minLength": 1 },
+				"command": { "$ref": "#/$defs/command" },
+				"runId": { "type": "string", "minLength": 1 },
+				"startedAt": { "type": "string", "format": "date-time" },
+				"completedAt": { "type": "string", "format": "date-time" },
+				"durationMs": { "type": "integer", "minimum": 1 },
+				"stdoutPath": {
+					"type": "string",
+					"pattern": "^evidence/stage-4-cloud-run/[a-z0-9-]+\\.stdout$"
+				},
+				"stderrPath": {
+					"type": "string",
+					"pattern": "^evidence/stage-4-cloud-run/[a-z0-9-]+\\.stderr$"
+				},
+				"stdoutSha256": { "$ref": "#/$defs/sha256" },
+				"stderrSha256": { "$ref": "#/$defs/sha256" },
+				"exitCode": { "type": "integer", "minimum": 0 },
+				"status": { "enum": ["pass", "refused"] }
+			}
+		}
+	}
+}
