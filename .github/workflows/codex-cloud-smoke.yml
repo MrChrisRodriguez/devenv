@@ -1,0 +1,69 @@
+name: Codex cloud smoke
+
+# Real, networked proof that the committed cloud contract still bootstraps a
+# clean Linux host. It is deliberately not part of the required gate: an
+# upstream registry outage must not block unrelated pull requests. The hermetic
+# guard and selftest in ci.yml carry the required signal.
+
+on:
+  pull_request:
+    paths:
+      - ".codex/cloud/**"
+      - ".prototools"
+      - ".devcontainer/proto-checksums.txt"
+      - ".devcontainer/install-proto.sh"
+      - "bun.lock"
+      - "package.json"
+      - ".github/workflows/codex-cloud-smoke.yml"
+  schedule:
+    - cron: "30 8 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: codex-cloud-smoke-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    name: Cloud smoke (${{ matrix.profile }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+
+    strategy:
+      fail-fast: false
+      matrix:
+        profile:
+          - core
+          # capability:start playwright
+          - browser
+          # capability:end playwright
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.3.13'
+
+      - name: Cache cloud toolchain and downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.proto
+            ~/.bun/install/cache
+            ~/.cache/uv
+            ~/.local/share/uv/tools
+            ~/.local/bin
+            ~/.payloads/browser
+          key: codex-cloud-${{ runner.os }}-${{ runner.arch }}-${{ matrix.profile }}-${{ hashFiles('.codex/cloud/**', '.prototools', 'bun.lock') }}
+          restore-keys: |
+            codex-cloud-${{ runner.os }}-${{ runner.arch }}-${{ matrix.profile }}-
+
+      - name: Run real bootstrap
+        run: bash .codex/cloud/bootstrap.sh "${{ matrix.profile }}"
+
+      - name: Verify prepared environment in a fresh shell
+        run: env -u CODEX_CLOUD -u CODEX_CLOUD_PROFILE bash .codex/cloud/doctor.sh

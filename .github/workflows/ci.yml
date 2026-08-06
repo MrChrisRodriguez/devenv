@@ -41,6 +41,14 @@ jobs:
         run: bun run browser:check
       # capability:end playwright
 
+      # capability:start codex_cloud
+      - name: Validate Codex Cloud contract
+        run: bun run cloud:check
+
+      - name: Run hermetic Codex Cloud bootstrap selftest
+        run: bash .codex/cloud/selftest.sh
+      # capability:end codex_cloud
+
       - name: Lint
         run: bunx biome check --no-errors-on-unmatched .
 

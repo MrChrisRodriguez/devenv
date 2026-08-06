@@ -293,6 +293,10 @@
 		{ "pattern": ".codex/**", "requiresAll": ["codex"] },
 		{ "pattern": ".codex/cloud/**", "requiresAll": ["codex_cloud"] },
 		{
+			"pattern": ".github/workflows/codex-cloud-smoke.yml",
+			"requiresAll": ["codex_cloud"]
+		},
+		{
 			"pattern": ".codex/skills/graphify/**",
 			"requiresAll": ["graphify"]
 		},
