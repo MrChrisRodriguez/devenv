@@ -12,6 +12,10 @@ const RUNTIME_FILES = [
 	"ensure.sh",
 	"exec.sh",
 	"manifest.sh",
+	"services.sh",
+	"up.sh",
+	"down.sh",
+	"cleanup.sh",
 ] as const;
 
 interface Harness {
@@ -187,6 +191,7 @@ state="$STUB_STATE"
 case "\${1:-}" in
 	info) exit 0 ;;
 	ps)
+		printf '%s\\n' "$*" >>"$state/ps.log"
 		[ -f "$state/owned" ] || exit 0
 		cat "$state/container.id"
 		exit 0
@@ -199,6 +204,32 @@ case "\${1:-}" in
 		;;
 	exec)
 		printf '%s\\n' "$*" >>"$state/exec.log"
+		exit 0
+		;;
+	rm)
+		printf '%s\\n' "$*" >>"$state/rm.log"
+		[ -f "$state/sticky" ] || rm -f "$state/owned"
+		exit 0
+		;;
+	volume)
+		case "\${2:-}" in
+			ls)
+				[ ! -f "$state/volumes" ] || cat "$state/volumes"
+				exit 0
+				;;
+			rm)
+				printf '%s\\n' "$*" >>"$state/volume-rm.log"
+				if [ -f "$state/volumes" ] && [ ! -f "$state/sticky" ]; then
+					shift 2
+					for name in "$@"; do
+						[ "$name" != "--force" ] || continue
+						grep -vx "$name" "$state/volumes" >"$state/volumes.next" || true
+						mv "$state/volumes.next" "$state/volumes"
+					done
+				fi
+				exit 0
+				;;
+		esac
 		exit 0
 		;;
 esac
@@ -1715,4 +1746,628 @@ describe("worktree route manifest", () => {
 			await rm(fixture.root, { recursive: true, force: true });
 		}
 	}, 120_000);
+});
+
+interface ServiceSpec {
+	name: string;
+	basePort: number;
+	dependsOn: string[];
+	expectation?: string;
+}
+
+// A synthetic registry. Declaration order is deliberately not dependency order,
+// so a passing order assertion proves a sort rather than a coincidence.
+function servicesToml(specs: ServiceSpec[]): string {
+	return [
+		`services = [${specs.map((spec) => `"${spec.name}"`).join(", ")}]`,
+		...specs.flatMap((spec) => [
+			`service_${spec.name}_kind = "backend"`,
+			`service_${spec.name}_base_port = ${spec.basePort}`,
+			`service_${spec.name}_depends_on = [${spec.dependsOn
+				.map((name) => `"${name}"`)
+				.join(", ")}]`,
+			`service_${spec.name}_directory = "apps/${spec.name}"`,
+			`service_${spec.name}_command = "bun server.ts"`,
+			`service_${spec.name}_health_path = "/health"`,
+			`service_${spec.name}_health_expectation = "${spec.expectation ?? "json-status-ok"}"`,
+			`service_${spec.name}_profiles = ["full"]`,
+		]),
+	].join("\n");
+}
+
+async function declareServices(
+	worktree: string,
+	specs: ServiceSpec[],
+	server: (spec: ServiceSpec) => string,
+): Promise<void> {
+	// Always start from the committed contract: a second declaration in one test
+	// must replace the first rather than silently do nothing.
+	const pristine = await Bun.file(
+		resolve(ROOT, "scripts/worktree/contract.toml"),
+	).text();
+	await Bun.write(
+		resolve(worktree, "scripts/worktree/contract.toml"),
+		pristine.replace("services = []", servicesToml(specs)),
+	);
+	for (const spec of specs) {
+		await Bun.write(
+			resolve(worktree, `apps/${spec.name}/server.ts`),
+			server(spec),
+		);
+	}
+}
+
+// A fake service: it announces itself, optionally waits, then answers its health
+// path with whatever body the test wants to hold the runtime to.
+function fakeService(
+	name: string,
+	options: { body?: string; delayMs?: number; exitAfterMs?: number } = {},
+): string {
+	const body = options.body ?? '{"status":"ok"}';
+	return `import { appendFileSync } from "node:fs";
+const log = process.env["ORDER_LOG"] as string;
+appendFileSync(log, "start ${name}\\n");
+setTimeout(() => {
+	Bun.serve({
+		port: Number(process.env["PORT"]),
+		fetch: () =>
+			new Response(${JSON.stringify(body)}, {
+				headers: { "content-type": "application/json" },
+			}),
+	});
+	appendFileSync(log, "ready ${name}\\n");
+	${
+		options.exitAfterMs === undefined
+			? ""
+			: `setTimeout(() => process.exit(0), ${options.exitAfterMs});`
+	}
+}, ${options.delayMs ?? 0});
+`;
+}
+
+const DEPENDENT_SERVICES: ServiceSpec[] = [
+	{ name: "renderer", basePort: 39103, dependsOn: ["platform"] },
+	{ name: "gateway", basePort: 39101, dependsOn: [] },
+	{ name: "platform", basePort: 39102, dependsOn: ["gateway"] },
+];
+
+function stopServices(worktree: string, home: string): void {
+	run(worktree, home, "services.sh", ["stop"]);
+}
+
+function devcontainerIdentity(worktree: string): string {
+	const payload = JSON.stringify({
+		"devcontainer.config_file": resolve(
+			worktree,
+			".devcontainer/devcontainer.json",
+		),
+		"devcontainer.local_folder": worktree,
+	});
+	const alphabet = "0123456789abcdefghijklmnopqrstuv";
+	let value = 0n;
+	for (const byte of new Bun.CryptoHasher("sha256").update(payload).digest())
+		value = (value << 8n) | BigInt(byte);
+	let digits = "";
+	while (value > 0n) {
+		digits = `${alphabet[Number(value % 32n)]}${digits}`;
+		value /= 32n;
+	}
+	return digits.padStart(52, "0");
+}
+
+const VOLUME_PREFIXES = ["agent-config", "shell-history"] as const;
+
+async function declareVolumes(worktree: string): Promise<string[]> {
+	await Bun.write(
+		resolve(worktree, ".devcontainer/devcontainer.json"),
+		`${JSON.stringify(
+			{
+				name: "Fixture",
+				remoteUser: "vscode",
+				mounts: VOLUME_PREFIXES.map(
+					(prefix) =>
+						`source=${prefix}-\${devcontainerId},target=/home/vscode/${prefix},type=volume`,
+				),
+			},
+			null,
+			"\t",
+		)}\n`,
+	);
+	const identity = devcontainerIdentity(worktree);
+	return VOLUME_PREFIXES.map((prefix) => `${prefix}-${identity}`);
+}
+
+describe("worktree service lifecycle", () => {
+	test("starts services in declared dependency order", async () => {
+		const fixture = await harness();
+		const alpha = await addWorktree(fixture, "agent/worktrees/alpha", "alpha");
+		try {
+			await declareServices(alpha, DEPENDENT_SERVICES, (spec) =>
+				fakeService(spec.name),
+			);
+			const log = resolve(fixture.root, "order.log");
+
+			const ordered = run(alpha, fixture.home, "services.sh", ["order"]);
+			expect(ordered.exitCode).toBe(0);
+			expect(ordered.stdout.trim().split("\n")).toEqual([
+				"gateway",
+				"platform",
+				"renderer",
+			]);
+
+			const started = run(alpha, fixture.home, "services.sh", ["start"], {
+				ORDER_LOG: log,
+				DEVENV_SERVICE_START_TIMEOUT: "40",
+			});
+			expect(started.exitCode).toBe(0);
+			// Every service is gated on the previous one becoming healthy, so the
+			// interleaving is the proof: no service starts before its dependency is
+			// ready.
+			expect(await bridgeLog(log)).toEqual([
+				"start gateway",
+				"ready gateway",
+				"start platform",
+				"ready platform",
+				"start renderer",
+				"ready renderer",
+			]);
+
+			const status = run(alpha, fixture.home, "services.sh", ["status"]);
+			expect(status.stdout).toContain("gateway\trunning\t39101");
+			expect(status.stdout).toContain("renderer\trunning\t39103");
+		} finally {
+			stopServices(alpha, fixture.home);
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("rejects an unrelated HTTP 200 that does not match the health contract", async () => {
+		const fixture = await harness();
+		const alpha = await addWorktree(fixture, "agent/worktrees/alpha", "alpha");
+		try {
+			const specs: ServiceSpec[] = [
+				{ name: "gateway", basePort: 39111, dependsOn: [] },
+			];
+			await declareServices(alpha, specs, (spec) =>
+				fakeService(spec.name, { body: '{"ok":true}' }),
+			);
+			const log = resolve(fixture.root, "order.log");
+
+			const refused = run(alpha, fixture.home, "services.sh", ["start"], {
+				ORDER_LOG: log,
+				DEVENV_SERVICE_START_TIMEOUT: "6",
+			});
+			expect(refused.exitCode).not.toBe(0);
+			// A 200 is not readiness. The declared expectation is the contract.
+			expect(refused.stderr).toContain(
+				"did not satisfy json-status-ok at /health",
+			);
+			expect(await bridgeLog(log)).toEqual(["start gateway", "ready gateway"]);
+			// A failed start leaves nothing running behind it.
+			expect(
+				await Bun.file(
+					resolve(alpha, ".dev/state/run/services/gateway.pid"),
+				).exists(),
+			).toBe(false);
+		} finally {
+			stopServices(alpha, fixture.home);
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("fails fast when a service dies before or after readiness", async () => {
+		const fixture = await harness();
+		const alpha = await addWorktree(fixture, "agent/worktrees/alpha", "alpha");
+		try {
+			const log = resolve(fixture.root, "order.log");
+			await declareServices(
+				alpha,
+				[{ name: "gateway", basePort: 39121, dependsOn: [] }],
+				() =>
+					'import { appendFileSync } from "node:fs";\n' +
+					'appendFileSync(process.env["ORDER_LOG"] as string, "start gateway\\n");\n' +
+					"process.exit(3);\n",
+			);
+			const early = run(alpha, fixture.home, "services.sh", ["start"], {
+				ORDER_LOG: log,
+				DEVENV_SERVICE_START_TIMEOUT: "20",
+			});
+			expect(early.exitCode).not.toBe(0);
+			expect(early.stderr).toContain("exited before it became ready");
+
+			// A dependency that dies while a later service is still starting fails the
+			// whole run: a stack missing a service is not a running stack.
+			await rm(log, { force: true });
+			await declareServices(
+				alpha,
+				[
+					{ name: "gateway", basePort: 39122, dependsOn: [] },
+					{ name: "platform", basePort: 39123, dependsOn: ["gateway"] },
+				],
+				(spec) =>
+					spec.name === "gateway"
+						? fakeService("gateway", { exitAfterMs: 1_500 })
+						: fakeService("platform", { delayMs: 15_000 }),
+			);
+			const late = run(alpha, fixture.home, "services.sh", ["start"], {
+				ORDER_LOG: log,
+				DEVENV_SERVICE_START_TIMEOUT: "40",
+			});
+			expect(late.exitCode).not.toBe(0);
+			expect(late.stderr).toContain(
+				"service 'gateway' exited while 'platform' was starting",
+			);
+		} finally {
+			stopServices(alpha, fixture.home);
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("staggered mode replaces readiness gates with bounded delays", async () => {
+		const fixture = await harness();
+		const alpha = await addWorktree(fixture, "agent/worktrees/alpha", "alpha");
+		try {
+			const log = resolve(fixture.root, "order.log");
+			// These services never answer their health path. Readiness gates would
+			// time out; staggered mode is exactly the diagnostic that does not care.
+			await declareServices(alpha, DEPENDENT_SERVICES, (spec) =>
+				fakeService(spec.name, { delayMs: 600_000 }),
+			);
+
+			const staggered = run(alpha, fixture.home, "services.sh", ["start"], {
+				ORDER_LOG: log,
+				DEVENV_STARTUP_MODE: "staggered",
+				DEVENV_STAGGER_SECONDS: "1",
+			});
+			expect(staggered.exitCode).toBe(0);
+			expect(staggered.stderr).toContain("staggered mode: waiting 1s");
+			expect(staggered.stderr).toContain("staggered mode: waiting 2s");
+			expect(staggered.stderr).not.toContain("is ready on port");
+			expect(await bridgeLog(log)).toEqual([
+				"start gateway",
+				"start platform",
+				"start renderer",
+			]);
+		} finally {
+			stopServices(alpha, fixture.home);
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("a cycle in depends_on exits 2", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			await declareServices(
+				alpha,
+				[
+					{ name: "gateway", basePort: 39131, dependsOn: ["platform"] },
+					{ name: "platform", basePort: 39132, dependsOn: ["gateway"] },
+				],
+				(spec) => fakeService(spec.name),
+			);
+
+			const cyclic = run(alpha, fixture.home, "services.sh", ["order"]);
+			expect(cyclic.exitCode).toBe(2);
+			expect(cyclic.stderr).toContain("cycle among");
+			expect(cyclic.stderr).toContain("gateway");
+			expect(cyclic.stderr).toContain("platform");
+
+			// An undeclared dependency is the same class of contract error.
+			await declareServices(
+				alpha,
+				[{ name: "gateway", basePort: 39133, dependsOn: ["absent"] }],
+				(spec) => fakeService(spec.name),
+			);
+			const dangling = run(alpha, fixture.home, "services.sh", ["order"]);
+			expect(dangling.exitCode).toBe(2);
+			expect(dangling.stderr).toContain("which is not declared");
+
+			const rejected = run(alpha, fixture.home, "services.sh", ["known-bad"]);
+			expect(rejected.exitCode).toBe(2);
+			expect(rejected.stderr).toContain(
+				"Usage: bash scripts/worktree/services.sh",
+			);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("a template with no services starts the container and reports no services", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			const caddy = await stubCaddy(fixture);
+
+			const up = run(
+				alpha,
+				fixture.home,
+				"up.sh",
+				[],
+				toolingEnvironment(fixture, tooling, caddyEnvironment(caddy)),
+			);
+			expect(up.exitCode).toBe(0);
+			expect(up.stderr).toContain("no services are declared");
+			expect(up.stderr).toContain("devenv-agent-alpha is up");
+			expect(await upLog(tooling)).toHaveLength(1);
+			// The route is published even with nothing to route to yet: the container
+			// is the thing that answers.
+			const manifest = (await Bun.file(
+				manifestPath(fixture.home, "devenv-agent-alpha"),
+			).json()) as Manifest;
+			expect(manifest.status).toBe("active");
+			expect(
+				await Bun.file(
+					snippetPath(fixture.home, "devenv-agent-alpha"),
+				).exists(),
+			).toBe(true);
+
+			const rejected = run(alpha, fixture.home, "up.sh", ["--known-bad"]);
+			expect(rejected.exitCode).toBe(2);
+			expect(rejected.stderr).toContain("Usage: bash scripts/worktree/up.sh");
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("down stops services and keeps the registry entry and ports", async () => {
+		const fixture = await harness();
+		const alpha = await addWorktree(fixture, "agent/worktrees/alpha", "alpha");
+		try {
+			const caddy = await stubCaddy(fixture);
+			await declareServices(alpha, DEPENDENT_SERVICES, (spec) =>
+				fakeService(spec.name),
+			);
+			const log = resolve(fixture.root, "order.log");
+			expect(run(alpha, fixture.home, "env.sh").exitCode).toBe(0);
+			expect(
+				run(
+					alpha,
+					fixture.home,
+					"manifest.sh",
+					["active"],
+					caddyEnvironment(caddy),
+				).exitCode,
+			).toBe(0);
+			expect(
+				run(alpha, fixture.home, "services.sh", ["start"], {
+					ORDER_LOG: log,
+					DEVENV_SERVICE_START_TIMEOUT: "40",
+				}).exitCode,
+			).toBe(0);
+			const pid = Number(
+				(
+					await Bun.file(
+						resolve(alpha, ".dev/state/run/services/gateway.pid"),
+					).text()
+				).trim(),
+			);
+			expect(() => process.kill(pid, 0)).not.toThrow();
+
+			// Inside the container the shutdown is the one that actually stops the
+			// processes; on the host it is delegated across the boundary.
+			const insideDown = run(alpha, fixture.home, "down.sh", [], {
+				DEVCONTAINER: "true",
+			});
+			expect(insideDown.exitCode).toBe(0);
+			expect(() => process.kill(pid, 0)).toThrow();
+			expect(
+				await Bun.file(resolve(alpha, ".dev/state/run/services")).exists(),
+			).toBe(false);
+
+			const environmentBefore = await generatedEnvironment(alpha);
+			const registryBefore = await Bun.file(registryPath(fixture.home)).text();
+			const hostDown = run(
+				alpha,
+				fixture.home,
+				"down.sh",
+				[],
+				caddyEnvironment(caddy),
+			);
+			expect(hostDown.exitCode).toBe(0);
+			expect(hostDown.stderr).toContain("run cleanup.sh to release them");
+			// Ports survive a stop, so the same worktree comes back on the same URLs.
+			expect(await generatedEnvironment(alpha)).toBe(environmentBefore);
+			expect(await Bun.file(registryPath(fixture.home)).text()).toBe(
+				registryBefore,
+			);
+			const manifest = (await Bun.file(
+				manifestPath(fixture.home, "devenv-agent-alpha"),
+			).json()) as Manifest;
+			expect(manifest.status).toBe("inactive");
+			expect(String(manifest.hostPort)).toBe(
+				environmentValue(environmentBefore, "DEVENV_PUBLISHED_HOST_PORT"),
+			);
+		} finally {
+			stopServices(alpha, fixture.home);
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("cleanup removes only this worktree's resources and exits nonzero when any remain", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const bravo = await addWorktree(
+				fixture,
+				"agent/worktrees/bravo",
+				"bravo",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			const caddy = await stubCaddy(fixture);
+			const scoped = await declareVolumes(alpha);
+			await Bun.write(
+				resolve(tooling.state, "volumes"),
+				`${[...scoped, "someone-elses-volume"].join("\n")}\n`,
+			);
+			for (const worktree of [alpha, bravo]) {
+				expect(run(worktree, fixture.home, "env.sh").exitCode).toBe(0);
+				expect(
+					run(
+						worktree,
+						fixture.home,
+						"manifest.sh",
+						["active"],
+						caddyEnvironment(caddy),
+					).exitCode,
+				).toBe(0);
+				await Bun.write(resolve(worktree, ".dev/persistence/state.db"), "data");
+			}
+			await markReady(fixture, alpha, tooling);
+
+			const cleaned = run(
+				alpha,
+				fixture.home,
+				"cleanup.sh",
+				[],
+				toolingEnvironment(fixture, tooling, caddyEnvironment(caddy)),
+			);
+			expect(cleaned.exitCode).toBe(0);
+			expect(cleaned.stderr).toContain(
+				"removed every resource owned by devenv-agent-alpha",
+			);
+
+			for (const path of [
+				resolve(alpha, ".dev/state"),
+				resolve(alpha, ".dev/persistence"),
+				manifestPath(fixture.home, "devenv-agent-alpha"),
+				snippetPath(fixture.home, "devenv-agent-alpha"),
+			]) {
+				expect(await Bun.file(path).exists()).toBe(false);
+			}
+			expect(Object.keys((await readRegistry(fixture.home)).entries)).toEqual([
+				"devenv-agent-bravo",
+			]);
+
+			// The sibling worktree is untouched: its state, route, and ports all
+			// survive a neighbour's cleanup.
+			for (const path of [
+				resolve(bravo, ".dev/state/worktree.env"),
+				resolve(bravo, ".dev/persistence/state.db"),
+				manifestPath(fixture.home, "devenv-agent-bravo"),
+				snippetPath(fixture.home, "devenv-agent-bravo"),
+			]) {
+				expect(await Bun.file(path).exists()).toBe(true);
+			}
+			// Removal is by exact name, derived from this checkout's own container
+			// identity. A volume belonging to anything else is never named.
+			const volumeRemovals = await bridgeLog(
+				resolve(tooling.state, "volume-rm.log"),
+			);
+			expect(volumeRemovals.sort()).toEqual(
+				scoped.map((name) => `volume rm --force ${name}`).sort(),
+			);
+			expect(await Bun.file(resolve(tooling.state, "volumes")).text()).toBe(
+				"someone-elses-volume\n",
+			);
+			const removals = await bridgeLog(resolve(tooling.state, "rm.log"));
+			expect(removals).toHaveLength(1);
+			const queries = (await bridgeLog(resolve(tooling.state, "ps.log"))).join(
+				"\n",
+			);
+			expect(queries).toContain(alpha);
+			expect(queries).not.toContain(bravo);
+
+			// A cleanup whose removals silently fail must not report success.
+			const charlie = await addWorktree(
+				fixture,
+				"agent/worktrees/charlie",
+				"charlie",
+			);
+			expect(run(charlie, fixture.home, "env.sh").exitCode).toBe(0);
+			await markReady(fixture, charlie, tooling);
+			await Bun.write(resolve(tooling.state, "sticky"), "");
+			const incomplete = run(
+				charlie,
+				fixture.home,
+				"cleanup.sh",
+				[],
+				toolingEnvironment(fixture, tooling, caddyEnvironment(caddy)),
+			);
+			expect(incomplete.exitCode).toBe(1);
+			expect(incomplete.stderr).toContain("survived cleanup");
+			expect(incomplete.stderr).toContain(`container ${CONTAINER_ID}`);
+			expect(incomplete.stderr).toContain(
+				"cleanup is incomplete for devenv-agent-charlie",
+			);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("cleanup runs the declared legacy cleanup commands", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			const caddy = await stubCaddy(fixture);
+			const sentinel = resolve(fixture.root, "legacy-ran");
+			await rewriteContract(alpha, (source) =>
+				source.replace(
+					"legacy_cleanup_commands = []",
+					`legacy_cleanup_commands = ["touch ${sentinel}", "touch ${sentinel}.second"]`,
+				),
+			);
+			expect(run(alpha, fixture.home, "env.sh").exitCode).toBe(0);
+
+			const cleaned = run(
+				alpha,
+				fixture.home,
+				"cleanup.sh",
+				[],
+				toolingEnvironment(fixture, tooling, caddyEnvironment(caddy)),
+			);
+			expect(cleaned.exitCode).toBe(0);
+			expect(await Bun.file(sentinel).exists()).toBe(true);
+			expect(await Bun.file(`${sentinel}.second`).exists()).toBe(true);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("no runtime script hardcodes a volume prefix or the persistence path", async () => {
+		const configuration = await Bun.file(
+			resolve(ROOT, ".devcontainer/devcontainer.json"),
+		).text();
+		const prefixes = [
+			...configuration.matchAll(
+				/source=([A-Za-z0-9][A-Za-z0-9_.-]*)-\$\{devcontainerId\}/g,
+			),
+		].flatMap((match) => (match[1] ? [match[1]] : []));
+		expect(prefixes.length).toBeGreaterThan(0);
+		const parameters = Bun.TOML.parse(
+			await Bun.file(resolve(ROOT, "template-parameters.toml")).text(),
+		) as { paths: { mutable_persistence: string } };
+		const persistence = parameters.paths.mutable_persistence;
+
+		for (const name of RUNTIME_FILES) {
+			if (!name.endsWith(".sh")) continue;
+			const source = await Bun.file(
+				resolve(ROOT, "scripts/worktree", name),
+			).text();
+			for (const prefix of prefixes) {
+				expect(`${name}:${source.includes(prefix)}`).toBe(`${name}:false`);
+			}
+			// The generated persistence root reaches scripts through the contract and
+			// the generated environment, never as a literal.
+			expect(`${name}:${source.includes(persistence)}`).toBe(`${name}:false`);
+		}
+	});
 });
