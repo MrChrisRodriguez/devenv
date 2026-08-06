@@ -753,6 +753,54 @@ describe("worktree identity and port allocation", () => {
 		}
 	}, 60_000);
 
+	// The mkdir backend creates the lock directory first and records its owner an
+	// instant later. Treating that window as free let a second caller steal a live
+	// lock, and two holders of the registry lock is exactly one lost
+	// read-modify-write, so the ownerless window must read as stale-by-age.
+	test("a lock is never stolen before its owner record is written", async () => {
+		const fixture = await harness();
+		const lock = resolve(fixture.root, "state/portable.lock");
+		const acquire = (timeout: number, stale?: string) =>
+			Bun.spawnSync(
+				[
+					"bash",
+					"-c",
+					'. "$1/scripts/worktree/lock.sh"; portable_lock_acquire "$2" "$3" || exit 1; portable_lock_release',
+					"bash",
+					ROOT,
+					lock,
+					String(timeout),
+				],
+				{
+					cwd: fixture.root,
+					env: {
+						...runtimeEnvironment(fixture.home),
+						...(stale ? { WORKTREE_LOCK_STALE_SECONDS: stale } : {}),
+					},
+					stdout: "pipe",
+					stderr: "pipe",
+				},
+			);
+		try {
+			await mkdir(`${lock}.d`, { recursive: true });
+			const contended = acquire(2);
+			expect(contended.exitCode).not.toBe(0);
+			expect(contended.stderr.toString()).toContain("timed out after 2s");
+
+			// A complete record naming a process that is provably gone is the one
+			// case that still reclaims immediately: that is what the pid is for.
+			await Bun.write(`${lock}.d/owner`, "999999 1\n");
+			expect(acquire(2).exitCode).toBe(0);
+
+			// And an ownerless directory older than the staleness threshold is
+			// reclaimed by age rather than deadlocking every later caller.
+			await mkdir(`${lock}.d`, { recursive: true });
+			expect(acquire(2, "0").exitCode).toBe(0);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
 	test("the host fingerprint equals the image-owned Bun fingerprint", () => {
 		const host = Bun.spawnSync(
 			[

@@ -35,23 +35,52 @@ portable_lock_process_alive() {
 	kill -0 "$pid" 2>/dev/null
 }
 
-# A lock directory is reclaimable only when its recorded holder is provably gone
-# or the lock is older than the staleness threshold. Anything unreadable or
-# malformed is treated as stale-by-age, never as free.
+# Modification time in epoch seconds: GNU stat first, then BSD stat. Kept local
+# rather than borrowed from lib.sh so this file stays sourceable on its own.
+portable_lock_directory_epoch() {
+	local path="$1" value
+	if value="$(stat -c '%Y' "$path" 2>/dev/null)" && [ -n "$value" ]; then
+		printf '%s\n' "$value"
+		return 0
+	fi
+	if value="$(stat -f '%m' "$path" 2>/dev/null)" && [ -n "$value" ]; then
+		printf '%s\n' "$value"
+		return 0
+	fi
+	return 1
+}
+
+# A lock directory is reclaimable only when its recorded holder is provably gone,
+# or when the lock is older than the staleness threshold. Anything unreadable or
+# malformed is stale-by-AGE, never free: the holder creates the directory first
+# and records itself an instant later, so treating that window as free would let
+# a second caller steal a lock that is very much alive - and two holders of the
+# registry lock is exactly one lost read-modify-write. When the owner record is
+# missing the directory's own modification time stands in for it.
 portable_lock_reclaim_if_stale() {
 	local directory="$1" owner="$1/owner" pid="" started="" now age
 
 	if [ -r "$owner" ]; then
 		read -r pid started <"$owner" || true
 	fi
-	if portable_lock_process_alive "$pid"; then
-		now="$(portable_lock_epoch)"
-		case "$started" in
-			'' | *[!0-9]*) return 1 ;;
-		esac
-		age=$((now - started))
-		[ "$age" -ge "$PORTABLE_LOCK_STALE_SECONDS" ] || return 1
+	case "$pid" in
+		'' | *[!0-9]*) pid="" ;;
+	esac
+	case "$started" in
+		'' | *[!0-9]*) started="" ;;
+	esac
+	# A complete record naming a process that no longer exists is the one case
+	# that reclaims immediately: that is what recording the pid is for.
+	if [ -n "$pid" ] && [ -n "$started" ] && ! portable_lock_process_alive "$pid"; then
+		rm -rf "$directory" 2>/dev/null || return 1
+		return 0
 	fi
+	if [ -z "$started" ]; then
+		started="$(portable_lock_directory_epoch "$directory")" || return 1
+	fi
+	now="$(portable_lock_epoch)"
+	age=$((now - started))
+	[ "$age" -ge "$PORTABLE_LOCK_STALE_SECONDS" ] || return 1
 	rm -rf "$directory" 2>/dev/null || return 1
 	return 0
 }
