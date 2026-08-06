@@ -177,6 +177,27 @@
 			"sourceOfTruth": "Codex Cloud contract"
 		},
 		{
+			"pattern": "scripts/template/validate-worktree.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "worktree runtime contract entrypoint"
+		},
+		{
+			"pattern": "scripts/template/worktree-contract.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "worktree runtime contract"
+		},
+		{
+			"pattern": "scripts/worktree/**",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "scripts/worktree/contract.toml"
+		},
+		{
 			"pattern": "scripts/template/**",
 			"classification": "template-tooling",
 			"syncPolicy": "merge",
@@ -317,6 +338,15 @@
 		{
 			"pattern": "scripts/template/validate-cloud.ts",
 			"requiresAll": ["codex_cloud"]
+		},
+		{ "pattern": "scripts/worktree/**", "requiresAll": ["devcontainer"] },
+		{
+			"pattern": "scripts/template/worktree-contract.ts",
+			"requiresAll": ["devcontainer"]
+		},
+		{
+			"pattern": "scripts/template/validate-worktree.ts",
+			"requiresAll": ["devcontainer"]
 		},
 		{
 			"pattern": ".codex/skills/graphify/**",
@@ -528,6 +558,11 @@
 			"source": ".devcontainer/devcontainer.json#customizations.vscode.extensions",
 			"destination": ".vscode/extensions.json",
 			"generator": ".devcontainer/scripts/sync-extensions-json.sh"
+		},
+		{
+			"source": "template-parameters.toml#services,routing,worktrees",
+			"destination": "scripts/worktree/contract.toml",
+			"generator": "scripts/template/render-fixture.ts"
 		},
 		{
 			"source": ".prototools",
@@ -750,7 +785,7 @@
 		]
 	},
 	"knownBoundaryRisks": [
-		"scripts/sync-devcontainer.sh excludes every scripts/* path except itself, so future template-owned scripts require an explicit ownership manifest cutover.",
+		"scripts/sync-devcontainer.sh excludes every scripts/* path except itself and the scripts/worktree/* runtime, which the isolated-worktree cutover added explicitly alongside its template-owned ownership rule. Any further template-owned script under scripts/ still requires the same paired cutover — an is_excluded include plus an ownershipRules entry ahead of scripts/template/** — or its declared syncPolicy merge is a lie.",
 		"The sync script can advance .template-ref despite unresolved conflicts or review-only outcomes.",
 		"The sync script --dry-run still mutates Git remotes and fetch state.",
 		"init-new-project.sh validates neither repository identity nor all generated paths before destructive writes.",

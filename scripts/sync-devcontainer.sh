@@ -20,8 +20,9 @@
 # updates it after each sync. With no baseline, modified files fall back to a
 # diff + apply/keep prompt (nothing is overwritten without your say-so).
 #
-# Project content is never touched: apps/, libs/, scripts/ (except this script),
-# graphify-out/, and openspec/changes|specs/ are excluded entirely.
+# Project content is never touched: apps/, libs/, scripts/ (except this script and
+# the template-owned scripts/worktree/ runtime), graphify-out/, and
+# openspec/changes|specs/ are excluded entirely.
 #
 # Nothing is committed for you. Re-runnable any time.
 #
@@ -50,6 +51,7 @@ PRUNE_PATHS=()
 is_excluded() {
   case "$1" in
     scripts/sync-devcontainer.sh)              return 1 ;;  # always include
+    scripts/worktree/*)                        return 1 ;;  # template-owned runtime
     apps/*|libs/*|scripts/*|graphify-out/*)    return 0 ;;
     openspec/changes/*|openspec/specs/*)       return 0 ;;
     README.md|README.template.md)             return 0 ;;  # project-owned / template-only

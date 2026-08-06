@@ -142,6 +142,8 @@ describe("template parameter registry", () => {
 				kind: "backend",
 				base_port: 5100,
 				depends_on: ["two", "two"],
+				directory: "apps/one",
+				command: "bun run dev",
 				health_path: "/health",
 				health_expectation: "http-2xx",
 				profiles: ["minimal"],
@@ -151,6 +153,8 @@ describe("template parameter registry", () => {
 				kind: "backend",
 				base_port: 5200,
 				depends_on: ["one"],
+				directory: "apps/two",
+				command: "bun run dev",
 				health_path: "/health",
 				health_expectation: "http-2xx",
 				profiles: ["minimal"],
@@ -175,6 +179,8 @@ describe("template parameter registry", () => {
 				kind: "frontend",
 				base_port: 5100,
 				depends_on: ["api"],
+				directory: "apps/web",
+				command: "bun run dev",
 				health_path: "/",
 				health_expectation: "http-2xx-html",
 				profiles: ["minimal"],
@@ -184,6 +190,8 @@ describe("template parameter registry", () => {
 				kind: "backend",
 				base_port: 5200,
 				depends_on: [],
+				directory: "apps/api",
+				command: "bun run dev",
 				health_path: "/health",
 				health_expectation: "json-status-ok",
 				profiles: ["full"],
@@ -191,6 +199,55 @@ describe("template parameter registry", () => {
 		];
 		expect(() => validateTemplateParameters(mutation)).toThrow(
 			"dependency api is unavailable in profile minimal",
+		);
+	});
+
+	test("rejects an unsafe published container port and incomplete service descriptors", async () => {
+		const parsed = (await parseToml(
+			resolve(ROOT, "template-parameters.toml"),
+		)) as Record<string, unknown>;
+		const schema = (await Bun.file(
+			resolve(ROOT, "template-parameters.schema.json"),
+		).json()) as Record<string, unknown>;
+
+		const privilegedPort = structuredClone(parsed) as {
+			routing: Record<string, unknown>;
+		};
+		privilegedPort.routing["published_container_port"] = 80;
+		expect(() => validateTemplateParameters(privilegedPort)).toThrow(
+			"routing.published_container_port must be between 1024 and 65535",
+		);
+		expect(validateJsonSchema(privilegedPort, schema)).toContain(
+			"$.routing.published_container_port must be at least 1024",
+		);
+
+		// A service the lifecycle cannot start is not a service: the runtime cds
+		// into `directory` and runs `command`, so both are required and both are
+		// execution inputs.
+		const incompleteService = structuredClone(parsed) as Record<
+			string,
+			unknown
+		>;
+		incompleteService["services"] = [
+			{
+				name: "api",
+				kind: "backend",
+				base_port: 5200,
+				depends_on: [],
+				directory: "../escape",
+				health_path: "/health",
+				health_expectation: "json-status-ok",
+				profiles: ["minimal"],
+			},
+		];
+		expect(() => validateTemplateParameters(incompleteService)).toThrow(
+			"services[0].command must be a non-empty string",
+		);
+		expect(() => validateTemplateParameters(incompleteService)).toThrow(
+			"services[0].directory must be a contained relative path",
+		);
+		expect(validateJsonSchema(incompleteService, schema)).toContain(
+			"$.services[0].command is required",
 		);
 	});
 
