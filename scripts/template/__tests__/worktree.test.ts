@@ -757,10 +757,14 @@ describe("worktree identity and port allocation", () => {
 	// instant later. Treating that window as free let a second caller steal a live
 	// lock, and two holders of the registry lock is exactly one lost
 	// read-modify-write, so the ownerless window must read as stale-by-age.
+	//
+	// Which backend runs is otherwise a property of the host - Linux has flock(1)
+	// and macOS does not - so the backend is pinned here rather than inherited,
+	// and both are exercised on every platform.
 	test("a lock is never stolen before its owner record is written", async () => {
 		const fixture = await harness();
 		const lock = resolve(fixture.root, "state/portable.lock");
-		const acquire = (timeout: number, stale?: string) =>
+		const acquire = (timeout: number, overrides: Record<string, string> = {}) =>
 			Bun.spawnSync(
 				[
 					"bash",
@@ -775,7 +779,8 @@ describe("worktree identity and port allocation", () => {
 					cwd: fixture.root,
 					env: {
 						...runtimeEnvironment(fixture.home),
-						...(stale ? { WORKTREE_LOCK_STALE_SECONDS: stale } : {}),
+						PORTABLE_LOCK_BACKEND: "mkdir",
+						...overrides,
 					},
 					stdout: "pipe",
 					stderr: "pipe",
@@ -795,7 +800,21 @@ describe("worktree identity and port allocation", () => {
 			// And an ownerless directory older than the staleness threshold is
 			// reclaimed by age rather than deadlocking every later caller.
 			await mkdir(`${lock}.d`, { recursive: true });
-			expect(acquire(2, "0").exitCode).toBe(0);
+			expect(acquire(2, { WORKTREE_LOCK_STALE_SECONDS: "0" }).exitCode).toBe(0);
+
+			// The flock backend has no window to race: the lock is a kernel lock on
+			// an open descriptor, so it carries no owner record and a stray lock
+			// directory is not its business at all.
+			await mkdir(`${lock}.d`, { recursive: true });
+			const withFlock = acquire(2, { PORTABLE_LOCK_BACKEND: "flock" });
+			if (Bun.which("flock")) {
+				expect(withFlock.exitCode).toBe(0);
+				expect(await Bun.file(lock).exists()).toBe(true);
+			} else {
+				// No flock(1) on this host, so asking for it must fail loudly rather
+				// than silently fall back to a different set of guarantees.
+				expect(withFlock.exitCode).not.toBe(0);
+			}
 		} finally {
 			await rm(fixture.root, { recursive: true, force: true });
 		}
@@ -1055,20 +1074,28 @@ describe("worktree container ensure", () => {
 			);
 			expect(failed.exitCode).not.toBe(0);
 			expect(failed.stderr).toContain("stub devcontainer up failed");
-			for (const leftover of ["ensure.lock", "ensure.lock.d"]) {
-				expect(
-					await Bun.file(resolve(alpha, ".dev/state/run", leftover)).exists(),
-				).toBe(false);
-			}
+			// Only the mkdir backend's lock is a directory whose absence means
+			// released. The flock backend's file is a rendezvous point that outlives
+			// every holder on purpose: unlinking it would let a later caller lock a
+			// fresh inode while an older one still holds the unlinked one. What must
+			// be true on both is that the lock is no longer HELD, which the recovery
+			// below is the honest test of.
+			expect(
+				await Bun.file(resolve(alpha, ".dev/state/run/ensure.lock.d")).exists(),
+			).toBe(false);
 
 			// A released lock means the next caller proceeds instead of timing out.
+			// The short timeout is what makes this an assertion rather than a wait:
+			// a still-held lock fails here in seconds instead of hanging.
 			await rm(resolve(tooling.state, "fail"));
 			const recovered = run(
 				alpha,
 				fixture.home,
 				"ensure.sh",
 				[],
-				toolingEnvironment(fixture, tooling),
+				toolingEnvironment(fixture, tooling, {
+					WORKTREE_ENSURE_LOCK_TIMEOUT_SECONDS: "5",
+				}),
 			);
 			expect(recovered.exitCode).toBe(0);
 			expect(recovered.stdout.trim()).toBe(CONTAINER_ID);
@@ -1088,29 +1115,53 @@ describe("worktree container ensure", () => {
 			const tooling = await stubTooling(fixture, alpha);
 			expect(run(alpha, fixture.home, "env.sh").exitCode).toBe(0);
 
-			const bare = resolve(fixture.root, "empty-bin");
-			await mkdir(bare, { recursive: true });
-			const withoutEngine = run(alpha, fixture.home, "ensure.sh", [], {
-				PATH: `${bare}:/usr/bin:/bin`,
-				STUB_STATE: tooling.state,
-			});
+			// Absence is declared in the contract rather than staged by pruning PATH:
+			// a CI runner ships a real docker in /usr/bin, so a PATH-based "missing
+			// engine" is missing only on the machines that already agree with us.
+			// Naming an engine that cannot exist exercises the same `command -v`.
+			await rewriteContract(alpha, (source) =>
+				source.replace(
+					'container_engine = "docker"',
+					'container_engine = "devenv-absent-engine"',
+				),
+			);
+			const withoutEngine = run(
+				alpha,
+				fixture.home,
+				"ensure.sh",
+				[],
+				toolingEnvironment(fixture, tooling),
+			);
 			expect(withoutEngine.exitCode).toBe(6);
-			expect(withoutEngine.stderr).toContain("docker");
+			expect(withoutEngine.stderr).toContain(
+				"the devenv-absent-engine container engine is unavailable",
+			);
+			expect(withoutEngine.stderr).toContain("Docker Desktop");
 
 			// Engine present, CLI absent: the error has to name the package the host
 			// is missing, not just the command.
-			const engineOnly = resolve(fixture.root, "engine-only");
-			await mkdir(engineOnly, { recursive: true });
-			await Bun.write(
-				resolve(engineOnly, "docker"),
-				await Bun.file(resolve(tooling.bin, "docker")).text(),
+			await rewriteContract(alpha, (source) =>
+				source
+					.replace(
+						'container_engine = "devenv-absent-engine"',
+						'container_engine = "docker"',
+					)
+					.replace(
+						'container_cli = "devcontainer"',
+						'container_cli = "devenv-absent-cli"',
+					),
 			);
-			await chmod(resolve(engineOnly, "docker"), 0o755);
-			const withoutCli = run(alpha, fixture.home, "ensure.sh", [], {
-				PATH: `${engineOnly}:/usr/bin:/bin`,
-				STUB_STATE: tooling.state,
-			});
+			const withoutCli = run(
+				alpha,
+				fixture.home,
+				"ensure.sh",
+				[],
+				toolingEnvironment(fixture, tooling),
+			);
 			expect(withoutCli.exitCode).toBe(6);
+			expect(withoutCli.stderr).toContain(
+				"the devenv-absent-cli CLI is unavailable",
+			);
 			expect(withoutCli.stderr).toContain("@devcontainers/cli");
 			expect(await upLog(tooling)).toEqual([]);
 		} finally {

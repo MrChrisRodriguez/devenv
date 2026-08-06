@@ -14,6 +14,15 @@
 # Usage:
 #   portable_lock_acquire <path> [timeout_seconds]
 #   portable_lock_release
+#
+# Env:
+#   PORTABLE_LOCK_BACKEND   auto (default) | flock | mkdir
+#     `auto` prefers flock(1) when the host has it. Pinning the backend exists
+#     because which one runs is otherwise a property of the host: a Linux host
+#     never exercises the mkdir backend and a macOS host never exercises flock,
+#     so a test matrix that covers both semantics has to be able to ask for one.
+#     Pinning `mkdir` is also the escape hatch for a shared filesystem whose
+#     flock(2) is advisory in name only.
 
 # Every consumer already fails closed; declaring it here too keeps the whole
 # runtime uniform and lets the guard hold one rule for every declared script.
@@ -22,9 +31,22 @@ set -euo pipefail
 PORTABLE_LOCK_PATH=""
 PORTABLE_LOCK_MODE=""
 PORTABLE_LOCK_STALE_SECONDS="${PORTABLE_LOCK_STALE_SECONDS:-${WORKTREE_LOCK_STALE_SECONDS:-7200}}"
+PORTABLE_LOCK_BACKEND="${PORTABLE_LOCK_BACKEND:-auto}"
 
 portable_lock_epoch() {
 	date +%s
+}
+
+# flock(2) is a kernel lock on an open descriptor: it is held atomically, it has
+# no create-then-record window to race, and the kernel releases it when the
+# holder dies. The mkdir backend has to reconstruct all three, which is why the
+# staleness rules below exist for it alone.
+portable_lock_uses_flock() {
+	case "$PORTABLE_LOCK_BACKEND" in
+		flock) return 0 ;;
+		mkdir) return 1 ;;
+	esac
+	command -v flock >/dev/null 2>&1
 }
 
 portable_lock_process_alive() {
@@ -102,7 +124,13 @@ portable_lock_acquire() {
 	fi
 	mkdir -p "$(dirname "$path")"
 
-	if command -v flock >/dev/null 2>&1; then
+	if portable_lock_uses_flock; then
+		if ! command -v flock >/dev/null 2>&1; then
+			# Only reachable when the backend was pinned. Falling back would hand the
+			# caller a different set of guarantees than the one it asked for.
+			printf 'Worktree lock: the flock backend was requested but flock(1) is not installed\n' >&2
+			return 1
+		fi
 		# Fixed descriptor 9 rather than the bash 4 {fd} form: macOS still ships
 		# bash 3.2 and these scripts run there.
 		exec 9>"$path"
