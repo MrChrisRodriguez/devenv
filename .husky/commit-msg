@@ -1,1 +1,21 @@
-bunx commitlint --edit "$1"
+# Conventional-commit check, run in the environment this checkout owns.
+#
+# "$1" is passed through byte for byte, which is correct in both topologies. In
+# the main checkout Git hands over a repository-relative path and the bridge maps
+# the current directory onto the bind-mounted workspace root. In a linked
+# worktree Git hands over an absolute path under the shared Git common directory,
+# which scripts/worktree/ensure.sh mounts inside the container at that same
+# absolute path. Rewriting the argument would break one of the two.
+#
+# --require-ready never starts a container: a commit is not a build trigger. A
+# checkout whose container is down gets exit 7 naming scripts/worktree/up.sh.
+# The escape hatch is `git commit --no-verify`.
+#
+# The fallback is a file test rather than a capability fence: a project rendered
+# without the devcontainer capability ships no scripts/worktree at all, so the
+# decision has to be made at run time.
+if [ -x scripts/worktree/exec.sh ]; then
+	bash scripts/worktree/exec.sh --require-ready bunx commitlint --edit "$1"
+else
+	bunx commitlint --edit "$1"
+fi

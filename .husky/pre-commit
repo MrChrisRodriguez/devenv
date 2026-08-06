@@ -2,6 +2,10 @@
 # feature changes — that keeps graphify-out/ out of review diffs. A pure
 # graphify-out/ commit (e.g. `chore(graphify): refresh graph`) passes; staging
 # graphify-out/graph.json alongside any non-graphify file is rejected.
+#
+# This guard stays on the host and stays first. It is pure Git plumbing plus
+# grep, so it still answers when this checkout's container is down — which is
+# exactly when the bridge below refuses.
 staged=$(git diff --cached --name-only)
 graph_staged=$(printf '%s\n' "$staged" | grep -xE 'graphify-out/graph\.json' || true)
 other_staged=$(printf '%s\n' "$staged" | grep -vE '^graphify-out/' || true)
@@ -11,4 +15,16 @@ if [ -n "$graph_staged" ] && [ -n "$other_staged" ]; then
   exit 1
 fi
 
-bunx lint-staged
+# Formatting runs where the pinned Biome lives: inside this checkout's own
+# container. --require-ready never starts one, so a commit made while the
+# container is down is refused with exit 7 rather than silently building an
+# image. The escape hatch is `git commit --no-verify`.
+#
+# The fallback is a file test rather than a capability fence: a project rendered
+# without the devcontainer capability ships no scripts/worktree at all, so the
+# decision has to be made at run time.
+if [ -x scripts/worktree/exec.sh ]; then
+	bash scripts/worktree/exec.sh --require-ready bunx lint-staged
+else
+	bunx lint-staged
+fi

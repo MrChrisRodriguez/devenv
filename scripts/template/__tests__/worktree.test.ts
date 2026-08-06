@@ -1659,6 +1659,338 @@ describe("worktree command bridge", () => {
 	}, 60_000);
 });
 
+// Husky v9 wiring, reproduced exactly: core.hooksPath points at .husky/_, whose
+// per-hook wrapper runs the committed hook with `sh -e` from the top of the
+// working tree. The hooks are POSIX sh because that is what actually executes
+// them.
+const HUSKY_WRAPPER = `#!/usr/bin/env sh
+n=$(basename "$0")
+export PATH="node_modules/.bin:$PATH"
+sh -e ".husky/$n" "$@"
+c=$?
+[ $c != 0 ] && echo "husky - $n script failed (code $c)"
+exit $c
+`;
+
+// A bridge stand-in. These tests are about what the hooks ask for, not about
+// Docker: the stub records the exact argv, resolves the commit-message path the
+// way a container would have to, and answers with whatever status the test set.
+const HOOK_BRIDGE_STUB = `#!/usr/bin/env bash
+set -u
+printf 'invoke %s\\n' "$*" >>"$BRIDGE_LOG"
+last="\${!#}"
+if [ -f "$last" ]; then
+	printf 'message-file %s\\n' "$last" >>"$BRIDGE_LOG"
+	printf 'message-body %s\\n' "$(cat "$last")" >>"$BRIDGE_LOG"
+fi
+status="\${BRIDGE_EXIT:-0}"
+if [ "$status" != "0" ]; then
+	echo "Worktree bridge: this checkout's container is not ready; run bash scripts/worktree/up.sh" >&2
+fi
+exit "$status"
+`;
+
+const HOOK_FALLBACK_STUB = `#!/usr/bin/env bash
+set -u
+printf 'bunx %s\\n' "$*" >>"$FALLBACK_LOG"
+exit 0
+`;
+
+interface HookFixture {
+	root: string;
+	main: string;
+	bin: string;
+	bridgeLog: string;
+	fallbackLog: string;
+}
+
+function hookEnvironment(
+	fixture: HookFixture,
+	overrides: Record<string, string> = {},
+): Record<string, string> {
+	return {
+		PATH: `${fixture.bin}:${process.env["PATH"] ?? ""}`,
+		HOME: resolve(fixture.root, "home"),
+		TMPDIR: process.env["TMPDIR"] ?? "/tmp",
+		LANG: "C",
+		BRIDGE_LOG: fixture.bridgeLog,
+		FALLBACK_LOG: fixture.fallbackLog,
+		...overrides,
+	};
+}
+
+function gitRun(
+	cwd: string,
+	environment: Record<string, string>,
+	...args: string[]
+): RunResult {
+	const result = Bun.spawnSync(["git", ...args], {
+		cwd,
+		env: environment,
+		stdout: "pipe",
+		stderr: "pipe",
+	});
+	return {
+		exitCode: result.exitCode,
+		stdout: result.stdout.toString(),
+		stderr: result.stderr.toString(),
+	};
+}
+
+// `bridge: false` reproduces a project rendered without the devcontainer
+// capability: scripts/worktree does not exist at all, so the hooks' run-time file
+// test is the only thing that can decide.
+async function hookFixture(options: { bridge: boolean }): Promise<HookFixture> {
+	const root = await mkdtemp(resolve(tmpdir(), "devenv-hooks-"));
+	const main = resolve(root, "main");
+	const bin = resolve(root, "bin");
+	await mkdir(resolve(root, "home"), { recursive: true });
+	for (const name of ["commit-msg", "pre-commit"] as const) {
+		const destination = resolve(main, ".husky", name);
+		await mkdir(dirname(destination), { recursive: true });
+		await copyFile(resolve(ROOT, ".husky", name), destination);
+		await chmod(destination, 0o755);
+		await writeExecutable(resolve(main, ".husky/_", name), HUSKY_WRAPPER);
+	}
+	await writeExecutable(resolve(bin, "bunx"), HOOK_FALLBACK_STUB);
+	if (options.bridge)
+		await writeExecutable(
+			resolve(main, "scripts/worktree/exec.sh"),
+			HOOK_BRIDGE_STUB,
+		);
+	const fixture: HookFixture = {
+		root,
+		main,
+		bin,
+		bridgeLog: resolve(root, "bridge.log"),
+		fallbackLog: resolve(root, "fallback.log"),
+	};
+	const environment = hookEnvironment(fixture);
+	gitRun(main, environment, "init", "-q", "-b", "main");
+	gitRun(main, environment, "config", "user.email", "hooks@example.test");
+	gitRun(main, environment, "config", "user.name", "Hook Fixture");
+	gitRun(main, environment, "config", "core.hooksPath", ".husky/_");
+	gitRun(main, environment, "add", "-A");
+	const seeded = gitRun(
+		main,
+		environment,
+		"commit",
+		"--no-verify",
+		"-qm",
+		"chore: seed",
+	);
+	expect(seeded.exitCode).toBe(0);
+	return fixture;
+}
+
+async function hookLog(path: string): Promise<string[]> {
+	if (!(await Bun.file(path).exists())) return [];
+	return (await Bun.file(path).text()).trim().split("\n").filter(Boolean);
+}
+
+describe("worktree git hook routing", () => {
+	test("routes commitlint and lint-staged through the ready-only bridge", async () => {
+		const fixture = await hookFixture({ bridge: true });
+		try {
+			const environment = hookEnvironment(fixture);
+			await Bun.write(resolve(fixture.main, "feature.txt"), "one\n");
+			gitRun(fixture.main, environment, "add", "feature.txt");
+			const committed = gitRun(
+				fixture.main,
+				environment,
+				"commit",
+				"-m",
+				"feat(hooks): route through the bridge",
+			);
+			expect(committed.exitCode).toBe(0);
+
+			const invocations = await hookLog(fixture.bridgeLog);
+			expect(invocations).toContain("invoke --require-ready bunx lint-staged");
+			const commitlint = invocations.find((line) =>
+				line.startsWith("invoke --require-ready bunx commitlint --edit "),
+			);
+			expect(commitlint).toBeDefined();
+			// The bridge is never asked to build: hooks are not a build trigger.
+			const asked = invocations.filter((line) => line.startsWith("invoke "));
+			expect(asked).toHaveLength(2);
+			expect(
+				asked.every((line) => line.startsWith("invoke --require-ready ")),
+			).toBe(true);
+			// Whatever Git handed over resolved to the real message.
+			expect(invocations).toContain(
+				"message-body feat(hooks): route through the bridge",
+			);
+			expect(await hookLog(fixture.fallbackLog)).toEqual([]);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("reaches the commit message file from a linked worktree", async () => {
+		const fixture = await hookFixture({ bridge: true });
+		try {
+			const environment = hookEnvironment(fixture);
+			const linked = resolve(fixture.root, "worktrees/alpha");
+			expect(
+				gitRun(
+					fixture.main,
+					environment,
+					"worktree",
+					"add",
+					"-q",
+					linked,
+					"-b",
+					"alpha",
+				).exitCode,
+			).toBe(0);
+
+			await Bun.write(resolve(linked, "linked.txt"), "two\n");
+			gitRun(linked, environment, "add", "linked.txt");
+			const committed = gitRun(
+				linked,
+				environment,
+				"commit",
+				"-m",
+				"feat(hooks): commit from a linked worktree",
+			);
+			expect(committed.exitCode).toBe(0);
+
+			const invocations = await hookLog(fixture.bridgeLog);
+			const messageFile = invocations
+				.find((line) => line.startsWith("message-file "))
+				?.slice("message-file ".length);
+			expect(messageFile).toBeDefined();
+			// A linked worktree's message file lives under the shared Git common
+			// directory, which ensure.sh mounts inside the container at this exact
+			// absolute path. That is why the hook forwards "$1" unchanged.
+			const commonDirectory = gitRun(
+				linked,
+				environment,
+				"rev-parse",
+				"--path-format=absolute",
+				"--git-common-dir",
+			).stdout.trim();
+			expect(resolve(linked, messageFile ?? "")).toStartWith(
+				`${commonDirectory}/`,
+			);
+			expect(invocations).toContain(
+				"message-body feat(hooks): commit from a linked worktree",
+			);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("keeps the graphify staging guard on the host and ahead of the bridge", async () => {
+		const fixture = await hookFixture({ bridge: true });
+		try {
+			const environment = hookEnvironment(fixture);
+			await Bun.write(resolve(fixture.main, "graphify-out/graph.json"), "{}\n");
+			await Bun.write(resolve(fixture.main, "feature.txt"), "three\n");
+			gitRun(fixture.main, environment, "add", "-A");
+			const refused = gitRun(
+				fixture.main,
+				environment,
+				"commit",
+				"-m",
+				"feat(hooks): mixed graph and feature",
+			);
+			expect(refused.exitCode).not.toBe(0);
+			expect(refused.stderr).toContain(
+				"graphify-out/graph.json is staged alongside non-graphify files",
+			);
+			// Pure Git plumbing, so it answers while the container is down — and it
+			// answers before the bridge is consulted at all.
+			expect(await hookLog(fixture.bridgeLog)).toEqual([]);
+			expect(
+				gitRun(
+					fixture.main,
+					environment,
+					"rev-list",
+					"--count",
+					"HEAD",
+				).stdout.trim(),
+			).toBe("1");
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("falls back to direct tooling when the runtime is not rendered", async () => {
+		const fixture = await hookFixture({ bridge: false });
+		try {
+			const environment = hookEnvironment(fixture);
+			await Bun.write(resolve(fixture.main, "feature.txt"), "four\n");
+			gitRun(fixture.main, environment, "add", "feature.txt");
+			const committed = gitRun(
+				fixture.main,
+				environment,
+				"commit",
+				"-m",
+				"feat(hooks): direct tooling",
+			);
+			expect(committed.exitCode).toBe(0);
+
+			const direct = await hookLog(fixture.fallbackLog);
+			expect(direct).toContain("bunx lint-staged");
+			expect(
+				direct.some((line) => line.startsWith("bunx commitlint --edit ")),
+			).toBe(true);
+			expect(await hookLog(fixture.bridgeLog)).toEqual([]);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("refuses the commit when this checkout has no ready container", async () => {
+		const fixture = await hookFixture({ bridge: true });
+		try {
+			const environment = hookEnvironment(fixture, { BRIDGE_EXIT: "7" });
+			await Bun.write(resolve(fixture.main, "feature.txt"), "five\n");
+			gitRun(fixture.main, environment, "add", "feature.txt");
+			const refused = gitRun(
+				fixture.main,
+				environment,
+				"commit",
+				"-m",
+				"feat(hooks): refused while the container is down",
+			);
+			expect(refused.exitCode).not.toBe(0);
+			// The refusal reaches the terminal unswallowed, and Husky reports the
+			// hook's own status rather than flattening it.
+			expect(refused.stderr).toContain(
+				"this checkout's container is not ready",
+			);
+			expect(`${refused.stdout}${refused.stderr}`).toContain(
+				"pre-commit script failed (code 7)",
+			);
+			// Above all: the commit did not land.
+			expect(
+				gitRun(
+					fixture.main,
+					environment,
+					"rev-list",
+					"--count",
+					"HEAD",
+				).stdout.trim(),
+			).toBe("1");
+
+			// The documented escape hatch still works.
+			const forced = gitRun(
+				fixture.main,
+				environment,
+				"commit",
+				"--no-verify",
+				"-m",
+				"feat(hooks): escape hatch",
+			);
+			expect(forced.exitCode).toBe(0);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+});
+
 // A host Caddy stand-in. The friendly route is optional by contract, so these
 // tests care about what the runtime asked Caddy to do and about what still
 // works when Caddy refuses.
