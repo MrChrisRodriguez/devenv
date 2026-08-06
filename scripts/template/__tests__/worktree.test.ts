@@ -216,6 +216,14 @@ case "\${1:-}" in
 		;;
 	exec)
 		printf '%s\\n' "$*" >>"$state/exec.log"
+		[ ! -f "$state/exec-fail" ] || exit 1
+		[ ! -f "$state/exec-output" ] || cat "$state/exec-output"
+		exit 0
+		;;
+	port)
+		printf '%s\\n' "$*" >>"$state/port.log"
+		[ ! -f "$state/port-fail" ] || exit 1
+		[ ! -f "$state/port" ] || cat "$state/port"
 		exit 0
 		;;
 	rm)
@@ -315,7 +323,10 @@ function healthyInspect(worktree: string, commonDirectory: string): string {
 		"true",
 		worktree,
 		resolve(worktree, ".devcontainer/devcontainer.json"),
-		`${commonDirectory}>${commonDirectory};`,
+		// The workspace bind mount and the Git metadata mount, in the format the
+		// reconciler reads. Both entries are present because a healthy container
+		// carries both, and the doctor reports on each separately.
+		`${worktree}>/workspace;${commonDirectory}>${commonDirectory};`,
 	].join("\t");
 }
 
@@ -372,6 +383,12 @@ async function markReady(
 		await Bun.file(resolve(tooling.state, "inspect.healthy")).text(),
 	);
 	await Bun.write(resolve(tooling.state, "owned"), "");
+	// The published binding the engine would report for a container this runtime
+	// started, so a diagnostic reading it back sees the worktree's own port.
+	await Bun.write(
+		resolve(tooling.state, "port"),
+		`127.0.0.1:${environmentValue(await generatedEnvironment(worktree), "DEVENV_PUBLISHED_HOST_PORT")}\n`,
+	);
 }
 
 async function upLog(tooling: Tooling): Promise<string[]> {
@@ -3078,7 +3095,24 @@ const DOCTOR_CHECK_INVENTORY = [
 	"host.command.cli",
 	"host.command.python3",
 	"host.command.curl",
+	"git.worktree-integrity",
 	"host.engine-daemon",
+	"state.environment",
+	"state.manifest-state",
+	"state.values",
+	"state.paths",
+	"state.manifest",
+	"container.record",
+	"container.ready-record",
+	"container.runtime",
+	"container.ownership",
+	"container.definition",
+	"container.fast-ready",
+	"container.workspace-mount",
+	"container.git-mount",
+	"container.port",
+	"container.volumes",
+	"container.tools",
 ] as const;
 
 interface DoctorCheck {
@@ -3154,6 +3188,139 @@ async function narrowTooling(
 
 async function treeListing(root: string): Promise<string[]> {
 	return (await readdir(root, { recursive: true })).sort();
+}
+
+// A probe client that records every invocation and answers a configurable code
+// per route. The doctor must never reach a host it did not itself derive, so the
+// log is as much of the assertion as the status is.
+const CURL_STUB = `#!/usr/bin/env bash
+set -u
+printf '%s\\n' "$*" >>"\${CURL_LOG:-/dev/null}"
+url=""
+for argument in "$@"; do
+	case "$argument" in
+		http://* | https://*) url="$argument" ;;
+	esac
+done
+case "$url" in
+	*.localhost*) printf '%s' "\${CURL_FRIENDLY_CODE:-200}" ;;
+	*) printf '%s' "\${CURL_DIRECT_CODE:-200}" ;;
+esac
+exit 0
+`;
+
+interface ProbeClient {
+	bin: string;
+	log: string;
+}
+
+async function stubProbeClient(fixture: Harness): Promise<ProbeClient> {
+	const bin = resolve(fixture.root, "probe-bin");
+	await writeExecutable(resolve(bin, "curl"), CURL_STUB);
+	return { bin, log: resolve(fixture.root, "curl.log") };
+}
+
+interface DoctorFixture {
+	fixture: Harness;
+	worktree: string;
+	tooling: Tooling;
+	caddy: Caddy;
+	probe: ProbeClient;
+	workspaceId: string;
+	hostPort: string;
+	manifest: string;
+}
+
+// One healthy worktree, brought to the exact state the doctor is supposed to
+// report as clean: generated environment, published manifest and route, a ready
+// record agreeing with an owned running container, and its port published on
+// loopback.
+async function doctorFixture(): Promise<DoctorFixture> {
+	const fixture = await harness();
+	const worktree = await addWorktree(fixture, "agent/worktrees/alpha", "alpha");
+	const tooling = await stubTooling(fixture, worktree);
+	const caddy = await stubCaddy(fixture);
+	const probe = await stubProbeClient(fixture);
+	await markReady(fixture, worktree, tooling);
+	expect(
+		run(
+			worktree,
+			fixture.home,
+			"manifest.sh",
+			["active"],
+			toolingEnvironment(fixture, tooling, caddyEnvironment(caddy)),
+		).exitCode,
+	).toBe(0);
+	const environment = await generatedEnvironment(worktree);
+	const workspaceId = environmentValue(environment, "DEVENV_WORKSPACE_ID");
+	return {
+		fixture,
+		worktree,
+		tooling,
+		caddy,
+		probe,
+		workspaceId,
+		hostPort: environmentValue(environment, "DEVENV_PUBLISHED_HOST_PORT"),
+		manifest: manifestPath(fixture.home, workspaceId),
+	};
+}
+
+function doctorEnvironment(
+	subject: DoctorFixture,
+	overrides: Record<string, string> = {},
+): Record<string, string> {
+	return {
+		PATH: `${subject.probe.bin}:${subject.tooling.bin}:${process.env["PATH"] ?? ""}`,
+		STUB_STATE: subject.tooling.state,
+		CURL_LOG: subject.probe.log,
+		...caddyEnvironment(subject.caddy),
+		...overrides,
+	};
+}
+
+function runDoctor(
+	subject: DoctorFixture,
+	args: string[] = ["--json"],
+	overrides: Record<string, string> = {},
+): RunResult {
+	return run(
+		subject.worktree,
+		subject.fixture.home,
+		"doctor.sh",
+		args,
+		doctorEnvironment(subject, overrides),
+	);
+}
+
+// Everything the stub engine was ever asked to do, concatenated. A read-only
+// claim is only worth what the invocation record says.
+async function engineInvocations(tooling: Tooling): Promise<string> {
+	const names = await readdir(tooling.state);
+	let text = "";
+	for (const name of names) {
+		if (!name.endsWith(".log")) continue;
+		text += await Bun.file(resolve(tooling.state, name)).text();
+	}
+	return text;
+}
+
+async function stateSnapshot(subject: DoctorFixture): Promise<string[]> {
+	const home = subject.fixture.home;
+	const entries: string[] = [];
+	for (const directory of [
+		resolve(home, ".config/devcontainer/worktrees"),
+		resolve(home, ".config/devcontainer/caddy"),
+		resolve(home, ".config/devcontainer/ports-registry"),
+		resolve(subject.worktree, ".dev/state"),
+	]) {
+		for (const name of await treeListing(directory)) {
+			const path = resolve(directory, name);
+			const file = Bun.file(path);
+			const body = (await file.exists()) ? await file.text() : "<dir>";
+			entries.push(`${path}\n${body}`);
+		}
+	}
+	return entries;
 }
 
 describe("worktree doctor", () => {
@@ -3249,7 +3416,13 @@ describe("worktree doctor", () => {
 				]);
 				expect(["PASS", "WARN", "FAIL", "SKIP"]).toContain(check.status);
 			}
-			expect(report.summary.pass).toBe(DOCTOR_CHECK_INVENTORY.length);
+			const total =
+				report.summary.pass +
+				report.summary.warn +
+				report.summary.fail +
+				report.summary.skip;
+			expect(total).toBe(DOCTOR_CHECK_INVENTORY.length);
+			expect(report.summary.fail).toBe(0);
 			expect(report.exitCode).toBe(result.exitCode);
 			expect(result.exitCode).toBe(0);
 		} finally {
@@ -3318,6 +3491,252 @@ describe("worktree doctor", () => {
 			await rm(fixture.root, { recursive: true, force: true });
 		}
 	}, 60_000);
+
+	test("reports a healthy worktree without changing any of it", async () => {
+		const subject = await doctorFixture();
+		try {
+			const before = await stateSnapshot(subject);
+			const result = runDoctor(subject);
+			const report = doctorReport(result);
+
+			expect(result.exitCode).toBe(0);
+			expect(report.summary).toEqual({
+				pass: DOCTOR_CHECK_INVENTORY.length,
+				warn: 0,
+				fail: 0,
+				skip: 0,
+			});
+			expect(report.workspace.id).toBe(subject.workspaceId);
+			expect(report.workspace.repoRoot).toBe(subject.worktree);
+
+			// Byte-identical state, and an engine that was only ever asked to read.
+			expect(await stateSnapshot(subject)).toEqual(before);
+			const invocations = await engineInvocations(subject.tooling);
+			for (const verb of [
+				"run ",
+				"create ",
+				"start ",
+				"stop ",
+				"rm ",
+				"volume rm",
+				"network",
+			]) {
+				expect(`${verb}:${invocations.includes(verb)}`).toBe(`${verb}:false`);
+			}
+			expect(await upLog(subject.tooling)).toEqual([]);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("fails a container owned by another checkout and skips what depends on it", async () => {
+		const subject = await doctorFixture();
+		try {
+			await Bun.write(
+				resolve(subject.tooling.state, "inspect"),
+				healthyInspect(
+					resolve(subject.fixture.root, "somebody-else"),
+					gitCommonDirectory(subject.worktree),
+				),
+			);
+			const report = doctorReport(runDoctor(subject));
+
+			expect(doctorCheck(report, "container.ownership").status).toBe("FAIL");
+			expect(doctorCheck(report, "container.ownership").remediation).toContain(
+				"Do not execute commands in this container",
+			);
+			expect(doctorCheck(report, "container.tools").status).toBe("SKIP");
+			expect(doctorCheck(report, "container.port").status).toBe("SKIP");
+			expect(report.exitCode).toBe(1);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("warns rather than fails on a stopped container", async () => {
+		const subject = await doctorFixture();
+		try {
+			const stopped = healthyInspect(
+				subject.worktree,
+				gitCommonDirectory(subject.worktree),
+			).replace(/^true/, "false");
+			await Bun.write(resolve(subject.tooling.state, "inspect"), stopped);
+
+			const normal = runDoctor(subject);
+			const report = doctorReport(normal);
+			expect(doctorCheck(report, "container.runtime").status).toBe("WARN");
+			expect(doctorCheck(report, "container.fast-ready").status).toBe("SKIP");
+			expect(normal.exitCode).toBe(0);
+
+			const strict = runDoctor(subject, ["--json", "--strict"]);
+			expect(strict.exitCode).toBe(1);
+			expect(doctorReport(strict).checks).toEqual(report.checks);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("warns that a changed definition needs a rebuild without starting one", async () => {
+		const subject = await doctorFixture();
+		try {
+			await Bun.write(
+				resolve(subject.worktree, ".dev/state/run/container.ready"),
+				`${CONTAINER_ID} ${"0".repeat(64)}\n`,
+			);
+			const report = doctorReport(runDoctor(subject));
+
+			expect(doctorCheck(report, "container.definition").status).toBe("WARN");
+			expect(doctorCheck(report, "container.definition").summary).toContain(
+				"rebuild is pending",
+			);
+			// Reporting a pending rebuild is not performing one.
+			expect(await upLog(subject.tooling)).toEqual([]);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("fails closed when the linked worktree Git pointer is broken", async () => {
+		const subject = await doctorFixture();
+		try {
+			await Bun.write(
+				resolve(subject.worktree, ".git"),
+				`gitdir: ${resolve(subject.fixture.root, "pruned/admin")}\n`,
+			);
+			const report = doctorReport(runDoctor(subject));
+
+			expect(doctorCheck(report, "git.worktree-integrity").status).toBe("FAIL");
+			expect(doctorCheck(report, "git.worktree-integrity").summary).toContain(
+				"administrative directory is missing",
+			);
+			// The fingerprint comparison never runs against untrusted Git metadata.
+			expect(doctorCheck(report, "container.definition").status).toBe("SKIP");
+			expect(doctorCheck(report, "container.fast-ready").status).toBe("SKIP");
+			expect(report.exitCode).toBe(1);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("reports a corrupt manifest while keeping the JSON document parseable", async () => {
+		const subject = await doctorFixture();
+		try {
+			await Bun.write(subject.manifest, "{not-json\n");
+			const result = runDoctor(subject);
+			const report = doctorReport(result);
+
+			expect(doctorCheck(report, "state.manifest").status).toBe("FAIL");
+			expect(result.exitCode).toBe(1);
+			// And the file it refused to trust is exactly as it found it.
+			expect(await Bun.file(subject.manifest).text()).toBe("{not-json\n");
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("fails a manifest that claims this identity for another repository", async () => {
+		const subject = await doctorFixture();
+		try {
+			const document = (await Bun.file(subject.manifest).json()) as Record<
+				string,
+				unknown
+			>;
+			document["repoPath"] = resolve(subject.fixture.root, "other-clone");
+			await Bun.write(subject.manifest, `${JSON.stringify(document)}\n`);
+			const report = doctorReport(runDoctor(subject));
+
+			expect(doctorCheck(report, "state.manifest").status).toBe("FAIL");
+			expect(doctorCheck(report, "state.manifest").detail).toContain(
+				"other-clone",
+			);
+			expect(doctorCheck(report, "state.manifest").remediation).toContain(
+				"one clone of a project",
+			);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("derives required container tools from the toolchain authority", async () => {
+		const subject = await doctorFixture();
+		try {
+			await Bun.write(
+				resolve(subject.worktree, ".prototools"),
+				'bun = "1.3.13"\nmoon = "2.3.5"\nproto = "0.55.4"\n\n[settings]\npin-latest = "local"\n',
+			);
+			// Two of the three declared commands are absent inside the container.
+			await Bun.write(
+				resolve(subject.tooling.state, "exec-output"),
+				"moon\nproto\n",
+			);
+			const missing = doctorReport(runDoctor(subject));
+			const tools = doctorCheck(missing, "container.tools");
+			expect(tools.status).toBe("FAIL");
+			expect(tools.detail).toContain("moon");
+			expect(tools.detail).toContain("proto");
+			expect(tools.detail).not.toContain("bun");
+
+			// The probe asked about exactly what the authority declares, nothing else.
+			const asked = await Bun.file(
+				resolve(subject.tooling.state, "exec.log"),
+			).text();
+			for (const tool of ["bun", "moon", "proto"]) {
+				expect(`${tool}:${asked.includes(`command -v ${tool}`)}`).toBe(
+					`${tool}:true`,
+				);
+			}
+
+			// A probe that could not run at all is a different diagnosis from a probe
+			// that ran and found gaps.
+			await Bun.write(resolve(subject.tooling.state, "exec-fail"), "");
+			const broken = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"container.tools",
+			);
+			expect(broken.status).toBe("FAIL");
+			expect(broken.summary).toContain("could not run");
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("warns when a declared per-worktree volume is absent", async () => {
+		const fixture = await harness();
+		try {
+			const worktree = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const expected = await declareVolumes(worktree);
+			const tooling = await stubTooling(fixture, worktree);
+			const caddy = await stubCaddy(fixture);
+			const probe = await stubProbeClient(fixture);
+			await markReady(fixture, worktree, tooling);
+			const subject: DoctorFixture = {
+				fixture,
+				worktree,
+				tooling,
+				caddy,
+				probe,
+				workspaceId: "",
+				hostPort: "",
+				manifest: "",
+			};
+
+			// Only the first of the two declared volumes exists on this host.
+			await Bun.write(resolve(tooling.state, "volumes"), `${expected[0]}\n`);
+			const volumes = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"container.volumes",
+			);
+			expect(volumes.status).toBe("WARN");
+			expect(volumes.detail).toContain(expected[1] ?? "");
+			expect(volumes.detail).not.toContain(`absent: ${expected[0]}`);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
 });
 
 describe("worktree runtime selftest", () => {
