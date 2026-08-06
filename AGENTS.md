@@ -2,9 +2,20 @@
 
 Shared conventions for all AI coding tools (Claude Code, Codex, Gemini CLI, etc.).
 
+## Agent Command Environment
+
+Decide **where** a command runs before deciding what to type.
+
+- Unless you are already inside this repository's development container or in a verified cloud task, route every project command through `bash scripts/worktree/exec.sh <command> [args...]`. That includes `bun`, `bunx`, `moon`, `tsc`, test runners, and every `package.json` script. The bridge is safe to call from either side: inside the container it executes in place.
+- Stay on the host for host-owned work: `docker`, the `devcontainer` CLI, Git worktree management, remote pushes, every `scripts/worktree/*.sh` lifecycle script, and every `.devcontainer/host/*.sh` script. Starting a container from inside one is never correct.
+- Read-only Git commands and file editing stay on the host too: the checkout is bind mounted, so both sides see the same bytes and the host answer is faster.
+- Git commands that fire hooks — `git commit`, `git merge`, `git rebase` without `--no-verify` — reach the container through the hooks themselves, so run them on the host and let `.husky/*` do the routing.
+- Never install project dependencies on the host. `bun install` belongs inside the container (`bash scripts/worktree/exec.sh bun install`); a host install writes host-platform binaries into the bind-mounted `node_modules`.
+- `package.json` scripts and `.moon` tasks stay direct commands. Wrapping them in the bridge would recurse the moment they run inside the container.
+
 ## Runtime
 
-**Always use Bun — never Node.js, npm, pnpm, or Vite.**
+**Always use Bun — never Node.js, npm, pnpm, or Vite.** This governs the project runtime and its dependencies. It does not govern host prerequisites: the `devcontainer` CLI is installed with `brew install devcontainer` or `npm install --global @devcontainers/cli`, because Bun is not a host prerequisite and a host `bun install` would poison the bind-mounted `node_modules`.
 
 | Instead of | Use |
 |---|---|
@@ -99,7 +110,7 @@ scripts/   # one-off tooling scripts
 - Codex Cloud is a separate, already-containerized environment. Its setup and maintenance command is the committed `bash .codex/cloud/bootstrap.sh`; the hosted settings it requires are recorded in `.codex/cloud/contract.toml`.
 - The hosted environment must set `CODEX_CLOUD=true` independently, so a fresh cache with a missing or failed setup command still takes the fail-closed cloud path.
 - Run project commands through `bash .codex/cloud/exec.sh <command>`. It sources the persisted marker, runs `.codex/cloud/doctor.sh --quiet`, and executes directly without Docker.
-- Never run `docker`, `devpod`, `devcontainer`, `.devcontainer/host/*`, worktree lifecycle scripts, deployments, or remote pushes from a cloud task. Deployment and production credentials stay in GitHub Actions.
+- Never run `docker`, container lifecycle CLIs, `.devcontainer/host/*`, worktree lifecycle scripts, deployments, or remote pushes from a cloud task. `.codex/cloud/contract.toml` names the forbidden commands and the guard enforces that list. Deployment and production credentials stay in GitHub Actions.
 - Only the contract's `secret_allow_list` (plus names in `CODEX_CLOUD_PERSIST_EXTRA_ENV`) is bridged into the agent phase, written to a `0600` file, never echoed.
 - If the doctor reports a stale fingerprint, stop and run `bash .codex/cloud/bootstrap.sh <profile>` before executing project commands.
 - Run `bun run cloud:check` and `bash .codex/cloud/selftest.sh` after changing any cloud contract value, cloud script, Proto pin, checksum, or browser payload authority.
@@ -119,7 +130,9 @@ scripts/   # one-off tooling scripts
 - `bash scripts/worktree/down.sh` is not cleanup. It stops the declared services and marks the route inactive while the registry entry, the reserved ports, the generated environment, the persisted data, and the container all survive, so a later `up.sh` hands back the identical URLs. `bash scripts/worktree/cleanup.sh` is the destructive one: it releases the ports, removes this checkout's container, its `${devcontainerId}` volumes, its manifest and route, and its generated state, and exits non-zero listing whatever survived.
 - Each checkout publishes `~/.config/devcontainer/worktrees/<workspace-id>.json` (its manifest) and, while active, `~/.config/devcontainer/caddy/<workspace-id>.caddy` (its route). The manifest survives `down.sh`, because it carries the reserved ports; only `cleanup.sh` deletes it.
 - The friendly `.localhost` route is optional and never load bearing. It needs a host Caddy that imports `~/.config/devcontainer/caddy/*.caddy`; without one the runtime warns and the direct loopback URL stays authoritative.
-- This runtime is additive during the soak. The legacy `devpod up .` entrypoint is untouched, so the main checkout may carry two containers at once. They share no volumes and no ports, and neither owns the other's labels.
+- This runtime is the entry point, not an addition to one. `bash scripts/worktree/up.sh` starts a checkout and `bash scripts/worktree/exec.sh` runs commands in it; the superseded launcher is gone from onboarding, documentation, and the git hooks. `.devcontainer/devcontainer.json` stays fully spec compliant so an editor or the `devcontainer` CLI can still open this folder, but a container started that way is an editor convenience with an ephemeral port and no route, isolation, or manifest.
+- The git hooks run project tooling through `bash scripts/worktree/exec.sh --require-ready`, which uses the container this checkout already has and exits **7** with an instruction to run `up.sh` rather than starting one — a commit is not a build trigger. The bridge's exit codes are 2 unsupported argument, 3 identity collision, 4 port exhaustion, 6 missing container engine or CLI, and 7 not ready. `git commit --no-verify` is the escape hatch.
+- Keep one clone of a project per host and use linked worktrees for parallel work. A second independent clone of the same repository derives the same workspace identity, so it claims the same ports and the same manifest path as the first.
 - Runtime environment knobs, all prefixed with the contract's environment prefix: `<PREFIX>_STARTUP_MODE=staggered` replaces readiness gates with bounded delays, `<PREFIX>_STAGGER_SECONDS` sets that delay, `<PREFIX>_SERVICE_START_TIMEOUT` bounds a single service's readiness wait, `<PREFIX>_HOST_CADDY_BIN` and `<PREFIX>_HOST_CADDYFILE` override host Caddy discovery, and `WORKTREE_ENSURE_LOCK_TIMEOUT_SECONDS` bounds the container lifecycle lock.
 - Every runtime script writes its diagnostics to stderr, so stdout stays parseable: `env.sh --json`, `ensure.sh` (a container id), `manifest.sh path|env`, and `services.sh order|status` are the only stdout producers. Every entry point exits 2 with a usage block on an unsupported argument.
 

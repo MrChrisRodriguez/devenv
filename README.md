@@ -4,7 +4,7 @@ This is a **template repository** designed to be the starting point for new proj
 
 The setup has four stages:
 
-1. **[Host Machine Setup](#host-machine-setup)** — install Docker, DevPod, an editor, etc. (once per machine)
+1. **[Host Machine Setup](#host-machine-setup)** — install Docker, the Dev Container CLI, an editor, etc. (once per machine)
 2. **[Repository Configuration](#repository-configuration)** — clone the template and turn it into your own repo
 3. **[Secrets](#secrets)** — drop API keys where the container can read them
 4. **[Starting the Dev Container](#starting-the-dev-container)** — build and open the container, then sign in to the AI CLIs
@@ -17,7 +17,7 @@ These steps install the tools your machine needs to build and run the developmen
 
 ### macOS (automated)
 
-On a Mac, a single script installs everything: Xcode Command Line Tools, Homebrew, Git, Docker Desktop, DevPod, Warp, your choice of editor, the GitHub CLI (and logs you in), and SSH keys (and adds them to GitHub). It also creates the host directories the container mounts.
+On a Mac, a single script installs everything: Xcode Command Line Tools, Homebrew, Git, Docker Desktop, the Dev Container CLI, Warp, your choice of editor, the GitHub CLI (and logs you in), and SSH keys (and adds them to GitHub). It also verifies `python3` and creates the host directories the container mounts.
 
 Open **Terminal** (search "Terminal" in Spotlight) and run:
 
@@ -50,25 +50,40 @@ docker --version
 - **Windows**: Install [Git for Windows](https://git-scm.com/download/win) with the default options.
 - **Linux**: `sudo apt install git` (Debian/Ubuntu) or `sudo dnf install git` (Fedora).
 
-#### 3. DevPod
+#### 3. Dev Container CLI
 
-DevPod builds and manages your development container.
+The [`devcontainer` CLI](https://github.com/devcontainers/cli) is the reference implementation of the Development Containers specification, and it is what builds and starts your container. `scripts/worktree` is written against its behaviour: the `devcontainer.local_folder` and `devcontainer.config_file` ownership labels, per-invocation `--mount`, `--remove-existing-container`, and `${devcontainerId}` volume identity.
 
-- Download from [devpod.sh](https://devpod.sh/) (installers for Windows and Linux are available).
-- Open DevPod and make sure **Docker** is selected as the default provider (it usually is).
+```bash
+npm install --global @devcontainers/cli
+```
+
+On macOS `init-host.sh` installs it with `brew install devcontainer` instead. Do **not** install it with Bun: Bun is not a host prerequisite here, and running `bun install` on the host writes host-platform binaries into the `node_modules` the container bind-mounts.
 
 Verify:
 ```bash
-devpod version
+devcontainer --version
 ```
 
-#### 4. An IDE (code editor)
+#### 4. python3
+
+Used for one thing: the atomic JSON port-registry and manifest writes in `scripts/worktree`. Most systems already have it.
+
+```bash
+python3 --version
+```
+
+- **Windows**: install from [python.org](https://www.python.org/downloads/) or `winget install Python.Python.3`.
+- **Linux**: `sudo apt install python3` (Debian/Ubuntu) or `sudo dnf install python3` (Fedora).
+- **macOS**: `xcode-select --install` supplies it.
+
+#### 5. An IDE (code editor)
 
 You need **[VS Code](https://code.visualstudio.com/)** — Microsoft's free code editor. The container integrates with it automatically.
 
-Install it and open it once so DevPod can detect it.
+Install it and open it once so it can attach to a running container.
 
-#### 5. GitHub CLI (recommended)
+#### 6. GitHub CLI (recommended)
 
 The GitHub CLI lets the init script automatically create your repository on GitHub.
 
@@ -80,7 +95,7 @@ Authenticate:
 gh auth login
 ```
 
-#### 6. SSH keys (if you don't have them)
+#### 7. SSH keys (if you don't have them)
 
 SSH keys let you push to GitHub without entering your password each time.
 
@@ -94,7 +109,7 @@ ssh-keygen -t ed25519 -C "your-email@example.com"
 
 Then add the public key to GitHub: copy the output of `cat ~/.ssh/id_ed25519.pub`, go to [github.com/settings/keys](https://github.com/settings/keys), click **New SSH key**, and paste it in.
 
-#### 7. Host directories
+#### 8. Host directories
 
 The container bind-mounts config directories from your host. Create them so Docker doesn't auto-create them root-owned:
 
@@ -106,10 +121,10 @@ done
 ```
 
 - `secrets.d/` — per-project secret files you author, as `secrets.d/<project>`.
-- `container-env/` — the validated Docker `--env-file`. On every `devpod up`, `.devcontainer/host/prepare-container-env.sh` merges `~/.config/devcontainer/secrets` and `secrets.d/<project>` into `container-env/<project>.env` (mode `0600`); `runArgs` in `devcontainer.json` names that file with `--env-file`, so it is how host secrets reach every container process.
+- `container-env/` — the validated Docker `--env-file`. On every container start, `.devcontainer/host/prepare-container-env.sh` merges `~/.config/devcontainer/secrets` and `secrets.d/<project>` into `container-env/<project>.env` (mode `0600`); `runArgs` in `devcontainer.json` names that file with `--env-file`, so it is how host secrets reach every container process.
 - `codex-auth/` — read-write mount source for the Codex auth snapshot, as `codex-auth/<project>`. It must be host-owned so the container user can write the captured-back token.
 
-`init-host.sh` creates all three for you. The per-project leaf names are created at `devpod up`.
+`init-host.sh` creates all three for you. The per-project leaf names are created at container start.
 
 ---
 
@@ -185,37 +200,43 @@ chmod 600 ~/.config/devcontainer/secrets.d/*
 
 > **Tip:** Setting `GITHUB_TOKEN` in the common secrets file raises the GitHub/proto API rate limit from 60 to 5000 requests/hour. If `GITHUB_TOKEN` is already exported in your host shell, it's also forwarded into the container automatically.
 
-> **Why not `.zshrc`?** GUI apps (Dock, Spotlight, DevPod) don't inherit shell env vars, so `export` in `.zshrc` is invisible to the IDE process that starts the container. The secrets files are bind-mounted directly, so they work no matter how the IDE was launched.
+> **Why not `.zshrc`?** GUI apps (Dock, Spotlight, an editor launched from the Dock) don't inherit shell env vars, so `export` in `.zshrc` is invisible to any process that starts the container from outside a terminal. The secrets files are bind-mounted directly, so they work no matter how the container was launched.
 
 ---
 
 ## Starting the Dev Container
 
-### 1. Build the container
+### 1. Start the container
 
-From your project directory, create the DevPod workspace. **The very first build needs `--recreate`** to provision cleanly:
-
-```bash
-devpod up . --recreate
-```
-
-The first run takes a few minutes to build the image. After that, opening the project is fast:
+From your project directory:
 
 ```bash
-devpod up .
+bash scripts/worktree/up.sh
 ```
 
-> **Using Warp?** Run that first `devpod up .` from a **Warp terminal**. The container captures Warp's environment on the host during the initial build so Claude Code can detect Warp's ACP integration inside the container.
+That is the entry point. It generates this checkout's environment, reserves its host ports, starts (or reuses) the one container this checkout owns, publishes its route, and prints the URLs. The first run takes a few minutes to build the image; after that it is fast, and running it again on an already-healthy container is a no-op that hands back the identical URLs.
 
-### 2. Connect to the container
-
-Open a shell inside the running container:
+Every checkout — this clone and each linked `git worktree` — owns exactly one container, one port set, one persisted data root, and one URL. Keep **one clone of a project per host** and use linked worktrees for parallel work: a second independent clone of the same repository resolves to the same workspace identity and would collide with this one.
 
 ```bash
-devpod ssh .
+bash scripts/worktree/down.sh      # stop, keeping ports, data, and the container
+bash scripts/worktree/cleanup.sh   # release everything this checkout owns
 ```
 
-(You can also open the workspace directly in your editor from the DevPod UI.) Run the remaining steps from inside this shell.
+> **Using Warp?** Run that first `up.sh` from a **Warp terminal**. The container captures Warp's environment on the host during the initial build so Claude Code can detect Warp's ACP integration inside the container. Because `up.sh` runs from the terminal you are already in, this is the normal path rather than a special step.
+
+### 2. Run commands in the container
+
+```bash
+bash scripts/worktree/exec.sh bun install   # run one command
+bash scripts/worktree/exec.sh               # open a login shell
+```
+
+`exec.sh` is the command boundary. On the host it reconciles this checkout's container and re-invokes itself inside it; already inside the container it sources `.devcontainer/environment.sh`, activates Proto, and runs in place — the same command line works from either side, and a nested directory maps to the matching directory inside the container. Git hooks use `exec.sh --require-ready`, which uses the container this checkout already has and exits **7** naming `up.sh` rather than turning a commit into a container build.
+
+Run the remaining steps through `exec.sh`, or from a login shell it opened.
+
+> **Other launchers.** `.devcontainer/devcontainer.json` is a fully spec-compliant definition, so VS Code's Dev Containers extension, the `devcontainer` CLI directly, and third-party workspace managers can all still open this folder. Treat that as an editor convenience: a container started that way gets an ephemeral host port and none of the runtime's stable port, route, per-worktree isolation, or manifest. `up.sh` is the supported entry point.
 
 ### 3. Authenticate the AI CLIs
 

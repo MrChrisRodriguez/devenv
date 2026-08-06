@@ -5,8 +5,13 @@
 ## Getting started
 
 ```bash
-bun install
+bash scripts/worktree/up.sh                    # start this checkout's container
+bash scripts/worktree/exec.sh bun install      # install dependencies inside it
 ```
+
+Dependencies are installed **inside** the container, never on the host: Bun is not
+a host prerequisite here, and a host `bun install` would write host-platform
+binaries into the `node_modules` the container bind-mounts.
 
 ## Development
 
@@ -18,15 +23,16 @@ See `AGENTS.md` and `CLAUDE.md` for shared conventions.
 The development container needs three things on the host, and nothing else:
 
 - A container engine — Docker Desktop, or any daemon `docker` can talk to.
-- The `devcontainer` CLI: `bun add --global @devcontainers/cli` (or the `npm`
-  equivalent). The runtime depends on reference-CLI behaviour — the
-  `devcontainer.local_folder` and `devcontainer.config_file` ownership labels,
-  per-invocation `--mount`, `--remove-existing-container`, and
-  `${devcontainerId}` volume identity.
+- The `devcontainer` CLI: `brew install devcontainer` on macOS, or
+  `npm install --global @devcontainers/cli` on Linux and Windows. The runtime
+  depends on reference-CLI behaviour — the `devcontainer.local_folder` and
+  `devcontainer.config_file` ownership labels, per-invocation `--mount`,
+  `--remove-existing-container`, and `${devcontainerId}` volume identity.
 - `python3`, used only for atomic JSON registry and manifest writes. macOS ships
   it with `xcode-select --install`.
 
-Bun is **not** a host prerequisite. It lives in the image.
+Bun is **not** a host prerequisite. It lives in the image, which is why the CLI is
+installed with `brew` or `npm` and never with `bun add --global`.
 
 ### Parallel worktrees
 
@@ -34,6 +40,11 @@ Every checkout — the main clone and each linked `git worktree` — owns exactl
 one container, one port set, one persisted data root, and one URL. Nothing is
 shared between them except the repository's Git metadata, so two agents can work
 on two branches at the same time without stepping on each other.
+
+Keep **one clone of this project per host** and use linked worktrees for
+parallelism. A second independent clone of the same repository derives the same
+workspace identity as the first, so it would claim the same ports and the same
+manifest path.
 
 ```sh
 git worktree add ../feature-x -b feature-x
@@ -64,6 +75,14 @@ inside the container it sources `.devcontainer/environment.sh`, activates Proto,
 and runs in place. The same command line works from either side, and a nested
 directory maps to the matching directory inside the container.
 
+The git hooks use `bash scripts/worktree/exec.sh --require-ready`, which runs in
+the container this checkout already has and exits **7** naming `up.sh` rather than
+starting one — committing is not a build trigger. Run `up.sh` once and commits work
+normally; `git commit --no-verify` is the escape hatch. `.devcontainer/devcontainer.json`
+stays a fully spec-compliant definition, so an editor or the `devcontainer` CLI can
+still open this folder, but only `up.sh` gives this checkout a stable port, a route,
+isolation from sibling worktrees, and a manifest.
+
 <!-- capability:start codex_cloud -->
 
 ### Codex Cloud
@@ -93,8 +112,8 @@ command; select it by passing it to the bootstrap
 
 Run project commands through `bash .codex/cloud/exec.sh <command>`. It sources
 the persisted cloud environment, runs the read-only doctor, and only then
-executes the command in place. Never run Docker, DevPod, devcontainer lifecycle,
-deployment, or remote push commands from a cloud task.
+executes the command in place. Never run Docker, container lifecycle, deployment,
+or remote push commands from a cloud task.
 
 <!-- capability:end codex_cloud -->
 
