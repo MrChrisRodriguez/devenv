@@ -69,9 +69,15 @@ jobs:
       - name: Cache cloud toolchain and downloads
         uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
+          # ~/.bun/install/cache is deliberately NOT cached. Bun's global cache
+          # stores EXTRACTED packages rather than tarballs, so restoring it does
+          # the same two expensive things a cold install does — move the payload,
+          # then write it all to disk — plus tar/zstd overhead, and it evicts the
+          # entries below that genuinely do pay for themselves. The remaining
+          # paths are real wins: Proto toolchains, uv, and the browser payload
+          # are large downloads this smoke would otherwise refetch every run.
           path: |
             ~/.proto
-            ~/.bun/install/cache
             ~/.cache/uv
             ~/.local/share/uv/tools
             ~/.local/bin

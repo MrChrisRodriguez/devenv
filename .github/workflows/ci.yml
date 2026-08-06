@@ -94,19 +94,23 @@ jobs:
       - name: Lint
         run: bunx biome check --no-errors-on-unmatched .
 
+      # No continue-on-error anywhere in this job. A step allowed to fail is a
+      # step nobody reads: it reports green while reporting nothing. The two
+      # reasons this file used to need one are gone — the compiler now has a
+      # committed project to check (tsconfig.json), and the "no tests yet" case
+      # is classified inside run-tests.sh instead of being waved through.
       - name: Typecheck
-        run: bun tsc --noEmit
-        continue-on-error: true # remove once tsconfig is fully wired up
+        run: bun run typecheck
 
       - name: Test
-        run: bun test
-        continue-on-error: true # no tests in template; downstream projects should remove this flag
+        run: bash scripts/ci/run-tests.sh
 
       # template-only:start stage-zero-baseline
+      # `template:test` is deliberately absent: the Test step above already runs
+      # the same suite through the wrapper, and listing it here ran it twice.
       - name: Validate template baseline contract
         run: |
           bun run template:validate
-          bun run template:test
           bun run template:typecheck
           bun run template:fixtures "${RUNNER_TEMP}/template-fixtures"
       # template-only:end stage-zero-baseline

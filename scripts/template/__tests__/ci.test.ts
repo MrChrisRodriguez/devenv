@@ -490,3 +490,68 @@ describe("aggregate gate", () => {
 		}
 	});
 });
+
+describe("failure tolerance", () => {
+	test("tolerates no step failure anywhere in the gating workflow", async () => {
+		const source = await Bun.file(resolve(ROOT, WORKFLOWS[0])).text();
+		// A step allowed to fail is a step nobody reads: green while reporting
+		// nothing. The two cases that used to need one are classified in scripts.
+		expect(source).not.toMatch(/^\s*continue-on-error:/m);
+	});
+
+	test("runs the suite and the compiler through their committed wrappers", async () => {
+		const value = Bun.YAML.parse(
+			await Bun.file(resolve(ROOT, WORKFLOWS[0])).text(),
+		) as Record<string, unknown>;
+		const jobs = value["jobs"] as Record<string, Record<string, unknown>>;
+		const steps = jobs["ci"]?.["steps"] as CompositeStep[];
+		const bodies = steps.map((step) => step.run ?? "");
+		expect(bodies).toContain("bash scripts/ci/run-tests.sh");
+		expect(bodies).toContain("bun run typecheck");
+		// bun test through the wrapper is a superset of the template suite, so
+		// listing template:test as well ran the same tests twice.
+		expect(bodies.join("\n")).not.toContain("bun run template:test");
+		const scripts = (
+			(await Bun.file(resolve(ROOT, "package.json")).json()) as {
+				scripts: Record<string, string>;
+			}
+		).scripts;
+		expect(scripts["typecheck"]).toBe("bash scripts/ci/run-typecheck.sh");
+	});
+
+	test("separates an empty suite from a failing one", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const script = resolve(ROOT, "scripts/ci/run-tests.sh");
+			// No test files at all: reported, not failed.
+			const empty = runScript(script, { cwd: temporary });
+			expect(empty.exitCode).toBe(0);
+			expect(empty.output).toContain("::notice::");
+
+			await Bun.write(
+				resolve(temporary, "green.test.ts"),
+				'import { expect, test } from "bun:test";\ntest("green", () => {\n\texpect(1).toBe(1);\n});\n',
+			);
+			expect(runScript(script, { cwd: temporary }).exitCode).toBe(0);
+
+			// A suite that ran and failed must never look like a suite that was
+			// not there — that is the whole failure mode continue-on-error had.
+			await Bun.write(
+				resolve(temporary, "red.test.ts"),
+				'import { expect, test } from "bun:test";\ntest("red", () => {\n\texpect(1).toBe(2);\n});\n',
+			);
+			const failing = runScript(script, { cwd: temporary });
+			expect(failing.exitCode).toBe(1);
+			expect(failing.output).not.toContain("::notice::");
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("caches no extracted dependency tree in the smoke lane", async () => {
+		const source = await Bun.file(resolve(ROOT, WORKFLOWS[1])).text();
+		// Restoring Bun's global cache repeats the two operations that make a
+		// cold install cold, and evicts the caches that do pay for themselves.
+		expect(source).not.toMatch(/^\s+~\/\.bun\/install\/cache\s*$/m);
+	});
+});

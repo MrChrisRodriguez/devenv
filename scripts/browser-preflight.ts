@@ -1,3 +1,4 @@
+// biome-ignore-all lint/complexity/useLiteralKeys: The environment is an index signature the compiler requires bracket access for.
 import { isAbsolute } from "node:path";
 import { chromium } from "@playwright/test";
 
@@ -18,7 +19,9 @@ const documentUrl = `data:text/html;charset=utf-8,${encodeURIComponent(
 )}`;
 
 try {
-	const payloadRootSource = process.env.PLAYWRIGHT_BROWSERS_PATH;
+	// Bracket access: the environment is an index signature, and the compiler
+	// (noPropertyAccessFromIndexSignature) rejects the dotted form.
+	const payloadRootSource = process.env["PLAYWRIGHT_BROWSERS_PATH"];
 	if (!payloadRootSource)
 		throw new Error("PLAYWRIGHT_BROWSERS_PATH is required");
 	const payloadRoot = payloadRootSource.replace(/\/+$/, "");
