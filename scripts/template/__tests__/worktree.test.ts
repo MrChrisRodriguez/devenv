@@ -2969,6 +2969,75 @@ describe("worktree service lifecycle", () => {
 		}
 	}, 120_000);
 
+	// The identity and volume-prefix derivations belong to the library, not to
+	// removal: the destructive path has to know exactly what this checkout owns
+	// and the diagnostic path has to look for exactly the same set, and two
+	// derivations would be two answers that diverge without anyone noticing.
+	// Both are pure reads, and the identity has to agree with the container CLI's
+	// own ${devcontainerId} algorithm or the volume names name nothing.
+	test("shared identity derivation is pure and matches the container CLI", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const expected = await declareVolumes(alpha);
+			const probe = Bun.spawnSync(
+				[
+					"bash",
+					"-c",
+					'. "$1/scripts/worktree/lib.sh"; ' +
+						'config="$1/.devcontainer/devcontainer.json"; ' +
+						'printf "identity=%s\\n" "$(wt_devcontainer_identity "$1" "$config")"; ' +
+						'wt_volume_prefixes "$config" | sed -e "s/^/prefix=/"; ' +
+						'wt_is_port 8080 && printf "port-accepts-8080\\n"; ' +
+						'wt_is_port 80 || printf "port-rejects-80\\n"; ' +
+						'wt_is_identifier "devenv-alpha" ' +
+						'"^[a-z0-9][a-z0-9-]{0,62}$" && printf "id-accepts-slug\\n"; ' +
+						'wt_is_identifier "EVIL.example" ' +
+						'"^[a-z0-9][a-z0-9-]{0,62}$" || printf "id-rejects-host\\n"',
+					"bash",
+					alpha,
+				],
+				{
+					cwd: alpha,
+					env: runtimeEnvironment(fixture.home),
+					stdout: "pipe",
+					stderr: "pipe",
+				},
+			);
+			expect(probe.stderr.toString()).toBe("");
+			expect(probe.exitCode).toBe(0);
+			const lines = probe.stdout.toString().trim().split("\n");
+			const identity = lines
+				.filter((line) => line.startsWith("identity="))
+				.map((line) => line.slice("identity=".length))[0];
+			const prefixes = lines
+				.filter((line) => line.startsWith("prefix="))
+				.map((line) => line.slice("prefix=".length));
+
+			expect(identity).toBe(devcontainerIdentity(alpha));
+			expect(prefixes).toEqual([...VOLUME_PREFIXES]);
+			expect(prefixes.map((prefix) => `${prefix}-${identity}`)).toEqual(
+				expected,
+			);
+			// The shape predicates answer instead of dying, which is what lets a
+			// diagnostic keep reporting past a malformed value.
+			expect(lines).toContain("port-accepts-8080");
+			expect(lines).toContain("port-rejects-80");
+			expect(lines).toContain("id-accepts-slug");
+			expect(lines).toContain("id-rejects-host");
+
+			// Deriving is reading: no registry, no generated state, nothing.
+			expect(await readdir(fixture.home)).toEqual([]);
+			expect(await Bun.file(resolve(alpha, ".dev")).exists()).toBe(false);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
 	test("no runtime script hardcodes a volume prefix or the persistence path", async () => {
 		const configuration = await Bun.file(
 			resolve(ROOT, ".devcontainer/devcontainer.json"),
