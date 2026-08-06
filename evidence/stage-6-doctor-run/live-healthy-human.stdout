@@ -1,0 +1,86 @@
+doctorExitCode=0
+workspace=devenv-s6-alpha
+summary=35 pass, 1 warn, 0 fail, 0 skip
+checkLines=36
+failLines=0
+firstCheck=[PASS] host.context                 Running on the host
+lastCheck=[PASS] manifests.port-collision     No two active worktrees claim the same host port
+healthy=true
+--- report ---
+Worktree doctor
+  workspace: devenv-s6-alpha
+  family:    s6-alpha
+  offset:    942
+  repo:      /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha
+
+[PASS] host.context                 Running on the host
+[PASS] host.command.git             The version control CLI is installed
+       detail: git
+[PASS] host.command.engine          The container engine is installed
+       detail: docker
+[PASS] host.command.cli             The container CLI is installed
+       detail: devcontainer
+[PASS] host.command.python3         The Python interpreter is installed
+       detail: python3
+[PASS] host.command.curl            The HTTP probe client is installed
+       detail: curl
+[PASS] git.worktree-integrity       The linked worktree owns its Git administrative directory
+       detail: /Users/mrcr/Code/templates/devenv/.git/worktrees/alpha
+[PASS] host.engine-daemon           The container engine daemon is responding
+[PASS] state.environment            The generated worktree environment is readable
+       detail: /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha/.dev/state/worktree.env
+[PASS] state.manifest-state         The published route state is readable
+       detail: /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha/.dev/state/run/manifest.env
+[PASS] state.values                 The generated worktree values are well formed
+       detail: devenv-s6-alpha offset 942 port 9022
+[PASS] state.paths                  Every recorded path stays under its directory
+       detail: /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home/.config/devcontainer/worktrees/devenv-s6-alpha.json
+[PASS] state.manifest               The published manifest matches this checkout
+       detail: status active at /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home/.config/devcontainer/worktrees/devenv-s6-alpha.json
+[PASS] container.record             This checkout records a container id
+       detail: /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha/.dev/state/run/container.id
+[PASS] container.ready-record       The readiness record is well formed
+       detail: /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha/.dev/state/run/container.ready
+[PASS] container.runtime            The recorded container is running
+       detail: f3978ef37c752e742d6a5bcaa7f72995c7258e44a6726deb9a3a42e64c1cafa8
+[PASS] container.ownership          The container belongs to this checkout
+       detail: devcontainer.local_folder and devcontainer.config_file both name this checkout
+[PASS] container.definition         The running container matches the current definition
+       detail: d6ff95c907fd7c44a4e8ddb11fbdecf434a468a19c1fb6e2d9fe94ba76588654
+[PASS] container.fast-ready         The fast readiness check passes
+[PASS] container.workspace-mount    This checkout is mounted at the declared workspace
+       detail: /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha at /workspace
+[PASS] container.git-mount          Git metadata is mounted at its host path
+       detail: /Users/mrcr/Code/templates/devenv/.git
+[PASS] container.port               The declared port is published on loopback
+       detail: 127.0.0.1:9022
+[PASS] container.volumes            Every declared per-worktree volume exists
+       detail: 1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n
+[PASS] container.tools              Every command the toolchain authority declares resolves in the container
+       detail: .prototools
+[PASS] caddy.binary                 A host routing binary is available
+       detail: /opt/homebrew/bin/caddy
+[PASS] caddy.config                 The host routing configuration validates
+       detail: /opt/homebrew/etc/Caddyfile
+[WARN] caddy.import                 The host configuration does not import worktree routes
+       detail: /opt/homebrew/etc/Caddyfile has no import of /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home/.config/devcontainer/caddy/*.caddy
+       next:   Add 'import /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home/.config/devcontainer/caddy/*.caddy' to /opt/homebrew/etc/Caddyfile once.
+[PASS] caddy.snippet                The published route names this worktree
+       detail: s6-alpha.devenv.localhost to 127.0.0.1:9022
+[PASS] route.direct                 The direct URL answers
+       detail: http://127.0.0.1:9022 returned 200
+[PASS] route.friendly               The friendly URL answers
+       detail: http://s6-alpha.devenv.localhost returned 200
+[PASS] registry.readable            The port registry is readable
+       detail: /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home/.config/devcontainer/ports-registry/ports.json
+[PASS] registry.lock                No registry allocation is holding a lock
+       detail: /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home/.config/devcontainer/ports-registry/ports.lock.d is absent
+[PASS] registry.entry               This worktree holds its registry entry
+       detail: devenv-s6-alpha at offset 942
+[PASS] registry.offset-match        The registry and the generated environment agree on the offset
+       detail: offset 942
+[PASS] registry.port-collision      Every registered environment holds a disjoint port set
+[PASS] manifests.port-collision     No two active worktrees claim the same host port
+       detail: 2 published manifests scanned
+
+Summary: 35 pass, 1 warn, 0 fail, 0 skip

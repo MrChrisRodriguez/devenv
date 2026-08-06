@@ -1,0 +1,3 @@
+containerId=f3978ef37c752e742d6a5bcaa7f72995c7258e44a6726deb9a3a42e64c1cafa8
+doctorExitCode=1
+reportJson={"checks":[{"detail":"DEVCONTAINER=true","id":"host.context","remediation":"Run the doctor from the host checkout.","status":"FAIL","summary":"The doctor diagnoses a host, not a container"}],"exitCode":1,"schemaVersion":1,"summary":{"fail":1,"pass":0,"skip":0,"warn":0},"workspace":{"family":"","id":"","offset":"","repoRoot":"/workspace"}}

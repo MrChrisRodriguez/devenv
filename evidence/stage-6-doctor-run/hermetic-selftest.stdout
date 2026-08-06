@@ -1,0 +1,11 @@
+Worktree selftest: ok - the contract declares every key the runtime reads
+Worktree selftest: ok - every declared runtime script exists, is executable, and fails closed
+Worktree selftest: ok - the definition fingerprint is a 64 character sha-256 digest
+Worktree selftest: ok - the host fingerprint equals the image-owned authority
+Worktree selftest: ok - identity and port allocation are deterministic and regenerate identically
+Worktree selftest: ok - the main checkout keeps offset 0 and is never registered
+Worktree selftest: ok - the bridge degrades with an instruction when no container engine exists
+Worktree selftest: ok - every entry point rejects an unsupported argument with a usage message
+Worktree selftest: ok - the doctor lists its check inventory without probing or writing
+Worktree selftest: 9 checks passed
+Worktree selftest: passed

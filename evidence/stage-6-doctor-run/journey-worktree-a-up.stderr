@@ -1,0 +1,10 @@
+Worktree environment: devenv-s6-alpha uses offset 942 (preferred); published host port 9022
+Worktree environment: devenv-s6-alpha uses offset 942 (preferred); published host port 9022
+Worktree ensure: starting the container for /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha
+Worktree up: container f3978ef37c752e742d6a5bcaa7f72995c7258e44a6726deb9a3a42e64c1cafa8
+Worktree manifest: direct URL http://127.0.0.1:9022
+Worktree manifest: friendly URL http://s6-alpha.devenv.localhost
+Worktree up: no services are declared
+Worktree up: devenv-s6-alpha is up
+Worktree up: direct URL http://127.0.0.1:9022
+Worktree up: friendly URL http://s6-alpha.devenv.localhost

@@ -1,0 +1,15 @@
+realCheckoutStateDigest=d0d0c090a075c9ae4edaf21846084d2742cecfc930dee45ffbd46cf74869a2e7
+headSha=4a8894c2fb05c75bf2959ecedf9ca72ceb4f675b
+gitDir=/Users/mrcr/Code/templates/devenv/.git/worktrees/alpha
+gitCommonDir=/Users/mrcr/Code/templates/devenv/.git
+isolatedHome=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home
+containerId=f3978ef37c752e742d6a5bcaa7f72995c7258e44a6726deb9a3a42e64c1cafa8
+environmentJson={"containerEnvironmentFile":"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha/.dev/state/worktree.container.env","directUrl":"http://127.0.0.1:9022","environmentFile":"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha/.dev/state/worktree.env","environmentPrefix":"DEVENV","family":"s6-alpha","friendlyHost":"s6-alpha.devenv.localhost","layout":"worktree","offset":942,"offsetSource":"preferred","portSet":[9022],"preferredOffset":942,"publishedContainerPort":8080,"publishedHostPort":9022,"repoPath":"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha","schemaVersion":1,"workspaceId":"devenv-s6-alpha"}
+manifestPath=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home/.config/devcontainer/worktrees/devenv-s6-alpha.json
+definitionFingerprint=d6ff95c907fd7c44a4e8ddb11fbdecf434a468a19c1fb6e2d9fe94ba76588654
+publishedMapping=127.0.0.1:9022
+containerVolumes=claude-code-shellhistory-1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n claude-code-config-1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n gemini-home-1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n config-home-1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n codex-home-1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n 
+listener=python -m http.server 8080
+directUrl=http://127.0.0.1:9022
+directProbeCode=200
+listenerAnswers=true

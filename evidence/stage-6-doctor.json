@@ -1,0 +1,549 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-6-worktree-doctor",
+	"capturedAt": "2026-08-06T16:04:18.769Z",
+	"run": {
+		"id": "stage6-20260806t160000z-4a8894c2",
+		"logRoot": "evidence/stage-6-doctor-run",
+		"temporaryRoot": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2",
+		"isolatedHome": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home",
+		"originPath": "/Users/mrcr/Code/templates/devenv"
+	},
+	"source": {
+		"baseSha": "9961f7e6c6797738012665c16222ff1afc1441cd",
+		"implementationSha": "4a8894c2fb05c75bf2959ecedf9ca72ceb4f675b",
+		"treeClean": true
+	},
+	"host": {
+		"os": "darwin",
+		"architecture": "arm64",
+		"kernel": "25.5.0",
+		"home": "/Users/mrcr",
+		"dockerVersion": "29.4.0",
+		"devcontainerCliVersion": "0.87.0",
+		"pythonVersion": "3.12.8",
+		"curlPresent": true
+	},
+	"doctor": {
+		"command": "bash scripts/worktree/doctor.sh",
+		"schemaVersion": 1,
+		"checkIds": [
+			"host.context",
+			"host.command.git",
+			"host.command.engine",
+			"host.command.cli",
+			"host.command.python3",
+			"host.command.curl",
+			"git.worktree-integrity",
+			"host.engine-daemon",
+			"state.environment",
+			"state.manifest-state",
+			"state.values",
+			"state.paths",
+			"state.manifest",
+			"container.record",
+			"container.ready-record",
+			"container.runtime",
+			"container.ownership",
+			"container.definition",
+			"container.fast-ready",
+			"container.workspace-mount",
+			"container.git-mount",
+			"container.port",
+			"container.volumes",
+			"container.tools",
+			"caddy.binary",
+			"caddy.config",
+			"caddy.import",
+			"caddy.snippet",
+			"route.direct",
+			"route.friendly",
+			"registry.readable",
+			"registry.lock",
+			"registry.entry",
+			"registry.offset-match",
+			"registry.port-collision",
+			"manifests.port-collision"
+		],
+		"exitCodes": {
+			"healthy": 0,
+			"failure": 1,
+			"invalidArgument": 2
+		}
+	},
+	"worktrees": [
+		{
+			"name": "alpha",
+			"path": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha",
+			"workspaceId": "devenv-s6-alpha",
+			"family": "s6-alpha",
+			"offset": 942,
+			"publishedHostPort": 9022,
+			"directUrl": "http://127.0.0.1:9022",
+			"containerId": "f3978ef37c752e742d6a5bcaa7f72995c7258e44a6726deb9a3a42e64c1cafa8",
+			"devcontainerId": "1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n",
+			"definitionFingerprint": "d6ff95c907fd7c44a4e8ddb11fbdecf434a468a19c1fb6e2d9fe94ba76588654"
+		},
+		{
+			"name": "beta",
+			"path": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta",
+			"workspaceId": "devenv-s6-beta",
+			"family": "s6-beta",
+			"offset": 481,
+			"publishedHostPort": 8561,
+			"directUrl": "http://127.0.0.1:8561",
+			"containerId": "1d3986e95245c17eae55b78cadd52974dc0bff3dc66254fe1ad4d8e49a2c2bc5",
+			"devcontainerId": "15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue",
+			"definitionFingerprint": "d6ff95c907fd7c44a4e8ddb11fbdecf434a468a19c1fb6e2d9fe94ba76588654"
+		}
+	],
+	"commands": [
+		{
+			"id": "doctor-guard",
+			"command": ["bun", "run", "worktree:check"],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:00:00.651Z",
+			"completedAt": "2026-08-06T16:00:00.870Z",
+			"durationMs": 219,
+			"stdoutPath": "evidence/stage-6-doctor-run/doctor-guard.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/doctor-guard.stderr",
+			"stdoutSha256": "b8fc787fad0cc3f993f929092349ec69500a2a05c0162ba2b0fa03d85e0fb54c",
+			"stderrSha256": "b21172c02c58cf08110b00d513cdbce996f4ccd7813f16729358cd34cb9daad7",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "hermetic-selftest",
+			"command": ["bash", "scripts/worktree/selftest.sh"],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:00:00.871Z",
+			"completedAt": "2026-08-06T16:00:02.914Z",
+			"durationMs": 2043,
+			"stdoutPath": "evidence/stage-6-doctor-run/hermetic-selftest.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/hermetic-selftest.stderr",
+			"stdoutSha256": "2459e683a62ac78ab509f3f35b0038741ea8a8224c09001842bdabecff2337be",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "doctor-known-bad-fixtures",
+			"command": ["bun", "test", "scripts/template/__tests__/worktree.test.ts"],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:00:02.915Z",
+			"completedAt": "2026-08-06T16:02:44.066Z",
+			"durationMs": 161151,
+			"stdoutPath": "evidence/stage-6-doctor-run/doctor-known-bad-fixtures.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/doctor-known-bad-fixtures.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "e38a4c613ef8ce4f683be486b632a9f8e487112cfe38215fce1407640de207fb",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "doctor-check-inventory",
+			"command": ["bash", "scripts/worktree/doctor.sh", "--list-checks"],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:02:44.067Z",
+			"completedAt": "2026-08-06T16:02:44.165Z",
+			"durationMs": 98,
+			"stdoutPath": "evidence/stage-6-doctor-run/doctor-check-inventory.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/doctor-check-inventory.stderr",
+			"stdoutSha256": "2ad4346b1bfdb30b384ad1490f7c852af0273f618e8d6deb4334b98aa2321e7d",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "journey-worktree-a-up",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nreal_state_digest() {\n\t(cd \"/Users/mrcr/.config/devcontainer\" 2>/dev/null &&\n\t\tfind ports-registry worktrees caddy -type f -print0 2>/dev/null |\n\t\tsort -z | xargs -0 shasum -a 256 2>/dev/null || true) |\n\t\tshasum -a 256 | awk '{ print $1 }'\n}\nprintf 'realCheckoutStateDigest=%s\\n' \"$(real_state_digest)\"\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\nfor directory in secrets.d container-env codex-auth; do\n\tmkdir -p \"$HOME/.config/devcontainer/$directory\"\n\tchmod 700 \"$HOME/.config/devcontainer/$directory\"\ndone\nmkdir -p \"$HOME/.ssh\"\nchmod 700 \"$HOME/.ssh\"\nmkdir -p \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6\"\ngit -C \"/Users/mrcr/Code/templates/devenv\" worktree add --detach --quiet \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\" 4a8894c2fb05c75bf2959ecedf9ca72ceb4f675b\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\"\nprintf 'headSha=%s\\n' \"$(git rev-parse HEAD)\"\nprintf 'gitDir=%s\\n' \"$(git rev-parse --path-format=absolute --git-dir)\"\nprintf 'gitCommonDir=%s\\n' \"$(git rev-parse --path-format=absolute --git-common-dir)\"\nprintf 'isolatedHome=%s\\n' \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home\"\nbash scripts/worktree/up.sh\ncontainer_id=\"$(bash scripts/worktree/ensure.sh --check-ready)\"\nprintf 'containerId=%s\\n' \"$container_id\"\nprintf 'environmentJson=%s\\n' \"$(bash scripts/worktree/env.sh --json | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\nprintf 'manifestPath=%s\\n' \"$(bash scripts/worktree/manifest.sh path)\"\nprintf 'definitionFingerprint=%s\\n' \"$(bash scripts/worktree/ensure.sh --definition-fingerprint)\"\ndevelopment_user=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_contract_value \"$2\"' bash \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\" development_user)\"\ncontainer_workspace=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_contract_value \"$2\"' bash \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\" container_workspace)\"\ncontainer_port=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_contract_value \"$2\"' bash \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\" published_container_port)\"\nprintf 'publishedMapping=%s\\n' \"$(docker port \"$container_id\" \"$container_port/tcp\" | head -1)\"\nprintf 'containerVolumes=%s\\n' \"$(docker inspect --format '{{range .Mounts}}{{if eq .Type \"volume\"}}{{.Name}} {{end}}{{end}}' \"$container_id\")\"\ndocker exec --detach --user \"$development_user\" --workdir \"$container_workspace\" \\\n\t\"$container_id\" /usr/bin/bash -lc \\\n\t\"exec python -m http.server $container_port --bind 0.0.0.0\"\nprintf 'listener=python -m http.server %s\\n' \"$container_port\"\ndirect=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_env_file_value \"$REPO_ROOT/$(wt_contract_value generated_environment)\" \"$2\"' bash \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\" DEVENV_DIRECT_URL)\"\nprintf 'directUrl=%s\\n' \"$direct\"\ncode=000\nfor attempt in 1 2 3 4 5 6 7 8 9 10; do\n\tcode=\"$(curl --silent --max-time 5 --output /dev/null --write-out '%{http_code}' \"$direct\" || printf 000)\"\n\tcase \"$code\" in 2[0-9][0-9] | 3[0-9][0-9]) break ;; esac\n\tsleep 2\ndone\nprintf 'directProbeCode=%s\\n' \"$code\"\n[ \"$code\" = \"200\" ]\nprintf 'listenerAnswers=true\\n'"
+			],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:02:44.166Z",
+			"completedAt": "2026-08-06T16:03:18.541Z",
+			"durationMs": 34375,
+			"stdoutPath": "evidence/stage-6-doctor-run/journey-worktree-a-up.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/journey-worktree-a-up.stderr",
+			"stdoutSha256": "8c854fd2c1cf8124552253e931061f6aee7d8d4b5492f8b798d1125eb5e7465b",
+			"stderrSha256": "fa0a5031cc571a10e34dc80a7cd87ea7f652dae29d943b14b6d4ddb5e0d0bcef",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "journey-worktree-b-up",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nreal_state_digest() {\n\t(cd \"/Users/mrcr/.config/devcontainer\" 2>/dev/null &&\n\t\tfind ports-registry worktrees caddy -type f -print0 2>/dev/null |\n\t\tsort -z | xargs -0 shasum -a 256 2>/dev/null || true) |\n\t\tshasum -a 256 | awk '{ print $1 }'\n}\nprintf 'realCheckoutStateDigest=%s\\n' \"$(real_state_digest)\"\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\nfor directory in secrets.d container-env codex-auth; do\n\tmkdir -p \"$HOME/.config/devcontainer/$directory\"\n\tchmod 700 \"$HOME/.config/devcontainer/$directory\"\ndone\nmkdir -p \"$HOME/.ssh\"\nchmod 700 \"$HOME/.ssh\"\nmkdir -p \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6\"\ngit -C \"/Users/mrcr/Code/templates/devenv\" worktree add --detach --quiet \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta\" 4a8894c2fb05c75bf2959ecedf9ca72ceb4f675b\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta\"\nprintf 'headSha=%s\\n' \"$(git rev-parse HEAD)\"\nprintf 'gitDir=%s\\n' \"$(git rev-parse --path-format=absolute --git-dir)\"\nprintf 'gitCommonDir=%s\\n' \"$(git rev-parse --path-format=absolute --git-common-dir)\"\nprintf 'isolatedHome=%s\\n' \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home\"\nbash scripts/worktree/up.sh\ncontainer_id=\"$(bash scripts/worktree/ensure.sh --check-ready)\"\nprintf 'containerId=%s\\n' \"$container_id\"\nprintf 'environmentJson=%s\\n' \"$(bash scripts/worktree/env.sh --json | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\nprintf 'manifestPath=%s\\n' \"$(bash scripts/worktree/manifest.sh path)\"\nprintf 'definitionFingerprint=%s\\n' \"$(bash scripts/worktree/ensure.sh --definition-fingerprint)\"\ndevelopment_user=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_contract_value \"$2\"' bash \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta\" development_user)\"\ncontainer_workspace=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_contract_value \"$2\"' bash \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta\" container_workspace)\"\ncontainer_port=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_contract_value \"$2\"' bash \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta\" published_container_port)\"\nprintf 'publishedMapping=%s\\n' \"$(docker port \"$container_id\" \"$container_port/tcp\" | head -1)\"\nprintf 'containerVolumes=%s\\n' \"$(docker inspect --format '{{range .Mounts}}{{if eq .Type \"volume\"}}{{.Name}} {{end}}{{end}}' \"$container_id\")\"\ndocker exec --detach --user \"$development_user\" --workdir \"$container_workspace\" \\\n\t\"$container_id\" /usr/bin/bash -lc \\\n\t\"exec python -m http.server $container_port --bind 0.0.0.0\"\nprintf 'listener=python -m http.server %s\\n' \"$container_port\"\ndirect=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_env_file_value \"$REPO_ROOT/$(wt_contract_value generated_environment)\" \"$2\"' bash \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta\" DEVENV_DIRECT_URL)\"\nprintf 'directUrl=%s\\n' \"$direct\"\ncode=000\nfor attempt in 1 2 3 4 5 6 7 8 9 10; do\n\tcode=\"$(curl --silent --max-time 5 --output /dev/null --write-out '%{http_code}' \"$direct\" || printf 000)\"\n\tcase \"$code\" in 2[0-9][0-9] | 3[0-9][0-9]) break ;; esac\n\tsleep 2\ndone\nprintf 'directProbeCode=%s\\n' \"$code\"\n[ \"$code\" = \"200\" ]\nprintf 'listenerAnswers=true\\n'"
+			],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:03:18.541Z",
+			"completedAt": "2026-08-06T16:03:45.428Z",
+			"durationMs": 26887,
+			"stdoutPath": "evidence/stage-6-doctor-run/journey-worktree-b-up.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/journey-worktree-b-up.stderr",
+			"stdoutSha256": "d7d640ed6b4c3f3fb04868841ead5c31a9f6d019373af0beeace9ae09b83ab63",
+			"stderrSha256": "9cb5a6517a02fe4fc8297c18160c349de373a1776183cc286a63b9b4df1b38da",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-healthy-human",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\"\nstatus=0\nreport=\"$(bash scripts/worktree/doctor.sh)\" || status=$?\nprintf 'doctorExitCode=%s\\n' \"$status\"\nprintf 'workspace=%s\\n' \"$(printf '%s\\n' \"$report\" | sed -n 's/^  workspace: //p')\"\nprintf 'summary=%s\\n' \"$(printf '%s\\n' \"$report\" | sed -n 's/^Summary: //p')\"\nprintf 'checkLines=%s\\n' \"$(printf '%s\\n' \"$report\" | grep -c '^\\[' || true)\"\nprintf 'failLines=%s\\n' \"$(printf '%s\\n' \"$report\" | grep -c '^\\[FAIL\\]' || true)\"\nprintf 'firstCheck=%s\\n' \"$(printf '%s\\n' \"$report\" | grep '^\\[' | head -n 1)\"\nprintf 'lastCheck=%s\\n' \"$(printf '%s\\n' \"$report\" | grep '^\\[' | tail -n 1)\"\n[ \"$status\" = \"0\" ]\nprintf 'healthy=true\\n'\nprintf -- '--- report ---\\n%s\\n' \"$report\""
+			],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:03:45.429Z",
+			"completedAt": "2026-08-06T16:03:47.317Z",
+			"durationMs": 1888,
+			"stdoutPath": "evidence/stage-6-doctor-run/live-healthy-human.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/live-healthy-human.stderr",
+			"stdoutSha256": "990f6265af0255bad8ea7b9728e434111256ffce110f54c0d1e86c1b22451b5c",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-healthy-json",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\"\nstatus=0\nreport=\"$(bash scripts/worktree/doctor.sh --json)\" || status=$?\nprintf 'doctorExitCode=%s\\n' \"$status\"\nprintf 'reportJson=%s\\n' \"$(printf '%s' \"$report\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\n[ \"$status\" = \"0\" ]\nprintf 'healthy=true\\n'"
+			],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:03:47.317Z",
+			"completedAt": "2026-08-06T16:03:49.072Z",
+			"durationMs": 1755,
+			"stdoutPath": "evidence/stage-6-doctor-run/live-healthy-json.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/live-healthy-json.stderr",
+			"stdoutSha256": "fc2419ecc1e47e9dab80594da1f9a6d27af1ed97818c064a3393ae9af29ed32d",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-strict",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\"\nstatus=0\nreport=\"$(bash scripts/worktree/doctor.sh --strict --json)\" || status=$?\nprintf 'doctorExitCode=%s\\n' \"$status\"\nprintf 'reportJson=%s\\n' \"$(printf '%s' \"$report\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\""
+			],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:03:49.073Z",
+			"completedAt": "2026-08-06T16:03:50.988Z",
+			"durationMs": 1915,
+			"stdoutPath": "evidence/stage-6-doctor-run/live-strict.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/live-strict.stderr",
+			"stdoutSha256": "75561848d8dd7e91f07759abdf3cdc75da7ea843f0a9d5eef4f93c4e6ec6d32a",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-second-worktree",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta\"\nstatus=0\nreport=\"$(bash scripts/worktree/doctor.sh --json)\" || status=$?\nprintf 'doctorExitCode=%s\\n' \"$status\"\nprintf 'reportJson=%s\\n' \"$(printf '%s' \"$report\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\n[ \"$status\" = \"0\" ]\nprintf 'healthy=true\\n'"
+			],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:03:50.989Z",
+			"completedAt": "2026-08-06T16:03:52.887Z",
+			"durationMs": 1898,
+			"stdoutPath": "evidence/stage-6-doctor-run/live-second-worktree.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/live-second-worktree.stderr",
+			"stdoutSha256": "a9a218e1a5c07c26d041dfca24ff711269bc4cae6def524cc8218b76c71463f9",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-duplicate-port-claim",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\"\nmanifest_directory=\"$HOME/.config/devcontainer/worktrees\"\nmanifest_digest() {\n\t(cd \"$manifest_directory\" && find . -type f -print0 | sort -z |\n\t\txargs -0 shasum -a 256) | shasum -a 256 | awk '{ print $1 }'\n}\nown=\"$(bash scripts/worktree/manifest.sh path)\"\nport=\"$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[\"hostPort\"])' \"$own\")\"\nprintf '{\"schemaVersion\": 1, \"workspaceId\": \"s6-collision-probe\", \"repoPath\": \"%s\", \"family\": \"s6-collision-probe\", \"offset\": 0, \"hostPort\": %s, \"friendlyHost\": \"s6-collision-probe.devenv.localhost\", \"caddySnippet\": \"\", \"status\": \"active\"}\\n' \\\n\t\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/no-such-checkout\" \"$port\" >\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home/.config/devcontainer/worktrees/s6-collision-probe.json\"\nprintf 'fabricatedManifest=%s\\n' \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home/.config/devcontainer/worktrees/s6-collision-probe.json\"\nprintf 'claimedPort=%s\\n' \"$port\"\nbefore=\"$(manifest_digest)\"\nstatus=0\nreport=\"$(bash scripts/worktree/doctor.sh --json)\" || status=$?\nafter=\"$(manifest_digest)\"\nprintf 'doctorExitCode=%s\\n' \"$status\"\nprintf 'beforeDigest=%s\\n' \"$before\"\nprintf 'afterDigest=%s\\n' \"$after\"\nprintf 'reportJson=%s\\n' \"$(printf '%s' \"$report\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\nrm -f \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home/.config/devcontainer/worktrees/s6-collision-probe.json\"\nprintf 'fabricationRemoved=%s\\n' \"$([ -e \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home/.config/devcontainer/worktrees/s6-collision-probe.json\" ] && printf false || printf true)\"\n[ \"$before\" = \"$after\" ]\n[ \"$status\" = \"1\" ]\nprintf 'diagnosed=true\\n'"
+			],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:03:52.887Z",
+			"completedAt": "2026-08-06T16:03:55.117Z",
+			"durationMs": 2230,
+			"stdoutPath": "evidence/stage-6-doctor-run/live-duplicate-port-claim.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/live-duplicate-port-claim.stderr",
+			"stdoutSha256": "52a930981ec7b5cb6cb3178bfa5bbe74514ff9d46c4f9feb58092343dd27a199",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-stopped-container",
+			"command": [
+				"bash",
+				"-c",
+				"set -uo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\"\ncontainer_id=\"$(bash scripts/worktree/ensure.sh --check-ready)\"\nprintf 'containerId=%s\\n' \"$container_id\"\ndocker stop \"$container_id\" >/dev/null\nstatus=0\nreport=\"$(bash scripts/worktree/doctor.sh --json)\" || status=$?\nprintf 'doctorExitCode=%s\\n' \"$status\"\nprintf 'reportJson=%s\\n' \"$(printf '%s' \"$report\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\nstrict=0\nbash scripts/worktree/doctor.sh --strict >/dev/null 2>&1 || strict=$?\nprintf 'strictExitCode=%s\\n' \"$strict\"\ndocker start \"$container_id\" >/dev/null\nready=\"\"\nfor attempt in 1 2 3 4 5 6 7 8 9 10; do\n\tready=\"$(bash scripts/worktree/ensure.sh --check-ready 2>/dev/null)\" && break\n\tready=\"\"\n\tsleep 2\ndone\nprintf 'readyAfterRestart=%s\\n' \"$ready\"\ndevelopment_user=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_contract_value \"$2\"' bash \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\" development_user)\"\ncontainer_workspace=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_contract_value \"$2\"' bash \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\" container_workspace)\"\ncontainer_port=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_contract_value \"$2\"' bash \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\" published_container_port)\"\ndocker exec --detach --user \"$development_user\" --workdir \"$container_workspace\" \\\n\t\"$container_id\" /usr/bin/bash -lc \\\n\t\"exec python -m http.server $container_port --bind 0.0.0.0\"\nprintf 'listenerRestarted=true\\n'\nexit 0"
+			],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:03:55.118Z",
+			"completedAt": "2026-08-06T16:03:59.369Z",
+			"durationMs": 4251,
+			"stdoutPath": "evidence/stage-6-doctor-run/live-stopped-container.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/live-stopped-container.stderr",
+			"stdoutSha256": "2bff0f395c386672d1f6ec876d00a25791aaf73791ad3d50849e0991a578d236",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-inside-container",
+			"command": [
+				"bash",
+				"-c",
+				"set -uo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\"\ncontainer_id=\"$(bash scripts/worktree/ensure.sh --check-ready)\"\nprintf 'containerId=%s\\n' \"$container_id\"\ndevelopment_user=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_contract_value \"$2\"' bash \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\" development_user)\"\ncontainer_workspace=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_contract_value \"$2\"' bash \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\" container_workspace)\"\nstatus=0\nreport=\"$(docker exec --user \"$development_user\" \\\n\t--workdir \"$container_workspace\" --env DEVCONTAINER=true \\\n\t\"$container_id\" /usr/bin/bash -lc 'bash scripts/worktree/doctor.sh --json')\" || status=$?\nprintf 'doctorExitCode=%s\\n' \"$status\"\nprintf 'reportJson=%s\\n' \"$(printf '%s' \"$report\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\nexit \"$status\""
+			],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:03:59.370Z",
+			"completedAt": "2026-08-06T16:04:00.030Z",
+			"durationMs": 660,
+			"stdoutPath": "evidence/stage-6-doctor-run/live-inside-container.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/live-inside-container.stderr",
+			"stdoutSha256": "a9b3c06d13a33e792d695debf4c1d254c27cd39ca6c1f5a13a1d94d1e076254b",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 1,
+			"status": "refused"
+		},
+		{
+			"id": "live-invalid-argument",
+			"command": [
+				"bash",
+				"-c",
+				"set -uo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\"\nstatus=0\nmessage=\"$(bash scripts/worktree/doctor.sh --timeout 0 2>&1 1>/dev/null)\" || status=$?\nprintf 'doctorExitCode=%s\\n' \"$status\"\nprintf 'refusalMessage=%s\\n' \"$message\"\nprintf 'stdoutBytes=%s\\n' \"$(bash scripts/worktree/doctor.sh --timeout 0 2>/dev/null | wc -c | tr -d ' ')\"\nexit \"$status\""
+			],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:04:00.031Z",
+			"completedAt": "2026-08-06T16:04:00.244Z",
+			"durationMs": 213,
+			"stdoutPath": "evidence/stage-6-doctor-run/live-invalid-argument.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/live-invalid-argument.stderr",
+			"stdoutSha256": "19032a49a0d4ce64d2e1eecc59f7e93f858c3deffe038a925787989f65306fe6",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 2,
+			"status": "refused"
+		},
+		{
+			"id": "non-mutation-snapshot",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\nisolated_state_digest() {\n\t(find \"$HOME/.config/devcontainer\" \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha/.dev\" \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta/.dev\" -type f -print0\n\t\t2>/dev/null | sort -z | xargs -0 shasum -a 256 2>/dev/null || true) |\n\t\tshasum -a 256 | awk '{ print $1 }'\n}\nisolated_state_listing() {\n\t(find \"$HOME/.config/devcontainer\" \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha/.dev\" \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta/.dev\" 2>/dev/null | sort) |\n\t\tshasum -a 256 | awk '{ print $1 }'\n}\nbefore=\"$(isolated_state_digest)\"\nbefore_listing=\"$(isolated_state_listing)\"\ninvocations=0\nfor directory in \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\" \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta\"; do\n\tcd \"$directory\"\n\tfor form in \"\" \"--json\" \"--strict\" \"--timeout 5\" \"--list-checks\" \"--help\"; do\n\t\tbash scripts/worktree/doctor.sh $form >/dev/null 2>&1 || true\n\t\tinvocations=$((invocations + 1))\n\tdone\ndone\nafter=\"$(isolated_state_digest)\"\nafter_listing=\"$(isolated_state_listing)\"\nprintf 'invocations=%s\\n' \"$invocations\"\nprintf 'beforeDigest=%s\\n' \"$before\"\nprintf 'afterDigest=%s\\n' \"$after\"\nprintf 'beforeListing=%s\\n' \"$before_listing\"\nprintf 'afterListing=%s\\n' \"$after_listing\"\n[ \"$before\" = \"$after\" ]\n[ \"$before_listing\" = \"$after_listing\" ]\nprintf 'unchanged=true\\n'"
+			],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:04:00.245Z",
+			"completedAt": "2026-08-06T16:04:12.968Z",
+			"durationMs": 12723,
+			"stdoutPath": "evidence/stage-6-doctor-run/non-mutation-snapshot.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/non-mutation-snapshot.stderr",
+			"stdoutSha256": "4aea1cf0448dc79a29b01bfce75e95d34981bdf881262092e92774f2070d7e27",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "journey-cleanup",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\nreal_state_digest() {\n\t(cd \"/Users/mrcr/.config/devcontainer\" 2>/dev/null &&\n\t\tfind ports-registry worktrees caddy -type f -print0 2>/dev/null |\n\t\tsort -z | xargs -0 shasum -a 256 2>/dev/null || true) |\n\t\tshasum -a 256 | awk '{ print $1 }'\n}\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha\"\ncontainer_id=\"$(bash scripts/worktree/ensure.sh --check-ready)\"\nvolumes=\"$(docker inspect --format '{{range .Mounts}}{{if eq .Type \"volume\"}}{{.Name}} {{end}}{{end}}' \"$container_id\")\"\nmanifest=\"$(bash scripts/worktree/manifest.sh path)\"\nprintf 'alphaContainerId=%s\\n' \"$container_id\"\nprintf 'alphaVolumes=%s\\n' \"$volumes\"\nprintf 'alphaManifest=%s\\n' \"$manifest\"\nprintf 'alphaWorkspaceId=%s\\n' \"$(basename \"$manifest\" .json)\"\nbash scripts/worktree/cleanup.sh\nprintf 'alphaContainersRemaining=%s\\n' \"$(docker ps --all --no-trunc --quiet --filter label=devcontainer.local_folder=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha | wc -l | tr -d ' ')\"\nremaining=0\nfor volume in $volumes; do\n\tif docker volume inspect \"$volume\" >/dev/null 2>&1; then remaining=$((remaining + 1)); fi\ndone\nprintf 'alphaVolumesRemaining=%s\\n' \"$remaining\"\nprintf 'alphaManifestRemaining=%s\\n' \"$([ -e \"$manifest\" ] && printf present || printf absent)\"\nprintf 'alphaGeneratedStateRemaining=%s\\n' \"$([ -e \".dev/state\" ] && printf present || printf absent)\"\nprintf 'alphaCheckoutRemaining=%s\\n' \"$([ -e \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/alpha/README.md\" ] && printf present || printf absent)\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta\"\ncontainer_id=\"$(bash scripts/worktree/ensure.sh --check-ready)\"\nvolumes=\"$(docker inspect --format '{{range .Mounts}}{{if eq .Type \"volume\"}}{{.Name}} {{end}}{{end}}' \"$container_id\")\"\nmanifest=\"$(bash scripts/worktree/manifest.sh path)\"\nprintf 'betaContainerId=%s\\n' \"$container_id\"\nprintf 'betaVolumes=%s\\n' \"$volumes\"\nprintf 'betaManifest=%s\\n' \"$manifest\"\nprintf 'betaWorkspaceId=%s\\n' \"$(basename \"$manifest\" .json)\"\nbash scripts/worktree/cleanup.sh\nprintf 'betaContainersRemaining=%s\\n' \"$(docker ps --all --no-trunc --quiet --filter label=devcontainer.local_folder=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta | wc -l | tr -d ' ')\"\nremaining=0\nfor volume in $volumes; do\n\tif docker volume inspect \"$volume\" >/dev/null 2>&1; then remaining=$((remaining + 1)); fi\ndone\nprintf 'betaVolumesRemaining=%s\\n' \"$remaining\"\nprintf 'betaManifestRemaining=%s\\n' \"$([ -e \"$manifest\" ] && printf present || printf absent)\"\nprintf 'betaGeneratedStateRemaining=%s\\n' \"$([ -e \".dev/state\" ] && printf present || printf absent)\"\nprintf 'betaCheckoutRemaining=%s\\n' \"$([ -e \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta/README.md\" ] && printf present || printf absent)\"\nprintf 'realCheckoutStateDigest=%s\\n' \"$(real_state_digest)\""
+			],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:04:12.968Z",
+			"completedAt": "2026-08-06T16:04:17.933Z",
+			"durationMs": 4965,
+			"stdoutPath": "evidence/stage-6-doctor-run/journey-cleanup.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/journey-cleanup.stderr",
+			"stdoutSha256": "9b527d3eb9a3c44f2d60147f4da530bd7c38c9da21299c47b83e41525eb03369",
+			"stderrSha256": "59f4916b0fe7f421cb407a044cbbc2da5f270ec7c425c54510723e5d273f5fc8",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rollback-proof",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-six-evidence.ts",
+				"probe-rollback",
+				"--base",
+				"9961f7e6c6797738012665c16222ff1afc1441cd",
+				"--implementation",
+				"4a8894c2fb05c75bf2959ecedf9ca72ceb4f675b",
+				"--workspace",
+				"/tmp/devenv-stage2-stage6-20260806t160000z-4a8894c2-rollback"
+			],
+			"runId": "stage6-20260806t160000z-4a8894c2",
+			"startedAt": "2026-08-06T16:04:17.933Z",
+			"completedAt": "2026-08-06T16:04:18.766Z",
+			"durationMs": 833,
+			"stdoutPath": "evidence/stage-6-doctor-run/rollback-proof.stdout",
+			"stderrPath": "evidence/stage-6-doctor-run/rollback-proof.stderr",
+			"stdoutSha256": "da2984ff347285d64989311ad7d22b76c77f81585278cd0d893940d20be293c0",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		}
+	],
+	"healthy": {
+		"commandId": "live-healthy-json",
+		"doctorExitCode": 0,
+		"pass": 35,
+		"warn": 1,
+		"fail": 0,
+		"skip": 0
+	},
+	"strict": {
+		"commandId": "live-strict",
+		"doctorExitCode": 1,
+		"warnCount": 1,
+		"checksIdentical": true
+	},
+	"collision": {
+		"commandId": "live-duplicate-port-claim",
+		"checkId": "manifests.port-collision",
+		"status": "FAIL",
+		"claimedPort": 9022,
+		"holders": ["devenv-s6-alpha", "s6-collision-probe"],
+		"fabricatedManifest": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home/.config/devcontainer/worktrees/s6-collision-probe.json",
+		"beforeDigest": "ef1bcce92d9f6586ea503afbef70921bd1b972ac92fd0d8a5a93ebff263bb953",
+		"afterDigest": "ef1bcce92d9f6586ea503afbef70921bd1b972ac92fd0d8a5a93ebff263bb953",
+		"manifestsUnchanged": true
+	},
+	"stopped": {
+		"commandId": "live-stopped-container",
+		"containerId": "f3978ef37c752e742d6a5bcaa7f72995c7258e44a6726deb9a3a42e64c1cafa8",
+		"runtimeStatus": "WARN",
+		"fastReadyStatus": "SKIP",
+		"portStatus": "SKIP",
+		"toolsStatus": "SKIP",
+		"doctorExitCode": 1,
+		"strictExitCode": 1
+	},
+	"refusals": [
+		{
+			"commandId": "live-inside-container",
+			"exitCode": 1,
+			"checkIds": ["host.context"],
+			"message": "DEVCONTAINER=true",
+			"commandExecuted": false
+		},
+		{
+			"commandId": "live-invalid-argument",
+			"exitCode": 2,
+			"checkIds": [],
+			"message": "Worktree doctor: timeout must be between 1 and 30 seconds",
+			"commandExecuted": false
+		}
+	],
+	"nonMutation": {
+		"commandId": "non-mutation-snapshot",
+		"invocations": 12,
+		"beforeDigest": "5a04dd632f2e68bd13f9f2201c95cf95ad21c2756856d1dcacc28375937a04c7",
+		"afterDigest": "5a04dd632f2e68bd13f9f2201c95cf95ad21c2756856d1dcacc28375937a04c7",
+		"beforeListing": "c100902dec72e4b9ff0862517ecf76a23ef91fc8a596d0891a75bc0369c3fdb3",
+		"afterListing": "c100902dec72e4b9ff0862517ecf76a23ef91fc8a596d0891a75bc0369c3fdb3",
+		"unchanged": true
+	},
+	"cleanup": {
+		"commandId": "journey-cleanup",
+		"removed": [
+			"container f3978ef37c752e742d6a5bcaa7f72995c7258e44a6726deb9a3a42e64c1cafa8",
+			"volume claude-code-shellhistory-1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n",
+			"volume claude-code-config-1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n",
+			"volume gemini-home-1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n",
+			"volume config-home-1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n",
+			"volume codex-home-1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n",
+			"manifest /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home/.config/devcontainer/worktrees/devenv-s6-alpha.json",
+			"container 1d3986e95245c17eae55b78cadd52974dc0bff3dc66254fe1ad4d8e49a2c2bc5",
+			"volume claude-code-config-15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue",
+			"volume codex-home-15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue",
+			"volume gemini-home-15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue",
+			"volume config-home-15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue",
+			"volume claude-code-shellhistory-15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue",
+			"manifest /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home/.config/devcontainer/worktrees/devenv-s6-beta.json"
+		],
+		"remaining": [],
+		"realCheckoutStateDigest": "d0d0c090a075c9ae4edaf21846084d2742cecfc930dee45ffbd46cf74869a2e7",
+		"realCheckoutStateUnchanged": true
+	},
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-6-pr-merge-commit>"],
+		"runtimeCleanup": [],
+		"containerRebuildRequired": false,
+		"scope": "Revert the doctor, the three contract keys and the runtime_scripts entry, the shared identity derivation in lib.sh, the guard, the documentation, and the evidence as one Stage 6 bundle. This stage is additive and diagnostic: no runtime resource is allocated by it, so nothing has to be released before reverting, and no .devcontainer file changed, so there is no container rebuild in either direction. Downstream projects that already scripted `bash scripts/worktree/doctor.sh` lose that command and nothing else.",
+		"proof": {
+			"commandId": "rollback-proof",
+			"predecessorSha": "9961f7e6c6797738012665c16222ff1afc1441cd",
+			"implementationSha": "4a8894c2fb05c75bf2959ecedf9ca72ceb4f675b",
+			"syntheticMergeSha": "9ac8b1e7f7f27c03e95ce654e43ad3a6e26514c8",
+			"syntheticMergeTree": "804a6a0f3a2f56a3e22480661618f2a72a1b0be2",
+			"syntheticMergeParents": [
+				"9961f7e6c6797738012665c16222ff1afc1441cd",
+				"4a8894c2fb05c75bf2959ecedf9ca72ceb4f675b"
+			],
+			"predecessorTree": "9278b1dc8a9497388fbfec5201898476d5101f3a",
+			"revertedTree": "9278b1dc8a9497388fbfec5201898476d5101f3a",
+			"treeMatchesPredecessor": true,
+			"operations": [
+				["git", "rev-parse", "9961f7e6c6797738012665c16222ff1afc1441cd^{tree}"],
+				["git", "rev-parse", "4a8894c2fb05c75bf2959ecedf9ca72ceb4f675b^{tree}"],
+				[
+					"git",
+					"worktree",
+					"add",
+					"--detach",
+					"/tmp/devenv-stage2-stage6-20260806t160000z-4a8894c2-rollback",
+					"9961f7e6c6797738012665c16222ff1afc1441cd"
+				],
+				[
+					"git",
+					"commit-tree",
+					"804a6a0f3a2f56a3e22480661618f2a72a1b0be2",
+					"-p",
+					"9961f7e6c6797738012665c16222ff1afc1441cd",
+					"-p",
+					"4a8894c2fb05c75bf2959ecedf9ca72ceb4f675b",
+					"-m",
+					"Stage 2 synthetic merge"
+				],
+				["git", "rev-parse", "9ac8b1e7f7f27c03e95ce654e43ad3a6e26514c8^{tree}"],
+				[
+					"git",
+					"show",
+					"-s",
+					"--format=%P",
+					"9ac8b1e7f7f27c03e95ce654e43ad3a6e26514c8"
+				],
+				[
+					"git",
+					"checkout",
+					"--detach",
+					"9ac8b1e7f7f27c03e95ce654e43ad3a6e26514c8"
+				],
+				[
+					"git",
+					"revert",
+					"--no-edit",
+					"-m",
+					"1",
+					"9ac8b1e7f7f27c03e95ce654e43ad3a6e26514c8"
+				],
+				["git", "rev-parse", "HEAD^{tree}"]
+			],
+			"addedPaths": ["scripts/worktree/doctor.sh"],
+			"addedPathsRemoved": true
+		}
+	}
+}
