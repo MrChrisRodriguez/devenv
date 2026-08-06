@@ -3321,6 +3321,57 @@ async function engineInvocations(tooling: Tooling): Promise<string> {
 	return text;
 }
 
+// One non-printable byte, written into generated state exactly as a corrupted
+// writer would leave it. Assembled rather than typed so the source file itself
+// stays printable.
+const CONTROL_BYTE = String.fromCharCode(1);
+
+// Rewrite a generated file in place. Every one of these is state the doctor is
+// supposed to distrust, so corrupting it exactly as an attacker or a bug would
+// is the only way to prove the distrust is real.
+async function patchEnvironmentFile(
+	path: string,
+	replacements: Record<string, string>,
+): Promise<void> {
+	let source = await Bun.file(path).text();
+	for (const [key, value] of Object.entries(replacements)) {
+		const line = new RegExp(`^${key}=.*$`, "m");
+		source = line.test(source)
+			? source.replace(line, `${key}=${value}`)
+			: `${source}${key}=${value}\n`;
+	}
+	await Bun.write(path, source);
+}
+
+async function corruptState(
+	subject: DoctorFixture,
+	replacements: Record<string, string>,
+): Promise<void> {
+	const applied = new Set<string>();
+	for (const relative of [
+		".dev/state/worktree.env",
+		".dev/state/run/manifest.env",
+	]) {
+		const path = resolve(subject.worktree, relative);
+		const source = await Bun.file(path).text();
+		const present = Object.entries(replacements).filter(([key]) =>
+			new RegExp(`^${key}=`, "m").test(source),
+		);
+		if (present.length === 0) continue;
+		for (const [key] of present) applied.add(key);
+		await patchEnvironmentFile(path, Object.fromEntries(present));
+	}
+	// A key neither generated file carries yet still belongs in the host view.
+	const leftover = Object.entries(replacements).filter(
+		([key]) => !applied.has(key),
+	);
+	if (leftover.length > 0)
+		await patchEnvironmentFile(
+			resolve(subject.worktree, ".dev/state/worktree.env"),
+			Object.fromEntries(leftover),
+		);
+}
+
 async function stateSnapshot(subject: DoctorFixture): Promise<string[]> {
 	const home = subject.fixture.home;
 	const entries: string[] = [];
@@ -4046,6 +4097,211 @@ describe("worktree doctor", () => {
 			expect(bounded.detail).toContain(
 				"bounded at the declared scan limit of 1",
 			);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+	test("refuses recorded paths that leave the host configuration root", async () => {
+		const subject = await doctorFixture();
+		const configRoot = resolve(subject.fixture.home, ".config/devcontainer");
+		const manifestDirectory = resolve(configRoot, "worktrees");
+		try {
+			// Three shapes of one escape: a sibling path, a traversal, and a symlink
+			// planted inside the very directory that is supposed to contain it.
+			await Bun.write(
+				resolve(configRoot, "sibling.json"),
+				'{"secret": "DO_NOT_READ_THIS_VALUE"}\n',
+			);
+			await Bun.write(
+				resolve(configRoot, "external-secret.json"),
+				'{"secret": "TRAVERSAL_SECRET"}\n',
+			);
+			await Bun.write(
+				resolve(subject.fixture.root, "outside.json"),
+				'{"secret": "SYMLINK_SECRET"}\n',
+			);
+			await symlink(
+				resolve(subject.fixture.root, "outside.json"),
+				resolve(manifestDirectory, "planted.json"),
+			);
+
+			for (const [candidate, marker] of [
+				[resolve(configRoot, "sibling.json"), "DO_NOT_READ_THIS_VALUE"],
+				[`${manifestDirectory}/../external-secret.json`, "TRAVERSAL_SECRET"],
+				[resolve(manifestDirectory, "planted.json"), "SYMLINK_SECRET"],
+			] as const) {
+				await corruptState(subject, { DEVENV_MANIFEST_PATH: candidate });
+				const result = runDoctor(subject);
+				const report = doctorReport(result);
+				expect(doctorCheck(report, "state.paths").status).toBe("FAIL");
+				expect(doctorCheck(report, "state.manifest").status).toBe("SKIP");
+				expect(result.exitCode).toBe(1);
+				// The file was never opened, so its contents never reached the report.
+				expect(result.stdout).not.toContain(marker);
+				expect(result.stderr).not.toContain(marker);
+			}
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("refuses a route path outside the route directory", async () => {
+		const subject = await doctorFixture();
+		try {
+			await corruptState(subject, {
+				DEVENV_CADDY_SNIPPET_PATH: resolve(
+					subject.fixture.home,
+					".config/devcontainer/elsewhere.caddy",
+				),
+			});
+			const report = doctorReport(runDoctor(subject));
+			expect(doctorCheck(report, "state.paths").status).toBe("FAIL");
+			expect(doctorCheck(report, "state.paths").detail).toContain("route path");
+			expect(doctorCheck(report, "caddy.snippet").status).toBe("SKIP");
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("never probes a route derived from a malformed identity", async () => {
+		const subject = await doctorFixture();
+		try {
+			for (const replacements of [
+				{ DEVENV_WORKSPACE_ID: "example.com/path" },
+				{ DEVENV_WORKTREE_FAMILY: "EVIL.example" },
+				{ DEVENV_PUBLISHED_HOST_PORT: "8123@evil.example" },
+			]) {
+				await rm(subject.probe.log, { force: true });
+				await corruptState(subject, replacements);
+				const result = runDoctor(subject);
+				const report = doctorReport(result);
+				expect(doctorCheck(report, "state.values").status).toBe("FAIL");
+				for (const id of ["route.direct", "route.friendly"]) {
+					expect(`${id}:${doctorCheck(report, id).status}`).toBe(`${id}:SKIP`);
+				}
+				expect(result.exitCode).toBe(1);
+				// Not a request was made, so not a hostile host was resolved.
+				expect(await Bun.file(subject.probe.log).exists()).toBe(false);
+			}
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("refuses an external URL that generated state advertises", async () => {
+		const subject = await doctorFixture();
+		try {
+			await corruptState(subject, { DEVENV_DIRECT_URL: "https://example.com" });
+			const report = doctorReport(runDoctor(subject));
+			const direct = doctorCheck(report, "route.direct");
+			expect(direct.status).toBe("FAIL");
+			expect(direct.summary).toContain("Refused an unexpected direct URL");
+			expect(direct.detail).toContain("https://example.com");
+
+			// The refusal happened before any request, and the friendly probe that did
+			// run was aimed at a host this script derived for itself.
+			const asked = await Bun.file(subject.probe.log).text();
+			expect(asked).not.toContain("example.com");
+			expect(asked).toContain(".localhost");
+			// No remediation offered the attacker's URL back as advice either.
+			for (const check of report.checks) {
+				expect(check.remediation).not.toContain("https://example.com");
+			}
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("keeps the JSON document valid when generated state carries control bytes", async () => {
+		const subject = await doctorFixture();
+		try {
+			await corruptState(subject, {
+				DEVENV_WORKSPACE_ID: `devenv-${CONTROL_BYTE}alpha`,
+			});
+			const result = runDoctor(subject);
+			const report = doctorReport(result);
+			expect(doctorCheck(report, "state.values").status).toBe("FAIL");
+			expect(result.exitCode).toBe(1);
+			// The raw byte never reaches the document; its escape does.
+			expect(result.stdout).not.toContain(CONTROL_BYTE);
+			expect(result.stdout).toContain("\\u0001");
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("never interpolates a non-hexadecimal container id into a command", async () => {
+		const subject = await doctorFixture();
+		const sentinel = resolve(subject.fixture.root, "pwned");
+		try {
+			await Bun.write(
+				resolve(subject.worktree, ".dev/state/run/container.id"),
+				`not-hex-$(touch ${sentinel})\n`,
+			);
+			const result = runDoctor(subject);
+			const report = doctorReport(result);
+
+			expect(doctorCheck(report, "container.record").status).toBe("FAIL");
+			expect(doctorCheck(report, "container.runtime").status).toBe("SKIP");
+			expect(doctorCheck(report, "container.port").status).toBe("SKIP");
+			expect(result.exitCode).toBe(1);
+			expect(await Bun.file(sentinel).exists()).toBe(false);
+			const invocations = await engineInvocations(subject.tooling);
+			expect(invocations).not.toContain("not-hex");
+			expect(invocations).not.toContain("touch");
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("survives an entirely hostile generated state without touching anything", async () => {
+		const subject = await doctorFixture();
+		const configRoot = resolve(subject.fixture.home, ".config/devcontainer");
+		try {
+			await Bun.write(
+				resolve(configRoot, "hostile.json"),
+				'{"secret": "OMNIBUS_SECRET_MARKER"}\n',
+			);
+			await corruptState(subject, {
+				DEVENV_WORKSPACE_ID: "example.com/path",
+				DEVENV_WORKTREE_FAMILY: "EVIL.example",
+				DEVENV_WORKTREE_OFFSET: "999999999",
+				DEVENV_PUBLISHED_HOST_PORT: "8123@evil.example",
+				DEVENV_DIRECT_URL: "https://example.com",
+				DEVENV_FRIENDLY_URL: "https://example.com",
+				DEVENV_MANIFEST_PATH: resolve(configRoot, "hostile.json"),
+				DEVENV_CADDY_SNIPPET_PATH: "/etc/passwd",
+			});
+			await Bun.write(
+				resolve(subject.worktree, ".dev/state/run/container.id"),
+				"zzzz-not-hex\n",
+			);
+			await rm(subject.probe.log, { force: true });
+
+			const before = await stateSnapshot(subject);
+			const result = runDoctor(subject);
+			const report = doctorReport(result);
+
+			expect(result.exitCode).toBe(1);
+			expect(doctorCheck(report, "state.values").status).toBe("FAIL");
+			expect(doctorCheck(report, "state.paths").status).toBe("SKIP");
+			expect(doctorCheck(report, "state.manifest").status).toBe("SKIP");
+			expect(doctorCheck(report, "container.record").status).toBe("FAIL");
+			// Hostile input costs the report no check: the inventory is unchanged.
+			expect(report.checks.map((check) => check.id)).toEqual([
+				...DOCTOR_CHECK_INVENTORY,
+			]);
+
+			// Nothing was read that it should not have read, nothing was requested,
+			// and nothing on this host moved.
+			expect(result.stdout).not.toContain("OMNIBUS_SECRET_MARKER");
+			expect(result.stderr).not.toContain("OMNIBUS_SECRET_MARKER");
+			expect(await Bun.file(subject.probe.log).exists()).toBe(false);
+			expect(await stateSnapshot(subject)).toEqual(before);
+			const invocations = await engineInvocations(subject.tooling);
+			for (const verb of ["run ", "create ", "start ", "stop ", "rm "]) {
+				expect(`${verb}:${invocations.includes(verb)}`).toBe(`${verb}:false`);
+			}
 		} finally {
 			await rm(subject.fixture.root, { recursive: true, force: true });
 		}

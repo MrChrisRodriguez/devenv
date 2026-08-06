@@ -225,6 +225,7 @@ STATE_ENVIRONMENT_PRESENT="false"
 STATE_VALUES_VALID="false"
 STATE_PATHS_VALID="false"
 MANIFEST_STATUS=""
+EXPECTED_DIRECT_URL=""
 EXPECTED_FRIENDLY_HOST=""
 CADDY_BINARY=""
 CADDY_CONFIG=""
@@ -662,9 +663,11 @@ check_state_values() {
 		return 0
 	fi
 	STATE_VALUES_VALID="true"
-	# Derived from the validated family and the contract pattern, never adopted
-	# from generated state: this hostname is what the route checks will compare
-	# against and, if it matched, ask for.
+	# Derived from the validated components and the contract, never adopted from
+	# generated state. These two are what the route checks compare against, what
+	# they ask for if the comparison holds, and the only URLs any remediation
+	# string is allowed to name.
+	EXPECTED_DIRECT_URL="http://$DIRECT_HOST:$HOST_PORT"
 	EXPECTED_FRIENDLY_HOST="${FRIENDLY_DOMAIN_PATTERN//\{workspace\}/$FAMILY}"
 	EXPECTED_FRIENDLY_HOST="${EXPECTED_FRIENDLY_HOST//\{project\}/$LOCAL_DOMAIN_STEM}"
 	add_result PASS state.values "The generated worktree values are well formed" \
@@ -1208,6 +1211,17 @@ check_container_tools() {
 		"$TOOLCHAIN_MANIFEST"
 }
 
+# Remediation text is output, and output derived from generated state is a
+# disclosure channel. Only the URL this script recomputed for itself may be
+# named; before validation there is no such URL and the advice stays generic.
+direct_url_hint() {
+	if [ -n "$EXPECTED_DIRECT_URL" ]; then
+		printf '%s\n' "$EXPECTED_DIRECT_URL"
+		return 0
+	fi
+	printf 'the direct loopback URL\n'
+}
+
 # The friendly route is optional by contract: it is a convenience layered on a
 # direct loopback URL that always works. Every finding in this group is therefore
 # a warning, and --strict is how a caller says it wants them to matter.
@@ -1240,7 +1254,7 @@ check_caddy_binary() {
 	CADDY_BINARY=""
 	add_result WARN caddy.binary "No host routing binary is installed" \
 		"caddy was not found" \
-		"Install the host reverse proxy, or use $DIRECT_URL, which always works."
+		"Install the host reverse proxy, or use $(direct_url_hint), which always works."
 }
 
 # A fixed candidate list, and deliberately not bare /etc/Caddyfile: validating a
@@ -1280,7 +1294,7 @@ check_caddy_config() {
 		CADDY_CONFIG=""
 		add_result WARN caddy.config "No host routing configuration was found" \
 			"none of the candidate paths is readable" \
-			"Create a host reverse proxy configuration, or use $DIRECT_URL."
+			"Create a host reverse proxy configuration, or use $(direct_url_hint)."
 		return 0
 	fi
 	if "$CADDY_BINARY" validate --config "$CADDY_CONFIG" --adapter caddyfile \
@@ -1291,7 +1305,7 @@ check_caddy_config() {
 	fi
 	add_result WARN caddy.config "The host routing configuration does not validate" \
 		"$CADDY_CONFIG was rejected" \
-		"Repair the host reverse proxy configuration, or use $DIRECT_URL."
+		"Repair the host reverse proxy configuration, or use $(direct_url_hint)."
 }
 
 check_caddy_import() {
@@ -1386,7 +1400,7 @@ check_route_direct() {
 			"state.values did not pass"
 		return 0
 	fi
-	expected="http://$DIRECT_HOST:$HOST_PORT"
+	expected="$EXPECTED_DIRECT_URL"
 	if [ "$DIRECT_URL" != "$expected" ]; then
 		add_result FAIL route.direct "Refused an unexpected direct URL" \
 			"generated state names '$DIRECT_URL'" \
@@ -1443,7 +1457,7 @@ check_route_friendly() {
 	# that is not.
 	add_result FAIL route.friendly "The friendly URL does not answer" \
 		"$expected returned $code" \
-		"Use $DIRECT_URL, then check that the host reverse proxy is up and imports the worktree routes."
+		"Use $EXPECTED_DIRECT_URL, then check that the host reverse proxy is up and imports the worktree routes."
 }
 
 read_registry() {
