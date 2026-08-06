@@ -813,6 +813,14 @@ async function renderContent(
 			.filter((line) => !/(?:cloudflare|wrangler)/i.test(line))
 			.join("\n");
 	}
+	if (entry.path === ".codex/cloud/contract.toml") {
+		// The cloud scripts read this contract with sed before any parameter
+		// tooling exists, so the project slug has to be baked into its persisted
+		// environment, secrets, and fingerprint marker paths at render time.
+		content = content
+			.replaceAll("~/.config/devenv/", `~/.config/${parameters.project.slug}/`)
+			.replaceAll("~/.cache/devenv/", `~/.cache/${parameters.project.slug}/`);
+	}
 	return content;
 }
 
