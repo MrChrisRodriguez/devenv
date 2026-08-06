@@ -75,32 +75,18 @@ else
 fi
 
 # ── IDE ──────────────────────────────────────────────────────────────────────
-HAS_CURSOR=false
-HAS_VSCODE=false
-[[ -d "/Applications/Cursor.app" ]] && HAS_CURSOR=true
-[[ -d "/Applications/Visual Studio Code.app" ]] && HAS_VSCODE=true
-
-if [[ "$HAS_CURSOR" == false && "$HAS_VSCODE" == false ]]; then
+if [[ ! -d "/Applications/Visual Studio Code.app" ]]; then
     echo ""
-    echo "You need a code editor. Which would you like to install?"
-    echo "  1) Cursor  — AI-native editor built on VS Code"
-    echo "  2) VS Code — Microsoft's free code editor"
-    echo "  3) Both"
-    echo "  4) Skip    — I'll install one myself"
-    echo ""
-    read -rp "Choice [1]: " IDE_CHOICE
-    IDE_CHOICE="${IDE_CHOICE:-1}"
+    echo "You need a code editor. VS Code is the editor this container integrates with."
+    read -rp "Install VS Code now? [Y/n]: " IDE_CHOICE
+    IDE_CHOICE="${IDE_CHOICE:-y}"
 
     case "$IDE_CHOICE" in
-        1) brew install --cask cursor ;;
-        2) brew install --cask visual-studio-code ;;
-        3) brew install --cask cursor visual-studio-code ;;
-        4) echo "Skipping IDE install." ;;
-        *) echo "Unknown choice, skipping IDE install." ;;
+        [Yy]*) brew install --cask visual-studio-code ;;
+        *) echo "Skipping IDE install." ;;
     esac
 else
-    [[ "$HAS_CURSOR" == true ]] && echo "[ok] Cursor"
-    [[ "$HAS_VSCODE" == true ]] && echo "[ok] VS Code"
+    echo "[ok] VS Code"
 fi
 
 # ── GitHub CLI ───────────────────────────────────────────────────────────────
@@ -163,9 +149,26 @@ else
 fi
 
 # ── Host Directories ─────────────────────────────────────────────────────────
+# Every bind-mount source devcontainer.json names must exist before `docker run`.
+# .devcontainer/host/prepare-container-env.sh recreates these on every `devpod up`,
+# but pre-creating them here fixes the ownership and mode before Docker can
+# auto-create any of them root-owned.
+#
+#   secrets.d/      per-project secret files you author (secrets.d/<project>)
+#   container-env/  the validated Docker --env-file prepare-container-env.sh
+#                   writes as container-env/<project>.env (0600) and that
+#                   devcontainer.json `runArgs` names with --env-file; this is
+#                   how host secrets reach every container process
+#   codex-auth/     read-write mount source for the Codex auth snapshot
+#                   (codex-auth/<project>), written back by the container user
+#
+# The per-project leaf names are created at `devpod up`, once the project slug
+# is known.
 echo "Creating host directories for container mounts..."
-mkdir -p "$HOME/.config/devcontainer/secrets.d"
-chmod 700 "$HOME/.config/devcontainer/secrets.d"
+for dir in secrets.d container-env codex-auth; do
+    mkdir -p "$HOME/.config/devcontainer/$dir"
+    chmod 700 "$HOME/.config/devcontainer/$dir"
+done
 echo "[ok] Host directories"
 
 # ── Summary ──────────────────────────────────────────────────────────────────
