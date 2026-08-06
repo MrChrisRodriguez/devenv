@@ -6,29 +6,30 @@ on:
   pull_request:
     branches: [main]
 
+# The single Bun authority for this file. The chain is deliberately one-way:
+# .prototools -> env.BUN_VERSION -> the setup-bun action's required input ->
+# oven-sh/setup-bun -> a runtime assertion back against .prototools. No job may
+# spell a Bun version any other way; the toolchain guard rejects it if one does.
+env:
+  BUN_VERSION: "1.3.13"
+
 jobs:
   ci:
     name: Lint, Typecheck & Test
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
+          # Full history: the sealed-evidence guards re-check ancestry with
+          # `git merge-base --is-ancestor`, which a shallow clone cannot answer.
+          # This is the only job that declares ownership of repository history;
+          # no other job may set fetch-depth.
           fetch-depth: 0
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: ./.github/actions/setup-bun
         with:
-          bun-version: '1.3.13'
-
-      - name: Install dependencies
-        run: |
-          if [ -f bun.lock ]; then
-            bun install --frozen-lockfile
-          else
-            # A newly rendered project intentionally creates its first lock.
-            bun install
-            test -f bun.lock
-          fi
+          bun-version: ${{ env.BUN_VERSION }}
 
       - name: Validate toolchain contract
         run: bun run toolchain:check
@@ -81,7 +82,7 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Build selected image target
         run: |
@@ -95,28 +96,25 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: ./.github/actions/setup-bun
         with:
-          bun-version: '1.3.13'
+          bun-version: ${{ env.BUN_VERSION }}
+
       - name: Prepare browser-enabled project
         shell: bash
         run: |
           set -euo pipefail
+          project="$PWD"
           if [ -f template-parameters.toml ]; then
-            bun install --frozen-lockfile
             bun run template:fixtures "${RUNNER_TEMP}/template-fixtures"
             project="${RUNNER_TEMP}/template-fixtures/full"
-          else
-            project="$PWD"
-          fi
-          cd "$project"
-          if [ -f bun.lock ]; then
-            bun install --frozen-lockfile
-          else
-            bun install
+            cd "$project"
+            bash "${GITHUB_WORKSPACE}/scripts/ci/bun-install-retry.sh"
           fi
           printf '%s\n' "$project" > "${RUNNER_TEMP}/browser-project"
+
       - name: Build and launch browser profile
         shell: bash
         run: |

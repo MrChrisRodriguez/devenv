@@ -221,7 +221,7 @@ describe("codex cloud contract", () => {
 				temporary,
 				".github/workflows/codex-cloud-smoke.yml",
 				(source) =>
-					source.replace("bun-version: '1.3.13'", "bun-version: '1.3.14'"),
+					source.replace('BUN_VERSION: "1.3.13"', 'BUN_VERSION: "1.3.14"'),
 				"cloud: workflow Bun pin must equal the cloud contract",
 			);
 		} finally {
