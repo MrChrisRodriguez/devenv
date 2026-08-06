@@ -1,0 +1,12 @@
+
+scripts/template/__tests__/template.test.ts:
+(pass) deterministic fixture renderer > renders minimal twice with identical manifests and no disabled residue [242.00ms]
+(pass) deterministic fixture renderer > known-bad capability residue is detected and named [194.00ms]
+(pass) deterministic fixture renderer > known-bad Codex Cloud residue is detected and named [195.00ms]
+(pass) deterministic fixture renderer > full fixture still rejects global source identity residue [123.00ms]
+
+ 4 pass
+ 17 filtered out
+ 0 fail
+ 60 expect() calls
+Ran 4 tests across 1 file. [794.00ms]

@@ -60,6 +60,7 @@
 		"image:check": "bun scripts/template/validate-image.ts",
 		"browser:check": "bun scripts/template/validate-browser.ts",
 		"browser:preflight": "bun scripts/browser-preflight.ts",
+		"cloud:check": "bun scripts/template/validate-cloud.ts",
 		"toolchain:check": "bun scripts/template/validate-toolchain.ts"
 	},
 	"lint-staged": {

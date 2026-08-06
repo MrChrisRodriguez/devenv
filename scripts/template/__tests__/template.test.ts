@@ -16,9 +16,11 @@ import {
 	validateTemplateParameters,
 } from "../parameters";
 import {
+	filterCapabilityBlocks,
 	loadTemplateOwnership,
 	renderFixture,
 	scanDisabledResidue,
+	stripTemplateOnlyBlocks,
 } from "../render-fixture";
 import { validateAll } from "../validate";
 
@@ -537,10 +539,105 @@ describe("deterministic fixture renderer", () => {
 				expect(fullPackage.workspaces.catalog[packageName]).toBeDefined();
 				expect(fullPackage.devDependencies[packageName]).toBe("catalog:");
 			}
+			for (const path of [
+				".codex/cloud/contract.toml",
+				".codex/cloud/lib.sh",
+				".codex/cloud/bootstrap.sh",
+				".codex/cloud/doctor.sh",
+				".codex/cloud/exec.sh",
+				".codex/cloud/selftest.sh",
+				".github/workflows/codex-cloud-smoke.yml",
+				"scripts/template/cloud-contract.ts",
+				"scripts/template/validate-cloud.ts",
+			]) {
+				expect(await Bun.file(resolve(temporary, "cloud", path)).exists()).toBe(
+					true,
+				);
+				expect(await Bun.file(resolve(temporary, "full", path)).exists()).toBe(
+					true,
+				);
+			}
+			for (const rendered of [cloudPackage, fullPackage]) {
+				expect(rendered.scripts["cloud:check"]).toBe(
+					"bun scripts/template/validate-cloud.ts",
+				);
+			}
+			const cloudContract = await Bun.file(
+				resolve(temporary, "cloud/.codex/cloud/contract.toml"),
+			).text();
+			expect(cloudContract).toContain(
+				'persisted_environment = "~/.config/fixture-cloud/codex-cloud.env"',
+			);
+			expect(cloudContract).toContain(
+				'fingerprint_marker_directory = "~/.cache/fixture-cloud/codex-cloud"',
+			);
+			// The cloud fixture disables Playwright, so the stripped contract must
+			// still parse and must carry no browser payload residue at all.
+			expect(cloudContract).not.toContain("playwright");
+			expect(cloudContract).not.toContain("browser_");
+			expect(Bun.TOML.parse(cloudContract)).toMatchObject({
+				version: 1,
+				default_profile: "core",
+			});
+			const fullContract = await Bun.file(
+				resolve(temporary, "full/.codex/cloud/contract.toml"),
+			).text();
+			expect(fullContract).toContain(
+				'persisted_environment = "~/.config/fixture-full/codex-cloud.env"',
+			);
+			expect(
+				(Bun.TOML.parse(fullContract) as Record<string, unknown>)[
+					"browser_playwright_version"
+				],
+			).toBe("1.59.1");
+			const cloudSmoke = await Bun.file(
+				resolve(temporary, "cloud/.github/workflows/codex-cloud-smoke.yml"),
+			).text();
+			expect(cloudSmoke).toContain("- core");
+			expect(cloudSmoke).not.toContain("- browser");
+			const fullSmoke = await Bun.file(
+				resolve(temporary, "full/.github/workflows/codex-cloud-smoke.yml"),
+			).text();
+			expect(fullSmoke).toContain("- core");
+			expect(fullSmoke).toContain("- browser");
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
 	});
+
+	test("rendered readme honors capability and template-only fences", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const template = await Bun.file(
+				resolve(ROOT, "README.template.md"),
+			).text();
+			const parameters = await loadTemplateParameters(ROOT);
+			for (const fixtureName of ["minimal", "full"]) {
+				const output = resolve(temporary, fixtureName);
+				await renderFixture({ root: ROOT, fixtureName, output });
+				const fixture = await loadFixtureDefinition(
+					ROOT,
+					fixtureName,
+					parameters,
+				);
+				const resolved = resolveFixtureParameters(parameters, fixture);
+				const rendered = await Bun.file(resolve(output, "README.md")).text();
+				expect(rendered).toBe(
+					filterCapabilityBlocks(
+						stripTemplateOnlyBlocks(template),
+						resolved.capabilities.defaults,
+					).replaceAll("{{PROJECT_NAME}}", resolved.project.display_name),
+				);
+				expect(rendered).not.toContain("capability:start");
+				expect(rendered).not.toContain("capability:end");
+				expect(rendered).not.toContain("template-only:start");
+				expect(rendered).not.toContain("{{PROJECT_NAME}}");
+				expect(rendered).toContain(resolved.project.display_name);
+			}
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 120_000);
 
 	test("known-bad capability residue is detected and named", async () => {
 		const temporary = await temporaryDirectory();
@@ -558,6 +655,48 @@ describe("deterministic fixture renderer", () => {
 				capability: "cloudflare_workers",
 				path: "wrangler.toml",
 				signature: "wrangler.toml",
+				kind: "path",
+			});
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	});
+
+	test("known-bad Codex Cloud residue is detected and named", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const output = resolve(temporary, "minimal");
+			await renderFixture({ root: ROOT, fixtureName: "minimal", output });
+			expect(
+				await Bun.file(resolve(output, ".codex/cloud/lib.sh")).exists(),
+			).toBe(false);
+			expect(
+				await Bun.file(
+					resolve(output, ".github/workflows/codex-cloud-smoke.yml"),
+				).exists(),
+			).toBe(false);
+			const minimalPackage = await Bun.file(
+				resolve(output, "package.json"),
+			).json();
+			expect(minimalPackage.scripts["cloud:check"]).toBeUndefined();
+			const minimalWorkflow = await Bun.file(
+				resolve(output, ".github/workflows/ci.yml"),
+			).text();
+			expect(minimalWorkflow).not.toContain("cloud:check");
+			await Bun.write(
+				resolve(output, ".codex/cloud/contract.toml"),
+				"version = 1\n",
+			);
+			const parameters = await loadTemplateParameters(ROOT);
+			const fixture = await loadFixtureDefinition(ROOT, "minimal", parameters);
+			const resolved = resolveFixtureParameters(parameters, fixture);
+			const ownership = await loadTemplateOwnership(ROOT);
+			const report = await scanDisabledResidue(output, resolved, ownership);
+			expect(report.status).toBe("fail");
+			expect(report.findings).toContainEqual({
+				capability: "codex_cloud",
+				path: ".codex/cloud/contract.toml",
+				signature: ".codex/cloud/**",
 				kind: "path",
 			});
 		} finally {

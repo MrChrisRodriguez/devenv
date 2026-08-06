@@ -1,0 +1,383 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-4-codex-cloud-parity",
+	"capturedAt": "2026-08-06T03:31:58.253Z",
+	"run": {
+		"id": "stage4-20260806t033046z-fe433334",
+		"logRoot": "evidence/stage-4-cloud-run",
+		"temporaryRoot": "/tmp/devenv-stage2-stage4-20260806t033046z-fe433334"
+	},
+	"source": {
+		"baseSha": "3a7f06415fe160e17c7c2592e04f7aa98c361d71",
+		"implementationSha": "fe433334f63a2c01e45b6a55c97dca057e00ea57",
+		"cloudTreeClean": true
+	},
+	"host": {
+		"os": "linux",
+		"architecture": "aarch64",
+		"kernel": "7.0.11-orbstack-00360-gc9bc4d96ac70",
+		"home": "/root"
+	},
+	"contract": {
+		"path": ".codex/cloud/contract.toml",
+		"version": 1,
+		"defaultProfile": "core",
+		"profiles": ["core", "browser"],
+		"tools": {
+			"proto": "0.55.4",
+			"bun": "1.3.13",
+			"node": "24.18.0",
+			"moon": "2.3.5",
+			"python": "3.14.2",
+			"uv": "0.9.7",
+			"jq": "1.8.1"
+		},
+		"protoChecksums": {
+			"x86_64-unknown-linux-gnu": "3f13534217fcf315c0579db6e1f87edd022d850144d9f3b0957a29586de34838",
+			"aarch64-unknown-linux-gnu": "85406d411687412b729ef21f58f8ac2ddafa9e51eafc8ec1b4772af1b6ab98db"
+		},
+		"browserPin": "1.59.1",
+		"graphifyPin": "0.9.16",
+		"secretAllowList": [
+			"ANTHROPIC_API_KEY",
+			"CONTEXT7_API_KEY",
+			"GEMINI_API_KEY",
+			"GH_TOKEN",
+			"GIT_USER_EMAIL",
+			"GIT_USER_NAME",
+			"OPENAI_API_KEY",
+			"OPENROUTER_API_KEY"
+		],
+		"fingerprintInputs": [
+			".prototools",
+			"package.json",
+			"bun.lock",
+			".devcontainer/proto-checksums.txt",
+			".devcontainer/install-proto.sh",
+			".codex/cloud/contract.toml",
+			".codex/cloud/lib.sh",
+			".codex/cloud/bootstrap.sh",
+			".codex/cloud/doctor.sh",
+			".codex/cloud/exec.sh"
+		]
+	},
+	"commands": [
+		{
+			"id": "contract-guard",
+			"command": ["bun", "run", "cloud:check"],
+			"runId": "stage4-20260806t033046z-fe433334",
+			"startedAt": "2026-08-06T03:30:46.510Z",
+			"completedAt": "2026-08-06T03:30:46.546Z",
+			"durationMs": 36,
+			"stdoutPath": "evidence/stage-4-cloud-run/contract-guard.stdout",
+			"stderrPath": "evidence/stage-4-cloud-run/contract-guard.stderr",
+			"stdoutSha256": "c2958a1299efb623853652d752a744318e691a16d7a99317a1bdc1772b6a6428",
+			"stderrSha256": "2bcc10f26b8d0e512f13ff82f01b462c82ed1b25f9f4269f61d8a0d5f9d961ac",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "hermetic-selftest",
+			"command": ["bash", ".codex/cloud/selftest.sh"],
+			"runId": "stage4-20260806t033046z-fe433334",
+			"startedAt": "2026-08-06T03:30:46.547Z",
+			"completedAt": "2026-08-06T03:30:47.549Z",
+			"durationMs": 1002,
+			"stdoutPath": "evidence/stage-4-cloud-run/hermetic-selftest.stdout",
+			"stderrPath": "evidence/stage-4-cloud-run/hermetic-selftest.stderr",
+			"stdoutSha256": "08648fc13a8d9b8107c6838a888c27ef701c89df89ad4683aea7e57598e788e1",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "contract-known-bad-fixtures",
+			"command": ["bun", "test", "scripts/template/__tests__/cloud.test.ts"],
+			"runId": "stage4-20260806t033046z-fe433334",
+			"startedAt": "2026-08-06T03:30:47.549Z",
+			"completedAt": "2026-08-06T03:30:48.777Z",
+			"durationMs": 1228,
+			"stdoutPath": "evidence/stage-4-cloud-run/contract-known-bad-fixtures.stdout",
+			"stderrPath": "evidence/stage-4-cloud-run/contract-known-bad-fixtures.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "25fbbc1246b8cc4d3e0e966cf34460fef6f917ec7de976af92ffcf236716c81d",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "cold-bootstrap-core",
+			"command": ["bash", ".codex/cloud/bootstrap.sh", "core"],
+			"runId": "stage4-20260806t033046z-fe433334",
+			"startedAt": "2026-08-06T03:30:48.777Z",
+			"completedAt": "2026-08-06T03:31:38.349Z",
+			"durationMs": 49572,
+			"stdoutPath": "evidence/stage-4-cloud-run/cold-bootstrap-core.stdout",
+			"stderrPath": "evidence/stage-4-cloud-run/cold-bootstrap-core.stderr",
+			"stdoutSha256": "3c837e3116cf8532407c46760e2209f3cf61c1bf488d8e03898c9d4d9ad84cfb",
+			"stderrSha256": "a9bc34f3347f6bd6f0671dc80ffef4898fe11ac37611f0266b6748cf38481646",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "warm-bootstrap-core",
+			"command": ["bash", ".codex/cloud/bootstrap.sh", "core"],
+			"runId": "stage4-20260806t033046z-fe433334",
+			"startedAt": "2026-08-06T03:31:38.350Z",
+			"completedAt": "2026-08-06T03:31:39.156Z",
+			"durationMs": 806,
+			"stdoutPath": "evidence/stage-4-cloud-run/warm-bootstrap-core.stdout",
+			"stderrPath": "evidence/stage-4-cloud-run/warm-bootstrap-core.stderr",
+			"stdoutSha256": "d8fe32f715a658d2b1aafa95c0f7a915095f3650c1938bbd2ebe077a6a863c7c",
+			"stderrSha256": "1549e9b8128b223662d253210e73f7e29e9494049b92b239101a926f6f5b3d95",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "doctor-core",
+			"command": ["bash", ".codex/cloud/doctor.sh"],
+			"runId": "stage4-20260806t033046z-fe433334",
+			"startedAt": "2026-08-06T03:31:39.156Z",
+			"completedAt": "2026-08-06T03:31:39.495Z",
+			"durationMs": 339,
+			"stdoutPath": "evidence/stage-4-cloud-run/doctor-core.stdout",
+			"stderrPath": "evidence/stage-4-cloud-run/doctor-core.stderr",
+			"stdoutSha256": "5f9f207e89e7d626ef5338c8a5de175d6bc4837341754ca6946b68db5cc71813",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "fresh-shell-core",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\n. .codex/cloud/lib.sh\npersisted=\"$(cloud_persisted_environment_file)\"\nprintf 'bashrcSourceLines=%s\\n' \"$(grep -Fc \"$persisted\" \"$HOME/.bashrc\" || true)\"\nprintf 'fingerprint=%s\\n' \"$(cat \"$(cloud_marker_file core)\")\"\nenv -u CODEX_CLOUD -u CODEX_CLOUD_PROFILE bash .codex/cloud/doctor.sh --quiet\nprintf 'freshShellDoctor=pass\\n'"
+			],
+			"runId": "stage4-20260806t033046z-fe433334",
+			"startedAt": "2026-08-06T03:31:39.495Z",
+			"completedAt": "2026-08-06T03:31:39.702Z",
+			"durationMs": 207,
+			"stdoutPath": "evidence/stage-4-cloud-run/fresh-shell-core.stdout",
+			"stderrPath": "evidence/stage-4-cloud-run/fresh-shell-core.stderr",
+			"stdoutSha256": "c5181d1d17277a9d7ff9226ea86dd9ae607e6ac7881597a79b4fc9007ef1fbd0",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "template-known-bad-fixtures",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/template.test.ts",
+				"-t",
+				"residue"
+			],
+			"runId": "stage4-20260806t033046z-fe433334",
+			"startedAt": "2026-08-06T03:31:39.702Z",
+			"completedAt": "2026-08-06T03:31:40.500Z",
+			"durationMs": 798,
+			"stdoutPath": "evidence/stage-4-cloud-run/template-known-bad-fixtures.stdout",
+			"stderrPath": "evidence/stage-4-cloud-run/template-known-bad-fixtures.stderr",
+			"stdoutSha256": "2049f6899d4e06caaf484eef3a174a0c285665a64df7e774277932356739ca7a",
+			"stderrSha256": "37e677fe5cc429e8f979f3f655c92d98eaa1da50b4886e51153bf845b527f8cb",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "stale-fingerprint-refusal",
+			"command": [
+				"bash",
+				"-c",
+				"set -uo pipefail\n. .codex/cloud/lib.sh\nset +e\nsentinel=\"/tmp/devenv-stage4-stage4-20260806t033046z-fe433334-stale-sentinel\"\nrm -f \"$sentinel\"\nmarker=\"$(cloud_marker_file core)\"\ncp \"$marker\" \"$marker.backup\"\nprintf 'stale' >\"$marker\"\ndoctor_status=0\nbash .codex/cloud/doctor.sh || doctor_status=$?\nexec_status=0\nbash .codex/cloud/exec.sh touch \"$sentinel\" || exec_status=$?\nmv -f \"$marker.backup\" \"$marker\"\nexecuted=true\nif [ ! -e \"$sentinel\" ]; then executed=false; fi\nrm -f \"$sentinel\"\nprintf 'doctorExitCode=%s\\n' \"$doctor_status\"\nprintf 'execExitCode=%s\\n' \"$exec_status\"\nprintf 'commandExecuted=%s\\n' \"$executed\"\nexit \"$doctor_status\""
+			],
+			"runId": "stage4-20260806t033046z-fe433334",
+			"startedAt": "2026-08-06T03:31:40.500Z",
+			"completedAt": "2026-08-06T03:31:40.566Z",
+			"durationMs": 66,
+			"stdoutPath": "evidence/stage-4-cloud-run/stale-fingerprint-refusal.stdout",
+			"stderrPath": "evidence/stage-4-cloud-run/stale-fingerprint-refusal.stderr",
+			"stdoutSha256": "8b6eec9d68666419728fb9b38caada65e347838f80d1c209b3bf66afd4ab10f3",
+			"stderrSha256": "3f0cb523dd9af0c8083d1738039bffdc44fd7c67783419afd65652a26c753ed3",
+			"exitCode": 1,
+			"status": "refused"
+		},
+		{
+			"id": "exec-boundary-refusal",
+			"command": [
+				"bash",
+				"-c",
+				"set -uo pipefail\nsentinel=\"/tmp/devenv-stage4-stage4-20260806t033046z-fe433334-boundary-sentinel\"\nhome=\"/tmp/devenv-stage4-stage4-20260806t033046z-fe433334-unverified-home\"\nrm -f \"$sentinel\"\nrm -rf \"$home\"\nmkdir -p \"$home\"\nstatus=0\nenv -u CODEX_CLOUD -u CODEX_CLOUD_PROFILE HOME=\"$home\" bash .codex/cloud/exec.sh touch \"$sentinel\" || status=$?\nexecuted=true\nif [ ! -e \"$sentinel\" ]; then executed=false; fi\nrm -f \"$sentinel\"\nrm -rf \"$home\"\nprintf 'execRefusalExitCode=%s\\n' \"$status\"\nprintf 'commandExecuted=%s\\n' \"$executed\"\nexit \"$status\""
+			],
+			"runId": "stage4-20260806t033046z-fe433334",
+			"startedAt": "2026-08-06T03:31:40.567Z",
+			"completedAt": "2026-08-06T03:31:40.573Z",
+			"durationMs": 6,
+			"stdoutPath": "evidence/stage-4-cloud-run/exec-boundary-refusal.stdout",
+			"stderrPath": "evidence/stage-4-cloud-run/exec-boundary-refusal.stderr",
+			"stdoutSha256": "3c05d586489ec342ab50e973956a775a0987a34511dc6426d89adc043253128f",
+			"stderrSha256": "765c930ee4613cd9fbca571834a1114ca04d39048710a21cd1ff762f266a555f",
+			"exitCode": 3,
+			"status": "refused"
+		},
+		{
+			"id": "cold-bootstrap-browser",
+			"command": ["bash", ".codex/cloud/bootstrap.sh", "browser"],
+			"runId": "stage4-20260806t033046z-fe433334",
+			"startedAt": "2026-08-06T03:31:40.573Z",
+			"completedAt": "2026-08-06T03:31:57.330Z",
+			"durationMs": 16757,
+			"stdoutPath": "evidence/stage-4-cloud-run/cold-bootstrap-browser.stdout",
+			"stderrPath": "evidence/stage-4-cloud-run/cold-bootstrap-browser.stderr",
+			"stdoutSha256": "a7a0646df47e7b9224129b17bb1db55d60dfc0e91923b8998d0d945f67604d67",
+			"stderrSha256": "44c1d924bcd3d5eda1a9e42973a8720327682443ef96f8bec7aadc196300093a",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "doctor-browser",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\n. .codex/cloud/lib.sh\npayload_root=\"$(cloud_expand_home \"$(cloud_contract_value browser_payload_root)\")\"\nmarker=\"$payload_root/$(cloud_contract_value browser_marker_basename)\"\nprintf 'payloadRoot=%s\\n' \"$payload_root\"\nprintf 'markerPath=%s\\n' \"$marker\"\nprintf 'markerVersion=%s\\n' \"$(cat \"$marker\")\"\nbash .codex/cloud/doctor.sh"
+			],
+			"runId": "stage4-20260806t033046z-fe433334",
+			"startedAt": "2026-08-06T03:31:57.330Z",
+			"completedAt": "2026-08-06T03:31:58.062Z",
+			"durationMs": 732,
+			"stdoutPath": "evidence/stage-4-cloud-run/doctor-browser.stdout",
+			"stderrPath": "evidence/stage-4-cloud-run/doctor-browser.stderr",
+			"stdoutSha256": "001c54c980ce25ce4eeaf16b4a1712811631384a5ef5b37613e2cf57077e407b",
+			"stderrSha256": "ad36c27c7a0b8d3fe0754fcbbd0879eec89f1730d81cb8c25861ecc40d7347b2",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rollback-proof",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-four-evidence.ts",
+				"probe-rollback",
+				"--base",
+				"3a7f06415fe160e17c7c2592e04f7aa98c361d71",
+				"--implementation",
+				"fe433334f63a2c01e45b6a55c97dca057e00ea57",
+				"--workspace",
+				"/tmp/devenv-stage2-stage4-20260806t033046z-fe433334-rollback"
+			],
+			"runId": "stage4-20260806t033046z-fe433334",
+			"startedAt": "2026-08-06T03:31:58.063Z",
+			"completedAt": "2026-08-06T03:31:58.249Z",
+			"durationMs": 186,
+			"stdoutPath": "evidence/stage-4-cloud-run/rollback-proof.stdout",
+			"stderrPath": "evidence/stage-4-cloud-run/rollback-proof.stderr",
+			"stdoutSha256": "0a7010b823e6d7523c48d0d60fb3567b82477abbbe7e547992a323140f40952c",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		}
+	],
+	"idempotency": {
+		"coldCommandId": "cold-bootstrap-core",
+		"warmCommandId": "warm-bootstrap-core",
+		"freshShellCommandId": "fresh-shell-core",
+		"fingerprint": "8b54a3ca4f7b674f815db67f23d4fc38bc9f44d7b1430a28fec80188d0494ac2",
+		"bashrcSourceLines": 1,
+		"coldDurationMs": 49572,
+		"warmDurationMs": 806
+	},
+	"browser": {
+		"commandId": "doctor-browser",
+		"profile": "browser",
+		"environment": "PLAYWRIGHT_BROWSERS_PATH",
+		"payloadRoot": "/root/.payloads/browser",
+		"markerPath": "/root/.payloads/browser/.devenv-playwright-version",
+		"markerVersion": "1.59.1",
+		"referenceMarkerPath": "/home/vscode/.payloads/browser/.devenv-playwright-version",
+		"requiredCommand": "bun run browser:preflight",
+		"launchPassed": true
+	},
+	"boundary": {
+		"staleCommandId": "stale-fingerprint-refusal",
+		"refusalCommandId": "exec-boundary-refusal",
+		"unhealthyExecExitCode": 1,
+		"execRefusalExitCode": 3,
+		"commandExecuted": false
+	},
+	"knownBadFixtures": {
+		"contract": "contract-known-bad-fixtures",
+		"template": "template-known-bad-fixtures"
+	},
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-4-pr-merge-commit>"],
+		"runtimeCleanup": [
+			"rm",
+			"-rf",
+			"~/.config/devenv/codex-cloud.env",
+			"~/.config/devenv/codex-cloud-secrets.env",
+			"~/.cache/devenv/codex-cloud"
+		],
+		"scope": "Revert the cloud contract, scripts, selftest, guard, CI wiring, ownership, documentation, and evidence as one Stage 4 bundle; then delete the persisted cloud environment, secrets, and fingerprint marker in every prepared cloud environment.",
+		"proof": {
+			"commandId": "rollback-proof",
+			"predecessorSha": "3a7f06415fe160e17c7c2592e04f7aa98c361d71",
+			"implementationSha": "fe433334f63a2c01e45b6a55c97dca057e00ea57",
+			"syntheticMergeSha": "29b327181e5ad609cee78672f066b536f2899e70",
+			"syntheticMergeTree": "015e9f4877e31c4b40230385c6a02043df2d5b4a",
+			"syntheticMergeParents": [
+				"3a7f06415fe160e17c7c2592e04f7aa98c361d71",
+				"fe433334f63a2c01e45b6a55c97dca057e00ea57"
+			],
+			"predecessorTree": "6ec6b6f263b02e7bdb333a1ba63e219ae254faa7",
+			"revertedTree": "6ec6b6f263b02e7bdb333a1ba63e219ae254faa7",
+			"treeMatchesPredecessor": true,
+			"operations": [
+				["git", "rev-parse", "3a7f06415fe160e17c7c2592e04f7aa98c361d71^{tree}"],
+				["git", "rev-parse", "fe433334f63a2c01e45b6a55c97dca057e00ea57^{tree}"],
+				[
+					"git",
+					"worktree",
+					"add",
+					"--detach",
+					"/tmp/devenv-stage2-stage4-20260806t033046z-fe433334-rollback",
+					"3a7f06415fe160e17c7c2592e04f7aa98c361d71"
+				],
+				[
+					"git",
+					"commit-tree",
+					"015e9f4877e31c4b40230385c6a02043df2d5b4a",
+					"-p",
+					"3a7f06415fe160e17c7c2592e04f7aa98c361d71",
+					"-p",
+					"fe433334f63a2c01e45b6a55c97dca057e00ea57",
+					"-m",
+					"Stage 2 synthetic merge"
+				],
+				["git", "rev-parse", "29b327181e5ad609cee78672f066b536f2899e70^{tree}"],
+				[
+					"git",
+					"show",
+					"-s",
+					"--format=%P",
+					"29b327181e5ad609cee78672f066b536f2899e70"
+				],
+				[
+					"git",
+					"checkout",
+					"--detach",
+					"29b327181e5ad609cee78672f066b536f2899e70"
+				],
+				[
+					"git",
+					"revert",
+					"--no-edit",
+					"-m",
+					"1",
+					"29b327181e5ad609cee78672f066b536f2899e70"
+				],
+				["git", "rev-parse", "HEAD^{tree}"]
+			]
+		}
+	}
+}

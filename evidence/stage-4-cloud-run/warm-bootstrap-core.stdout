@@ -1,0 +1,14 @@
+Codex cloud bootstrap: persisted 0 cloud secrets
+bun install v1.3.13 (bf2e2cec)
+
+Checked 302 installs across 374 packages (no changes) [65.00ms]
+Codex cloud doctor: healthy (core, fingerprint 8b54a3ca4f7b)
+  proto: 0.55.4
+  bun: 1.3.13
+  node: 24.18.0
+  moon: 2.3.5
+  python: 3.14.2
+  uv: 0.9.7
+  jq: 1.8.1
+  graphify: 0.9.16
+Codex cloud bootstrap: prepared the core profile

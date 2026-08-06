@@ -1,0 +1,4 @@
+Codex cloud doctor: environment fingerprint is missing or stale
+Run: bash .codex/cloud/bootstrap.sh core
+Codex cloud doctor: environment fingerprint is missing or stale
+Run: bash .codex/cloud/bootstrap.sh core

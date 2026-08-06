@@ -163,6 +163,20 @@
 			"sourceOfTruth": "browser runtime contract"
 		},
 		{
+			"pattern": "scripts/template/validate-cloud.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "Codex Cloud contract entrypoint"
+		},
+		{
+			"pattern": "scripts/template/cloud-contract.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "Codex Cloud contract"
+		},
+		{
 			"pattern": "scripts/template/**",
 			"classification": "template-tooling",
 			"syncPolicy": "merge",
@@ -291,6 +305,19 @@
 			"requiresAll": ["playwright"]
 		},
 		{ "pattern": ".codex/**", "requiresAll": ["codex"] },
+		{ "pattern": ".codex/cloud/**", "requiresAll": ["codex_cloud"] },
+		{
+			"pattern": ".github/workflows/codex-cloud-smoke.yml",
+			"requiresAll": ["codex_cloud"]
+		},
+		{
+			"pattern": "scripts/template/cloud-contract.ts",
+			"requiresAll": ["codex_cloud"]
+		},
+		{
+			"pattern": "scripts/template/validate-cloud.ts",
+			"requiresAll": ["codex_cloud"]
+		},
 		{
 			"pattern": ".codex/skills/graphify/**",
 			"requiresAll": ["graphify"]
@@ -376,6 +403,12 @@
 			]
 		},
 		{
+			"capability": "codex_cloud",
+			"sections": [],
+			"packages": [],
+			"scripts": ["cloud:check"]
+		},
+		{
 			"capability": "openspec",
 			"sections": ["workspaces.catalog", "devDependencies"],
 			"packages": ["@fission-ai/openspec"]
@@ -405,7 +438,15 @@
 				"wrangler"
 			]
 		},
-		"codex_cloud": { "paths": [], "tokens": ["CODEX_CLOUD"] },
+		"codex_cloud": {
+			"paths": [
+				".codex/cloud/**",
+				".github/workflows/codex-cloud-smoke.yml",
+				"scripts/template/cloud-contract.ts",
+				"scripts/template/validate-cloud.ts"
+			],
+			"tokens": ["CODEX_CLOUD", "codex-cloud", "cloud:check"]
+		},
 		"context7": {
 			"paths": [],
 			"tokens": ["context7", "CONTEXT7_API_KEY", "@upstash/context7-mcp"]
@@ -701,7 +742,6 @@
 		"advertisedOnly": ["cloudflare_workers", "tanstack_start"],
 		"absent": [
 			"moon_affected_selection",
-			"codex_cloud",
 			"playwright",
 			"better_auth",
 			"rhf_zod",

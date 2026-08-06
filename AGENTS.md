@@ -93,6 +93,18 @@ scripts/   # one-off tooling scripts
 - Playwright dependencies, image stages, package scripts, preflight, CI job, post-create wiring, documentation, and agent rules must all be omitted when the capability is disabled.
 - Run `bun run browser:check` and the real `development_browser` image preflight after changing any Playwright authority, browser library, renderer rule, or browser-profile command.
 
+<!-- capability:start codex_cloud -->
+## Codex Cloud Ownership
+
+- Codex Cloud is a separate, already-containerized environment. Its setup and maintenance command is the committed `bash .codex/cloud/bootstrap.sh`; the hosted settings it requires are recorded in `.codex/cloud/contract.toml`.
+- The hosted environment must set `CODEX_CLOUD=true` independently, so a fresh cache with a missing or failed setup command still takes the fail-closed cloud path.
+- Run project commands through `bash .codex/cloud/exec.sh <command>`. It sources the persisted marker, runs `.codex/cloud/doctor.sh --quiet`, and executes directly without Docker.
+- Never run `docker`, `devpod`, `devcontainer`, `.devcontainer/host/*`, worktree lifecycle scripts, deployments, or remote pushes from a cloud task. Deployment and production credentials stay in GitHub Actions.
+- Only the contract's `secret_allow_list` (plus names in `CODEX_CLOUD_PERSIST_EXTRA_ENV`) is bridged into the agent phase, written to a `0600` file, never echoed.
+- If the doctor reports a stale fingerprint, stop and run `bash .codex/cloud/bootstrap.sh <profile>` before executing project commands.
+- Run `bun run cloud:check` and `bash .codex/cloud/selftest.sh` after changing any cloud contract value, cloud script, Proto pin, checksum, or browser payload authority.
+
+<!-- capability:end codex_cloud -->
 ## Commit Policy
 
 ALWAYS commit and push after completing each significant change. Do NOT wait for the user to ask. Before committing, update `/workspace/CHANGES.md` with a dated entry (Goal + How to implement).

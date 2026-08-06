@@ -758,10 +758,13 @@ async function renderContent(
 		return entry.linkTarget;
 	}
 	if (entry.renderPolicy === "render-readme") {
-		return (await Bun.file(source).text()).replaceAll(
-			"{{PROJECT_NAME}}",
-			parameters.project.display_name,
-		);
+		// The rendered README is a normal template-owned document: capability and
+		// template-only fences must be resolved here too, or every fixture inherits
+		// the raw fence comments and the prose of capabilities it disabled.
+		return filterCapabilityBlocks(
+			stripTemplateOnlyBlocks(await Bun.file(source).text()),
+			parameters.capabilities.defaults,
+		).replaceAll("{{PROJECT_NAME}}", parameters.project.display_name);
 	}
 	if (entry.path === ".devcontainer/devcontainer.json") {
 		return renderDevcontainer(source, parameters, fixture.fixture.name);
@@ -809,6 +812,14 @@ async function renderContent(
 			.split("\n")
 			.filter((line) => !/(?:cloudflare|wrangler)/i.test(line))
 			.join("\n");
+	}
+	if (entry.path === ".codex/cloud/contract.toml") {
+		// The cloud scripts read this contract with sed before any parameter
+		// tooling exists, so the project slug has to be baked into its persisted
+		// environment, secrets, and fingerprint marker paths at render time.
+		content = content
+			.replaceAll("~/.config/devenv/", `~/.config/${parameters.project.slug}/`)
+			.replaceAll("~/.cache/devenv/", `~/.cache/${parameters.project.slug}/`);
 	}
 	return content;
 }

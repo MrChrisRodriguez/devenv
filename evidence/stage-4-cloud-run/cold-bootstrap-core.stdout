@@ -1,0 +1,80 @@
+Codex cloud bootstrap: persisted 0 cloud secrets
+✨ There's a new version of proto available, 0.60.0 (currently on 0.55.4)
+✨ Run proto upgrade or install from https://moonrepo.dev/docs/proto/install
+
+[node] Installing Node.js 24.18.0
+[node] Downloading pre-built archive node-v24.18.0-linux-arm64.tar.xz
+[node] Verifying checksum against SHASUMS256.txt
+[node] Unpacking archive node-v24.18.0-linux-arm64.tar.xz
+[node] Node.js 24.18.0 installed (4s)
+
+│ SUCCESS
+│ Node.js 24.18.0 has been installed to /root/.proto/tools/node/24.18.0!
+
+[moon] Installing moon with specification 2.3.5
+[moon] Installing moon 2.3.5
+[moon] Downloading pre-built archive moon_cli-aarch64-unknown-linux-gnu.tar.xz
+[moon] Verifying checksum against moon_cli-aarch64-unknown-linux-gnu.tar.xz.sha256
+[moon] Unpacking archive moon_cli-aarch64-unknown-linux-gnu.tar.xz
+[moon] moon 2.3.5 installed (3s)
+
+│ SUCCESS
+│ moon 2.3.5 has been installed to /root/.proto/tools/moon/2.3.5!
+
+[python] Installing Python with specification 3.14.2
+[python] Installing Python 3.14.2
+[python] Downloading pre-built archive cpython-3.14.2+20260127-aarch64-unknown-linux-gnu-install_only.tar.gz
+[python] Verifying checksum against SHA256SUMS
+[python] Unpacking archive cpython-3.14.2+20260127-aarch64-unknown-linux-gnu-install_only.tar.gz
+[python] Python 3.14.2 installed (8s)
+
+│ SUCCESS
+│ Python 3.14.2 has been installed to /root/.proto/tools/python/3.14.2!
+
+[uv] Installing uv 0.9.7
+[uv] Downloading pre-built archive uv-aarch64-unknown-linux-gnu.tar.gz
+[uv] Verifying checksum against uv-aarch64-unknown-linux-gnu.tar.gz.sha256
+[uv] Unpacking archive uv-aarch64-unknown-linux-gnu.tar.gz
+[uv] uv 0.9.7 installed (2s)
+
+│ SUCCESS
+│ uv 0.9.7 has been installed to /root/.proto/tools/uv/0.9.7!
+
+[jq] Installing jq 1.8.1
+[jq] Downloading pre-built archive jq-linux-arm64
+[jq] jq 1.8.1 installed (1s)
+
+│ SUCCESS
+│ jq 1.8.1 has been installed to /root/.proto/tools/jq/1.8.1!
+
+bun install v1.3.13 (bf2e2cec)
+
++ @biomejs/biome@2.4.16
++ @cloudflare/vite-plugin@1.43.0
++ @cloudflare/vitest-pool-workers@0.18.0
++ @commitlint/cli@20.5.0
++ @commitlint/config-conventional@20.5.0
++ @fission-ai/openspec@0.19.0
++ @hookform/resolvers@5.4.0
++ @playwright/test@1.59.1
++ @types/bun@1.3.10
++ @types/node@25.5.0
++ better-auth@1.6.23
++ husky@9.1.7
++ lint-staged@16.4.0
++ react-hook-form@7.81.0
++ typescript@5.9.3
++ wrangler@4.107.0
++ zod@4.3.6
+
+287 packages installed [8.79s]
+Codex cloud doctor: healthy (core, fingerprint 8b54a3ca4f7b)
+  proto: 0.55.4
+  bun: 1.3.13
+  node: 24.18.0
+  moon: 2.3.5
+  python: 3.14.2
+  uv: 0.9.7
+  jq: 1.8.1
+  graphify: 0.9.16
+Codex cloud bootstrap: prepared the core profile

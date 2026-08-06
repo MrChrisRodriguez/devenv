@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { validateBrowserContract } from "./browser-contract";
+import { validateCloudContract } from "./cloud-contract";
 import { validateStageZeroEvidence } from "./evidence";
 import { validateStageTwoEvidence } from "./image-evidence";
 import { validateJsonSchema } from "./json-schema";
@@ -10,6 +11,7 @@ import {
 	parseToml,
 	resolveFixtureParameters,
 } from "./parameters";
+import { validateStageFourEvidence } from "./stage-four-evidence";
 import { validateStageThreeEvidence } from "./stage-three-evidence";
 import { validateToolchainContract } from "./toolchain";
 import { validateStageOneEvidence } from "./toolchain-evidence";
@@ -27,6 +29,8 @@ export interface ValidationReport {
 	imageEvidenceSchemaFile: string;
 	runtimeEvidenceFile: string;
 	runtimeEvidenceSchemaFile: string;
+	cloudEvidenceFile: string;
+	cloudEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -47,6 +51,8 @@ export async function validateAll(
 		imageEvidenceSchemaFile: "evidence/stage-2-image.schema.json",
 		runtimeEvidenceFile: "evidence/stage-3-runtimes.json",
 		runtimeEvidenceSchemaFile: "evidence/stage-3-runtimes.schema.json",
+		cloudEvidenceFile: "evidence/stage-4-cloud.json",
+		cloudEvidenceSchemaFile: "evidence/stage-4-cloud.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -101,6 +107,11 @@ export async function validateAll(
 			report.status = "fail";
 			report.errors.push(...browserErrors.map((error) => `browser: ${error}`));
 		}
+		const cloudErrors = await validateCloudContract(root);
+		if (cloudErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...cloudErrors);
+		}
 		const toolchainEvidenceErrors = await validateStageOneEvidence(root);
 		if (toolchainEvidenceErrors.length > 0) {
 			report.status = "fail";
@@ -122,6 +133,13 @@ export async function validateAll(
 				...runtimeEvidenceErrors.map((error) => `stage-3 evidence: ${error}`),
 			);
 		}
+		const cloudEvidenceErrors = await validateStageFourEvidence(root);
+		if (cloudEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...cloudEvidenceErrors.map((error) => `stage-4 evidence: ${error}`),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -140,7 +158,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(

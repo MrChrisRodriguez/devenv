@@ -1,0 +1,3 @@
+
+$ husky
+$ bun scripts/browser-preflight.ts
