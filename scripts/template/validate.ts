@@ -15,6 +15,7 @@ import { validateStageFourEvidence } from "./stage-four-evidence";
 import { validateStageThreeEvidence } from "./stage-three-evidence";
 import { validateToolchainContract } from "./toolchain";
 import { validateStageOneEvidence } from "./toolchain-evidence";
+import { validateWorktreeContract } from "./worktree-contract";
 
 export interface ValidationReport {
 	schemaVersion: 1;
@@ -111,6 +112,11 @@ export async function validateAll(
 		if (cloudErrors.length > 0) {
 			report.status = "fail";
 			report.errors.push(...cloudErrors);
+		}
+		const worktreeErrors = await validateWorktreeContract(root);
+		if (worktreeErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...worktreeErrors);
 		}
 		const toolchainEvidenceErrors = await validateStageOneEvidence(root);
 		if (toolchainEvidenceErrors.length > 0) {

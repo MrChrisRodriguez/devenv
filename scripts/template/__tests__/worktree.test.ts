@@ -1,7 +1,9 @@
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: Mutations quote the literal ${localEnv:} and shell substitutions the runtime carries.
 import { describe, expect, test } from "bun:test";
-import { chmod, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+import { chmod, copyFile, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
+import { validateWorktreeContract } from "../worktree-contract";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const RUNTIME_FILES = [
@@ -2420,6 +2422,266 @@ describe("worktree runtime selftest", () => {
 			}
 		} finally {
 			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+});
+
+const CONTRACT_FILES = [
+	"package.json",
+	"template-parameters.toml",
+	"template-parameters.schema.json",
+	"AGENTS.md",
+	".devcontainer/devcontainer.json",
+	".devcontainer/devcontainer-fingerprint.sh",
+	".codex/cloud/contract.toml",
+	".github/workflows/ci.yml",
+	"scripts/sync-devcontainer.sh",
+	"scripts/template/worktree-contract.ts",
+	"scripts/template/validate-worktree.ts",
+	"scripts/worktree/contract.toml",
+	"scripts/worktree/lib.sh",
+	"scripts/worktree/lock.sh",
+	"scripts/worktree/env.sh",
+	"scripts/worktree/ensure.sh",
+	"scripts/worktree/exec.sh",
+	"scripts/worktree/manifest.sh",
+	"scripts/worktree/services.sh",
+	"scripts/worktree/up.sh",
+	"scripts/worktree/down.sh",
+	"scripts/worktree/cleanup.sh",
+	"scripts/worktree/selftest.sh",
+	"docs/devcontainer-upgrade/stage-0/template-ownership.json",
+] as const;
+
+async function contractFixture(): Promise<string> {
+	const temporary = await mkdtemp(
+		resolve(tmpdir(), "devenv-worktree-contract-"),
+	);
+	for (const path of CONTRACT_FILES) {
+		const destination = resolve(temporary, path);
+		await mkdir(dirname(destination), { recursive: true });
+		await copyFile(resolve(ROOT, path), destination);
+		// The guard asserts the executable bit Git records for every runtime
+		// script, so the fixture reproduces it rather than inheriting whatever the
+		// copy landed with.
+		if (path.startsWith("scripts/worktree/") && path.endsWith(".sh"))
+			await chmod(destination, 0o755);
+	}
+	return temporary;
+}
+
+async function mutate(
+	root: string,
+	path: string,
+	transform: (source: string) => string,
+	expected: string,
+): Promise<void> {
+	const target = resolve(root, path);
+	const original = await Bun.file(target).text();
+	const changed = transform(original);
+	if (changed === original) throw new Error(`Mutation did not change ${path}`);
+	await Bun.write(target, changed);
+	if (path.endsWith(".sh")) await chmod(target, 0o755);
+	expect(await validateWorktreeContract(root)).toContain(expected);
+	await Bun.write(target, original);
+	if (path.endsWith(".sh")) await chmod(target, 0o755);
+	expect(await validateWorktreeContract(root)).toEqual([]);
+}
+
+describe("worktree runtime contract guard", () => {
+	test("passes the source tree and rejects known-bad runtime mutations", async () => {
+		expect(await validateWorktreeContract(ROOT)).toEqual([]);
+		const temporary = await contractFixture();
+		try {
+			expect(await validateWorktreeContract(temporary)).toEqual([]);
+
+			await mutate(
+				temporary,
+				"scripts/worktree/contract.toml",
+				(source) =>
+					source.replace(
+						"published_container_port = 8080",
+						"published_container_port = 80",
+					),
+				"worktree: published_container_port must be between 1024 and 65535",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/contract.toml",
+				(source) => source.replace("manifest_schema_version = 1\n", ""),
+				"worktree: contract key manifest_schema_version is missing",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/contract.toml",
+				(source) => `${source}unknown_key = "x"\n`,
+				"worktree: contract key unknown_key is unknown",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/contract.toml",
+				(source) =>
+					source.replace(
+						'local_domain_stem = "devenv"',
+						'local_domain_stem = "elsewhere"',
+					),
+				"worktree: contract drifted from template-parameters.toml",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/contract.toml",
+				(source) =>
+					source.replace(
+						'direct_host = "127.0.0.1"',
+						'direct_host = "0.0.0.0"',
+					),
+				"worktree: direct_host must be 127.0.0.1",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/contract.toml",
+				(source) =>
+					source.replace(
+						'friendly_domain_pattern = "{workspace}.{project}.localhost"',
+						'friendly_domain_pattern = "{project}.localhost"',
+					),
+				"worktree: friendly_domain_pattern must contain {workspace}",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/contract.toml",
+				(source) => source.replace(', ".devcontainer"]', "]"),
+				"worktree: definition fingerprint inputs drifted from the image authority",
+			);
+
+			await mutate(
+				temporary,
+				".devcontainer/devcontainer.json",
+				(source) =>
+					source.replace(
+						"127.0.0.1:${localEnv:DEVENV_PUBLISHED_HOST_PORT}:8080",
+						"127.0.0.1:9999:8080",
+					),
+				"worktree: devcontainer.json must publish 8080 on 127.0.0.1",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/devcontainer.json",
+				(source) =>
+					source.replace('"remoteUser": "vscode"', '"remoteUser": "node"'),
+				"worktree: development_user must equal devcontainer.json remoteUser",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/devcontainer.json",
+				(source) =>
+					source.replace(
+						'"DEVCONTAINER_WORKTREE_ENV_FILE": "/workspace/.dev/state/worktree.container.env"',
+						'"DEVCONTAINER_WORKTREE_ENV_FILE": "/workspace/other.env"',
+					),
+				"worktree: devcontainer.json must point DEVCONTAINER_WORKTREE_ENV_FILE at /workspace/.dev/state/worktree.container.env",
+			);
+			await mutate(
+				temporary,
+				".devcontainer/devcontainer.json",
+				(source) => source.replace('"prepare-container-env"', '"prepare-env"'),
+				"worktree: devcontainer.json must keep the prepare-container-env initializeCommand",
+			);
+
+			// Host orchestration moved above the in-container test would try to start
+			// a container from inside one, forever.
+			await mutate(
+				temporary,
+				"scripts/worktree/exec.sh",
+				(source) =>
+					source.replace(
+						'\nif [ "${DEVCONTAINER:-}" = "true" ]; then',
+						'\nexec "$CONTAINER_ENGINE" exec "$container_id" "$@"\nif [ "${DEVCONTAINER:-}" = "true" ]; then',
+					),
+				"worktree: bridge must dispatch cloud and container paths before host orchestration",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/ensure.sh",
+				(source) =>
+					source.replace(
+						'\t\t--filter "label=${CONFIG_FILE_LABEL}=${CONFIG_PATH}" 2>/dev/null |',
+						"\t\t2>/dev/null |",
+					),
+				"worktree: ensure must own containers by checkout and config path",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/cleanup.sh",
+				(source) =>
+					source.replace(
+						"\tremove_scoped_volumes\n",
+						"\tdocker volume prune -f\n\tremove_scoped_volumes\n",
+					),
+				"worktree: scripts/worktree/cleanup.sh must not run an unscoped prune",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/env.sh",
+				(source) =>
+					source.replace(
+						'\tif in_container; then\n\t\twt_die "port allocation is a host-side operation; the container reads the generated environment instead"\n\tfi\n',
+						"",
+					),
+				"worktree: allocation must refuse to write the registry inside a container",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/up.sh",
+				(source) =>
+					source.replace(
+						"report_routes() {\n",
+						'report_routes() {\n\tlocal persistence=".dev/persistence"\n',
+					),
+				"worktree: scripts/worktree/up.sh bypasses the generated persistence root",
+			);
+			await mutate(
+				temporary,
+				"scripts/sync-devcontainer.sh",
+				(source) => source.replace(/^.*scripts\/worktree\/\*\).*\n/m, ""),
+				"worktree: template ownership must cover the runtime",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/lib.sh",
+				(source) => `${source}fi\n`,
+				"worktree: scripts/worktree/lib.sh has a bash syntax error",
+			);
+
+			// The executable bit is part of the contract: a runtime script Git
+			// records as 0644 cannot be run by the callers that depend on it.
+			const bridge = resolve(temporary, "scripts/worktree/exec.sh");
+			await chmod(bridge, 0o644);
+			expect(await validateWorktreeContract(temporary)).toContain(
+				"worktree: scripts/worktree/exec.sh must be executable",
+			);
+			await chmod(bridge, 0o755);
+			expect(await validateWorktreeContract(temporary)).toEqual([]);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 300_000);
+
+	test("requires the cloud keys only when the cloud capability ships", async () => {
+		const temporary = await contractFixture();
+		try {
+			// Removing the cloud contract makes the fenced keys residue rather than
+			// contract, and the guard has to say so in both directions.
+			await rm(resolve(temporary, ".codex/cloud/contract.toml"));
+			const errors = await validateWorktreeContract(temporary);
+			expect(errors).toContain(
+				"worktree: contract key cloud_doctor_command is unknown",
+			);
+			expect(errors).toContain(
+				"worktree: contract key cloud_marker_variable is unknown",
+			);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
 		}
 	}, 120_000);
 });

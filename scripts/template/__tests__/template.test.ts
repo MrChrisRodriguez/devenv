@@ -16,6 +16,7 @@ import {
 	validateTemplateParameters,
 } from "../parameters";
 import {
+	buildRenderPlan,
 	filterCapabilityBlocks,
 	loadTemplateOwnership,
 	renderFixture,
@@ -555,6 +556,50 @@ describe("deterministic fixture renderer", () => {
 			await rm(temporary, { recursive: true, force: true });
 		}
 	}, 180_000);
+
+	test("omits the whole worktree runtime when devcontainer is disabled", async () => {
+		const parameters = await loadTemplateParameters(ROOT);
+		const ownership = await loadTemplateOwnership(ROOT);
+		const fixture = await loadFixtureDefinition(ROOT, "full", parameters);
+		const resolved = resolveFixtureParameters(parameters, fixture);
+		const sourceFiles = [
+			{ path: "package.json", mode: "0644" as const },
+			{ path: "scripts/worktree/contract.toml", mode: "0644" as const },
+			{ path: "scripts/worktree/env.sh", mode: "0755" as const },
+			{ path: "scripts/worktree/cleanup.sh", mode: "0755" as const },
+			{ path: "scripts/template/worktree-contract.ts", mode: "0644" as const },
+			{ path: "scripts/template/validate-worktree.ts", mode: "0644" as const },
+		];
+
+		const enabled = buildRenderPlan(fixture, resolved, ownership, sourceFiles);
+		expect(enabled.entries.map((entry) => entry.target)).toEqual(
+			sourceFiles.map((source) => source.path).sort(),
+		);
+
+		// The runtime is gated on one capability, and it is all or nothing: a
+		// project without a devcontainer must not inherit half a runtime.
+		const withoutDevcontainer = {
+			...resolved,
+			capabilities: {
+				...resolved.capabilities,
+				defaults: { ...resolved.capabilities.defaults, devcontainer: false },
+			},
+		};
+		const plan = buildRenderPlan(
+			fixture,
+			withoutDevcontainer,
+			ownership,
+			sourceFiles,
+		);
+		expect(plan.entries.map((entry) => entry.target)).toEqual(["package.json"]);
+		expect(plan.omitted.map((entry) => entry.path)).toEqual([
+			"scripts/template/validate-worktree.ts",
+			"scripts/template/worktree-contract.ts",
+			"scripts/worktree/cleanup.sh",
+			"scripts/worktree/contract.toml",
+			"scripts/worktree/env.sh",
+		]);
+	}, 60_000);
 
 	test("renders cloud and full profiles with only their selected artifacts", async () => {
 		const temporary = await temporaryDirectory();
