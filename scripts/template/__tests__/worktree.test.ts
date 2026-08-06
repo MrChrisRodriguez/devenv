@@ -4,7 +4,13 @@ import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dir, "../../..");
-const RUNTIME_FILES = ["contract.toml", "lib.sh", "lock.sh", "env.sh"] as const;
+const RUNTIME_FILES = [
+	"contract.toml",
+	"lib.sh",
+	"lock.sh",
+	"env.sh",
+	"ensure.sh",
+] as const;
 
 interface Harness {
 	root: string;
@@ -84,6 +90,15 @@ async function harness(): Promise<Harness> {
 		);
 		if (name.endsWith(".sh")) await chmod(destination, 0o755);
 	}
+	// The definition fingerprint hashes exactly the inputs the contract declares,
+	// so the fixture tree has to carry them or every readiness check fails for the
+	// wrong reason.
+	await Bun.write(resolve(main, ".dockerignore"), "node_modules\n");
+	await Bun.write(resolve(main, ".prototools"), 'bun = "1.3.13"\n');
+	await Bun.write(
+		resolve(main, ".devcontainer/devcontainer.json"),
+		`${JSON.stringify({ name: "Fixture", remoteUser: "vscode" }, null, "\t")}\n`,
+	);
 	await git(main, "init", "-q", "-b", "main");
 	await git(main, "config", "user.email", "worktree@example.test");
 	await git(main, "config", "user.name", "Worktree Fixture");
@@ -159,6 +174,161 @@ interface Entry {
 function disjoint(left: number[], right: number[]): boolean {
 	const seen = new Set(left);
 	return right.every((port) => !seen.has(port));
+}
+
+// Stub container tooling. These tests are about the ownership and convergence
+// rules, not about Docker: the stubs record what the runtime asked for and
+// answer with exactly the state the test set up.
+const DOCKER_STUB = `#!/usr/bin/env bash
+set -u
+state="$STUB_STATE"
+case "\${1:-}" in
+	info) exit 0 ;;
+	ps)
+		[ -f "$state/owned" ] || exit 0
+		cat "$state/container.id"
+		exit 0
+		;;
+	container)
+		[ -f "$state/owned" ] || exit 1
+		[ "\${!#}" = "$(cat "$state/container.id")" ] || exit 1
+		cat "$state/inspect"
+		exit 0
+		;;
+esac
+exit 0
+`;
+
+const DEVCONTAINER_STUB = `#!/usr/bin/env bash
+set -u
+state="$STUB_STATE"
+printf '%s\\n' "$*" >>"$state/up.log"
+if [ -f "$state/fail" ]; then
+	echo "stub devcontainer up failed" >&2
+	exit 1
+fi
+cp "$state/inspect.healthy" "$state/inspect"
+: >"$state/owned"
+exit 0
+`;
+
+interface Tooling {
+	bin: string;
+	state: string;
+}
+
+const CONTAINER_ID = "a".repeat(64);
+
+async function stubTooling(
+	fixture: Harness,
+	worktree: string,
+): Promise<Tooling> {
+	const bin = resolve(fixture.root, "bin");
+	const state = resolve(fixture.root, "stub-state");
+	await mkdir(bin, { recursive: true });
+	await mkdir(state, { recursive: true });
+	for (const [name, source] of [
+		["docker", DOCKER_STUB],
+		["devcontainer", DEVCONTAINER_STUB],
+	] as const) {
+		const path = resolve(bin, name);
+		await Bun.write(path, source);
+		await chmod(path, 0o755);
+	}
+	await Bun.write(resolve(state, "container.id"), CONTAINER_ID);
+	await Bun.write(
+		resolve(state, "inspect.healthy"),
+		healthyInspect(worktree, gitCommonDirectory(worktree)),
+	);
+	return { bin, state };
+}
+
+function gitCommonDirectory(worktree: string): string {
+	const result = Bun.spawnSync(
+		[
+			"git",
+			"-C",
+			worktree,
+			"rev-parse",
+			"--path-format=absolute",
+			"--git-common-dir",
+		],
+		{
+			env: { PATH: process.env["PATH"] ?? "", HOME: worktree },
+			stdout: "pipe",
+		},
+	);
+	return result.stdout.toString().trim();
+}
+
+function healthyInspect(worktree: string, commonDirectory: string): string {
+	return [
+		"true",
+		worktree,
+		resolve(worktree, ".devcontainer/devcontainer.json"),
+		`${commonDirectory}>${commonDirectory};`,
+	].join("\t");
+}
+
+function toolingEnvironment(
+	fixture: Harness,
+	tooling: Tooling,
+	overrides: Record<string, string> = {},
+): Record<string, string> {
+	return {
+		PATH: `${tooling.bin}:${process.env["PATH"] ?? ""}`,
+		STUB_STATE: tooling.state,
+		...overrides,
+	};
+}
+
+function fingerprint(worktree: string, fixture: Harness): string {
+	const result = Bun.spawnSync(
+		[
+			"bash",
+			resolve(worktree, "scripts/worktree/ensure.sh"),
+			"--definition-fingerprint",
+		],
+		{
+			cwd: worktree,
+			env: runtimeEnvironment(fixture.home),
+			stdout: "pipe",
+			stderr: "pipe",
+		},
+	);
+	return result.stdout.toString().trim();
+}
+
+// Bring a worktree to the exact state the fast path is supposed to accept:
+// generated environment present, ready record agreeing with the recorded id, and
+// an owned running container that carries the Git metadata mount.
+async function markReady(
+	fixture: Harness,
+	worktree: string,
+	tooling: Tooling,
+	overrides: { fingerprint?: string; containerId?: string } = {},
+): Promise<void> {
+	expect(run(worktree, fixture.home, "env.sh").exitCode).toBe(0);
+	const id = overrides.containerId ?? CONTAINER_ID;
+	const digest = overrides.fingerprint ?? fingerprint(worktree, fixture);
+	await mkdir(resolve(worktree, ".dev/state/run"), { recursive: true });
+	await Bun.write(resolve(worktree, ".dev/state/run/container.id"), `${id}\n`);
+	await Bun.write(
+		resolve(worktree, ".dev/state/run/container.ready"),
+		`${id} ${digest}\n`,
+	);
+	await Bun.write(resolve(tooling.state, "container.id"), CONTAINER_ID);
+	await Bun.write(
+		resolve(tooling.state, "inspect"),
+		await Bun.file(resolve(tooling.state, "inspect.healthy")).text(),
+	);
+	await Bun.write(resolve(tooling.state, "owned"), "");
+}
+
+async function upLog(tooling: Tooling): Promise<string[]> {
+	const path = resolve(tooling.state, "up.log");
+	if (!(await Bun.file(path).exists())) return [];
+	return (await Bun.file(path).text()).trim().split("\n").filter(Boolean);
 }
 
 describe("worktree identity and port allocation", () => {
@@ -563,5 +733,342 @@ describe("worktree identity and port allocation", () => {
 		expect(image.exitCode).toBe(0);
 		expect(host.stdout.toString().trim()).toMatch(/^[0-9a-f]{64}$/);
 		expect(host.stdout.toString().trim()).toBe(image.stdout.toString().trim());
+	}, 60_000);
+});
+
+describe("worktree container ensure", () => {
+	test("accepts the recorded running container owned by this worktree", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			await markReady(fixture, alpha, tooling);
+
+			const fast = run(
+				alpha,
+				fixture.home,
+				"ensure.sh",
+				["--check-ready"],
+				toolingEnvironment(fixture, tooling),
+			);
+			expect(fast.exitCode).toBe(0);
+			expect(fast.stdout.trim()).toBe(CONTAINER_ID);
+			expect(await upLog(tooling)).toEqual([]);
+
+			// The full path re-checks under the lock and converges without starting
+			// anything.
+			const full = run(
+				alpha,
+				fixture.home,
+				"ensure.sh",
+				[],
+				toolingEnvironment(fixture, tooling),
+			);
+			expect(full.exitCode).toBe(0);
+			expect(full.stdout.trim()).toBe(CONTAINER_ID);
+			expect(await upLog(tooling)).toEqual([]);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("rejects a ready record whose id, labels, config path, running state, or git mount is wrong", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			const common = gitCommonDirectory(alpha);
+			const healthy = healthyInspect(alpha, common);
+			const mutations: Array<[string, () => Promise<void>]> = [
+				[
+					"id shape",
+					async () => {
+						await Bun.write(
+							resolve(alpha, ".dev/state/run/container.id"),
+							"not-a-container-id\n",
+						);
+					},
+				],
+				[
+					"checkout label",
+					async () => {
+						await Bun.write(
+							resolve(tooling.state, "inspect"),
+							healthy.replace(alpha, resolve(fixture.root, "someone-else")),
+						);
+					},
+				],
+				[
+					"config path label",
+					async () => {
+						await Bun.write(
+							resolve(tooling.state, "inspect"),
+							healthy.replace(
+								resolve(alpha, ".devcontainer/devcontainer.json"),
+								resolve(alpha, ".devcontainer/other.json"),
+							),
+						);
+					},
+				],
+				[
+					"running state",
+					async () => {
+						await Bun.write(
+							resolve(tooling.state, "inspect"),
+							healthy.replace("true", "false"),
+						);
+					},
+				],
+				[
+					"git metadata mount",
+					async () => {
+						await Bun.write(
+							resolve(tooling.state, "inspect"),
+							healthy.replace(`${common}>${common};`, ""),
+						);
+					},
+				],
+			];
+
+			let observed = 0;
+			for (const [label, mutate] of mutations) {
+				await markReady(fixture, alpha, tooling);
+				await mutate();
+				const refused = run(
+					alpha,
+					fixture.home,
+					"ensure.sh",
+					["--check-ready"],
+					toolingEnvironment(fixture, tooling),
+				);
+				expect(`${label}:${refused.exitCode}`).toBe(`${label}:1`);
+				expect(refused.stdout).toBe("");
+
+				const reconciled = run(
+					alpha,
+					fixture.home,
+					"ensure.sh",
+					[],
+					toolingEnvironment(fixture, tooling),
+				);
+				expect(`${label}:${reconciled.exitCode}`).toBe(`${label}:0`);
+				observed += 1;
+				expect(await upLog(tooling)).toHaveLength(observed);
+			}
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("rejects a stale definition fingerprint and recreates with --remove-existing-container", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			await markReady(fixture, alpha, tooling, { fingerprint: "0".repeat(64) });
+
+			const reconciled = run(
+				alpha,
+				fixture.home,
+				"ensure.sh",
+				[],
+				toolingEnvironment(fixture, tooling),
+			);
+			expect(reconciled.exitCode).toBe(0);
+			expect(reconciled.stderr).toContain("its definition changed");
+			const invocations = await upLog(tooling);
+			expect(invocations).toHaveLength(1);
+			expect(invocations[0]).toContain("--remove-existing-container");
+			expect(invocations[0]).toContain(
+				`--mount type=bind,source=${gitCommonDirectory(alpha)}`,
+			);
+
+			// The recorded fingerprint now matches, so the next call takes the fast
+			// path and starts nothing.
+			expect(
+				run(
+					alpha,
+					fixture.home,
+					"ensure.sh",
+					[],
+					toolingEnvironment(fixture, tooling),
+				).exitCode,
+			).toBe(0);
+			expect(await upLog(tooling)).toHaveLength(1);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("concurrent stale callers perform exactly one container start and converge", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			await markReady(fixture, alpha, tooling, { fingerprint: "0".repeat(64) });
+
+			const callers = [0, 1, 2, 3].map(() =>
+				Bun.spawn(["bash", resolve(alpha, "scripts/worktree/ensure.sh")], {
+					cwd: alpha,
+					env: {
+						...runtimeEnvironment(fixture.home),
+						...toolingEnvironment(fixture, tooling),
+					},
+					stdout: "pipe",
+					stderr: "pipe",
+				}),
+			);
+			const outputs: string[] = [];
+			for (const caller of callers) {
+				expect(await caller.exited).toBe(0);
+				outputs.push((await new Response(caller.stdout).text()).trim());
+			}
+			expect(new Set(outputs)).toEqual(new Set([CONTAINER_ID]));
+			expect(await upLog(tooling)).toHaveLength(1);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("releases the lifecycle lock when the container start fails", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			expect(run(alpha, fixture.home, "env.sh").exitCode).toBe(0);
+			await Bun.write(resolve(tooling.state, "fail"), "");
+
+			const failed = run(
+				alpha,
+				fixture.home,
+				"ensure.sh",
+				[],
+				toolingEnvironment(fixture, tooling),
+			);
+			expect(failed.exitCode).not.toBe(0);
+			expect(failed.stderr).toContain("stub devcontainer up failed");
+			for (const leftover of ["ensure.lock", "ensure.lock.d"]) {
+				expect(
+					await Bun.file(resolve(alpha, ".dev/state/run", leftover)).exists(),
+				).toBe(false);
+			}
+
+			// A released lock means the next caller proceeds instead of timing out.
+			await rm(resolve(tooling.state, "fail"));
+			const recovered = run(
+				alpha,
+				fixture.home,
+				"ensure.sh",
+				[],
+				toolingEnvironment(fixture, tooling),
+			);
+			expect(recovered.exitCode).toBe(0);
+			expect(recovered.stdout.trim()).toBe(CONTAINER_ID);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("degrades with an actionable error when the container engine or CLI is absent", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			expect(run(alpha, fixture.home, "env.sh").exitCode).toBe(0);
+
+			const bare = resolve(fixture.root, "empty-bin");
+			await mkdir(bare, { recursive: true });
+			const withoutEngine = run(alpha, fixture.home, "ensure.sh", [], {
+				PATH: `${bare}:/usr/bin:/bin`,
+				STUB_STATE: tooling.state,
+			});
+			expect(withoutEngine.exitCode).toBe(6);
+			expect(withoutEngine.stderr).toContain("docker");
+
+			// Engine present, CLI absent: the error has to name the package the host
+			// is missing, not just the command.
+			const engineOnly = resolve(fixture.root, "engine-only");
+			await mkdir(engineOnly, { recursive: true });
+			await Bun.write(
+				resolve(engineOnly, "docker"),
+				await Bun.file(resolve(tooling.bin, "docker")).text(),
+			);
+			await chmod(resolve(engineOnly, "docker"), 0o755);
+			const withoutCli = run(alpha, fixture.home, "ensure.sh", [], {
+				PATH: `${engineOnly}:/usr/bin:/bin`,
+				STUB_STATE: tooling.state,
+			});
+			expect(withoutCli.exitCode).toBe(6);
+			expect(withoutCli.stderr).toContain("@devcontainers/cli");
+			expect(await upLog(tooling)).toEqual([]);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("refuses container lifecycle work from inside a container", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			await markReady(fixture, alpha, tooling);
+			for (const marker of ["DEVCONTAINER", "CODEX_CLOUD"]) {
+				const refused = run(
+					alpha,
+					fixture.home,
+					"ensure.sh",
+					[],
+					toolingEnvironment(fixture, tooling, { [marker]: "true" }),
+				);
+				expect(refused.exitCode).not.toBe(0);
+				expect(refused.stderr).toContain("host-side operation");
+			}
+			expect(await upLog(tooling)).toEqual([]);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("rejects unsupported ensure arguments", async () => {
+		const fixture = await harness();
+		try {
+			const refused = run(fixture.main, fixture.home, "ensure.sh", [
+				"--known-bad",
+			]);
+			expect(refused.exitCode).toBe(2);
+			expect(refused.stderr).toContain(
+				"Usage: bash scripts/worktree/ensure.sh",
+			);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
 	}, 60_000);
 });

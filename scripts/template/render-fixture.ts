@@ -352,15 +352,45 @@ function replaceWorkspace(value: unknown, workspace: string): unknown {
 	return value;
 }
 
+// runArgs names the host-port variable the worktree runtime exports before
+// `devcontainer up`, and the contract derives that name from the environment
+// prefix. Matching the shape rather than the template's own literal keeps the
+// renderer free of a project identity it would otherwise have to know.
+function replacePublishedHostPortVariable(
+	value: unknown,
+	environmentPrefix: string,
+): unknown {
+	if (typeof value === "string") {
+		return value.replace(
+			/\b[A-Z][A-Z0-9_]*_PUBLISHED_HOST_PORT\b/g,
+			`${environmentPrefix}_PUBLISHED_HOST_PORT`,
+		);
+	}
+	if (Array.isArray(value)) {
+		return value.map((entry) =>
+			replacePublishedHostPortVariable(entry, environmentPrefix),
+		);
+	}
+	if (typeof value === "object" && value !== null) {
+		return Object.fromEntries(
+			Object.entries(value).map(([key, entry]) => [
+				key,
+				replacePublishedHostPortVariable(entry, environmentPrefix),
+			]),
+		);
+	}
+	return value;
+}
+
 async function renderDevcontainer(
 	source: string,
 	parameters: TemplateParameters,
 	fixtureName: string,
 ): Promise<string> {
 	const parsed = (await Bun.file(source).json()) as Record<string, unknown>;
-	const transformed = replaceWorkspace(
-		parsed,
-		parameters.paths.container_workspace,
+	const transformed = replacePublishedHostPortVariable(
+		replaceWorkspace(parsed, parameters.paths.container_workspace),
+		parameters.project.environment_prefix,
 	) as Record<string, unknown>;
 	transformed["name"] = parameters.project.display_name;
 	const build = transformed["build"] as Record<string, unknown>;
