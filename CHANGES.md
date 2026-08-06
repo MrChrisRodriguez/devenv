@@ -4,6 +4,16 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-08-06 — Change: make the worktree bridge the documented entry point
+
+**Goal:** End the soak the previous entry opened. The isolated worktree runtime stops being an additive second way to start a container and becomes *the* way: git hooks, host onboarding, the generated project README, and the agent rules all route through `bash scripts/worktree/exec.sh`, and the superseded `devpod up .` entrypoint is removed from every document and install path. `.devcontainer/devcontainer.json` stays fully spec compliant, so VS Code, the `devcontainer` CLI, and any other launcher can still open this checkout — but as an editor convenience with no stable port, no route, no per-worktree isolation, and no manifest, not as the documented entry point.
+
+**How to implement:** Give the bridge a ready-only mode. `bash scripts/worktree/exec.sh --require-ready <command>` asks `ensure.sh --check-ready` and nothing else: when this checkout has no reconciled container it exits **7** with `Worktree bridge: this checkout's container is not ready; run bash scripts/worktree/up.sh` and the requested command provably never runs. The flag is parsed in the option loop *ahead* of the `-*` unsupported-argument arm, so a caller can never fall through to the reconciling path that would start a container — a git hook must not be a build trigger. Readiness is a host-side question, so inside the container and in a verified cloud task the flag is accepted and ignored. That fixes the bridge's exit-code space at 2 unsupported argument, 3 identity collision, 4 port exhaustion, 6 missing container engine or CLI, and 7 not ready.
+
+**Changed files:**
+- `scripts/worktree/exec.sh` — the `--require-ready` mode, its exit-7 refusal, the option loop, and the documented exit-code space.
+- `scripts/template/__tests__/worktree.test.ts` — refusal (exit 7, no `devcontainer up`, no `docker exec`, no command), ready-only execution through the recorded container, the in-container no-op with an exit status preserved, and option-parsing coverage for the new flag.
+
 ## 2026-08-06 — Add: additive isolated worktree runtime
 
 **Goal:** Let every checkout — the main clone and each linked `git worktree` — own exactly one container, one host port set, one persisted data root, one URL, and one lifecycle, so two agents can work two branches at once without sharing a container, colliding on a port, or destroying each other's state. This stage is deliberately additive: the existing `devpod up .` entrypoint is untouched and keeps working, and Stage 5B is the cutover.

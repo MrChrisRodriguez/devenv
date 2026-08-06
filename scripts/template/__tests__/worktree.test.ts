@@ -1493,6 +1493,148 @@ describe("worktree command bridge", () => {
 		}
 	}, 120_000);
 
+	test("refuses ready-only work rather than starting a container", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			const sentinel = resolve(fixture.root, "hook-command-ran");
+
+			// Nothing has reconciled this checkout, so the ready-only caller must
+			// stop at the refusal: no `devcontainer up`, no `docker exec`, and above
+			// all no requested command.
+			const refused = Bun.spawnSync(
+				[
+					"bash",
+					resolve(alpha, "scripts/worktree/exec.sh"),
+					"--require-ready",
+					"touch",
+					sentinel,
+				],
+				{
+					cwd: alpha,
+					env: {
+						...runtimeEnvironment(fixture.home),
+						...toolingEnvironment(fixture, tooling),
+					},
+					stdout: "pipe",
+					stderr: "pipe",
+				},
+			);
+			expect(refused.exitCode).toBe(7);
+			expect(refused.stderr.toString()).toContain(
+				"Worktree bridge: this checkout's container is not ready",
+			);
+			expect(refused.stderr.toString()).toContain(
+				"bash scripts/worktree/up.sh",
+			);
+			expect(await upLog(tooling)).toEqual([]);
+			expect(await Bun.file(resolve(tooling.state, "exec.log")).exists()).toBe(
+				false,
+			);
+			expect(await Bun.file(sentinel).exists()).toBe(false);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("runs ready-only work through the container it already has", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			await markReady(fixture, alpha, tooling);
+
+			const bridged = Bun.spawnSync(
+				[
+					"bash",
+					resolve(alpha, "scripts/worktree/exec.sh"),
+					"--require-ready",
+					"bunx",
+					"commitlint",
+					"--edit",
+					".git/COMMIT_EDITMSG",
+				],
+				{
+					cwd: alpha,
+					env: {
+						...runtimeEnvironment(fixture.home),
+						...toolingEnvironment(fixture, tooling),
+					},
+					stdout: "pipe",
+					stderr: "pipe",
+				},
+			);
+			expect(bridged.stderr.toString()).toBe("");
+			expect(bridged.exitCode).toBe(0);
+
+			// Exactly one container exec, carrying the command unchanged, and no
+			// lifecycle work at all.
+			const invocations = (
+				await Bun.file(resolve(tooling.state, "exec.log")).text()
+			)
+				.trim()
+				.split("\n");
+			expect(invocations).toHaveLength(1);
+			expect(invocations[0]).toContain(
+				`${CONTAINER_ID} /usr/bin/bash /workspace/scripts/worktree/exec.sh -- bunx commitlint --edit .git/COMMIT_EDITMSG`,
+			);
+			expect(await upLog(tooling)).toEqual([]);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("accepts ready-only as a no-op inside the container", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			const log = resolve(fixture.root, "bridge.log");
+			const workspaceBin = resolve(alpha, "node_modules/.bin");
+			const environment = resolve(fixture.root, "environment.sh");
+			await writeExecutable(environment, ENVIRONMENT_STUB);
+			await mkdir(workspaceBin, { recursive: true });
+
+			// Readiness is a host-side question. Inside the container the flag is
+			// consumed and the command runs in place, exit status intact.
+			const executed = run(
+				alpha,
+				fixture.home,
+				"exec.sh",
+				["--require-ready", "bash", "-c", 'printf "ran"; exit 42'],
+				{
+					...toolingEnvironment(fixture, tooling),
+					DEVCONTAINER: "true",
+					DEVCONTAINER_ENVIRONMENT_FILE: environment,
+					BRIDGE_LOG: log,
+					WORKSPACE_BIN: workspaceBin,
+				},
+			);
+			expect(executed.exitCode).toBe(42);
+			expect(executed.stdout).toBe("ran");
+			expect(await bridgeLog(log)).toEqual(["sourced", "activated"]);
+			expect(await Bun.file(resolve(tooling.state, "exec.log")).exists()).toBe(
+				false,
+			);
+			expect(await upLog(tooling)).toEqual([]);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
 	test("rejects unsupported bridge arguments", async () => {
 		const fixture = await harness();
 		try {
@@ -1501,6 +1643,16 @@ describe("worktree command bridge", () => {
 			]);
 			expect(refused.exitCode).toBe(2);
 			expect(refused.stderr).toContain("Usage: bash scripts/worktree/exec.sh");
+
+			// The ready-only flag does not open a hole in option parsing.
+			const stillRefused = run(fixture.main, fixture.home, "exec.sh", [
+				"--require-ready",
+				"--known-bad",
+			]);
+			expect(stillRefused.exitCode).toBe(2);
+			expect(stillRefused.stderr).toContain(
+				"Usage: bash scripts/worktree/exec.sh",
+			);
 		} finally {
 			await rm(fixture.root, { recursive: true, force: true });
 		}
