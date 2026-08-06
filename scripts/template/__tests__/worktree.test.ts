@@ -11,6 +11,7 @@ const RUNTIME_FILES = [
 	"env.sh",
 	"ensure.sh",
 	"exec.sh",
+	"manifest.sh",
 ] as const;
 
 interface Harness {
@@ -1371,4 +1372,347 @@ describe("worktree command bridge", () => {
 			await rm(fixture.root, { recursive: true, force: true });
 		}
 	}, 60_000);
+});
+
+// A host Caddy stand-in. The friendly route is optional by contract, so these
+// tests care about what the runtime asked Caddy to do and about what still
+// works when Caddy refuses.
+const CADDY_STUB = `#!/usr/bin/env bash
+set -u
+printf '%s\\n' "$*" >>"$CADDY_LOG"
+if [ -f "$CADDY_UNHEALTHY" ]; then
+	echo "stub caddy: reload rejected" >&2
+	exit 1
+fi
+exit 0
+`;
+
+interface Caddy {
+	binary: string;
+	config: string;
+	log: string;
+	unhealthy: string;
+}
+
+async function stubCaddy(fixture: Harness): Promise<Caddy> {
+	const binary = resolve(fixture.root, "caddy-bin/caddy");
+	const config = resolve(fixture.root, "Caddyfile");
+	await writeExecutable(binary, CADDY_STUB);
+	await Bun.write(config, "import caddy/*.caddy\n");
+	return {
+		binary,
+		config,
+		log: resolve(fixture.root, "caddy.log"),
+		unhealthy: resolve(fixture.root, "caddy-unhealthy"),
+	};
+}
+
+function caddyEnvironment(caddy: Caddy): Record<string, string> {
+	return {
+		DEVENV_HOST_CADDY_BIN: caddy.binary,
+		DEVENV_HOST_CADDYFILE: caddy.config,
+		CADDY_LOG: caddy.log,
+		CADDY_UNHEALTHY: caddy.unhealthy,
+	};
+}
+
+function manifestPath(home: string, workspaceId: string): string {
+	return resolve(home, ".config/devcontainer/worktrees", `${workspaceId}.json`);
+}
+
+function snippetPath(home: string, workspaceId: string): string {
+	return resolve(home, ".config/devcontainer/caddy", `${workspaceId}.caddy`);
+}
+
+interface Manifest {
+	schemaVersion: number;
+	workspaceId: string;
+	repoPath: string;
+	family: string;
+	offset: number;
+	containerPort: number;
+	hostPort: number;
+	directUrl: string;
+	friendlyUrl: string;
+	friendlyHost: string;
+	persistenceRoot: string;
+	status: string;
+	updatedAt: string;
+}
+
+describe("worktree route manifest", () => {
+	test("writes an active manifest and Caddy snippet and reloads host Caddy", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const caddy = await stubCaddy(fixture);
+			expect(run(alpha, fixture.home, "env.sh").exitCode).toBe(0);
+			const generated = await generatedEnvironment(alpha);
+			const port = environmentValue(generated, "DEVENV_PUBLISHED_HOST_PORT");
+
+			const published = run(
+				alpha,
+				fixture.home,
+				"manifest.sh",
+				["active"],
+				caddyEnvironment(caddy),
+			);
+			expect(published.exitCode).toBe(0);
+
+			const manifest = (await Bun.file(
+				manifestPath(fixture.home, "devenv-agent-alpha"),
+			).json()) as Manifest;
+			expect(manifest.schemaVersion).toBe(1);
+			expect(manifest.status).toBe("active");
+			expect(manifest.workspaceId).toBe("devenv-agent-alpha");
+			expect(manifest.repoPath).toBe(alpha);
+			expect(manifest.family).toBe("agent-alpha");
+			expect(manifest.containerPort).toBe(8080);
+			expect(String(manifest.hostPort)).toBe(port);
+			expect(manifest.directUrl).toBe(`http://127.0.0.1:${port}`);
+			expect(manifest.friendlyHost).toBe("agent-alpha.devenv.localhost");
+			// The persistence root is the generated one under this checkout, never a
+			// literal any script carries.
+			expect(manifest.persistenceRoot).toBe(resolve(alpha, ".dev/persistence"));
+
+			const snippet = await Bun.file(
+				snippetPath(fixture.home, "devenv-agent-alpha"),
+			).text();
+			expect(snippet).toContain("http://agent-alpha.devenv.localhost {");
+			expect(snippet).toContain(`reverse_proxy 127.0.0.1:${port}`);
+			expect(await bridgeLog(caddy.log)).toEqual([
+				`reload --config ${caddy.config} --adapter caddyfile`,
+			]);
+			// Both routes are advertised, and the direct one is the authority.
+			expect(published.stderr).toContain(`direct URL http://127.0.0.1:${port}`);
+			expect(published.stderr).toContain(
+				"friendly URL http://agent-alpha.devenv.localhost",
+			);
+
+			// `env` reports the same paths it just wrote, in a form a shell can eval.
+			const reported = run(
+				alpha,
+				fixture.home,
+				"manifest.sh",
+				["env"],
+				caddyEnvironment(caddy),
+			);
+			expect(reported.exitCode).toBe(0);
+			// The reported path is canonical: symlinked temporary roots are resolved
+			// before anything is written, so the value names the real file.
+			expect(reported.stdout).toMatch(
+				/^export DEVENV_MANIFEST_PATH=\/\S+\/worktrees\/devenv-agent-alpha\.json$/m,
+			);
+			expect(reported.stdout).toContain(
+				`export DEVENV_PUBLISHED_HOST_PORT=${port}`,
+			);
+			const state = await Bun.file(
+				resolve(alpha, ".dev/state/run/manifest.env"),
+			).text();
+			expect(state).toContain("DEVENV_WORKSPACE_ID=devenv-agent-alpha");
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("marks inactive, removing only the snippet, then removes everything", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const caddy = await stubCaddy(fixture);
+			expect(run(alpha, fixture.home, "env.sh").exitCode).toBe(0);
+			expect(
+				run(
+					alpha,
+					fixture.home,
+					"manifest.sh",
+					["active"],
+					caddyEnvironment(caddy),
+				).exitCode,
+			).toBe(0);
+
+			const stopped = run(
+				alpha,
+				fixture.home,
+				"manifest.sh",
+				["inactive"],
+				caddyEnvironment(caddy),
+			);
+			expect(stopped.exitCode).toBe(0);
+			// The manifest survives deactivation carrying the reserved ports; only the
+			// route goes away.
+			const manifest = (await Bun.file(
+				manifestPath(fixture.home, "devenv-agent-alpha"),
+			).json()) as Manifest;
+			expect(manifest.status).toBe("inactive");
+			expect(manifest.hostPort).toBeGreaterThan(8080);
+			expect(
+				await Bun.file(
+					snippetPath(fixture.home, "devenv-agent-alpha"),
+				).exists(),
+			).toBe(false);
+			expect(stopped.stderr).toContain("ports stay reserved");
+
+			const removed = run(
+				alpha,
+				fixture.home,
+				"manifest.sh",
+				["remove"],
+				caddyEnvironment(caddy),
+			);
+			expect(removed.exitCode).toBe(0);
+			expect(
+				await Bun.file(
+					manifestPath(fixture.home, "devenv-agent-alpha"),
+				).exists(),
+			).toBe(false);
+			expect(
+				await Bun.file(
+					snippetPath(fixture.home, "devenv-agent-alpha"),
+				).exists(),
+			).toBe(false);
+			expect(
+				await Bun.file(resolve(alpha, ".dev/state/run/manifest.env")).exists(),
+			).toBe(false);
+			// Every transition reloads the host route table exactly once.
+			expect(await bridgeLog(caddy.log)).toHaveLength(3);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("keeps activation usable when the host Caddy reload fails", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const caddy = await stubCaddy(fixture);
+			await Bun.write(caddy.unhealthy, "");
+			expect(run(alpha, fixture.home, "env.sh").exitCode).toBe(0);
+
+			const published = run(
+				alpha,
+				fixture.home,
+				"manifest.sh",
+				["active"],
+				caddyEnvironment(caddy),
+			);
+			expect(published.exitCode).toBe(0);
+			expect(published.stderr).toContain("host Caddy reload failed");
+			const port = environmentValue(
+				await generatedEnvironment(alpha),
+				"DEVENV_PUBLISHED_HOST_PORT",
+			);
+			expect(published.stderr).toContain(
+				`http://127.0.0.1:${port} is authoritative`,
+			);
+			const manifest = (await Bun.file(
+				manifestPath(fixture.home, "devenv-agent-alpha"),
+			).json()) as Manifest;
+			expect(manifest.status).toBe("active");
+
+			// No host Caddy at all is the same guarantee, said differently.
+			await rm(caddy.unhealthy);
+			const withoutCaddy = run(alpha, fixture.home, "manifest.sh", ["active"], {
+				DEVENV_HOST_CADDYFILE: resolve(fixture.root, "absent-Caddyfile"),
+				PATH: "/usr/bin:/bin",
+			});
+			expect(withoutCaddy.exitCode).toBe(0);
+			expect(withoutCaddy.stderr).toContain("is authoritative");
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("publishes atomically, leaving no temporary file behind", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const caddy = await stubCaddy(fixture);
+			expect(run(alpha, fixture.home, "env.sh").exitCode).toBe(0);
+			const path = manifestPath(fixture.home, "devenv-agent-alpha");
+
+			const writers = [0, 1, 2, 3].map(() =>
+				Bun.spawn(
+					["bash", resolve(alpha, "scripts/worktree/manifest.sh"), "active"],
+					{
+						cwd: alpha,
+						env: {
+							...runtimeEnvironment(fixture.home),
+							...caddyEnvironment(caddy),
+						},
+						stdout: "pipe",
+						stderr: "pipe",
+					},
+				),
+			);
+			// A concurrent reader must never observe a partial document.
+			let reads = 0;
+			while (writers.some((writer) => writer.killed === false) && reads < 200) {
+				if (await Bun.file(path).exists()) {
+					const snapshot = (await Bun.file(path).json()) as Manifest;
+					expect(snapshot.workspaceId).toBe("devenv-agent-alpha");
+					reads += 1;
+				}
+				await Bun.sleep(1);
+			}
+			for (const writer of writers) expect(await writer.exited).toBe(0);
+			expect((await Bun.file(path).json()) as Manifest).toMatchObject({
+				status: "active",
+			});
+			expect(
+				await readdir(resolve(fixture.home, ".config/devcontainer/worktrees")),
+			).toEqual(["devenv-agent-alpha.json"]);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("refuses a manifest path outside the host config root", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			expect(run(alpha, fixture.home, "env.sh").exitCode).toBe(0);
+			const outside = resolve(fixture.root, "escape");
+			await rewriteContract(alpha, (source) =>
+				source.replace(
+					/^manifest_directory = .*$/m,
+					`manifest_directory = "${outside}"`,
+				),
+			);
+
+			const refused = run(alpha, fixture.home, "manifest.sh", ["active"]);
+			expect(refused.exitCode).not.toBe(0);
+			expect(refused.stderr).toContain("outside the host configuration root");
+			// A refused path is never created, let alone written to or deleted.
+			expect(await Bun.file(outside).exists()).toBe(false);
+
+			const rejected = run(alpha, fixture.home, "manifest.sh", ["known-bad"]);
+			expect(rejected.exitCode).toBe(2);
+			expect(rejected.stderr).toContain(
+				"Usage: bash scripts/worktree/manifest.sh",
+			);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
 });
