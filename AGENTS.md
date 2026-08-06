@@ -105,6 +105,24 @@ scripts/   # one-off tooling scripts
 - Run `bun run cloud:check` and `bash .codex/cloud/selftest.sh` after changing any cloud contract value, cloud script, Proto pin, checksum, or browser payload authority.
 
 <!-- capability:end codex_cloud -->
+## Worktree Runtime Ownership
+
+- Every checkout — the main clone and each linked worktree — owns exactly one development container. `scripts/worktree/contract.toml` is the generated authority for its identity, ports, paths, and commands; regenerate it from `template-parameters.toml` and never hand-edit it.
+- Run project commands through `bash scripts/worktree/exec.sh <command> [args...]`. Inside the container it sources `.devcontainer/environment.sh`, activates Proto, and executes in place; from the host it lazily reconciles this checkout's container and re-invokes itself inside it. The same command works from either side.
+- Keep host-only orchestration on the host: `docker`, the `devcontainer` CLI, Git worktree management, remote pushes, and every `scripts/worktree/*.sh` lifecycle script. Direct file inspection and editing stay on the host because the checkout is bind mounted.
+- `scripts/worktree/env.sh` owns the generated environment and the host port registry. Allocation is host-only and is refused inside a container: a container's `~/.config` is an isolated writable volume, so a registry write there would succeed and be wrong.
+- A worktree's offset disambiguates HOST ports only. Container-internal ports are never offset, because each container owns its own network namespace.
+- Container ownership is exact: a container belongs to a checkout only when both `devcontainer.local_folder` and `devcontainer.config_file` labels name it, it is running, and the shared Git common directory is mounted at its host path. Never reuse another checkout's container.
+- `.dockerignore`, `.prototools`, and every `.devcontainer` file are definition-fingerprint inputs. Changing one makes `scripts/worktree/ensure.sh` recreate the container with `--remove-existing-container` on the next run.
+- Host prerequisites are the container engine, the `devcontainer` CLI (`@devcontainers/cli`), and `python3` for atomic registry and manifest writes. Bun is not a host prerequisite.
+- Never hardcode a port, a volume prefix, a persistence path, or a project identity in a runtime script. Read it from the contract or from the generated environment.
+- `bash scripts/worktree/down.sh` is not cleanup. It stops the declared services and marks the route inactive while the registry entry, the reserved ports, the generated environment, the persisted data, and the container all survive, so a later `up.sh` hands back the identical URLs. `bash scripts/worktree/cleanup.sh` is the destructive one: it releases the ports, removes this checkout's container, its `${devcontainerId}` volumes, its manifest and route, and its generated state, and exits non-zero listing whatever survived.
+- Each checkout publishes `~/.config/devcontainer/worktrees/<workspace-id>.json` (its manifest) and, while active, `~/.config/devcontainer/caddy/<workspace-id>.caddy` (its route). The manifest survives `down.sh`, because it carries the reserved ports; only `cleanup.sh` deletes it.
+- The friendly `.localhost` route is optional and never load bearing. It needs a host Caddy that imports `~/.config/devcontainer/caddy/*.caddy`; without one the runtime warns and the direct loopback URL stays authoritative.
+- This runtime is additive during the soak. The legacy `devpod up .` entrypoint is untouched, so the main checkout may carry two containers at once. They share no volumes and no ports, and neither owns the other's labels.
+- Runtime environment knobs, all prefixed with the contract's environment prefix: `<PREFIX>_STARTUP_MODE=staggered` replaces readiness gates with bounded delays, `<PREFIX>_STAGGER_SECONDS` sets that delay, `<PREFIX>_SERVICE_START_TIMEOUT` bounds a single service's readiness wait, `<PREFIX>_HOST_CADDY_BIN` and `<PREFIX>_HOST_CADDYFILE` override host Caddy discovery, and `WORKTREE_ENSURE_LOCK_TIMEOUT_SECONDS` bounds the container lifecycle lock.
+- Every runtime script writes its diagnostics to stderr, so stdout stays parseable: `env.sh --json`, `ensure.sh` (a container id), `manifest.sh path|env`, and `services.sh order|status` are the only stdout producers. Every entry point exits 2 with a usage block on an unsupported argument.
+
 ## Commit Policy
 
 ALWAYS commit and push after completing each significant change. Do NOT wait for the user to ask. Before committing, update `/workspace/CHANGES.md` with a dated entry (Goal + How to implement).

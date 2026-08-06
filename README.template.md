@@ -13,6 +13,57 @@ bun install
 Created from the [devenv](https://github.com/MrChrisRodriguez/devenv) template.
 See `AGENTS.md` and `CLAUDE.md` for shared conventions.
 
+### Host prerequisites
+
+The development container needs three things on the host, and nothing else:
+
+- A container engine — Docker Desktop, or any daemon `docker` can talk to.
+- The `devcontainer` CLI: `bun add --global @devcontainers/cli` (or the `npm`
+  equivalent). The runtime depends on reference-CLI behaviour — the
+  `devcontainer.local_folder` and `devcontainer.config_file` ownership labels,
+  per-invocation `--mount`, `--remove-existing-container`, and
+  `${devcontainerId}` volume identity.
+- `python3`, used only for atomic JSON registry and manifest writes. macOS ships
+  it with `xcode-select --install`.
+
+Bun is **not** a host prerequisite. It lives in the image.
+
+### Parallel worktrees
+
+Every checkout — the main clone and each linked `git worktree` — owns exactly
+one container, one port set, one persisted data root, and one URL. Nothing is
+shared between them except the repository's Git metadata, so two agents can work
+on two branches at the same time without stepping on each other.
+
+```sh
+git worktree add ../feature-x -b feature-x
+cd ../feature-x
+bash scripts/worktree/up.sh          # environment, container, route, services
+bash scripts/worktree/exec.sh <cmd>  # run a project command in this checkout
+bash scripts/worktree/down.sh        # stop, keeping ports and data
+bash scripts/worktree/cleanup.sh     # release everything this checkout owns
+```
+
+`up.sh` prints two URLs. The direct one, `http://127.0.0.1:<port>`, is always
+published and always authoritative. The friendly one,
+`http://<worktree>.<project>.localhost`, is a convenience served by an optional
+host [Caddy](https://caddyserver.com) that imports every checkout's generated
+snippet — add `import ~/.config/devcontainer/caddy/*.caddy` to your Caddyfile
+once and every worktree routes itself from then on. Without Caddy the runtime
+warns once and keeps going.
+
+The host port is not random and not hand-assigned: `scripts/worktree/env.sh`
+derives a candidate offset from the worktree's name and then has a host-global
+registry (`~/.config/devcontainer/ports-registry/ports.json`) arbitrate it, by
+comparing whole derived port sets rather than offsets, so two checkouts can
+never overlap. `down.sh` keeps that reservation; only `cleanup.sh` returns it.
+
+Run project commands through `bash scripts/worktree/exec.sh`. From the host it
+reconciles this checkout's container and re-invokes itself inside it; already
+inside the container it sources `.devcontainer/environment.sh`, activates Proto,
+and runs in place. The same command line works from either side, and a nested
+directory maps to the matching directory inside the container.
+
 <!-- capability:start codex_cloud -->
 
 ### Codex Cloud

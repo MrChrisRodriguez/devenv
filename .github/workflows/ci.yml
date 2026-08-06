@@ -49,6 +49,12 @@ jobs:
         run: bash .codex/cloud/selftest.sh
       # capability:end codex_cloud
 
+      - name: Validate worktree runtime contract
+        run: bun run worktree:check
+
+      - name: Run hermetic worktree runtime selftest
+        run: bash scripts/worktree/selftest.sh
+
       - name: Lint
         run: bunx biome check --no-errors-on-unmatched .
 

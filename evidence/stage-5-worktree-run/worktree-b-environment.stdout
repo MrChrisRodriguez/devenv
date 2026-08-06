@@ -1,0 +1,20 @@
+{
+  "containerEnvironmentFile": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/.dev/state/worktree.container.env",
+  "directUrl": "http://127.0.0.1:8845",
+  "environmentFile": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/.dev/state/worktree.env",
+  "environmentPrefix": "DEVENV",
+  "family": "devenv-stage5a-stage5a-20260806t060225z-21af7c9a-beta",
+  "friendlyHost": "devenv-stage5a-stage5a-20260806t060225z-21af7c9a-beta.devenv.localhost",
+  "layout": "worktree",
+  "offset": 765,
+  "offsetSource": "alternate",
+  "portSet": [
+    8845
+  ],
+  "preferredOffset": 764,
+  "publishedContainerPort": 8080,
+  "publishedHostPort": 8845,
+  "repoPath": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta",
+  "schemaVersion": 1,
+  "workspaceId": "devenv-devenv-stage5a-stage5a-20260806t060225z-21af7c9a-beta"
+}

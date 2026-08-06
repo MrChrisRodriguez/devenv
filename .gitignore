@@ -7,6 +7,11 @@
 !**/.env.example
 **/.dev.vars
 
+# Worktree runtime generated state, per-worktree persistence, and shared cache.
+# `**/.cache/` below does not match `.dev/cache`, and `**/.env*` does not match
+# `.dev/state/worktree.env`, so the whole tree is ignored here in one place.
+.dev/
+
 # Cache directories
 **/.cache/
 **/.eslintcache

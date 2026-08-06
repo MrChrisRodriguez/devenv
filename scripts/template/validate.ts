@@ -11,10 +11,12 @@ import {
 	parseToml,
 	resolveFixtureParameters,
 } from "./parameters";
+import { validateStageFiveEvidence } from "./stage-five-evidence";
 import { validateStageFourEvidence } from "./stage-four-evidence";
 import { validateStageThreeEvidence } from "./stage-three-evidence";
 import { validateToolchainContract } from "./toolchain";
 import { validateStageOneEvidence } from "./toolchain-evidence";
+import { validateWorktreeContract } from "./worktree-contract";
 
 export interface ValidationReport {
 	schemaVersion: 1;
@@ -31,6 +33,8 @@ export interface ValidationReport {
 	runtimeEvidenceSchemaFile: string;
 	cloudEvidenceFile: string;
 	cloudEvidenceSchemaFile: string;
+	worktreeEvidenceFile: string;
+	worktreeEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -53,6 +57,8 @@ export async function validateAll(
 		runtimeEvidenceSchemaFile: "evidence/stage-3-runtimes.schema.json",
 		cloudEvidenceFile: "evidence/stage-4-cloud.json",
 		cloudEvidenceSchemaFile: "evidence/stage-4-cloud.schema.json",
+		worktreeEvidenceFile: "evidence/stage-5-worktree.json",
+		worktreeEvidenceSchemaFile: "evidence/stage-5-worktree.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -112,6 +118,11 @@ export async function validateAll(
 			report.status = "fail";
 			report.errors.push(...cloudErrors);
 		}
+		const worktreeErrors = await validateWorktreeContract(root);
+		if (worktreeErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...worktreeErrors);
+		}
 		const toolchainEvidenceErrors = await validateStageOneEvidence(root);
 		if (toolchainEvidenceErrors.length > 0) {
 			report.status = "fail";
@@ -140,6 +151,13 @@ export async function validateAll(
 				...cloudEvidenceErrors.map((error) => `stage-4 evidence: ${error}`),
 			);
 		}
+		const worktreeEvidenceErrors = await validateStageFiveEvidence(root);
+		if (worktreeEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...worktreeEvidenceErrors.map((error) => `stage-5a evidence: ${error}`),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -158,7 +176,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(

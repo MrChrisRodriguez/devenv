@@ -51,6 +51,10 @@ capability = "cloudflare_workers"
 
 [routing]
 friendly_domain_pattern = "{workspace}.{project}.localhost"
+# The single container-internal port the worktree runtime publishes to a
+# per-worktree loopback host port. Container-internal ports are never offset:
+# each container owns its own network namespace.
+published_container_port = 8080
 direct_host = "127.0.0.1"
 host_caddy = "optional"
 always_publish_direct_url = true

@@ -1,4 +1,4 @@
-**Current status (2026-08-05):** 25 of 82 tasks are complete. Stages 0 through 4 have merged; Stage 5A is next.
+**Current status (2026-08-06):** 31 of 82 tasks are complete. Stages 0 through 5A have merged; Stage 5B is next.
 
 ## 1. Stage 0 PR — Inventory, Parameters, and Baseline
 
@@ -54,12 +54,12 @@ This stage gives Codex Cloud the same verified core and browser toolchain as the
 
 This stage builds the new multi-worktree runtime alongside the existing entrypoint, giving each checkout its own identity, ports, container, persistence, routing, and lifecycle.
 
-- [ ] 6.1 Implement validated worktree identity, stable collision-safe offset/port allocation, generated environment, service/profile registry, URLs, and per-worktree persistence
-- [ ] 6.2 Implement container ensure with canonical checkout/config ownership, Git-common-directory mount, deterministic definition fingerprint, and validated ready-state fast path
-- [ ] 6.3 Implement the environment-aware command bridge with nested cwd mapping, development user, local-bin precedence, generated environment, direct container/cloud paths, and interactive shell behavior
-- [ ] 6.4 Implement atomic active/inactive/removed manifests, direct loopback routing, optional validated host Caddy snippets, and single-root persistence propagation
-- [ ] 6.5 Implement semantic dependency-ordered startup, bounded readiness/liveness, explicit staggered diagnostic mode, scoped down/cleanup, and legacy resource cleanup
-- [ ] 6.6 Validate two live worktrees, ownership attacks, Git operations, routes, persistence, recreate/fast path, authentication round trip, and cleanup isolation; keep the old entrypoint as rollback and update evidence/rules/docs/`CHANGES.md`
+- [x] 6.1 Implement validated worktree identity, stable collision-safe offset/port allocation, generated environment, service/profile registry, URLs, and per-worktree persistence
+- [x] 6.2 Implement container ensure with canonical checkout/config ownership, Git-common-directory mount, deterministic definition fingerprint, and validated ready-state fast path
+- [x] 6.3 Implement the environment-aware command bridge with nested cwd mapping, development user, local-bin precedence, generated environment, direct container/cloud paths, and interactive shell behavior
+- [x] 6.4 Implement atomic active/inactive/removed manifests, direct loopback routing, optional validated host Caddy snippets, and single-root persistence propagation
+- [x] 6.5 Implement semantic dependency-ordered startup, bounded readiness/liveness, explicit staggered diagnostic mode, scoped down/cleanup, and legacy resource cleanup
+- [x] 6.6 Validate two live worktrees, ownership attacks, Git operations, routes, persistence, recreate/fast path, authentication round trip, and cleanup isolation; keep the old entrypoint as rollback and update evidence/rules/docs/`CHANGES.md`
 
 ## 7. Stage 5B PR — Entrypoint Cutover
 

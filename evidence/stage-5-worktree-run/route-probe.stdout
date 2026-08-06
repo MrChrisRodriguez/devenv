@@ -1,0 +1,8 @@
+directUrl=http://127.0.0.1:8504
+directBody=stage5a-route-ok
+friendlyUrl=http://devenv-stage5a-stage5a-20260806t060225z-21af7c9a-alpha.devenv.localhost
+friendlyBody=stage5a-route-ok
+friendlyResolution=dns
+caddyAvailable=true
+manifestPath=/Users/mrcr/.config/devcontainer/worktrees/devenv-devenv-stage5a-stage5a-20260806t060225z-21af7c9a-alpha.json
+manifestStatus=active

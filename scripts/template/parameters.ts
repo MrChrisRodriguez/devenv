@@ -17,6 +17,8 @@ export interface ServiceParameters {
 	kind: "frontend" | "backend" | "worker";
 	base_port: number;
 	depends_on: string[];
+	directory: string;
+	command: string;
 	health_path: string;
 	health_expectation: string;
 	profiles: string[];
@@ -52,6 +54,7 @@ export interface TemplateParameters {
 	advertised_ports: AdvertisedPortParameters[];
 	routing: {
 		friendly_domain_pattern: string;
+		published_container_port: number;
 		direct_host: string;
 		host_caddy: "optional" | "required" | "disabled";
 		always_publish_direct_url: boolean;
@@ -592,6 +595,8 @@ export function validateTemplateParameters(value: unknown): TemplateParameters {
 					"kind",
 					"base_port",
 					"depends_on",
+					"directory",
+					"command",
 					"health_path",
 					"health_expectation",
 					"profiles",
@@ -604,6 +609,8 @@ export function validateTemplateParameters(value: unknown): TemplateParameters {
 			const kind = stringAt(rawService, "kind", path, issues);
 			const basePort = numberAt(rawService, "base_port", path, issues);
 			const dependsOn = stringArrayAt(rawService, "depends_on", path, issues);
+			const directory = stringAt(rawService, "directory", path, issues);
+			const command = stringAt(rawService, "command", path, issues);
 			const profiles = stringArrayAt(rawService, "profiles", path, issues);
 			const healthPath = stringAt(rawService, "health_path", path, issues);
 			const healthExpectation = stringAt(
@@ -627,6 +634,20 @@ export function validateTemplateParameters(value: unknown): TemplateParameters {
 			ports.add(basePort);
 			if (new Set(dependsOn).size !== dependsOn.length) {
 				issues.push(`${path}.depends_on cannot contain duplicates`);
+			}
+			// The runtime cds into `directory` and runs `command` inside the
+			// container, so both are execution inputs: keep the directory contained
+			// under the checkout and refuse control characters in either.
+			if (
+				directory &&
+				(!SAFE_RELATIVE_PATH.test(directory) ||
+					posix.normalize(directory) !== directory ||
+					hasControlCharacters(directory))
+			) {
+				issues.push(`${path}.directory must be a contained relative path`);
+			}
+			if (command && hasControlCharacters(command)) {
+				issues.push(`${path}.command must not contain control characters`);
 			}
 			if (profiles.length === 0)
 				issues.push(`${path}.profiles cannot be empty`);
@@ -654,6 +675,8 @@ export function validateTemplateParameters(value: unknown): TemplateParameters {
 				kind: kind as ServiceParameters["kind"],
 				base_port: basePort,
 				depends_on: dependsOn,
+				directory,
+				command,
 				health_path: healthPath,
 				health_expectation: healthExpectation,
 				profiles,
@@ -755,6 +778,7 @@ export function validateTemplateParameters(value: unknown): TemplateParameters {
 		routing,
 		new Set([
 			"friendly_domain_pattern",
+			"published_container_port",
 			"direct_host",
 			"host_caddy",
 			"always_publish_direct_url",
@@ -781,6 +805,17 @@ export function validateTemplateParameters(value: unknown): TemplateParameters {
 	) {
 		issues.push(
 			"routing.friendly_domain_pattern must be a safe .localhost domain",
+		);
+	}
+	const publishedContainerPort = numberAt(
+		routing,
+		"published_container_port",
+		"routing",
+		issues,
+	);
+	if (publishedContainerPort < 1024 || publishedContainerPort > 65535) {
+		issues.push(
+			"routing.published_container_port must be between 1024 and 65535",
 		);
 	}
 	if (stringAt(routing, "direct_host", "routing", issues) !== "127.0.0.1") {

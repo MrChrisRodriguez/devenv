@@ -87,6 +87,7 @@
 			"additionalProperties": false,
 			"required": [
 				"friendly_domain_pattern",
+				"published_container_port",
 				"direct_host",
 				"host_caddy",
 				"always_publish_direct_url"
@@ -99,6 +100,11 @@
 						{ "pattern": "\\{project\\}" },
 						{ "pattern": "\\.localhost$" }
 					]
+				},
+				"published_container_port": {
+					"type": "integer",
+					"minimum": 1024,
+					"maximum": 65535
 				},
 				"direct_host": { "const": "127.0.0.1" },
 				"host_caddy": { "enum": ["optional", "required", "disabled"] },
@@ -301,6 +307,8 @@
 				"kind",
 				"base_port",
 				"depends_on",
+				"directory",
+				"command",
 				"health_path",
 				"health_expectation",
 				"profiles"
@@ -309,6 +317,8 @@
 				"name": { "type": "string", "pattern": "^[a-z][a-z0-9-]*$" },
 				"kind": { "enum": ["frontend", "backend", "worker"] },
 				"base_port": { "type": "integer", "minimum": 1024, "maximum": 65535 },
+				"directory": { "$ref": "#/$defs/relativePath" },
+				"command": { "type": "string", "minLength": 1 },
 				"depends_on": {
 					"type": "array",
 					"uniqueItems": true,

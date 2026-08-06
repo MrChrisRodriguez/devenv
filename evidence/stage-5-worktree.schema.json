@@ -1,0 +1,335 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"stage",
+		"capturedAt",
+		"run",
+		"source",
+		"host",
+		"contract",
+		"worktrees",
+		"allocation",
+		"commands",
+		"ensure",
+		"routing",
+		"boundary",
+		"cleanup",
+		"knownBadFixtures",
+		"rollback"
+	],
+	"properties": {
+		"schemaVersion": { "const": 1 },
+		"stage": { "const": "stage-5a-isolated-worktree-runtime" },
+		"capturedAt": { "type": "string", "format": "date-time" },
+		"run": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "logRoot", "temporaryRoot", "decoyImage"],
+			"properties": {
+				"id": {
+					"type": "string",
+					"pattern": "^stage5a-[0-9]{8}t[0-9]{6}z-[0-9a-f]{8}$"
+				},
+				"logRoot": { "const": "evidence/stage-5-worktree-run" },
+				"temporaryRoot": {
+					"type": "string",
+					"pattern": "^/[^\\s]*/devenv-stage5a-stage5a-[0-9a-z-]+$"
+				},
+				"decoyImage": {
+					"type": "string",
+					"pattern": "^[a-z0-9][a-z0-9./-]*:[0-9A-Za-z._-]+$"
+				}
+			}
+		},
+		"source": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["baseSha", "implementationSha", "treeClean"],
+			"properties": {
+				"baseSha": { "$ref": "#/$defs/gitSha" },
+				"implementationSha": { "$ref": "#/$defs/gitSha" },
+				"treeClean": { "const": true }
+			}
+		},
+		"host": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"os",
+				"architecture",
+				"kernel",
+				"home",
+				"dockerVersion",
+				"devcontainerCliVersion",
+				"pythonVersion"
+			],
+			"properties": {
+				"os": { "enum": ["darwin", "linux"] },
+				"architecture": { "type": "string", "minLength": 3 },
+				"kernel": { "type": "string", "minLength": 1 },
+				"home": { "type": "string", "pattern": "^/[^\\s]*[^/\\s]$" },
+				"dockerVersion": { "$ref": "#/$defs/version" },
+				"devcontainerCliVersion": { "$ref": "#/$defs/version" },
+				"pythonVersion": { "$ref": "#/$defs/version" }
+			}
+		},
+		"contract": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"path",
+				"version",
+				"environmentPrefix",
+				"publishedContainerPort",
+				"offsetModulus",
+				"manifestSchemaVersion",
+				"serviceCount"
+			],
+			"properties": {
+				"path": { "const": "scripts/worktree/contract.toml" },
+				"version": { "const": 1 },
+				"environmentPrefix": {
+					"type": "string",
+					"pattern": "^[A-Z][A-Z0-9_]*$"
+				},
+				"publishedContainerPort": { "$ref": "#/$defs/port" },
+				"offsetModulus": { "type": "integer", "minimum": 1 },
+				"manifestSchemaVersion": { "type": "integer", "minimum": 1 },
+				"serviceCount": { "type": "integer", "minimum": 0 }
+			}
+		},
+		"worktrees": {
+			"type": "array",
+			"minItems": 2,
+			"maxItems": 2,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"path",
+					"workspaceId",
+					"family",
+					"offset",
+					"offsetSource",
+					"publishedHostPort",
+					"portSet",
+					"directUrl",
+					"friendlyUrl",
+					"containerId",
+					"devcontainerId",
+					"definitionFingerprint",
+					"persistenceRoot"
+				],
+				"properties": {
+					"path": { "type": "string", "pattern": "^/[^\\s]+$" },
+					"workspaceId": {
+						"type": "string",
+						"pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+					},
+					"family": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]*$" },
+					"offset": { "type": "integer", "minimum": 1 },
+					"offsetSource": { "enum": ["preferred", "alternate"] },
+					"publishedHostPort": { "$ref": "#/$defs/port" },
+					"portSet": {
+						"type": "array",
+						"minItems": 1,
+						"items": { "$ref": "#/$defs/port" }
+					},
+					"directUrl": {
+						"type": "string",
+						"pattern": "^http://127\\.0\\.0\\.1:[0-9]+$"
+					},
+					"friendlyUrl": {
+						"type": "string",
+						"pattern": "^http://[a-z0-9][a-z0-9.-]*\\.localhost$"
+					},
+					"containerId": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+					"devcontainerId": { "type": "string", "pattern": "^[0-9a-v]{52}$" },
+					"definitionFingerprint": { "$ref": "#/$defs/sha256" },
+					"persistenceRoot": { "type": "string", "pattern": "^/[^\\s]+$" }
+				}
+			}
+		},
+		"allocation": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["portSetsDisjoint", "registryPath"],
+			"properties": {
+				"portSetsDisjoint": { "const": true },
+				"registryPath": {
+					"type": "string",
+					"pattern": "^/[^\\s]*/ports-registry/ports\\.json$"
+				}
+			}
+		},
+		"commands": {
+			"type": "array",
+			"minItems": 19,
+			"maxItems": 19,
+			"items": { "$ref": "#/$defs/commandResult" }
+		},
+		"ensure": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"coldCommandId",
+				"warmCommandId",
+				"recreateCommandId",
+				"coldDurationMs",
+				"warmDurationMs",
+				"recreateReason",
+				"upInvocations"
+			],
+			"properties": {
+				"coldCommandId": { "const": "worktree-a-ensure-cold" },
+				"warmCommandId": { "const": "worktree-a-ensure-warm" },
+				"recreateCommandId": { "const": "recreate-fast-path" },
+				"coldDurationMs": { "type": "integer", "minimum": 1 },
+				"warmDurationMs": { "type": "integer", "minimum": 1 },
+				"recreateReason": { "const": "definition fingerprint changed" },
+				"upInvocations": { "const": 1 }
+			}
+		},
+		"routing": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"commandId",
+				"hostCaddyAvailable",
+				"friendlyRouteVerified",
+				"directRouteVerified",
+				"manifestPath"
+			],
+			"properties": {
+				"commandId": { "const": "route-probe" },
+				"hostCaddyAvailable": { "type": "boolean" },
+				"friendlyRouteVerified": { "type": "boolean" },
+				"directRouteVerified": { "const": true },
+				"manifestPath": {
+					"type": "string",
+					"pattern": "^/[^\\s]*/worktrees/[a-z0-9-]+\\.json$"
+				}
+			}
+		},
+		"boundary": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"ownershipRefusalCommandId",
+				"ownershipRefusalExitCode",
+				"commandExecuted"
+			],
+			"properties": {
+				"ownershipRefusalCommandId": { "const": "ownership-attack-refusal" },
+				"ownershipRefusalExitCode": { "type": "integer", "minimum": 1 },
+				"commandExecuted": { "const": false }
+			}
+		},
+		"cleanup": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "removed", "remaining", "survivorIntact"],
+			"properties": {
+				"commandId": { "const": "cleanup-isolation" },
+				"removed": {
+					"type": "array",
+					"minItems": 4,
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"remaining": { "type": "array", "maxItems": 0 },
+				"survivorIntact": { "const": true }
+			}
+		},
+		"knownBadFixtures": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"contract",
+				"template",
+				"contractTestsPassed",
+				"templateTestsPassed"
+			],
+			"properties": {
+				"contract": { "const": "contract-known-bad-fixtures" },
+				"template": { "const": "template-known-bad-fixtures" },
+				"contractTestsPassed": { "type": "integer", "minimum": 1 },
+				"templateTestsPassed": { "type": "integer", "minimum": 1 }
+			}
+		},
+		"rollback": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["mode", "command", "runtimeCleanup", "scope", "proof"],
+			"properties": {
+				"mode": { "const": "atomic" },
+				"command": { "$ref": "#/$defs/command" },
+				"runtimeCleanup": { "$ref": "#/$defs/command" },
+				"scope": { "type": "string", "minLength": 40 },
+				"proof": {
+					"type": "object",
+					"required": [
+						"commandId",
+						"predecessorSha",
+						"implementationSha",
+						"treeMatchesPredecessor"
+					]
+				}
+			}
+		}
+	},
+	"$defs": {
+		"gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+		"sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+		"port": { "type": "integer", "minimum": 1024, "maximum": 65535 },
+		"version": {
+			"type": "string",
+			"pattern": "^[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:[-+][0-9A-Za-z.-]+)?$"
+		},
+		"command": {
+			"type": "array",
+			"minItems": 1,
+			"items": { "type": "string", "minLength": 1 }
+		},
+		"commandResult": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"command",
+				"runId",
+				"startedAt",
+				"completedAt",
+				"durationMs",
+				"stdoutPath",
+				"stderrPath",
+				"stdoutSha256",
+				"stderrSha256",
+				"exitCode",
+				"status"
+			],
+			"properties": {
+				"id": { "type": "string", "minLength": 1 },
+				"command": { "$ref": "#/$defs/command" },
+				"runId": { "type": "string", "minLength": 1 },
+				"startedAt": { "type": "string", "format": "date-time" },
+				"completedAt": { "type": "string", "format": "date-time" },
+				"durationMs": { "type": "integer", "minimum": 1 },
+				"stdoutPath": {
+					"type": "string",
+					"pattern": "^evidence/stage-5-worktree-run/[a-z0-9-]+\\.stdout$"
+				},
+				"stderrPath": {
+					"type": "string",
+					"pattern": "^evidence/stage-5-worktree-run/[a-z0-9-]+\\.stderr$"
+				},
+				"stdoutSha256": { "$ref": "#/$defs/sha256" },
+				"stderrSha256": { "$ref": "#/$defs/sha256" },
+				"exitCode": { "type": "integer", "minimum": 0 },
+				"status": { "enum": ["pass", "refused"] }
+			}
+		}
+	}
+}

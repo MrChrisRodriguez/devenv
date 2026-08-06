@@ -1,0 +1,52 @@
+# Machine-readable isolated worktree runtime contract.
+#
+# Flat scalar and array keys only: the runtime scripts read this file with
+# sed before Bun or jq exist on the host, and the renderer's capability
+# fences are line based. Every value is derived from one authority -
+# template-parameters.toml - by renderWorktreeContract() in
+# scripts/template/render-fixture.ts, and scripts/template/worktree-contract.ts
+# fails the build on drift.
+version = 1
+project_slug = "devenv"
+environment_prefix = "DEVENV"
+docker_resource_prefix = "devenv"
+local_domain_stem = "devenv"
+development_user = "vscode"
+container_workspace = "/workspace"
+generated_state = ".dev/state"
+mutable_persistence = ".dev/persistence"
+shared_cache = ".dev/cache"
+host_config_root = "~/.config/devcontainer"
+registry_directory = "~/.config/devcontainer/ports-registry"
+manifest_directory = "~/.config/devcontainer/worktrees"
+caddy_snippet_directory = "~/.config/devcontainer/caddy"
+generated_environment = ".dev/state/worktree.env"
+generated_container_environment = ".dev/state/worktree.container.env"
+run_directory = ".dev/state/run"
+devcontainer_config = ".devcontainer/devcontainer.json"
+published_container_port = 8080
+published_host_port_variable = "DEVENV_PUBLISHED_HOST_PORT"
+preferred_offset_modulus = 1000
+collision_scan_limit = 1000
+manifest_schema_version = 1
+registry_schema_version = 1
+default_probe_timeout_seconds = 2
+startup_timeout_seconds = 90
+diagnostic_staggered_mode = true
+friendly_domain_pattern = "{workspace}.{project}.localhost"
+direct_host = "127.0.0.1"
+host_caddy = "optional"
+always_publish_direct_url = true
+container_engine = "docker"
+container_cli = "devcontainer"
+container_cli_package = "@devcontainers/cli"
+definition_fingerprint_inputs = [".dockerignore", ".prototools", ".devcontainer"]
+legacy_cleanup_commands = []
+runtime_scripts = ["scripts/worktree/lib.sh", "scripts/worktree/lock.sh", "scripts/worktree/env.sh", "scripts/worktree/ensure.sh", "scripts/worktree/exec.sh", "scripts/worktree/manifest.sh", "scripts/worktree/services.sh", "scripts/worktree/up.sh", "scripts/worktree/down.sh", "scripts/worktree/cleanup.sh", "scripts/worktree/selftest.sh"]
+bridge_command = "bash scripts/worktree/exec.sh"
+ensure_command = "bash scripts/worktree/ensure.sh"
+services = []
+# capability:start codex_cloud
+cloud_doctor_command = "bash .codex/cloud/doctor.sh --quiet"
+cloud_marker_variable = "CODEX_CLOUD"
+# capability:end codex_cloud

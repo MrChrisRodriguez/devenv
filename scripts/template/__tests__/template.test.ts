@@ -16,6 +16,7 @@ import {
 	validateTemplateParameters,
 } from "../parameters";
 import {
+	buildRenderPlan,
 	filterCapabilityBlocks,
 	loadTemplateOwnership,
 	renderFixture,
@@ -142,6 +143,8 @@ describe("template parameter registry", () => {
 				kind: "backend",
 				base_port: 5100,
 				depends_on: ["two", "two"],
+				directory: "apps/one",
+				command: "bun run dev",
 				health_path: "/health",
 				health_expectation: "http-2xx",
 				profiles: ["minimal"],
@@ -151,6 +154,8 @@ describe("template parameter registry", () => {
 				kind: "backend",
 				base_port: 5200,
 				depends_on: ["one"],
+				directory: "apps/two",
+				command: "bun run dev",
 				health_path: "/health",
 				health_expectation: "http-2xx",
 				profiles: ["minimal"],
@@ -175,6 +180,8 @@ describe("template parameter registry", () => {
 				kind: "frontend",
 				base_port: 5100,
 				depends_on: ["api"],
+				directory: "apps/web",
+				command: "bun run dev",
 				health_path: "/",
 				health_expectation: "http-2xx-html",
 				profiles: ["minimal"],
@@ -184,6 +191,8 @@ describe("template parameter registry", () => {
 				kind: "backend",
 				base_port: 5200,
 				depends_on: [],
+				directory: "apps/api",
+				command: "bun run dev",
 				health_path: "/health",
 				health_expectation: "json-status-ok",
 				profiles: ["full"],
@@ -191,6 +200,55 @@ describe("template parameter registry", () => {
 		];
 		expect(() => validateTemplateParameters(mutation)).toThrow(
 			"dependency api is unavailable in profile minimal",
+		);
+	});
+
+	test("rejects an unsafe published container port and incomplete service descriptors", async () => {
+		const parsed = (await parseToml(
+			resolve(ROOT, "template-parameters.toml"),
+		)) as Record<string, unknown>;
+		const schema = (await Bun.file(
+			resolve(ROOT, "template-parameters.schema.json"),
+		).json()) as Record<string, unknown>;
+
+		const privilegedPort = structuredClone(parsed) as {
+			routing: Record<string, unknown>;
+		};
+		privilegedPort.routing["published_container_port"] = 80;
+		expect(() => validateTemplateParameters(privilegedPort)).toThrow(
+			"routing.published_container_port must be between 1024 and 65535",
+		);
+		expect(validateJsonSchema(privilegedPort, schema)).toContain(
+			"$.routing.published_container_port must be at least 1024",
+		);
+
+		// A service the lifecycle cannot start is not a service: the runtime cds
+		// into `directory` and runs `command`, so both are required and both are
+		// execution inputs.
+		const incompleteService = structuredClone(parsed) as Record<
+			string,
+			unknown
+		>;
+		incompleteService["services"] = [
+			{
+				name: "api",
+				kind: "backend",
+				base_port: 5200,
+				depends_on: [],
+				directory: "../escape",
+				health_path: "/health",
+				health_expectation: "json-status-ok",
+				profiles: ["minimal"],
+			},
+		];
+		expect(() => validateTemplateParameters(incompleteService)).toThrow(
+			"services[0].command must be a non-empty string",
+		);
+		expect(() => validateTemplateParameters(incompleteService)).toThrow(
+			"services[0].directory must be a contained relative path",
+		);
+		expect(validateJsonSchema(incompleteService, schema)).toContain(
+			"$.services[0].command is required",
 		);
 	});
 
@@ -442,6 +500,106 @@ describe("deterministic fixture renderer", () => {
 			await rm(temporary, { recursive: true, force: true });
 		}
 	}, 120_000);
+
+	test("renders the worktree contract with each fixture's identity", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const parameters = await loadTemplateParameters(ROOT);
+			for (const fixtureName of parameters.generation.fixture_names) {
+				const output = resolve(temporary, fixtureName);
+				await renderFixture({ root: ROOT, fixtureName, output });
+				const fixture = await loadFixtureDefinition(
+					ROOT,
+					fixtureName,
+					parameters,
+				);
+				const resolved = resolveFixtureParameters(parameters, fixture);
+				const contract = await Bun.file(
+					resolve(output, "scripts/worktree/contract.toml"),
+				).text();
+				const parsed = Bun.TOML.parse(contract) as Record<string, unknown>;
+
+				expect(parsed["version"]).toBe(1);
+				expect(parsed["project_slug"]).toBe(resolved.project.slug);
+				expect(parsed["environment_prefix"]).toBe(
+					resolved.project.environment_prefix,
+				);
+				expect(parsed["docker_resource_prefix"]).toBe(
+					resolved.project.docker_resource_prefix,
+				);
+				expect(parsed["local_domain_stem"]).toBe(
+					resolved.project.local_domain_stem,
+				);
+				expect(parsed["published_host_port_variable"]).toBe(
+					`${resolved.project.environment_prefix}_PUBLISHED_HOST_PORT`,
+				);
+				expect(parsed["published_container_port"]).toBe(
+					resolved.routing.published_container_port,
+				);
+				expect(parsed["services"]).toEqual([]);
+				// The contract is regenerated from the fixture's own parameters, so
+				// none of the template's identity survives into it.
+				expect(contract).not.toContain('= "devenv"');
+				expect(contract).not.toContain('= "DEVENV"');
+				expect(contract).not.toContain("capability:start");
+
+				// Every cloud key lives inside one codex_cloud fence, so a fixture
+				// that disables the capability carries no cloud reference at all.
+				const cloudEnabled =
+					resolved.capabilities.defaults["codex_cloud"] === true;
+				expect(contract.includes("CODEX_CLOUD")).toBe(cloudEnabled);
+				expect(parsed["cloud_doctor_command"]).toBe(
+					cloudEnabled ? "bash .codex/cloud/doctor.sh --quiet" : undefined,
+				);
+			}
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("omits the whole worktree runtime when devcontainer is disabled", async () => {
+		const parameters = await loadTemplateParameters(ROOT);
+		const ownership = await loadTemplateOwnership(ROOT);
+		const fixture = await loadFixtureDefinition(ROOT, "full", parameters);
+		const resolved = resolveFixtureParameters(parameters, fixture);
+		const sourceFiles = [
+			{ path: "package.json", mode: "0644" as const },
+			{ path: "scripts/worktree/contract.toml", mode: "0644" as const },
+			{ path: "scripts/worktree/env.sh", mode: "0755" as const },
+			{ path: "scripts/worktree/cleanup.sh", mode: "0755" as const },
+			{ path: "scripts/template/worktree-contract.ts", mode: "0644" as const },
+			{ path: "scripts/template/validate-worktree.ts", mode: "0644" as const },
+		];
+
+		const enabled = buildRenderPlan(fixture, resolved, ownership, sourceFiles);
+		expect(enabled.entries.map((entry) => entry.target)).toEqual(
+			sourceFiles.map((source) => source.path).sort(),
+		);
+
+		// The runtime is gated on one capability, and it is all or nothing: a
+		// project without a devcontainer must not inherit half a runtime.
+		const withoutDevcontainer = {
+			...resolved,
+			capabilities: {
+				...resolved.capabilities,
+				defaults: { ...resolved.capabilities.defaults, devcontainer: false },
+			},
+		};
+		const plan = buildRenderPlan(
+			fixture,
+			withoutDevcontainer,
+			ownership,
+			sourceFiles,
+		);
+		expect(plan.entries.map((entry) => entry.target)).toEqual(["package.json"]);
+		expect(plan.omitted.map((entry) => entry.path)).toEqual([
+			"scripts/template/validate-worktree.ts",
+			"scripts/template/worktree-contract.ts",
+			"scripts/worktree/cleanup.sh",
+			"scripts/worktree/contract.toml",
+			"scripts/worktree/env.sh",
+		]);
+	}, 60_000);
 
 	test("renders cloud and full profiles with only their selected artifacts", async () => {
 		const temporary = await temporaryDirectory();

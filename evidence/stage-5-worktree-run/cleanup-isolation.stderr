@@ -1,0 +1,12 @@
+Worktree down: no services are declared
+Worktree manifest: devenv-devenv-stage5a-stage5a-20260806t060225z-21af7c9a-beta is inactive; its ports stay reserved
+Worktree down: this worktree keeps its registered ports; run cleanup.sh to release them
+Worktree manifest: removed the manifest and route for devenv-devenv-stage5a-stage5a-20260806t060225z-21af7c9a-beta
+Worktree cleanup: removing container 8f09fa4c15076b2c06401490524fdc4a3cc20b91de8141095a844edf27a186e1
+Worktree cleanup: removing volume claude-code-shellhistory-1bg6dndoohn3mhupj0f4gi1fd6lu7k1v0k90pe8ro0rt9ika0qk9
+Worktree cleanup: removing volume claude-code-config-1bg6dndoohn3mhupj0f4gi1fd6lu7k1v0k90pe8ro0rt9ika0qk9
+Worktree cleanup: removing volume codex-home-1bg6dndoohn3mhupj0f4gi1fd6lu7k1v0k90pe8ro0rt9ika0qk9
+Worktree cleanup: removing volume gemini-home-1bg6dndoohn3mhupj0f4gi1fd6lu7k1v0k90pe8ro0rt9ika0qk9
+Worktree cleanup: removing volume config-home-1bg6dndoohn3mhupj0f4gi1fd6lu7k1v0k90pe8ro0rt9ika0qk9
+Worktree environment: released the registry entry for devenv-devenv-stage5a-stage5a-20260806t060225z-21af7c9a-beta
+Worktree cleanup: removed every resource owned by devenv-devenv-stage5a-stage5a-20260806t060225z-21af7c9a-beta
