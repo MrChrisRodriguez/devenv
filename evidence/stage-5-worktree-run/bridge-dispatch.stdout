@@ -1,0 +1,8 @@
+workdir=/workspace/scripts
+user=vscode
+argv=one|two three|four"five|
+exitStatus=42
+workspaceId=devenv-devenv-stage5a-stage5a-20260806t060225z-21af7c9a-alpha
+bunPath=/home/vscode/.proto/tools/bun/1.3.13/bun
+sentinelInAlpha=stage5a-20260806t060225z-21af7c9a
+sentinelInBeta=absent

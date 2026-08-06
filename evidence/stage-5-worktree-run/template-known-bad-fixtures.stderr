@@ -1,0 +1,8 @@
+
+scripts/template/__tests__/template.test.ts:
+
+ 4 pass
+ 20 filtered out
+ 0 fail
+ 61 expect() calls
+Ran 4 tests across 1 file. [908.00ms]

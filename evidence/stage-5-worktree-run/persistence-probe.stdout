@@ -1,0 +1,6 @@
+alphaPersistenceRoot=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/.dev/persistence
+betaPersistenceRoot=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/.dev/persistence
+alphaOnHost=stage5a-20260806t060225z-21af7c9a-alpha
+betaOnHost=stage5a-20260806t060225z-21af7c9a-beta
+alphaInContainer=stage5a-20260806t060225z-21af7c9a-alpha
+betaInContainer=stage5a-20260806t060225z-21af7c9a-beta

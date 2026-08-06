@@ -1,0 +1,518 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-5a-isolated-worktree-runtime",
+	"capturedAt": "2026-08-06T06:05:23.471Z",
+	"run": {
+		"id": "stage5a-20260806t060225z-21af7c9a",
+		"logRoot": "evidence/stage-5-worktree-run",
+		"temporaryRoot": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a",
+		"decoyImage": "alpine:3.20"
+	},
+	"source": {
+		"baseSha": "fe667186bc9939c582c35b67f0dac2d0d5d73220",
+		"implementationSha": "21af7c9ac74f90debb4df8e4231ede9628485cd7",
+		"treeClean": true
+	},
+	"host": {
+		"os": "darwin",
+		"architecture": "arm64",
+		"kernel": "25.5.0",
+		"home": "/Users/mrcr",
+		"dockerVersion": "29.4.0",
+		"devcontainerCliVersion": "0.87.0",
+		"pythonVersion": "3.12.8"
+	},
+	"contract": {
+		"path": "scripts/worktree/contract.toml",
+		"version": 1,
+		"environmentPrefix": "DEVENV",
+		"publishedContainerPort": 8080,
+		"offsetModulus": 1000,
+		"manifestSchemaVersion": 1,
+		"serviceCount": 0
+	},
+	"worktrees": [
+		{
+			"path": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha",
+			"workspaceId": "devenv-devenv-stage5a-stage5a-20260806t060225z-21af7c9a-alpha",
+			"family": "devenv-stage5a-stage5a-20260806t060225z-21af7c9a-alpha",
+			"offset": 424,
+			"offsetSource": "preferred",
+			"publishedHostPort": 8504,
+			"portSet": [8504],
+			"directUrl": "http://127.0.0.1:8504",
+			"friendlyUrl": "http://devenv-stage5a-stage5a-20260806t060225z-21af7c9a-alpha.devenv.localhost",
+			"containerId": "f4807487f3df9a4decfdd9579824626ecfd28ec876597f8baa19666aa6d628ef",
+			"devcontainerId": "1q8fje047d05cchoi2j5gl8ll8smqv88p2qa9qjjh8v37ek1kcp1",
+			"definitionFingerprint": "6611061ec1439ba209bf423b8a8ab74c9d73647c44deeaa8c69792259a7f9149",
+			"persistenceRoot": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/.dev/persistence"
+		},
+		{
+			"path": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta",
+			"workspaceId": "devenv-devenv-stage5a-stage5a-20260806t060225z-21af7c9a-beta",
+			"family": "devenv-stage5a-stage5a-20260806t060225z-21af7c9a-beta",
+			"offset": 765,
+			"offsetSource": "alternate",
+			"publishedHostPort": 8845,
+			"portSet": [8845],
+			"directUrl": "http://127.0.0.1:8845",
+			"friendlyUrl": "http://devenv-stage5a-stage5a-20260806t060225z-21af7c9a-beta.devenv.localhost",
+			"containerId": "8f09fa4c15076b2c06401490524fdc4a3cc20b91de8141095a844edf27a186e1",
+			"devcontainerId": "1bg6dndoohn3mhupj0f4gi1fd6lu7k1v0k90pe8ro0rt9ika0qk9",
+			"definitionFingerprint": "6611061ec1439ba209bf423b8a8ab74c9d73647c44deeaa8c69792259a7f9149",
+			"persistenceRoot": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/.dev/persistence"
+		}
+	],
+	"allocation": {
+		"portSetsDisjoint": true,
+		"registryPath": "/Users/mrcr/.config/devcontainer/ports-registry/ports.json"
+	},
+	"commands": [
+		{
+			"id": "contract-guard",
+			"command": ["bun", "run", "worktree:check"],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:02:25.383Z",
+			"completedAt": "2026-08-06T06:02:25.466Z",
+			"durationMs": 83,
+			"stdoutPath": "evidence/stage-5-worktree-run/contract-guard.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/contract-guard.stderr",
+			"stdoutSha256": "b8fc787fad0cc3f993f929092349ec69500a2a05c0162ba2b0fa03d85e0fb54c",
+			"stderrSha256": "b21172c02c58cf08110b00d513cdbce996f4ccd7813f16729358cd34cb9daad7",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "hermetic-selftest",
+			"command": ["bash", "scripts/worktree/selftest.sh"],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:02:25.469Z",
+			"completedAt": "2026-08-06T06:02:27.187Z",
+			"durationMs": 1718,
+			"stdoutPath": "evidence/stage-5-worktree-run/hermetic-selftest.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/hermetic-selftest.stderr",
+			"stdoutSha256": "84914daac0da2764842c72f3045b401080365704941d1d6653c9c71be59a9ba9",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "contract-known-bad-fixtures",
+			"command": ["bun", "test", "scripts/template/__tests__/worktree.test.ts"],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:02:27.187Z",
+			"completedAt": "2026-08-06T06:03:36.222Z",
+			"durationMs": 69035,
+			"stdoutPath": "evidence/stage-5-worktree-run/contract-known-bad-fixtures.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/contract-known-bad-fixtures.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "52d7294cc8caa59a0da7f9e35732f2044eeefa0ebe2901c8ed2c6a2cff2c6cd9",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "template-known-bad-fixtures",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/template.test.ts",
+				"-t",
+				"residue"
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:03:36.222Z",
+			"completedAt": "2026-08-06T06:03:37.137Z",
+			"durationMs": 915,
+			"stdoutPath": "evidence/stage-5-worktree-run/template-known-bad-fixtures.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/template-known-bad-fixtures.stderr",
+			"stdoutSha256": "2049f6899d4e06caaf484eef3a174a0c285665a64df7e774277932356739ca7a",
+			"stderrSha256": "b6fa9172a3006b7e44c316a5287978f3c725744a81d32e763b30497f25baee87",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "worktree-a-environment",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nbash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/env.sh\nbash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/env.sh --json"
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:03:37.137Z",
+			"completedAt": "2026-08-06T06:03:37.502Z",
+			"durationMs": 365,
+			"stdoutPath": "evidence/stage-5-worktree-run/worktree-a-environment.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/worktree-a-environment.stderr",
+			"stdoutSha256": "d7f7b1a03c9015b5519cbd6ea2e382f81042f43f3de622244c126c087a82eb92",
+			"stderrSha256": "e50ae9398ebdd8530f07f45ca9350c60276d1f966bd6c083e20889a0c34423c6",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "worktree-b-environment",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nbash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/env.sh\nbash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/env.sh --json"
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:03:37.502Z",
+			"completedAt": "2026-08-06T06:03:37.858Z",
+			"durationMs": 356,
+			"stdoutPath": "evidence/stage-5-worktree-run/worktree-b-environment.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/worktree-b-environment.stderr",
+			"stdoutSha256": "cb88db7e2abc07cf74920593018122cf0cbd49e9c6011caa683348b5471c80c8",
+			"stderrSha256": "ce6678e6ccd614b619e2d3562ebde37533a26a1b999f8700eb230ad4094a6b03",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "worktree-a-ensure-cold",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nprintf 'definitionFingerprint=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/ensure.sh --definition-fingerprint)\"\nprintf 'containerId=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/ensure.sh)\""
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:03:37.858Z",
+			"completedAt": "2026-08-06T06:04:01.806Z",
+			"durationMs": 23948,
+			"stdoutPath": "evidence/stage-5-worktree-run/worktree-a-ensure-cold.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/worktree-a-ensure-cold.stderr",
+			"stdoutSha256": "5d9e5f9d35208faaf51d9404d3db385724d2581e358daa21c06ef7fcc5dc506f",
+			"stderrSha256": "0593a6334785c0ed831f51ff073cb3bdd8b0e123f48b7a01a4404958d581f0d4",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "worktree-b-ensure-cold",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nprintf 'definitionFingerprint=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/ensure.sh --definition-fingerprint)\"\nprintf 'containerId=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/ensure.sh)\""
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:04:01.806Z",
+			"completedAt": "2026-08-06T06:04:25.249Z",
+			"durationMs": 23443,
+			"stdoutPath": "evidence/stage-5-worktree-run/worktree-b-ensure-cold.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/worktree-b-ensure-cold.stderr",
+			"stdoutSha256": "d0d4ab87a22e6c15214e46bcd21db4d2f8a0e250f4112399721df08158c2816f",
+			"stderrSha256": "b47c52e23c13d5c8b7b027a789a6dfc641541dbfbf10e0b640f4f04127e95780",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "worktree-a-ensure-warm",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nprintf 'definitionFingerprint=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/ensure.sh --definition-fingerprint)\"\nprintf 'containerId=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/ensure.sh)\""
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:04:25.249Z",
+			"completedAt": "2026-08-06T06:04:26.564Z",
+			"durationMs": 1315,
+			"stdoutPath": "evidence/stage-5-worktree-run/worktree-a-ensure-warm.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/worktree-a-ensure-warm.stderr",
+			"stdoutSha256": "5d9e5f9d35208faaf51d9404d3db385724d2581e358daa21c06ef7fcc5dc506f",
+			"stderrSha256": "e50ae9398ebdd8530f07f45ca9350c60276d1f966bd6c083e20889a0c34423c6",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "recreate-fast-path",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nconfig=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/.devcontainer/devcontainer.json\nprintf 'beforeContainerId=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/ensure.sh)\"\nprintf 'beforeFingerprint=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/ensure.sh --definition-fingerprint)\"\nprintf '\\n' >>\"$config\"\nprintf 'changedFingerprint=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/ensure.sh --definition-fingerprint)\"\nprintf 'recreatedContainerId=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/ensure.sh)\"\ngit -C /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta checkout -- .devcontainer/devcontainer.json\nprintf 'restoredFingerprint=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/ensure.sh --definition-fingerprint)\"\nprintf 'restoredContainerId=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/ensure.sh)\"\nprintf 'readyContainerId=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/ensure.sh --check-ready)\""
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:04:26.564Z",
+			"completedAt": "2026-08-06T06:04:57.984Z",
+			"durationMs": 31420,
+			"stdoutPath": "evidence/stage-5-worktree-run/recreate-fast-path.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/recreate-fast-path.stderr",
+			"stdoutSha256": "1edf60f331d8ad1411dcd2e185ac118a2e23ada0b02911de1c6325d0776ff78c",
+			"stderrSha256": "462e291f0da0442a476becf6d9a187a53ff28363074f1d45e2811c1cca8fc7b3",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "git-operations",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\ncd /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha\nprintf 'headSha=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/exec.sh git rev-parse HEAD)\"\nprintf 'commonDir=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/exec.sh git rev-parse --path-format=absolute --git-common-dir)\"\nprintf 'statusLines=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/exec.sh git status --porcelain | wc -l | tr -d ' ')\"\nbash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/exec.sh git tag stage5a-20260806t060225z-21af7c9a-probe\nprintf 'tagVisibleOnHost=%s\\n' \"$(git -C /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha tag --list stage5a-20260806t060225z-21af7c9a-probe | wc -l | tr -d ' ')\"\nbash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/exec.sh git tag -d stage5a-20260806t060225z-21af7c9a-probe >/dev/null\nprintf 'tagRemoved=%s\\n' \"$(git -C /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha tag --list stage5a-20260806t060225z-21af7c9a-probe | wc -l | tr -d ' ')\""
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:04:57.985Z",
+			"completedAt": "2026-08-06T06:05:01.157Z",
+			"durationMs": 3172,
+			"stdoutPath": "evidence/stage-5-worktree-run/git-operations.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/git-operations.stderr",
+			"stdoutSha256": "4195a7a216e76ecc7209b701b3ecfa0073a5c0fc5f4bd3ebc98137924e34a729",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "ownership-attack-refusal",
+			"command": [
+				"bash",
+				"-c",
+				"set -uo pipefail\nrun_dir=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/.dev/state/run\ndocker rm --force stage5a-20260806t060225z-21af7c9a-decoy >/dev/null 2>&1 || true\ndecoy=\"$(docker run --detach --name stage5a-20260806t060225z-21af7c9a-decoy \\\n  --label devenv.stage5a.run=stage5a-20260806t060225z-21af7c9a \\\n  --label devcontainer.local_folder=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha \\\n  --label devcontainer.config_file=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/.devcontainer/impostor.json \\\n  alpine:3.20 sleep 900)\"\nprintf 'decoyContainerId=%s\\n' \"$decoy\"\ngenuine=\"$(cat \"$run_dir/container.id\")\"\nprintf 'genuineContainerId=%s\\n' \"$genuine\"\nfingerprint=\"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/ensure.sh --definition-fingerprint)\"\ncp \"$run_dir/container.id\" \"$run_dir/container.id.backup\"\ncp \"$run_dir/container.ready\" \"$run_dir/container.ready.backup\"\nprintf '%s\\n' \"$decoy\" >\"$run_dir/container.id\"\nprintf '%s %s\\n' \"$decoy\" \"$fingerprint\" >\"$run_dir/container.ready\"\nstatus=0\naccepted=\"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/ensure.sh --check-ready 2>/dev/null)\" || status=$?\nprintf 'checkReadyExitCode=%s\\n' \"$status\"\nprintf 'acceptedContainerId=%s\\n' \"$accepted\"\ndocker exec \"$decoy\" rm -f /tmp/stage5a-ownership-sentinel >/dev/null 2>&1 || true\nbridge=0\n(cd /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha && bash scripts/worktree/exec.sh sh -c 'printf %s stage5a-20260806t060225z-21af7c9a > /tmp/stage5a-ownership-sentinel') >/dev/null 2>&1 || bridge=$?\nprintf 'bridgeExitCode=%s\\n' \"$bridge\"\nexecuted=true\nif ! docker exec \"$decoy\" test -e /tmp/stage5a-ownership-sentinel >/dev/null 2>&1; then executed=false; fi\nprintf 'commandExecuted=%s\\n' \"$executed\"\nreconciled=\"$(cat \"$run_dir/container.id\")\"\nprintf 'reconciledContainerId=%s\\n' \"$reconciled\"\nif [ \"$reconciled\" = \"$genuine\" ]; then\n\trm -f \"$run_dir/container.id.backup\" \"$run_dir/container.ready.backup\"\nelse\n\tmv -f \"$run_dir/container.id.backup\" \"$run_dir/container.id\"\n\tmv -f \"$run_dir/container.ready.backup\" \"$run_dir/container.ready\"\nfi\ndocker rm --force \"$decoy\" >/dev/null 2>&1 || true\nexit \"$status\""
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:05:01.158Z",
+			"completedAt": "2026-08-06T06:05:05.147Z",
+			"durationMs": 3989,
+			"stdoutPath": "evidence/stage-5-worktree-run/ownership-attack-refusal.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/ownership-attack-refusal.stderr",
+			"stdoutSha256": "7c0764fcba376c30c60bd5a4f9884bc0768444d124897685a6f41080d03d7911",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 1,
+			"status": "refused"
+		},
+		{
+			"id": "route-probe",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\ncd /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha\nbash scripts/worktree/up.sh\neval \"$(bash scripts/worktree/manifest.sh env)\"\ncat >\".dev/stage5a-route.js\" <<'JS'\nBun.serve({ port: 8080, hostname: \"0.0.0.0\", fetch: () => new Response(\"stage5a-route-ok\\n\") });\nJS\nbash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/exec.sh bash -c \"setsid nohup bun /workspace/.dev/stage5a-route.js >/tmp/stage5a-route.log 2>&1 </dev/null & sleep 2\"\nbody=\nfor attempt in 1 2 3 4 5 6 7 8 9 10; do\n\tbody=\"$(curl --silent --fail --max-time 5 \"$DEVENV_DIRECT_URL/\" || true)\"\n\tcase \"$body\" in *stage5a-route-ok*) break ;; esac\n\tsleep 2\ndone\nprintf 'directUrl=%s\\n' \"$DEVENV_DIRECT_URL\"\nprintf 'directBody=%s\\n' \"$body\"\nresolution=dns\nfriendly=\"$(curl --silent --fail --max-time 5 \"$DEVENV_FRIENDLY_URL/\" || true)\"\nif [ -z \"$friendly\" ]; then\n\tresolution=resolve-override\n\tfriendly=\"$(curl --silent --fail --max-time 5 --resolve \"$DEVENV_FRIENDLY_HOST:80:127.0.0.1\" \"$DEVENV_FRIENDLY_URL/\" || true)\"\nfi\nprintf 'friendlyUrl=%s\\n' \"$DEVENV_FRIENDLY_URL\"\nprintf 'friendlyBody=%s\\n' \"$friendly\"\nprintf 'friendlyResolution=%s\\n' \"$resolution\"\nprintf 'caddyAvailable=%s\\n' \"$(command -v caddy >/dev/null 2>&1 && printf true || printf false)\"\nmanifest=\"$(bash scripts/worktree/manifest.sh path)\"\nprintf 'manifestPath=%s\\n' \"$manifest\"\nprintf 'manifestStatus=%s\\n' \"$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))[\"status\"])' \"$manifest\")\""
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:05:05.148Z",
+			"completedAt": "2026-08-06T06:05:09.431Z",
+			"durationMs": 4283,
+			"stdoutPath": "evidence/stage-5-worktree-run/route-probe.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/route-probe.stderr",
+			"stdoutSha256": "0f89b263b59a66133bc787f87f91a6f0b1a9f02141048bf16d216ac5083263ec",
+			"stderrSha256": "ee3a43bac66db0429b69e5259b22bf977b799414ac38d3cec26ec69df388525e",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "persistence-probe",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nalpha_root=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_env_file_value \"$REPO_ROOT/$(wt_contract_value generated_environment)\" \"$2\"' bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha DEVENV_PERSISTENCE_ROOT)\"\nbeta_root=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_env_file_value \"$REPO_ROOT/$(wt_contract_value generated_environment)\" \"$2\"' bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta DEVENV_PERSISTENCE_ROOT)\"\nprintf 'alphaPersistenceRoot=%s\\n' \"$alpha_root\"\nprintf 'betaPersistenceRoot=%s\\n' \"$beta_root\"\n(cd /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha && bash scripts/worktree/exec.sh sh -c 'mkdir -p \"$DEVENV_PERSISTENCE_ROOT\" && printf %s stage5a-20260806t060225z-21af7c9a-alpha > \"$DEVENV_PERSISTENCE_ROOT/stage5a-probe\"')\n(cd /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta && bash scripts/worktree/exec.sh sh -c 'mkdir -p \"$DEVENV_PERSISTENCE_ROOT\" && printf %s stage5a-20260806t060225z-21af7c9a-beta > \"$DEVENV_PERSISTENCE_ROOT/stage5a-probe\"')\nprintf 'alphaOnHost=%s\\n' \"$(cat \"$alpha_root/stage5a-probe\")\"\nprintf 'betaOnHost=%s\\n' \"$(cat \"$beta_root/stage5a-probe\")\"\nprintf 'alphaInContainer=%s\\n' \"$(cd /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha && bash scripts/worktree/exec.sh sh -c 'cat \"$DEVENV_PERSISTENCE_ROOT/stage5a-probe\"')\"\nprintf 'betaInContainer=%s\\n' \"$(cd /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta && bash scripts/worktree/exec.sh sh -c 'cat \"$DEVENV_PERSISTENCE_ROOT/stage5a-probe\"')\""
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:05:09.431Z",
+			"completedAt": "2026-08-06T06:05:11.879Z",
+			"durationMs": 2448,
+			"stdoutPath": "evidence/stage-5-worktree-run/persistence-probe.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/persistence-probe.stderr",
+			"stdoutSha256": "e3b5541548e6d06ed500e71e8431a16d20c0b391b4f97a73374ae42165654bd8",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "authentication-round-trip",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\n(cd /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha && bash scripts/worktree/exec.sh sh -c 'printf %s stage5a-20260806t060225z-21af7c9a > /home/vscode/.config/devcontainer/codex-auth/stage5a-20260806t060225z-21af7c9a.json; printf %s alpha > /home/vscode/.codex/stage5a-20260806t060225z-21af7c9a.marker')\nprintf 'credentialReadByBeta=%s\\n' \"$(cd /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta && bash scripts/worktree/exec.sh cat /home/vscode/.config/devcontainer/codex-auth/stage5a-20260806t060225z-21af7c9a.json)\"\nisolated=true\nif (cd /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta && bash scripts/worktree/exec.sh test -e /home/vscode/.codex/stage5a-20260806t060225z-21af7c9a.marker) >/dev/null 2>&1; then isolated=false; fi\nprintf 'sessionStateIsolated=%s\\n' \"$isolated\"\nprintf 'alphaCredentialSource=%s\\n' \"$(docker inspect --format '{{range .Mounts}}{{if eq .Destination \"/home/vscode/.config/devcontainer/codex-auth\"}}{{.Source}}{{end}}{{end}}' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/ensure.sh --check-ready)\")\"\nprintf 'betaCredentialSource=%s\\n' \"$(docker inspect --format '{{range .Mounts}}{{if eq .Destination \"/home/vscode/.config/devcontainer/codex-auth\"}}{{.Source}}{{end}}{{end}}' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/ensure.sh --check-ready)\")\"\n(cd /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha && bash scripts/worktree/exec.sh rm -f /home/vscode/.config/devcontainer/codex-auth/stage5a-20260806t060225z-21af7c9a.json /home/vscode/.codex/stage5a-20260806t060225z-21af7c9a.marker)"
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:05:11.879Z",
+			"completedAt": "2026-08-06T06:05:15.177Z",
+			"durationMs": 3298,
+			"stdoutPath": "evidence/stage-5-worktree-run/authentication-round-trip.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/authentication-round-trip.stderr",
+			"stdoutSha256": "dc562667f7389f56061ad546eca5f205c72b89ebe6a7642e358f8a3d8dd008cd",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "volume-identity",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nalpha_id=\"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/ensure.sh --check-ready)\"\nbeta_id=\"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/ensure.sh --check-ready)\"\nprintf 'alphaContainerId=%s\\n' \"$alpha_id\"\nprintf 'betaContainerId=%s\\n' \"$beta_id\"\nprintf 'alphaVolumes=%s\\n' \"$(docker inspect --format '{{range .Mounts}}{{if eq .Type \"volume\"}}{{.Name}} {{end}}{{end}}' \"$alpha_id\")\"\nprintf 'betaVolumes=%s\\n' \"$(docker inspect --format '{{range .Mounts}}{{if eq .Type \"volume\"}}{{.Name}} {{end}}{{end}}' \"$beta_id\")\""
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:05:15.177Z",
+			"completedAt": "2026-08-06T06:05:16.050Z",
+			"durationMs": 873,
+			"stdoutPath": "evidence/stage-5-worktree-run/volume-identity.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/volume-identity.stderr",
+			"stdoutSha256": "90540e7893cfd37d4487da463a89dfef183483cdd89e2bfda21bb4d1af7a53be",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "bridge-dispatch",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\ncd /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts\nprintf 'workdir=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/exec.sh pwd)\"\nprintf 'user=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/exec.sh id -un)\"\nprintf 'argv=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/exec.sh printf '%s|' one 'two three' 'four\"five')\"\nstatus=0\nbash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/exec.sh sh -c 'exit 42' || status=$?\nprintf 'exitStatus=%s\\n' \"$status\"\nprintf 'workspaceId=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/exec.sh sh -c 'printf %s \"$DEVENV_WORKSPACE_ID\"')\"\nprintf 'bunPath=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/exec.sh sh -c 'command -v bun')\"\nbash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/exec.sh sh -c 'printf %s stage5a-20260806t060225z-21af7c9a > /workspace/.dev/stage5a-bridge'\nprintf 'sentinelInAlpha=%s\\n' \"$(cat /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/.dev/stage5a-bridge)\"\nprintf 'sentinelInBeta=%s\\n' \"$([ -e /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/.dev/stage5a-bridge ] && printf present || printf absent)\""
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:05:16.050Z",
+			"completedAt": "2026-08-06T06:05:20.257Z",
+			"durationMs": 4207,
+			"stdoutPath": "evidence/stage-5-worktree-run/bridge-dispatch.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/bridge-dispatch.stderr",
+			"stdoutSha256": "53a493f189bedcdccaccf5de69743336ab8f984cf3a8bddafcf6441402566e81",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "cleanup-isolation",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nregistry=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_expand_home \"$(wt_contract_value registry_directory)\"' bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha)/ports.json\"\nalpha_workspace=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_env_file_value \"$REPO_ROOT/$(wt_contract_value generated_environment)\" \"$2\"' bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha DEVENV_WORKSPACE_ID)\"\nbeta_workspace=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_env_file_value \"$REPO_ROOT/$(wt_contract_value generated_environment)\" \"$2\"' bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta DEVENV_WORKSPACE_ID)\"\nalpha_manifest=\"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/manifest.sh path)\"\nbeta_manifest=\"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/manifest.sh path)\"\nbeta_id=\"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/ensure.sh --check-ready)\"\nbeta_volumes=\"$(docker inspect --format '{{range .Mounts}}{{if eq .Type \"volume\"}}{{.Name}} {{end}}{{end}}' \"$beta_id\")\"\nprintf 'betaWorkspaceId=%s\\n' \"$beta_workspace\"\nprintf 'betaContainerId=%s\\n' \"$beta_id\"\nprintf 'betaVolumes=%s\\n' \"$beta_volumes\"\nprintf 'betaManifest=%s\\n' \"$beta_manifest\"\nbash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/scripts/worktree/cleanup.sh\nprintf 'betaContainersRemaining=%s\\n' \"$(docker ps --all --no-trunc --quiet --filter label=devcontainer.local_folder=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta | wc -l | tr -d ' ')\"\nremaining=0\nfor volume in $beta_volumes; do\n\tif docker volume inspect \"$volume\" >/dev/null 2>&1; then remaining=$((remaining + 1)); fi\ndone\nprintf 'betaVolumesRemaining=%s\\n' \"$remaining\"\nprintf 'betaManifestRemaining=%s\\n' \"$([ -e \"$beta_manifest\" ] && printf present || printf absent)\"\nprintf 'betaStateRemaining=%s\\n' \"$([ -e /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/beta/.dev/state ] && printf present || printf absent)\"\nprintf 'betaRegistryRemaining=%s\\n' \"$(python3 -c 'import json,sys; print(\"present\" if sys.argv[2] in json.load(open(sys.argv[1]))[\"entries\"] else \"absent\")' \"$registry\" \"$beta_workspace\")\"\nprintf 'survivorContainerId=%s\\n' \"$(bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha/scripts/worktree/ensure.sh --check-ready)\"\nprintf 'survivorManifestRemaining=%s\\n' \"$([ -e \"$alpha_manifest\" ] && printf present || printf absent)\"\nprintf 'survivorRegistryRemaining=%s\\n' \"$(python3 -c 'import json,sys; print(\"present\" if sys.argv[2] in json.load(open(sys.argv[1]))[\"entries\"] else \"absent\")' \"$registry\" \"$alpha_workspace\")\"\nprintf 'survivorBody=%s\\n' \"$(curl --silent --fail --max-time 5 \"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_env_file_value \"$REPO_ROOT/$(wt_contract_value generated_environment)\" \"$2\"' bash /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5a-stage5a-20260806t060225z-21af7c9a/alpha DEVENV_DIRECT_URL)/\" || true)\""
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:05:20.258Z",
+			"completedAt": "2026-08-06T06:05:22.905Z",
+			"durationMs": 2647,
+			"stdoutPath": "evidence/stage-5-worktree-run/cleanup-isolation.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/cleanup-isolation.stderr",
+			"stdoutSha256": "08289361a9ed3a2fd720a0018c9e910a608e17189abe04fc251ad329c81d2e9f",
+			"stderrSha256": "3bc639a3385c067a40bc3011ccf9ec5191880cf7f923655c8426aa5c63e576e3",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rollback-proof",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-five-evidence.ts",
+				"probe-rollback",
+				"--base",
+				"fe667186bc9939c582c35b67f0dac2d0d5d73220",
+				"--implementation",
+				"21af7c9ac74f90debb4df8e4231ede9628485cd7",
+				"--workspace",
+				"/tmp/devenv-stage2-stage5a-20260806t060225z-21af7c9a-rollback"
+			],
+			"runId": "stage5a-20260806t060225z-21af7c9a",
+			"startedAt": "2026-08-06T06:05:22.905Z",
+			"completedAt": "2026-08-06T06:05:23.470Z",
+			"durationMs": 565,
+			"stdoutPath": "evidence/stage-5-worktree-run/rollback-proof.stdout",
+			"stderrPath": "evidence/stage-5-worktree-run/rollback-proof.stderr",
+			"stdoutSha256": "00c44b41376d6c44e6cf225570128cc40d3494a46e509824c4be43d416f24fd6",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		}
+	],
+	"ensure": {
+		"coldCommandId": "worktree-a-ensure-cold",
+		"warmCommandId": "worktree-a-ensure-warm",
+		"recreateCommandId": "recreate-fast-path",
+		"coldDurationMs": 23948,
+		"warmDurationMs": 1315,
+		"recreateReason": "definition fingerprint changed",
+		"upInvocations": 1
+	},
+	"routing": {
+		"commandId": "route-probe",
+		"hostCaddyAvailable": true,
+		"friendlyRouteVerified": true,
+		"directRouteVerified": true,
+		"manifestPath": "/Users/mrcr/.config/devcontainer/worktrees/devenv-devenv-stage5a-stage5a-20260806t060225z-21af7c9a-alpha.json"
+	},
+	"boundary": {
+		"ownershipRefusalCommandId": "ownership-attack-refusal",
+		"ownershipRefusalExitCode": 1,
+		"commandExecuted": false
+	},
+	"cleanup": {
+		"commandId": "cleanup-isolation",
+		"removed": [
+			"container 8f09fa4c15076b2c06401490524fdc4a3cc20b91de8141095a844edf27a186e1",
+			"volume gemini-home-1bg6dndoohn3mhupj0f4gi1fd6lu7k1v0k90pe8ro0rt9ika0qk9",
+			"volume config-home-1bg6dndoohn3mhupj0f4gi1fd6lu7k1v0k90pe8ro0rt9ika0qk9",
+			"volume claude-code-config-1bg6dndoohn3mhupj0f4gi1fd6lu7k1v0k90pe8ro0rt9ika0qk9",
+			"volume codex-home-1bg6dndoohn3mhupj0f4gi1fd6lu7k1v0k90pe8ro0rt9ika0qk9",
+			"volume claude-code-shellhistory-1bg6dndoohn3mhupj0f4gi1fd6lu7k1v0k90pe8ro0rt9ika0qk9",
+			"manifest /Users/mrcr/.config/devcontainer/worktrees/devenv-devenv-stage5a-stage5a-20260806t060225z-21af7c9a-beta.json",
+			"registry entry devenv-devenv-stage5a-stage5a-20260806t060225z-21af7c9a-beta"
+		],
+		"remaining": [],
+		"survivorIntact": true
+	},
+	"knownBadFixtures": {
+		"contract": "contract-known-bad-fixtures",
+		"template": "template-known-bad-fixtures",
+		"contractTestsPassed": 43,
+		"templateTestsPassed": 4
+	},
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-5a-pr-merge-commit>"],
+		"runtimeCleanup": ["bash", "scripts/worktree/cleanup.sh"],
+		"scope": "Revert the worktree contract, the eleven runtime scripts, the guard, the parameter surface, the two devcontainer.json entries, the sync and ownership entries, the CI wiring, the documentation, and the evidence as one Stage 5A bundle. Run cleanup.sh in every live worktree BEFORE reverting, then remove the host registry, manifest, and route directories, then rebuild once because the container definition changed again.",
+		"proof": {
+			"commandId": "rollback-proof",
+			"predecessorSha": "fe667186bc9939c582c35b67f0dac2d0d5d73220",
+			"implementationSha": "21af7c9ac74f90debb4df8e4231ede9628485cd7",
+			"syntheticMergeSha": "11a506e1c9ae1deb90f527e743b43b4b6f309892",
+			"syntheticMergeTree": "1b79b3ad84c93cb459afc987ca37d2c423e506f8",
+			"syntheticMergeParents": [
+				"fe667186bc9939c582c35b67f0dac2d0d5d73220",
+				"21af7c9ac74f90debb4df8e4231ede9628485cd7"
+			],
+			"predecessorTree": "e77723d87038c41543c1442b78c390e0da597658",
+			"revertedTree": "e77723d87038c41543c1442b78c390e0da597658",
+			"treeMatchesPredecessor": true,
+			"operations": [
+				["git", "rev-parse", "fe667186bc9939c582c35b67f0dac2d0d5d73220^{tree}"],
+				["git", "rev-parse", "21af7c9ac74f90debb4df8e4231ede9628485cd7^{tree}"],
+				[
+					"git",
+					"worktree",
+					"add",
+					"--detach",
+					"/tmp/devenv-stage2-stage5a-20260806t060225z-21af7c9a-rollback",
+					"fe667186bc9939c582c35b67f0dac2d0d5d73220"
+				],
+				[
+					"git",
+					"commit-tree",
+					"1b79b3ad84c93cb459afc987ca37d2c423e506f8",
+					"-p",
+					"fe667186bc9939c582c35b67f0dac2d0d5d73220",
+					"-p",
+					"21af7c9ac74f90debb4df8e4231ede9628485cd7",
+					"-m",
+					"Stage 2 synthetic merge"
+				],
+				["git", "rev-parse", "11a506e1c9ae1deb90f527e743b43b4b6f309892^{tree}"],
+				[
+					"git",
+					"show",
+					"-s",
+					"--format=%P",
+					"11a506e1c9ae1deb90f527e743b43b4b6f309892"
+				],
+				[
+					"git",
+					"checkout",
+					"--detach",
+					"11a506e1c9ae1deb90f527e743b43b4b6f309892"
+				],
+				[
+					"git",
+					"revert",
+					"--no-edit",
+					"-m",
+					"1",
+					"11a506e1c9ae1deb90f527e743b43b4b6f309892"
+				],
+				["git", "rev-parse", "HEAD^{tree}"]
+			]
+		}
+	}
+}

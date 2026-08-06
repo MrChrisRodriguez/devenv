@@ -1,0 +1,4 @@
+credentialReadByBeta=stage5a-20260806t060225z-21af7c9a
+sessionStateIsolated=true
+alphaCredentialSource=/Users/mrcr/.config/devcontainer/codex-auth/devenv
+betaCredentialSource=/Users/mrcr/.config/devcontainer/codex-auth/devenv
