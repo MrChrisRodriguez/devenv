@@ -105,6 +105,18 @@ scripts/   # one-off tooling scripts
 - Run `bun run cloud:check` and `bash .codex/cloud/selftest.sh` after changing any cloud contract value, cloud script, Proto pin, checksum, or browser payload authority.
 
 <!-- capability:end codex_cloud -->
+## Worktree Runtime Ownership
+
+- Every checkout — the main clone and each linked worktree — owns exactly one development container. `scripts/worktree/contract.toml` is the generated authority for its identity, ports, paths, and commands; regenerate it from `template-parameters.toml` and never hand-edit it.
+- Run project commands through `bash scripts/worktree/exec.sh <command> [args...]`. Inside the container it sources `.devcontainer/environment.sh`, activates Proto, and executes in place; from the host it lazily reconciles this checkout's container and re-invokes itself inside it. The same command works from either side.
+- Keep host-only orchestration on the host: `docker`, the `devcontainer` CLI, Git worktree management, remote pushes, and every `scripts/worktree/*.sh` lifecycle script. Direct file inspection and editing stay on the host because the checkout is bind mounted.
+- `scripts/worktree/env.sh` owns the generated environment and the host port registry. Allocation is host-only and is refused inside a container: a container's `~/.config` is an isolated writable volume, so a registry write there would succeed and be wrong.
+- A worktree's offset disambiguates HOST ports only. Container-internal ports are never offset, because each container owns its own network namespace.
+- Container ownership is exact: a container belongs to a checkout only when both `devcontainer.local_folder` and `devcontainer.config_file` labels name it, it is running, and the shared Git common directory is mounted at its host path. Never reuse another checkout's container.
+- `.dockerignore`, `.prototools`, and every `.devcontainer` file are definition-fingerprint inputs. Changing one makes `scripts/worktree/ensure.sh` recreate the container with `--remove-existing-container` on the next run.
+- Host prerequisites are the container engine, the `devcontainer` CLI (`@devcontainers/cli`), and `python3` for atomic registry and manifest writes. Bun is not a host prerequisite.
+- Never hardcode a port, a volume prefix, a persistence path, or a project identity in a runtime script. Read it from the contract or from the generated environment.
+
 ## Commit Policy
 
 ALWAYS commit and push after completing each significant change. Do NOT wait for the user to ask. Before committing, update `/workspace/CHANGES.md` with a dated entry (Goal + How to implement).

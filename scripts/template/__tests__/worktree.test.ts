@@ -10,6 +10,7 @@ const RUNTIME_FILES = [
 	"lock.sh",
 	"env.sh",
 	"ensure.sh",
+	"exec.sh",
 ] as const;
 
 interface Harness {
@@ -193,6 +194,10 @@ case "\${1:-}" in
 		[ -f "$state/owned" ] || exit 1
 		[ "\${!#}" = "$(cat "$state/container.id")" ] || exit 1
 		cat "$state/inspect"
+		exit 0
+		;;
+	exec)
+		printf '%s\\n' "$*" >>"$state/exec.log"
 		exit 0
 		;;
 esac
@@ -1067,6 +1072,301 @@ describe("worktree container ensure", () => {
 			expect(refused.stderr).toContain(
 				"Usage: bash scripts/worktree/ensure.sh",
 			);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 60_000);
+});
+
+// A stand-in for the canonical container environment. The bridge must source
+// this file and let it own PATH and Proto activation instead of reassembling
+// either itself.
+const ENVIRONMENT_STUB = `#!/usr/bin/env bash
+printf 'sourced\\n' >>"$BRIDGE_LOG"
+export PATH="$WORKSPACE_BIN:$PATH"
+devcontainer_environment_activate_proto() {
+	printf 'activated\\n' >>"$BRIDGE_LOG"
+}
+`;
+
+const CLOUD_LIBRARY_STUB = `#!/usr/bin/env bash
+cloud_source_persisted_environment() {
+	printf 'persisted\\n' >>"$BRIDGE_LOG"
+	return 0
+}
+`;
+
+const CLOUD_DOCTOR_STUB = `#!/usr/bin/env bash
+printf 'doctor %s\\n' "$*" >>"$BRIDGE_LOG"
+if [ -f "$CLOUD_UNHEALTHY" ]; then
+	echo "stub cloud doctor: unhealthy" >&2
+	exit 1
+fi
+exit 0
+`;
+
+async function writeExecutable(path: string, source: string): Promise<void> {
+	await mkdir(resolve(path, ".."), { recursive: true });
+	await Bun.write(path, source);
+	await chmod(path, 0o755);
+}
+
+async function bridgeLog(path: string): Promise<string[]> {
+	if (!(await Bun.file(path).exists())) return [];
+	return (await Bun.file(path).text()).trim().split("\n").filter(Boolean);
+}
+
+describe("worktree command bridge", () => {
+	test("executes directly inside the devcontainer through the canonical environment", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const log = resolve(fixture.root, "bridge.log");
+			const workspaceBin = resolve(alpha, "node_modules/.bin");
+			const environment = resolve(fixture.root, "environment.sh");
+			await writeExecutable(environment, ENVIRONMENT_STUB);
+			await mkdir(workspaceBin, { recursive: true });
+
+			const executed = run(alpha, fixture.home, "exec.sh", ["printf", "ran"], {
+				DEVCONTAINER: "true",
+				DEVCONTAINER_ENVIRONMENT_FILE: environment,
+				BRIDGE_LOG: log,
+				WORKSPACE_BIN: workspaceBin,
+			});
+			expect(executed.exitCode).toBe(0);
+			expect(executed.stdout).toBe("ran");
+			// Sourced first, activated second, command last: any other order runs
+			// project code outside the environment that owns it.
+			expect(await bridgeLog(log)).toEqual(["sourced", "activated"]);
+
+			// A missing canonical environment is fatal, not a silent fallback.
+			const missing = run(alpha, fixture.home, "exec.sh", ["printf", "ran"], {
+				DEVCONTAINER: "true",
+				DEVCONTAINER_ENVIRONMENT_FILE: resolve(fixture.root, "absent.sh"),
+				BRIDGE_LOG: log,
+				WORKSPACE_BIN: workspaceBin,
+			});
+			expect(missing.exitCode).not.toBe(0);
+			expect(missing.stderr).toContain("canonical container environment");
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("runs the cloud doctor before executing in a verified cloud", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const log = resolve(fixture.root, "bridge.log");
+			const unhealthy = resolve(fixture.root, "unhealthy");
+			const sentinel = resolve(fixture.root, "cloud-command-ran");
+			await writeExecutable(
+				resolve(alpha, ".codex/cloud/lib.sh"),
+				CLOUD_LIBRARY_STUB,
+			);
+			await writeExecutable(
+				resolve(alpha, ".codex/cloud/doctor.sh"),
+				CLOUD_DOCTOR_STUB,
+			);
+
+			const healthy = run(alpha, fixture.home, "exec.sh", ["touch", sentinel], {
+				CODEX_CLOUD: "true",
+				BRIDGE_LOG: log,
+				CLOUD_UNHEALTHY: unhealthy,
+			});
+			expect(healthy.exitCode).toBe(0);
+			expect(await bridgeLog(log)).toEqual(["persisted", "doctor --quiet"]);
+			expect(await Bun.file(sentinel).exists()).toBe(true);
+
+			// An unhealthy cloud must abort before the command, not after it.
+			await rm(sentinel);
+			await Bun.write(unhealthy, "");
+			await rm(log);
+			const refused = run(alpha, fixture.home, "exec.sh", ["touch", sentinel], {
+				CODEX_CLOUD: "true",
+				BRIDGE_LOG: log,
+				CLOUD_UNHEALTHY: unhealthy,
+			});
+			expect(refused.exitCode).not.toBe(0);
+			expect(refused.stderr).toContain("unhealthy");
+			expect(await Bun.file(sentinel).exists()).toBe(false);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("preserves exact arguments, the child exit status, and workspace binaries", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const log = resolve(fixture.root, "bridge.log");
+			const workspaceBin = resolve(alpha, "node_modules/.bin");
+			const systemBin = resolve(fixture.root, "system-bin");
+			const environment = resolve(fixture.root, "environment.sh");
+			await writeExecutable(environment, ENVIRONMENT_STUB);
+			await writeExecutable(
+				resolve(workspaceBin, "probe"),
+				"#!/usr/bin/env bash\nprintf 'workspace'\n",
+			);
+			await writeExecutable(
+				resolve(systemBin, "probe"),
+				"#!/usr/bin/env bash\nprintf 'system'\n",
+			);
+			const inside = {
+				DEVCONTAINER: "true",
+				DEVCONTAINER_ENVIRONMENT_FILE: environment,
+				BRIDGE_LOG: log,
+				WORKSPACE_BIN: workspaceBin,
+			};
+
+			const preserved = run(
+				alpha,
+				fixture.home,
+				"exec.sh",
+				[
+					"bash",
+					"-c",
+					'printf "%s|" "$@"; exit 42',
+					"bash",
+					"a b",
+					"c'd",
+					"$X",
+				],
+				inside,
+			);
+			expect(preserved.exitCode).toBe(42);
+			expect(preserved.stdout).toBe("a b|c'd|$X|");
+
+			// The environment the bridge sourced decides which binary wins.
+			const resolved = run(alpha, fixture.home, "exec.sh", ["probe"], {
+				...inside,
+				PATH: `${systemBin}:${process.env["PATH"] ?? ""}`,
+			});
+			expect(resolved.exitCode).toBe(0);
+			expect(resolved.stdout).toBe("workspace");
+
+			// No command at all means a login shell, not an error.
+			const shell = resolve(fixture.root, "login-shell");
+			await writeExecutable(
+				shell,
+				"#!/usr/bin/env bash\nprintf 'login-shell %s' \"$*\"\n",
+			);
+			const opened = run(alpha, fixture.home, "exec.sh", [], {
+				...inside,
+				SHELL: shell,
+			});
+			expect(opened.exitCode).toBe(0);
+			expect(opened.stdout).toBe("login-shell -l");
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("maps a nested host directory and passes only allow-listed environment", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			await markReady(fixture, alpha, tooling);
+			const nested = resolve(alpha, "apps/example");
+			await mkdir(nested, { recursive: true });
+
+			const bridged = Bun.spawnSync(
+				[
+					"bash",
+					resolve(alpha, "scripts/worktree/exec.sh"),
+					"bun",
+					"run",
+					"build",
+				],
+				{
+					cwd: nested,
+					env: {
+						...runtimeEnvironment(fixture.home),
+						...toolingEnvironment(fixture, tooling),
+						LEAKED_HOST_SECRET: "must-not-cross",
+					},
+					stdout: "pipe",
+					stderr: "pipe",
+				},
+			);
+			expect(bridged.stderr.toString()).toBe("");
+			expect(bridged.exitCode).toBe(0);
+
+			const invocation = (
+				await Bun.file(resolve(tooling.state, "exec.log")).text()
+			).trim();
+			expect(invocation).toContain("--workdir /workspace/apps/example");
+			expect(invocation).toContain("--user vscode");
+			expect(invocation).toContain(
+				`${CONTAINER_ID} /usr/bin/bash /workspace/scripts/worktree/exec.sh -- bun run build`,
+			);
+			expect(invocation).not.toContain("must-not-cross");
+			expect(invocation).not.toContain("LEAKED_HOST_SECRET");
+
+			const bridgedNames = [...invocation.matchAll(/--env ([A-Z_]+)=/g)].map(
+				(match) => match[1],
+			);
+			expect(bridgedNames.sort()).toEqual([
+				"DEVCONTAINER_WORKTREE_ENV_FILE",
+				"DEVENV_DIRECT_URL",
+				"DEVENV_HOST_WORKTREE_ROOT",
+				"DEVENV_PUBLIC_ORIGIN",
+				"DEVENV_WORKSPACE_ID",
+				"HOME",
+			]);
+			expect(invocation).toContain(
+				"--env DEVCONTAINER_WORKTREE_ENV_FILE=/workspace/.dev/state/worktree.container.env",
+			);
+
+			// A directory outside the checkout has no container-relative answer, so
+			// it lands at the workspace root rather than being guessed at.
+			await rm(resolve(tooling.state, "exec.log"));
+			const outside = Bun.spawnSync(
+				["bash", resolve(alpha, "scripts/worktree/exec.sh"), "true"],
+				{
+					cwd: fixture.root,
+					env: {
+						...runtimeEnvironment(fixture.home),
+						...toolingEnvironment(fixture, tooling),
+					},
+					stdout: "pipe",
+					stderr: "pipe",
+				},
+			);
+			expect(outside.exitCode).toBe(0);
+			expect(
+				(await Bun.file(resolve(tooling.state, "exec.log")).text()).trim(),
+			).toContain("--workdir /workspace ");
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("rejects unsupported bridge arguments", async () => {
+		const fixture = await harness();
+		try {
+			const refused = run(fixture.main, fixture.home, "exec.sh", [
+				"--known-bad",
+			]);
+			expect(refused.exitCode).toBe(2);
+			expect(refused.stderr).toContain("Usage: bash scripts/worktree/exec.sh");
 		} finally {
 			await rm(fixture.root, { recursive: true, force: true });
 		}
