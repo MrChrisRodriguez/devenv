@@ -59,6 +59,20 @@ describe("Stage 5A isolated worktree runtime evidence", () => {
 			}),
 		).toContain("semantic: container ownership boundary evidence drifted");
 
+		// A linked worktree's Git metadata lives OUTSIDE the checkout, which is the
+		// whole reason the runtime bind mounts it. Claiming a common directory
+		// inside the captured worktree root describes a plain clone, not a linked
+		// worktree, and must be rejected — without the validator ever consulting
+		// the absolute location of the tree it happens to be running in.
+		expect(
+			await validateMutation((value) => {
+				const run = value["run"] as Record<string, unknown>;
+				run["temporaryRoot"] = "/Users/mrcr/Code/templates";
+			}),
+		).toContain(
+			"repository: linked-worktree Git evidence differs from its log",
+		);
+
 		expect(
 			await validateMutation((value) => {
 				const cleanup = value["cleanup"] as Record<string, unknown>;

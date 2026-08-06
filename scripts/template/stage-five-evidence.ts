@@ -712,10 +712,21 @@ export async function validateStageFiveEvidenceValue(
 	)
 		errors.push("repository: recreate evidence differs from its bound log");
 
+	// The recorded common directory is an absolute path on the capture host, and
+	// a reviewer's checkout lives somewhere else entirely, so it is checked for
+	// the property that made the capture meaningful rather than re-resolved
+	// against whatever tree is validating: a LINKED worktree's Git metadata sits
+	// outside the checkout, which is precisely why ensure.sh has to bind mount it
+	// at its host path. That the mount is the real shared object store is proven
+	// by the tag round trip, which was created inside the container and observed,
+	// then deleted, from the host.
 	const gitOperations = values("git-operations");
+	const commonDirectory = String(gitOperations["commonDir"] ?? "");
 	if (
 		gitOperations["headSha"] !== source["implementationSha"] ||
-		gitOperations["commonDir"] !== `${resolve(root)}/.git` ||
+		!commonDirectory.startsWith("/") ||
+		!commonDirectory.endsWith("/.git") ||
+		commonDirectory.startsWith(`${temporaryRoot}/`) ||
 		gitOperations["statusLines"] !== "0" ||
 		gitOperations["tagVisibleOnHost"] !== "1" ||
 		gitOperations["tagRemoved"] !== "0"
