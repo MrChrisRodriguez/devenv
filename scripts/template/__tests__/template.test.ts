@@ -16,9 +16,11 @@ import {
 	validateTemplateParameters,
 } from "../parameters";
 import {
+	filterCapabilityBlocks,
 	loadTemplateOwnership,
 	renderFixture,
 	scanDisabledResidue,
+	stripTemplateOnlyBlocks,
 } from "../render-fixture";
 import { validateAll } from "../validate";
 
@@ -541,6 +543,40 @@ describe("deterministic fixture renderer", () => {
 			await rm(temporary, { recursive: true, force: true });
 		}
 	});
+
+	test("rendered readme honors capability and template-only fences", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const template = await Bun.file(
+				resolve(ROOT, "README.template.md"),
+			).text();
+			const parameters = await loadTemplateParameters(ROOT);
+			for (const fixtureName of ["minimal", "full"]) {
+				const output = resolve(temporary, fixtureName);
+				await renderFixture({ root: ROOT, fixtureName, output });
+				const fixture = await loadFixtureDefinition(
+					ROOT,
+					fixtureName,
+					parameters,
+				);
+				const resolved = resolveFixtureParameters(parameters, fixture);
+				const rendered = await Bun.file(resolve(output, "README.md")).text();
+				expect(rendered).toBe(
+					filterCapabilityBlocks(
+						stripTemplateOnlyBlocks(template),
+						resolved.capabilities.defaults,
+					).replaceAll("{{PROJECT_NAME}}", resolved.project.display_name),
+				);
+				expect(rendered).not.toContain("capability:start");
+				expect(rendered).not.toContain("capability:end");
+				expect(rendered).not.toContain("template-only:start");
+				expect(rendered).not.toContain("{{PROJECT_NAME}}");
+				expect(rendered).toContain(resolved.project.display_name);
+			}
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 120_000);
 
 	test("known-bad capability residue is detected and named", async () => {
 		const temporary = await temporaryDirectory();
