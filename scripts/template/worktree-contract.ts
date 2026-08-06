@@ -70,12 +70,14 @@ const BASE_KEYS = [
 	"generated_container_environment",
 	"run_directory",
 	"devcontainer_config",
+	"toolchain_manifest",
 	"published_container_port",
 	"published_host_port_variable",
 	"preferred_offset_modulus",
 	"collision_scan_limit",
 	"manifest_schema_version",
 	"registry_schema_version",
+	"doctor_schema_version",
 	"default_probe_timeout_seconds",
 	"startup_timeout_seconds",
 	"diagnostic_staggered_mode",
@@ -91,6 +93,7 @@ const BASE_KEYS = [
 	"runtime_scripts",
 	"bridge_command",
 	"ensure_command",
+	"doctor_command",
 	"services",
 ] as const;
 
@@ -116,6 +119,7 @@ const POSITIVE_INTEGER_KEYS = [
 	"collision_scan_limit",
 	"manifest_schema_version",
 	"registry_schema_version",
+	"doctor_schema_version",
 	"default_probe_timeout_seconds",
 	"startup_timeout_seconds",
 ] as const;

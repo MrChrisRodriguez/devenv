@@ -1,6 +1,14 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: Mutations quote the literal ${localEnv:} and shell substitutions the runtime carries.
 import { describe, expect, test } from "bun:test";
-import { chmod, copyFile, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+import {
+	chmod,
+	copyFile,
+	mkdir,
+	mkdtemp,
+	readdir,
+	rm,
+	symlink,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { validateWorktreeContract } from "../worktree-contract";
@@ -19,6 +27,7 @@ const RUNTIME_FILES = [
 	"down.sh",
 	"cleanup.sh",
 	"selftest.sh",
+	"doctor.sh",
 ] as const;
 
 interface Harness {
@@ -2990,6 +2999,258 @@ describe("worktree service lifecycle", () => {
 	});
 });
 
+// The doctor's published inventory, in emission order. The doctor prints this
+// same list from --list-checks, so a check that is added, removed, or reordered
+// has to be reflected here on purpose rather than by accident.
+const DOCTOR_CHECK_INVENTORY = [
+	"host.context",
+	"host.command.git",
+	"host.command.engine",
+	"host.command.cli",
+	"host.command.python3",
+	"host.command.curl",
+	"host.engine-daemon",
+] as const;
+
+interface DoctorCheck {
+	id: string;
+	status: string;
+	summary: string;
+	detail: string;
+	remediation: string;
+}
+
+interface DoctorReport {
+	schemaVersion: number;
+	workspace: {
+		id: string;
+		family: string;
+		offset: string;
+		repoRoot: string;
+	};
+	checks: DoctorCheck[];
+	summary: { pass: number; warn: number; fail: number; skip: number };
+	exitCode: number;
+}
+
+function doctorReport(result: RunResult): DoctorReport {
+	return JSON.parse(result.stdout) as DoctorReport;
+}
+
+function doctorCheck(report: DoctorReport, id: string): DoctorCheck {
+	const found = report.checks.find((check) => check.id === id);
+	if (!found) throw new Error(`The doctor emitted no ${id} check`);
+	return found;
+}
+
+// A PATH holding nothing but the named utilities. Removing a host tool is the
+// only honest way to exercise the doctor's degradation paths, and stubbing the
+// tools it does find keeps the result the same on a laptop with Docker and in
+// CI without it.
+const TOOL_STUB = `#!/usr/bin/env bash
+exit 0
+`;
+
+const NARROW_UTILITIES = [
+	"bash",
+	"cat",
+	"dirname",
+	"grep",
+	"head",
+	"sed",
+	"tr",
+	"env",
+	"uname",
+] as const;
+
+async function narrowTooling(
+	fixture: Harness,
+	name: string,
+	stubbed: string[],
+): Promise<string> {
+	const bin = resolve(fixture.root, `narrow-${name}`);
+	await mkdir(bin, { recursive: true });
+	for (const utility of NARROW_UTILITIES) {
+		const source = Bun.which(utility);
+		if (!source) continue;
+		await symlink(source, resolve(bin, utility));
+	}
+	for (const tool of stubbed) {
+		const path = resolve(bin, tool);
+		await Bun.write(path, TOOL_STUB);
+		await chmod(path, 0o755);
+	}
+	return bin;
+}
+
+async function treeListing(root: string): Promise<string[]> {
+	return (await readdir(root, { recursive: true })).sort();
+}
+
+describe("worktree doctor", () => {
+	test("rejects invalid arguments before running a single check", async () => {
+		const fixture = await harness();
+		try {
+			for (const args of [
+				["--timeout", "0"],
+				["--timeout"],
+				["--timeout=31"],
+				["--timeout", "abc"],
+				["--bogus"],
+			]) {
+				const refused = run(fixture.main, fixture.home, "doctor.sh", args);
+				expect(`${args.join(" ")}:${refused.exitCode}`).toBe(
+					`${args.join(" ")}:2`,
+				);
+				expect(refused.stdout).toBe("");
+			}
+			const bounded = run(fixture.main, fixture.home, "doctor.sh", [
+				"--timeout",
+				"0",
+			]);
+			expect(bounded.stderr).toContain("timeout must be between 1 and 30");
+			const unknown = run(fixture.main, fixture.home, "doctor.sh", ["--bogus"]);
+			expect(unknown.stderr).toContain(
+				"Usage: bash scripts/worktree/doctor.sh",
+			);
+			const help = run(fixture.main, fixture.home, "doctor.sh", ["--help"]);
+			expect(help.exitCode).toBe(0);
+			expect(help.stderr).toContain("host-only and read-only");
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("lists its check inventory without probing or writing", async () => {
+		const fixture = await harness();
+		try {
+			const before = await treeListing(fixture.main);
+			const listed = run(fixture.main, fixture.home, "doctor.sh", [
+				"--list-checks",
+			]);
+			expect(listed.exitCode).toBe(0);
+			expect(listed.stderr).toBe("");
+			expect(listed.stdout.trim().split("\n")).toEqual([
+				...DOCTOR_CHECK_INVENTORY,
+			]);
+			expect(await treeListing(fixture.main)).toEqual(before);
+			// Listing is not diagnosing: no probe ran, so no state was consulted and
+			// the generated environment was never created.
+			expect(
+				await Bun.file(
+					resolve(fixture.main, ".dev/state/worktree.env"),
+				).exists(),
+			).toBe(false);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("emits one stable JSON document whose checks follow the inventory", async () => {
+		const fixture = await harness();
+		try {
+			const bin = await narrowTooling(fixture, "healthy", [
+				"git",
+				"docker",
+				"devcontainer",
+				"python3",
+				"curl",
+			]);
+			const result = run(fixture.main, fixture.home, "doctor.sh", ["--json"], {
+				PATH: bin,
+			});
+			const report = doctorReport(result);
+			const contract = Bun.TOML.parse(
+				await Bun.file(resolve(ROOT, "scripts/worktree/contract.toml")).text(),
+			) as Record<string, unknown>;
+
+			expect(report.schemaVersion).toBe(
+				Number(contract["doctor_schema_version"]),
+			);
+			expect(report.checks.map((check) => check.id)).toEqual([
+				...DOCTOR_CHECK_INVENTORY,
+			]);
+			for (const check of report.checks) {
+				expect(Object.keys(check).sort()).toEqual([
+					"detail",
+					"id",
+					"remediation",
+					"status",
+					"summary",
+				]);
+				expect(["PASS", "WARN", "FAIL", "SKIP"]).toContain(check.status);
+			}
+			expect(report.summary.pass).toBe(DOCTOR_CHECK_INVENTORY.length);
+			expect(report.exitCode).toBe(result.exitCode);
+			expect(result.exitCode).toBe(0);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("refuses to diagnose a host from inside the container", async () => {
+		const fixture = await harness();
+		try {
+			const json = run(fixture.main, fixture.home, "doctor.sh", ["--json"], {
+				DEVCONTAINER: "true",
+			});
+			const report = doctorReport(json);
+			expect(json.exitCode).toBe(1);
+			expect(
+				report.checks.map((check) => ({ id: check.id, status: check.status })),
+			).toEqual([{ id: "host.context", status: "FAIL" }]);
+			expect(report.exitCode).toBe(1);
+
+			const human = run(fixture.main, fixture.home, "doctor.sh", [], {
+				DEVCONTAINER: "true",
+			});
+			expect(human.exitCode).toBe(1);
+			expect(human.stdout).toContain("[FAIL] host.context");
+			expect(human.stdout).toContain("Summary: 0 pass, 0 warn, 1 fail, 0 skip");
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("strict mode changes the exit code and nothing else", async () => {
+		const fixture = await harness();
+		try {
+			// curl bounds the optional route probes only, so its absence is a warning
+			// rather than a failure — the exact shape --strict exists to promote.
+			const bin = await narrowTooling(fixture, "nocurl", [
+				"git",
+				"docker",
+				"devcontainer",
+				"python3",
+			]);
+			const normal = run(fixture.main, fixture.home, "doctor.sh", ["--json"], {
+				PATH: bin,
+			});
+			const strict = run(
+				fixture.main,
+				fixture.home,
+				"doctor.sh",
+				["--json", "--strict"],
+				{ PATH: bin },
+			);
+			const normalReport = doctorReport(normal);
+			const strictReport = doctorReport(strict);
+
+			expect(doctorCheck(normalReport, "host.command.curl").status).toBe(
+				"WARN",
+			);
+			expect(normal.exitCode).toBe(0);
+			expect(strict.exitCode).toBe(1);
+			expect(strictReport.checks).toEqual(normalReport.checks);
+			expect(strictReport.summary).toEqual(normalReport.summary);
+			expect(normalReport.exitCode).toBe(0);
+			expect(strictReport.exitCode).toBe(1);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 60_000);
+});
+
 describe("worktree runtime selftest", () => {
 	test("runs the hermetic worktree selftest", () => {
 		const result = Bun.spawnSync(["bash", "scripts/worktree/selftest.sh"], {
@@ -3020,6 +3281,7 @@ describe("worktree runtime selftest", () => {
 				"down.sh",
 				"cleanup.sh",
 				"selftest.sh",
+				"doctor.sh",
 			]) {
 				const refused = run(fixture.main, fixture.home, script, [
 					"--known-bad",
@@ -3065,6 +3327,7 @@ const CONTRACT_FILES = [
 	"scripts/worktree/down.sh",
 	"scripts/worktree/cleanup.sh",
 	"scripts/worktree/selftest.sh",
+	"scripts/worktree/doctor.sh",
 	"docs/devcontainer-upgrade/stage-0/template-ownership.json",
 	".husky/commit-msg",
 	".husky/pre-commit",
