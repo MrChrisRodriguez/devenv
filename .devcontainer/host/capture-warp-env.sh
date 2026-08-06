@@ -1,16 +1,22 @@
 #!/usr/bin/env bash
 # Runs on the HOST (not in the container) via devcontainer.json "initializeCommand",
-# on every `devpod up` including rebuilds. Captures Warp's per-terminal signal vars
+# on every container start including rebuilds. Captures Warp's per-terminal signal vars
 # so Claude Code can detect Warp and use ACP structured output inside the container.
 #
 # Why this exists: Warp injects TERM_PROGRAM / WARP_* only into the terminal sessions
 # it spawns — they are NOT persistent global host vars. Forwarding them via remoteEnv
 # `${localEnv:...}` failed because that is re-resolved (and blanks out) on every rebuild,
-# and DevPod is often launched from a GUI that never had the vars. This script instead
+# and a GUI launcher never had the vars in the first place. This script instead
 # PERSISTS the values to ~/.config/devcontainer/warp-env, overwriting a key only when a
-# fresh non-empty value is available. So one `devpod up .` from a Warp terminal seeds the
-# file, later rebuilds refresh it when run from Warp, and GUI-launched rebuilds keep the
-# last good value instead of clobbering it. configs/.shell_common sources and exports
+# fresh non-empty value is available. So one `bash scripts/worktree/up.sh` from a Warp
+# terminal seeds the file, later rebuilds refresh it when run from Warp, and
+# GUI-launched rebuilds keep the last good value instead of clobbering it.
+#
+# This capture inherits the environment of whatever process starts the container, so
+# it only ever sees Warp's per-terminal vars when the container is started from a real
+# terminal. That is now the normal path: scripts/worktree/up.sh and every
+# scripts/worktree/exec.sh call run from the terminal the developer is already in.
+# configs/.shell_common sources and exports
 # the file (visible in-container at /run/devcontainer-config/warp-env) in every
 # interactive shell, so Claude Code inherits the signals.
 #

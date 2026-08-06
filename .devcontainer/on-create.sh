@@ -17,7 +17,7 @@ echo "🚀 Configuring ${DEVCONTAINER_PROJECT:-development} from image-owned pay
 # --env-file that host/prepare-container-env.sh wrote before create (PID 1 and
 # every child, including this script); sourcing environment.sh additionally
 # re-reads the mounted /run/devcontainer-config sources through the strict
-# KEY=value parser in lib/env-file.sh, so keys added after the last `devpod up`
+# KEY=value parser in lib/env-file.sh, so keys added after the last container start
 # still reach the tool installers below (they need API keys like GEMINI_API_KEY
 # present during setup). Nothing is written to /etc/environment and no value is
 # ever echoed. Proto activation then supplies every versioned companion tool.

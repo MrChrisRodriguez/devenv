@@ -103,7 +103,7 @@ edit (and anything launched from it) sees the new value with no rebuild. What
 does *not* refresh is the PID-1 snapshot every non-shell surface inherits:
 already-running processes, the editor extension host, MCP subprocesses, and
 long-running dev servers keep the environment Docker applied at creation. For
-those, rerun `initializeCommand` (any `devpod up` / rebuild) so the file is
+those, rerun `initializeCommand` (any container start or rebuild) so the file is
 regenerated, and **restart/recreate the container** so Docker re-applies it.
 
 **The parser never evaluates secret files as shell code.**
@@ -281,13 +281,14 @@ Some signals are injected by the host terminal **per session**, not stored
 anywhere persistent — Warp sets `TERM_PROGRAM=WarpTerminal`, `WARP_CLIENT_VERSION`,
 and `WARP_CLI_AGENT_PROTOCOL_VERSION` only inside the terminals it spawns. Claude
 Code reads them to switch to ACP structured output. Forwarding via `remoteEnv`
-`${localEnv:...}` does **not** work: DevPod re-resolves `localEnv` against its own
-(often GUI-launched) process env on every rebuild, finds the vars absent, and bakes
-in empty values — so detection silently reverts to plain ANSI.
+`${localEnv:...}` does **not** work: whatever launches the container re-resolves
+`localEnv` against its own (often GUI-launched) process env on every rebuild, finds
+the vars absent, and bakes in empty values — so detection silently reverts to plain
+ANSI.
 
 Instead, the `capture-warp-env` entry of `initializeCommand` runs
 [`host/capture-warp-env.sh`](./host/capture-warp-env.sh)
-**on the host** before each `devpod up`. It writes whatever Warp vars are present
+**on the host** before each container start. It writes whatever Warp vars are present
 to `~/.config/devcontainer/warp-env`, overwriting a key only when a fresh non-empty
 value exists (so a value seeded from one Warp-terminal launch survives later
 GUI-launched rebuilds). `configs/.shell_common` then sources that file (via the
@@ -296,8 +297,11 @@ interactive shell**, so the vars are exported and Claude Code — a child of tha
 — inherits them. This is scoped to interactive shells on purpose: it's the only place
 Warp detection matters, it needs no rebuild (a new shell picks up refreshed values
 immediately), and it never touches non-interactive contexts. **Seed it by running
-`devpod up .` from a Warp terminal at least once**; there's no way to obtain Warp's
-per-terminal vars without going through a Warp terminal once.
+`bash scripts/worktree/up.sh` from a Warp terminal at least once**; there's no way
+to obtain Warp's per-terminal vars without going through a Warp terminal once. That
+is now the normal path rather than a special instruction: `up.sh` and every
+`scripts/worktree/exec.sh` call run from a real terminal, so the capture sees the
+per-terminal environment it needs. A container started from a GUI launcher cannot.
 
 This script is deliberately Warp-only. `initializeCommand` is an **object of named
 entries**, so the host-side work that must happen regardless of capabilities —
