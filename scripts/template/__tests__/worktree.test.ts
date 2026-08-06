@@ -2041,7 +2041,12 @@ async function stubCaddy(fixture: Harness): Promise<Caddy> {
 	const binary = resolve(fixture.root, "caddy-bin/caddy");
 	const config = resolve(fixture.root, "Caddyfile");
 	await writeExecutable(binary, CADDY_STUB);
-	await Bun.write(config, "import caddy/*.caddy\n");
+	// The import line names the real snippet directory, which is what the host
+	// configuration a project is told to write looks like.
+	await Bun.write(
+		config,
+		`import ${resolve(fixture.home, ".config/devcontainer/caddy")}/*.caddy\n`,
+	);
 	return {
 		binary,
 		config,
@@ -3113,6 +3118,18 @@ const DOCTOR_CHECK_INVENTORY = [
 	"container.port",
 	"container.volumes",
 	"container.tools",
+	"caddy.binary",
+	"caddy.config",
+	"caddy.import",
+	"caddy.snippet",
+	"route.direct",
+	"route.friendly",
+	"registry.readable",
+	"registry.lock",
+	"registry.entry",
+	"registry.offset-match",
+	"registry.port-collision",
+	"manifests.port-collision",
 ] as const;
 
 interface DoctorCheck {
@@ -3737,6 +3754,302 @@ describe("worktree doctor", () => {
 			await rm(fixture.root, { recursive: true, force: true });
 		}
 	}, 120_000);
+
+	test("treats host routing as optional and promotable", async () => {
+		const subject = await doctorFixture();
+		try {
+			const absent = resolve(subject.fixture.root, "no-such-caddy");
+			const overrides = { DEVENV_HOST_CADDY_BIN: absent };
+			const normal = runDoctor(subject, ["--json"], overrides);
+			const report = doctorReport(normal);
+
+			expect(doctorCheck(report, "caddy.binary").status).toBe("WARN");
+			expect(doctorCheck(report, "caddy.config").status).toBe("SKIP");
+			expect(doctorCheck(report, "caddy.import").status).toBe("SKIP");
+			// The friendly route is a convenience; the direct URL is the contract.
+			expect(doctorCheck(report, "route.direct").status).toBe("PASS");
+			expect(normal.exitCode).toBe(0);
+
+			const strict = runDoctor(subject, ["--json", "--strict"], overrides);
+			expect(strict.exitCode).toBe(1);
+			expect(doctorReport(strict).checks).toEqual(report.checks);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("skips every routing check when the project declares no host proxy", async () => {
+		const subject = await doctorFixture();
+		try {
+			await rewriteContract(subject.worktree, (source) =>
+				source.replace(/^host_caddy = .*/m, 'host_caddy = "disabled"'),
+			);
+			const report = doctorReport(runDoctor(subject));
+			for (const id of [
+				"caddy.binary",
+				"caddy.config",
+				"caddy.import",
+				"caddy.snippet",
+				"route.friendly",
+			]) {
+				expect(`${id}:${doctorCheck(report, id).status}`).toBe(`${id}:SKIP`);
+			}
+			expect(doctorCheck(report, "route.direct").status).toBe("PASS");
+			// Nothing was asked of the friendly host that does not exist.
+			const asked = await Bun.file(subject.probe.log).text();
+			expect(asked).not.toContain(".localhost");
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("probes each route independently and bounds every request", async () => {
+		const subject = await doctorFixture();
+		try {
+			const report = doctorReport(
+				runDoctor(subject, ["--json", "--timeout", "5"], {
+					CURL_DIRECT_CODE: "200",
+					CURL_FRIENDLY_CODE: "000",
+				}),
+			);
+			expect(doctorCheck(report, "route.direct").status).toBe("PASS");
+			expect(doctorCheck(report, "route.friendly").status).toBe("FAIL");
+			// The remediation for the optional half names the half that always works.
+			expect(doctorCheck(report, "route.friendly").remediation).toContain(
+				`http://127.0.0.1:${subject.hostPort}`,
+			);
+
+			const asked = (await Bun.file(subject.probe.log).text())
+				.trim()
+				.split("\n")
+				.filter(Boolean);
+			expect(asked.length).toBe(2);
+			for (const invocation of asked) {
+				expect(invocation).toContain("--max-time 5");
+			}
+			expect(asked.join("\n")).toContain(
+				`http://127.0.0.1:${subject.hostPort}`,
+			);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("diagnoses the port registry without repairing it", async () => {
+		const subject = await doctorFixture();
+		const registry = registryPath(subject.fixture.home);
+		try {
+			const healthy = doctorReport(runDoctor(subject));
+			for (const id of [
+				"registry.readable",
+				"registry.entry",
+				"registry.offset-match",
+				"registry.port-collision",
+			]) {
+				expect(`${id}:${doctorCheck(healthy, id).status}`).toBe(`${id}:PASS`);
+			}
+
+			const original = await readRegistry(subject.fixture.home);
+			const own = original.entries[subject.workspaceId];
+			if (!own) throw new Error("The fixture worktree holds no registry entry");
+
+			// A registry that is not a JSON document is reported and left exactly as
+			// it was found: repairing it belongs to the allocator, not to a report.
+			await Bun.write(registry, "not json\n");
+			const unreadable = runDoctor(subject);
+			expect(
+				doctorCheck(doctorReport(unreadable), "registry.readable").status,
+			).toBe("FAIL");
+			expect(
+				doctorCheck(doctorReport(unreadable), "registry.entry").status,
+			).toBe("SKIP");
+			expect(unreadable.exitCode).toBe(1);
+			expect(await Bun.file(registry).text()).toBe("not json\n");
+
+			await rm(registry);
+			const missing = doctorReport(runDoctor(subject));
+			expect(doctorCheck(missing, "registry.readable").status).toBe("WARN");
+			expect(doctorCheck(missing, "registry.entry").status).toBe("SKIP");
+
+			const moved = {
+				...original,
+				entries: {
+					[subject.workspaceId]: {
+						...own,
+						path: resolve(subject.fixture.root, "moved-away"),
+					},
+				},
+			};
+			await Bun.write(registry, JSON.stringify(moved));
+			const relocated = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"registry.entry",
+			);
+			expect(relocated.status).toBe("WARN");
+			expect(relocated.detail).toContain("moved-away");
+
+			await Bun.write(
+				registry,
+				JSON.stringify({
+					...original,
+					entries: { [subject.workspaceId]: { ...own, offset: 9 } },
+				}),
+			);
+			const drifted = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"registry.offset-match",
+			);
+			expect(drifted.status).toBe("FAIL");
+			expect(drifted.detail).toBe(`registry=9 env=${own.offset}`);
+
+			await Bun.write(
+				registry,
+				JSON.stringify({
+					...original,
+					entries: {
+						...original.entries,
+						squatter: { ...own, path: "/squatter" },
+					},
+				}),
+			);
+			const overlapping = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"registry.port-collision",
+			);
+			expect(overlapping.status).toBe("FAIL");
+			expect(overlapping.detail).toContain(subject.workspaceId);
+			expect(overlapping.detail).toContain("squatter");
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("skips registry membership for the main checkout", async () => {
+		const fixture = await harness();
+		try {
+			const tooling = await stubTooling(fixture, fixture.main);
+			const caddy = await stubCaddy(fixture);
+			const probe = await stubProbeClient(fixture);
+			await markReady(fixture, fixture.main, tooling);
+			const subject: DoctorFixture = {
+				fixture,
+				worktree: fixture.main,
+				tooling,
+				caddy,
+				probe,
+				workspaceId: "",
+				hostPort: "",
+				manifest: "",
+			};
+			const report = doctorReport(runDoctor(subject));
+			expect(doctorCheck(report, "registry.entry").status).toBe("SKIP");
+			expect(doctorCheck(report, "registry.offset-match").status).toBe("SKIP");
+			expect(doctorCheck(report, "registry.entry").detail).toContain(
+				"offset 0",
+			);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("inspects the registry lock without ever taking or clearing it", async () => {
+		const subject = await doctorFixture();
+		const lockDirectory = resolve(
+			subject.fixture.home,
+			".config/devcontainer/ports-registry/ports.lock.d",
+		);
+		try {
+			expect(
+				doctorCheck(doctorReport(runDoctor(subject)), "registry.lock").status,
+			).toBe("PASS");
+
+			await mkdir(lockDirectory, { recursive: true });
+			await Bun.write(
+				resolve(lockDirectory, "owner"),
+				`${process.pid} ${Math.floor(Date.now() / 1000)}\n`,
+			);
+			const live = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"registry.lock",
+			);
+			expect(live.status).toBe("WARN");
+			expect(live.summary).toContain("in flight");
+
+			// A holder that is provably gone reads as abandoned, and the doctor still
+			// leaves the directory exactly where it found it.
+			await Bun.write(resolve(lockDirectory, "owner"), "2147483647 1\n");
+			const abandoned = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"registry.lock",
+			);
+			expect(abandoned.status).toBe("WARN");
+			expect(abandoned.detail).toContain("no live holder");
+			expect(abandoned.remediation).toContain(lockDirectory);
+			expect(await Bun.file(resolve(lockDirectory, "owner")).exists()).toBe(
+				true,
+			);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("names both worktrees when two of them claim one host port", async () => {
+		const subject = await doctorFixture();
+		const directory = resolve(
+			subject.fixture.home,
+			".config/devcontainer/worktrees",
+		);
+		try {
+			const own = (await Bun.file(subject.manifest).json()) as Record<
+				string,
+				unknown
+			>;
+			await Bun.write(
+				resolve(directory, "devenv-squatter.json"),
+				`${JSON.stringify({
+					...own,
+					workspaceId: "devenv-squatter",
+					repoPath: resolve(subject.fixture.root, "squatter"),
+					status: "active",
+				})}\n`,
+			);
+			const collided = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"manifests.port-collision",
+			);
+			expect(collided.status).toBe("FAIL");
+			expect(collided.detail).toContain(subject.workspaceId);
+			expect(collided.detail).toContain("devenv-squatter");
+			expect(collided.detail).toContain(subject.hostPort);
+
+			// One unreadable manifest among many is a gap in the scan, not a verdict.
+			await rm(resolve(directory, "devenv-squatter.json"));
+			await Bun.write(resolve(directory, "devenv-broken.json"), "{\n");
+			const partial = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"manifests.port-collision",
+			);
+			expect(partial.status).toBe("WARN");
+			expect(partial.detail).toContain("malformed");
+
+			// And the scan is bounded by the contract's own limit.
+			await rewriteContract(subject.worktree, (source) =>
+				source.replace(
+					/^collision_scan_limit = .*/m,
+					"collision_scan_limit = 1",
+				),
+			);
+			const bounded = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"manifests.port-collision",
+			);
+			expect(bounded.detail).toContain(
+				"bounded at the declared scan limit of 1",
+			);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
 });
 
 describe("worktree runtime selftest", () => {

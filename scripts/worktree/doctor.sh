@@ -116,6 +116,18 @@ container.git-mount
 container.port
 container.volumes
 container.tools
+caddy.binary
+caddy.config
+caddy.import
+caddy.snippet
+route.direct
+route.friendly
+registry.readable
+registry.lock
+registry.entry
+registry.offset-match
+registry.port-collision
+manifests.port-collision
 CHECKS
 }
 
@@ -134,10 +146,23 @@ TOOLCHAIN_MANIFEST="$(wt_contract_value toolchain_manifest)"
 PUBLISHED_CONTAINER_PORT="$(wt_contract_value published_container_port)"
 PUBLISHED_HOST_PORT_VARIABLE="$(wt_contract_value published_host_port_variable)"
 PREFERRED_OFFSET_MODULUS="$(wt_contract_value preferred_offset_modulus)"
+COLLISION_SCAN_LIMIT="$(wt_contract_value collision_scan_limit)"
 DIRECT_HOST="$(wt_contract_value direct_host)"
+HOST_CADDY="$(wt_contract_value host_caddy)"
+LOCAL_DOMAIN_STEM="$(wt_contract_value local_domain_stem)"
+FRIENDLY_DOMAIN_PATTERN="$(wt_contract_value friendly_domain_pattern)"
 ENSURE_COMMAND="$(wt_contract_value ensure_command)"
 MANIFEST_DIRECTORY="$(wt_expand_home "$(wt_contract_value manifest_directory)")"
 CADDY_SNIPPET_DIRECTORY="$(wt_expand_home "$(wt_contract_value caddy_snippet_directory)")"
+REGISTRY_DIRECTORY="$(wt_expand_home "$(wt_contract_value registry_directory)")"
+
+REGISTRY_FILE="$REGISTRY_DIRECTORY/ports.json"
+REGISTRY_LOCK_DIRECTORY="$REGISTRY_DIRECTORY/ports.lock.d"
+
+# The lock backend that leaves a directory behind records its holder inside it.
+# The staleness threshold is read the same way the lock itself reads it, because
+# the doctor only ever describes the lock and never takes one.
+LOCK_STALE_SECONDS="${PORTABLE_LOCK_STALE_SECONDS:-${WORKTREE_LOCK_STALE_SECONDS:-7200}}"
 
 CONFIG_PATH="$REPO_ROOT/$DEVCONTAINER_CONFIG"
 ENVIRONMENT_FILE="$REPO_ROOT/$GENERATED_ENVIRONMENT"
@@ -200,6 +225,13 @@ STATE_ENVIRONMENT_PRESENT="false"
 STATE_VALUES_VALID="false"
 STATE_PATHS_VALID="false"
 MANIFEST_STATUS=""
+EXPECTED_FRIENDLY_HOST=""
+CADDY_BINARY=""
+CADDY_CONFIG=""
+REGISTRY_READABLE="false"
+REGISTRY_ENTRY_PATH=""
+REGISTRY_ENTRY_OFFSET=""
+REGISTRY_LINES=""
 CONTAINER_ID=""
 READY_FINGERPRINT=""
 READY_RECORD_VALID="false"
@@ -630,6 +662,11 @@ check_state_values() {
 		return 0
 	fi
 	STATE_VALUES_VALID="true"
+	# Derived from the validated family and the contract pattern, never adopted
+	# from generated state: this hostname is what the route checks will compare
+	# against and, if it matched, ask for.
+	EXPECTED_FRIENDLY_HOST="${FRIENDLY_DOMAIN_PATTERN//\{workspace\}/$FAMILY}"
+	EXPECTED_FRIENDLY_HOST="${EXPECTED_FRIENDLY_HOST//\{project\}/$LOCAL_DOMAIN_STEM}"
 	add_result PASS state.values "The generated worktree values are well formed" \
 		"$WORKSPACE_ID offset $OFFSET port $HOST_PORT"
 }
@@ -1171,6 +1208,551 @@ check_container_tools() {
 		"$TOOLCHAIN_MANIFEST"
 }
 
+# The friendly route is optional by contract: it is a convenience layered on a
+# direct loopback URL that always works. Every finding in this group is therefore
+# a warning, and --strict is how a caller says it wants them to matter.
+check_caddy_binary() {
+	local override_name override
+
+	if [ "$HOST_CADDY" = "disabled" ]; then
+		add_result SKIP caddy.binary "This project publishes no friendly route" \
+			"host_caddy is disabled"
+		return 0
+	fi
+	override_name="${ENVIRONMENT_PREFIX}_HOST_CADDY_BIN"
+	override="${!override_name:-}"
+	if [ -n "$override" ]; then
+		if [ -x "$override" ]; then
+			CADDY_BINARY="$override"
+			add_result PASS caddy.binary "A host routing binary is available" "$override"
+			return 0
+		fi
+		add_result WARN caddy.binary "The declared host routing binary is unusable" \
+			"$override is not executable" \
+			"Point $override_name at an executable or unset it."
+		return 0
+	fi
+	if CADDY_BINARY="$(command -v caddy 2>/dev/null)" && [ -n "$CADDY_BINARY" ]; then
+		add_result PASS caddy.binary "A host routing binary is available" \
+			"$CADDY_BINARY"
+		return 0
+	fi
+	CADDY_BINARY=""
+	add_result WARN caddy.binary "No host routing binary is installed" \
+		"caddy was not found" \
+		"Install the host reverse proxy, or use $DIRECT_URL, which always works."
+}
+
+# A fixed candidate list, and deliberately not bare /etc/Caddyfile: validating a
+# machine-wide configuration this runtime does not own is not a convenience.
+resolve_host_config() {
+	local override_name="${ENVIRONMENT_PREFIX}_HOST_CADDYFILE" override candidate
+	override="${!override_name:-}"
+	if [ -n "$override" ]; then
+		printf '%s\n' "$override"
+		return 0
+	fi
+	for candidate in \
+		"${HOMEBREW_PREFIX:-/opt/homebrew}/etc/Caddyfile" \
+		/opt/homebrew/etc/Caddyfile \
+		/usr/local/etc/Caddyfile \
+		/etc/caddy/Caddyfile; do
+		if [ -r "$candidate" ]; then
+			printf '%s\n' "$candidate"
+			return 0
+		fi
+	done
+	return 1
+}
+
+check_caddy_config() {
+	if [ "$HOST_CADDY" = "disabled" ]; then
+		add_result SKIP caddy.config "This project publishes no friendly route" \
+			"host_caddy is disabled"
+		return 0
+	fi
+	if [ -z "$CADDY_BINARY" ]; then
+		add_result SKIP caddy.config "No host routing binary to validate with" \
+			"caddy.binary did not pass"
+		return 0
+	fi
+	if ! CADDY_CONFIG="$(resolve_host_config)" || [ ! -r "$CADDY_CONFIG" ]; then
+		CADDY_CONFIG=""
+		add_result WARN caddy.config "No host routing configuration was found" \
+			"none of the candidate paths is readable" \
+			"Create a host reverse proxy configuration, or use $DIRECT_URL."
+		return 0
+	fi
+	if "$CADDY_BINARY" validate --config "$CADDY_CONFIG" --adapter caddyfile \
+		>/dev/null 2>&1; then
+		add_result PASS caddy.config "The host routing configuration validates" \
+			"$CADDY_CONFIG"
+		return 0
+	fi
+	add_result WARN caddy.config "The host routing configuration does not validate" \
+		"$CADDY_CONFIG was rejected" \
+		"Repair the host reverse proxy configuration, or use $DIRECT_URL."
+}
+
+check_caddy_import() {
+	local needle="$CADDY_SNIPPET_DIRECTORY/*.caddy"
+
+	if [ "$HOST_CADDY" = "disabled" ]; then
+		add_result SKIP caddy.import "This project publishes no friendly route" \
+			"host_caddy is disabled"
+		return 0
+	fi
+	if [ -z "$CADDY_CONFIG" ]; then
+		add_result SKIP caddy.import "No host routing configuration to read" \
+			"caddy.config did not resolve one"
+		return 0
+	fi
+	if grep -Fq "$needle" "$CADDY_CONFIG" 2>/dev/null; then
+		add_result PASS caddy.import "The host configuration imports worktree routes" \
+			"$needle"
+		return 0
+	fi
+	add_result WARN caddy.import \
+		"The host configuration does not import worktree routes" \
+		"$CADDY_CONFIG has no import of $needle" \
+		"Add 'import $needle' to $CADDY_CONFIG once."
+}
+
+check_caddy_snippet() {
+	local proxy="reverse_proxy $DIRECT_HOST:$HOST_PORT"
+
+	if [ "$HOST_CADDY" = "disabled" ]; then
+		add_result SKIP caddy.snippet "This project publishes no friendly route" \
+			"host_caddy is disabled"
+		return 0
+	fi
+	if [ "$STATE_PATHS_VALID" != "true" ]; then
+		add_result SKIP caddy.snippet "The recorded route path was refused" \
+			"state.paths did not pass"
+		return 0
+	fi
+	if [ "$MANIFEST_STATUS" != "active" ]; then
+		# A snippet left behind by a stopped worktree is untidy, not broken: the
+		# manifest survives deactivation on purpose and the route does not.
+		if [ -e "$CADDY_SNIPPET_PATH" ]; then
+			add_result WARN caddy.snippet "A route survives an inactive worktree" \
+				"$CADDY_SNIPPET_PATH" \
+				"Publish or remove this checkout's route from the host."
+			return 0
+		fi
+		add_result PASS caddy.snippet "This inactive worktree publishes no route" \
+			"$CADDY_SNIPPET_PATH is absent"
+		return 0
+	fi
+	if [ ! -r "$CADDY_SNIPPET_PATH" ]; then
+		add_result FAIL caddy.snippet "This active worktree publishes no route" \
+			"$CADDY_SNIPPET_PATH is missing" \
+			"Republish this checkout's route from the host."
+		return 0
+	fi
+	if grep -Fq "http://$EXPECTED_FRIENDLY_HOST" "$CADDY_SNIPPET_PATH" 2>/dev/null &&
+		grep -Fq "$proxy" "$CADDY_SNIPPET_PATH" 2>/dev/null; then
+		add_result PASS caddy.snippet "The published route names this worktree" \
+			"$EXPECTED_FRIENDLY_HOST to $DIRECT_HOST:$HOST_PORT"
+		return 0
+	fi
+	add_result FAIL caddy.snippet "The published route describes something else" \
+		"$CADDY_SNIPPET_PATH does not pair $EXPECTED_FRIENDLY_HOST with $proxy" \
+		"Republish this checkout's route from the host."
+}
+
+# Single attempt, bounded by --timeout, and never a host this script did not
+# itself derive.
+probe_http_code() {
+	curl --silent --max-time "$PROBE_TIMEOUT" --output /dev/null \
+		--write-out '%{http_code}' "$1" 2>/dev/null
+}
+
+http_code_is_healthy() {
+	case "$1" in
+		2[0-9][0-9] | 3[0-9][0-9]) return 0 ;;
+	esac
+	return 1
+}
+
+# The URL is recomputed from the validated components and compared as a string
+# before anything is requested. A well-formed but externally pointed URL in
+# generated state is caught here, and the probe client is never invoked at all.
+check_route_direct() {
+	local expected code
+
+	if [ "$STATE_VALUES_VALID" != "true" ]; then
+		add_result SKIP route.direct "No validated route to probe" \
+			"state.values did not pass"
+		return 0
+	fi
+	expected="http://$DIRECT_HOST:$HOST_PORT"
+	if [ "$DIRECT_URL" != "$expected" ]; then
+		add_result FAIL route.direct "Refused an unexpected direct URL" \
+			"generated state names '$DIRECT_URL'" \
+			"Regenerate this checkout's environment; the direct URL must be $expected."
+		return 0
+	fi
+	if [ "$HAVE_CURL" != "true" ]; then
+		add_result SKIP route.direct "No HTTP probe client to ask" \
+			"curl is not installed"
+		return 0
+	fi
+	code="$(probe_http_code "$expected")" || code="000"
+	if http_code_is_healthy "$code"; then
+		add_result PASS route.direct "The direct URL answers" "$expected returned $code"
+		return 0
+	fi
+	add_result FAIL route.direct "The direct URL does not answer" \
+		"$expected returned $code" \
+		"Reconcile this checkout with $ENSURE_COMMAND, then retry."
+}
+
+check_route_friendly() {
+	local expected code
+
+	if [ "$HOST_CADDY" = "disabled" ]; then
+		add_result SKIP route.friendly "This project publishes no friendly route" \
+			"host_caddy is disabled"
+		return 0
+	fi
+	if [ "$STATE_VALUES_VALID" != "true" ]; then
+		add_result SKIP route.friendly "No validated route to probe" \
+			"state.values did not pass"
+		return 0
+	fi
+	expected="http://$EXPECTED_FRIENDLY_HOST"
+	if [ "$FRIENDLY_URL" != "$expected" ]; then
+		add_result FAIL route.friendly "Refused an unexpected friendly URL" \
+			"generated state names '$FRIENDLY_URL'" \
+			"Regenerate this checkout's environment; the friendly URL must be $expected."
+		return 0
+	fi
+	if [ "$HAVE_CURL" != "true" ]; then
+		add_result SKIP route.friendly "No HTTP probe client to ask" \
+			"curl is not installed"
+		return 0
+	fi
+	code="$(probe_http_code "$expected")" || code="000"
+	if http_code_is_healthy "$code"; then
+		add_result PASS route.friendly "The friendly URL answers" \
+			"$expected returned $code"
+		return 0
+	fi
+	# The friendly route is the optional half, so the remediation names the half
+	# that is not.
+	add_result FAIL route.friendly "The friendly URL does not answer" \
+		"$expected returned $code" \
+		"Use $DIRECT_URL, then check that the host reverse proxy is up and imports the worktree routes."
+}
+
+read_registry() {
+	REGISTRY_FILE="$REGISTRY_FILE" WORKSPACE_ID="$WORKSPACE_ID" "$PYTHON_BIN" - <<'PYTHON'
+import json
+import os
+import sys
+
+try:
+    with open(os.environ["REGISTRY_FILE"], "r", encoding="utf-8") as handle:
+        data = json.load(handle)
+except (ValueError, OSError):
+    raise SystemExit(2)
+if not isinstance(data, dict) or not isinstance(data.get("entries"), dict):
+    raise SystemExit(2)
+
+entries = data["entries"]
+own = entries.get(os.environ["WORKSPACE_ID"])
+if isinstance(own, dict):
+    sys.stdout.write("entry\t%s\t%s\n" % (own.get("path", ""), own.get("offset", "")))
+
+
+def ports_of(name):
+    entry = entries.get(name)
+    found = set()
+    if not isinstance(entry, dict):
+        return found
+    for port in entry.get("ports", []) or []:
+        try:
+            found.add(int(port))
+        except (TypeError, ValueError):
+            continue
+    return found
+
+
+names = sorted(entries)
+reported = 0
+for index, left in enumerate(names):
+    for right in names[index + 1 :]:
+        shared = sorted(ports_of(left) & ports_of(right))
+        if not shared:
+            continue
+        sys.stdout.write(
+            "collision\t%s\t%s\t%s\n"
+            % (left, right, ", ".join(str(port) for port in shared[:4]))
+        )
+        reported += 1
+        if reported >= 4:
+            raise SystemExit(0)
+PYTHON
+}
+
+check_registry_readable() {
+	local status=0
+
+	if [ "$HAVE_PYTHON" != "true" ]; then
+		add_result SKIP registry.readable "No Python interpreter to read the registry" \
+			"python3 is not installed"
+		return 0
+	fi
+	if [ ! -e "$REGISTRY_FILE" ]; then
+		add_result WARN registry.readable "This host has no port registry yet" \
+			"$REGISTRY_FILE is missing" \
+			"Generate any worktree's environment on this host to create it."
+		return 0
+	fi
+	REGISTRY_LINES="$(read_registry)" || status=$?
+	if [ "$status" -ne 0 ]; then
+		REGISTRY_LINES=""
+		add_result FAIL registry.readable "The port registry is unreadable" \
+			"$REGISTRY_FILE is not a JSON document with an entries object" \
+			"Move $REGISTRY_FILE aside and regenerate every worktree's environment."
+		return 0
+	fi
+	REGISTRY_READABLE="true"
+	add_result PASS registry.readable "The port registry is readable" "$REGISTRY_FILE"
+}
+
+directory_epoch() {
+	local path="$1" value
+	if value="$(stat -c '%Y' "$path" 2>/dev/null)" && [ -n "$value" ]; then
+		printf '%s\n' "$value"
+		return 0
+	fi
+	if value="$(stat -f '%m' "$path" 2>/dev/null)" && [ -n "$value" ]; then
+		printf '%s\n' "$value"
+		return 0
+	fi
+	return 1
+}
+
+# Inspection only. The doctor never acquires this lock, never releases one it did
+# not take, and never removes a lock directory: a live holder in the middle of a
+# read-modify-write is exactly the process a diagnostic must not disturb.
+check_registry_lock() {
+	local owner="$REGISTRY_LOCK_DIRECTORY/owner" pid="" started="" now age
+
+	if [ ! -d "$REGISTRY_LOCK_DIRECTORY" ]; then
+		add_result PASS registry.lock "No registry allocation is holding a lock" \
+			"$REGISTRY_LOCK_DIRECTORY is absent"
+		return 0
+	fi
+	if [ -r "$owner" ]; then
+		read -r pid started <"$owner" || true
+	fi
+	case "$pid" in
+		'' | *[!0-9]*) pid="" ;;
+	esac
+	case "$started" in
+		'' | *[!0-9]*) started="" ;;
+	esac
+	if [ -n "$pid" ] && kill -0 "$pid" 2>/dev/null; then
+		add_result WARN registry.lock "A registry allocation is in flight" \
+			"process $pid holds $REGISTRY_LOCK_DIRECTORY" \
+			"Wait for the other worktree's allocation to finish, then retry."
+		return 0
+	fi
+	if [ -z "$started" ]; then
+		started="$(directory_epoch "$REGISTRY_LOCK_DIRECTORY")" || started=""
+	fi
+	age="unknown"
+	if [ -n "$started" ]; then
+		now="$(date +%s)"
+		age="$((now - started))s"
+	fi
+	add_result WARN registry.lock "The registry lock looks abandoned" \
+		"$REGISTRY_LOCK_DIRECTORY has no live holder (age $age, threshold ${LOCK_STALE_SECONDS}s)" \
+		"Delete the stale lock directory $REGISTRY_LOCK_DIRECTORY."
+}
+
+check_registry_entry() {
+	local line
+
+	if [ "$STATE_VALUES_VALID" != "true" ]; then
+		add_result SKIP registry.entry "No validated identity to look up" \
+			"state.values did not pass"
+		return 0
+	fi
+	if [ "$LAYOUT" != "worktree" ]; then
+		add_result SKIP registry.entry "The main checkout is never registered" \
+			"it owns offset 0 by convention"
+		return 0
+	fi
+	if [ "$REGISTRY_READABLE" != "true" ]; then
+		add_result SKIP registry.entry "No readable registry to look in" \
+			"registry.readable did not pass"
+		return 0
+	fi
+	line="$(printf '%s\n' "$REGISTRY_LINES" | grep '^entry	' | head -n 1)" || line=""
+	if [ -z "$line" ]; then
+		add_result WARN registry.entry "This worktree holds no registry entry" \
+			"$WORKSPACE_ID is not registered" \
+			"Regenerate this checkout's environment on the host."
+		return 0
+	fi
+	IFS=$'\t' read -r _ REGISTRY_ENTRY_PATH REGISTRY_ENTRY_OFFSET <<EOF
+$line
+EOF
+	if [ "$REGISTRY_ENTRY_PATH" != "$REPO_ROOT" ]; then
+		add_result WARN registry.entry "The registry entry names another directory" \
+			"registry=$REGISTRY_ENTRY_PATH checkout=$REPO_ROOT" \
+			"Regenerate this checkout's environment, or rename the worktree directory."
+		return 0
+	fi
+	add_result PASS registry.entry "This worktree holds its registry entry" \
+		"$WORKSPACE_ID at offset $REGISTRY_ENTRY_OFFSET"
+}
+
+check_registry_offset_match() {
+	if [ "$LAYOUT" != "worktree" ]; then
+		add_result SKIP registry.offset-match "The main checkout is never registered" \
+			"it owns offset 0 by convention"
+		return 0
+	fi
+	if [ -z "$REGISTRY_ENTRY_OFFSET" ]; then
+		add_result SKIP registry.offset-match "No registry offset to compare" \
+			"registry.entry found none"
+		return 0
+	fi
+	if [ "$REGISTRY_ENTRY_OFFSET" = "$OFFSET" ]; then
+		add_result PASS registry.offset-match \
+			"The registry and the generated environment agree on the offset" \
+			"offset $OFFSET"
+		return 0
+	fi
+	add_result FAIL registry.offset-match \
+		"The registry and the generated environment disagree on the offset" \
+		"registry=$REGISTRY_ENTRY_OFFSET env=$OFFSET" \
+		"Regenerate this checkout's environment on the host."
+}
+
+check_registry_port_collision() {
+	local collisions detail
+
+	if [ "$REGISTRY_READABLE" != "true" ]; then
+		add_result SKIP registry.port-collision "No readable registry to scan" \
+			"registry.readable did not pass"
+		return 0
+	fi
+	collisions="$(printf '%s\n' "$REGISTRY_LINES" | grep '^collision	')" ||
+		collisions=""
+	if [ -z "$collisions" ]; then
+		add_result PASS registry.port-collision \
+			"Every registered environment holds a disjoint port set"
+		return 0
+	fi
+	detail="$(printf '%s\n' "$collisions" |
+		sed -e 's/^collision	//' -e 's/	/ and /' -e 's/	/ share ports /' |
+		tr '\n' ';')"
+	add_result FAIL registry.port-collision \
+		"Two registered environments claim the same ports" \
+		"${detail%;}" \
+		"Regenerate the affected worktrees' environments to reallocate them."
+}
+
+scan_manifest_claims() {
+	MANIFEST_DIRECTORY="$MANIFEST_DIRECTORY" SCAN_LIMIT="$COLLISION_SCAN_LIMIT" \
+		"$PYTHON_BIN" - <<'PYTHON'
+import json
+import os
+import sys
+
+directory = os.environ["MANIFEST_DIRECTORY"]
+limit = int(os.environ["SCAN_LIMIT"])
+try:
+    names = sorted(
+        name for name in os.listdir(directory) if name.endswith(".json")
+    )
+except OSError:
+    names = []
+truncated = len(names) > limit
+claims = {}
+malformed = 0
+for name in names[:limit]:
+    try:
+        with open(os.path.join(directory, name), "r", encoding="utf-8") as handle:
+            document = json.load(handle)
+    except (ValueError, OSError):
+        malformed += 1
+        continue
+    if not isinstance(document, dict):
+        malformed += 1
+        continue
+    if document.get("status") != "active":
+        continue
+    identifier = document.get("workspaceId")
+    port = document.get("hostPort")
+    if not isinstance(identifier, str) or isinstance(port, bool):
+        malformed += 1
+        continue
+    if not isinstance(port, int):
+        malformed += 1
+        continue
+    claims.setdefault(port, set()).add(identifier)
+for port in sorted(claims):
+    holders = sorted(claims[port])
+    if len(holders) > 1:
+        sys.stdout.write("collision\t%d\t%s\n" % (port, " and ".join(holders)))
+sys.stdout.write(
+    "scanned\t%d\t%d\t%s\n"
+    % (len(names[:limit]), malformed, "truncated" if truncated else "complete")
+)
+PYTHON
+}
+
+# The independent cross-check on the registry-first diagnosis above: the registry
+# says who was allocated what, and this says who is actually claiming what.
+check_manifests_port_collision() {
+	local output status=0 collisions line scanned malformed bound detail
+
+	if [ "$HAVE_PYTHON" != "true" ]; then
+		add_result SKIP manifests.port-collision \
+			"No Python interpreter to read the manifests" "python3 is not installed"
+		return 0
+	fi
+	output="$(scan_manifest_claims)" || status=$?
+	if [ "$status" -ne 0 ]; then
+		add_result SKIP manifests.port-collision "The manifest directory is unreadable" \
+			"$MANIFEST_DIRECTORY could not be listed"
+		return 0
+	fi
+	line="$(printf '%s\n' "$output" | grep '^scanned	' | head -n 1)" || line=""
+	IFS=$'\t' read -r _ scanned malformed bound <<EOF
+$line
+EOF
+	collisions="$(printf '%s\n' "$output" | grep '^collision	')" || collisions=""
+	if [ -n "$collisions" ]; then
+		detail="$(printf '%s\n' "$collisions" |
+			sed -e 's/^collision	/port /' -e 's/	/ is claimed by /' | tr '\n' ';')"
+		add_result FAIL manifests.port-collision \
+			"Two active worktrees claim the same host port" "${detail%;}" \
+			"Regenerate the affected worktrees' environments to reallocate them."
+		return 0
+	fi
+	if [ "${malformed:-0}" -gt 0 ]; then
+		add_result WARN manifests.port-collision \
+			"Some published manifests could not be checked" \
+			"$malformed of $scanned manifests are malformed" \
+			"Republish or remove the unreadable manifests."
+		return 0
+	fi
+	detail="$scanned published manifests scanned"
+	if [ "${bound:-complete}" = "truncated" ]; then
+		detail="$detail (bounded at the declared scan limit of $COLLISION_SCAN_LIMIT)"
+	fi
+	add_result PASS manifests.port-collision \
+		"No two active worktrees claim the same host port" "$detail"
+}
+
 main() {
 	check_host_context
 	check_host_commands
@@ -1195,6 +1777,20 @@ main() {
 	check_container_port
 	check_container_volumes
 	check_container_tools
+
+	check_caddy_binary
+	check_caddy_config
+	check_caddy_import
+	check_caddy_snippet
+	check_route_direct
+	check_route_friendly
+
+	check_registry_readable
+	check_registry_lock
+	check_registry_entry
+	check_registry_offset_match
+	check_registry_port_collision
+	check_manifests_port_collision
 
 	finish
 }
