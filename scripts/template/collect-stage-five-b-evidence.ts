@@ -574,7 +574,7 @@ async function capture(implementationRevision: string) {
 			throw new Error(
 				`Stage 5B evidence validation failed:\n- ${errors.join("\n- ")}`,
 			);
-		await Bun.write(EVIDENCE_PATH, `${JSON.stringify(evidence, null, 2)}\n`);
+		await Bun.write(EVIDENCE_PATH, `${JSON.stringify(evidence, null, "\t")}\n`);
 		console.log(`Captured ${records.length} Stage 5B commands in ${runId}.`);
 	} finally {
 		await release();
