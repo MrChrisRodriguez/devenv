@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { validateBrowserContract } from "./browser-contract";
+import { validateCiContract } from "./ci-contract";
 import { validateCloudContract } from "./cloud-contract";
 import { validateStageZeroEvidence } from "./evidence";
 import { validateStageTwoEvidence } from "./image-evidence";
@@ -132,6 +133,11 @@ export async function validateAll(
 		if (worktreeErrors.length > 0) {
 			report.status = "fail";
 			report.errors.push(...worktreeErrors);
+		}
+		const ciErrors = await validateCiContract(root);
+		if (ciErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...ciErrors);
 		}
 		const toolchainEvidenceErrors = await validateStageOneEvidence(root);
 		if (toolchainEvidenceErrors.length > 0) {

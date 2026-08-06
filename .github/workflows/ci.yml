@@ -66,6 +66,9 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
+      - name: Validate workflow policy contract
+        run: bun run ci:check
+
       - name: Validate toolchain contract
         run: bun run toolchain:check
 

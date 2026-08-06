@@ -191,6 +191,20 @@
 			"sourceOfTruth": "worktree runtime contract"
 		},
 		{
+			"pattern": "scripts/template/validate-ci.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "workflow policy contract entrypoint"
+		},
+		{
+			"pattern": "scripts/template/ci-contract.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "workflow policy contract"
+		},
+		{
 			"pattern": "scripts/worktree/**",
 			"classification": "template-owned",
 			"syncPolicy": "merge",

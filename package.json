@@ -58,6 +58,7 @@
 		"template:test": "bun test scripts/template/__tests__",
 		"template:typecheck": "bunx tsc -p scripts/template/tsconfig.json",
 		"typecheck": "bash scripts/ci/run-typecheck.sh",
+		"ci:check": "bun scripts/template/validate-ci.ts",
 		"image:check": "bun scripts/template/validate-image.ts",
 		"browser:check": "bun scripts/template/validate-browser.ts",
 		"browser:preflight": "bun scripts/browser-preflight.ts",
