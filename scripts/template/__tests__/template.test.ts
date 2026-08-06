@@ -500,6 +500,62 @@ describe("deterministic fixture renderer", () => {
 		}
 	}, 120_000);
 
+	test("renders the worktree contract with each fixture's identity", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const parameters = await loadTemplateParameters(ROOT);
+			for (const fixtureName of parameters.generation.fixture_names) {
+				const output = resolve(temporary, fixtureName);
+				await renderFixture({ root: ROOT, fixtureName, output });
+				const fixture = await loadFixtureDefinition(
+					ROOT,
+					fixtureName,
+					parameters,
+				);
+				const resolved = resolveFixtureParameters(parameters, fixture);
+				const contract = await Bun.file(
+					resolve(output, "scripts/worktree/contract.toml"),
+				).text();
+				const parsed = Bun.TOML.parse(contract) as Record<string, unknown>;
+
+				expect(parsed["version"]).toBe(1);
+				expect(parsed["project_slug"]).toBe(resolved.project.slug);
+				expect(parsed["environment_prefix"]).toBe(
+					resolved.project.environment_prefix,
+				);
+				expect(parsed["docker_resource_prefix"]).toBe(
+					resolved.project.docker_resource_prefix,
+				);
+				expect(parsed["local_domain_stem"]).toBe(
+					resolved.project.local_domain_stem,
+				);
+				expect(parsed["published_host_port_variable"]).toBe(
+					`${resolved.project.environment_prefix}_PUBLISHED_HOST_PORT`,
+				);
+				expect(parsed["published_container_port"]).toBe(
+					resolved.routing.published_container_port,
+				);
+				expect(parsed["services"]).toEqual([]);
+				// The contract is regenerated from the fixture's own parameters, so
+				// none of the template's identity survives into it.
+				expect(contract).not.toContain('= "devenv"');
+				expect(contract).not.toContain('= "DEVENV"');
+				expect(contract).not.toContain("capability:start");
+
+				// Every cloud key lives inside one codex_cloud fence, so a fixture
+				// that disables the capability carries no cloud reference at all.
+				const cloudEnabled =
+					resolved.capabilities.defaults["codex_cloud"] === true;
+				expect(contract.includes("CODEX_CLOUD")).toBe(cloudEnabled);
+				expect(parsed["cloud_doctor_command"]).toBe(
+					cloudEnabled ? "bash .codex/cloud/doctor.sh --quiet" : undefined,
+				);
+			}
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 180_000);
+
 	test("renders cloud and full profiles with only their selected artifacts", async () => {
 		const temporary = await temporaryDirectory();
 		try {

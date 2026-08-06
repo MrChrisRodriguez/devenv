@@ -12,6 +12,7 @@ import {
 	basename,
 	dirname,
 	isAbsolute,
+	posix,
 	relative,
 	resolve,
 	sep,
@@ -108,6 +109,30 @@ export interface ResidueReport {
 	scannedDisabledCapabilities: number;
 	findings: ResidueFinding[];
 }
+
+// The image-owned .devcontainer/devcontainer-fingerprint.sh is the single
+// authority for what a container definition is made of; the runtime contract
+// only republishes that input set so the host-side bash re-implementation and
+// the guard can be checked against it.
+const WORKTREE_FINGERPRINT_INPUTS = [
+	".dockerignore",
+	".prototools",
+	".devcontainer",
+];
+
+const WORKTREE_RUNTIME_SCRIPTS = [
+	"scripts/worktree/lib.sh",
+	"scripts/worktree/lock.sh",
+	"scripts/worktree/env.sh",
+	"scripts/worktree/ensure.sh",
+	"scripts/worktree/exec.sh",
+	"scripts/worktree/manifest.sh",
+	"scripts/worktree/services.sh",
+	"scripts/worktree/up.sh",
+	"scripts/worktree/down.sh",
+	"scripts/worktree/cleanup.sh",
+	"scripts/worktree/selftest.sh",
+];
 
 const GLOBAL_FORBIDDEN_TOKENS = [
 	"trading-games",
@@ -428,6 +453,116 @@ async function renderDevcontainer(
 		}
 	}
 	return json(transformed);
+}
+
+// The isolated worktree runtime reads its contract with sed on a host that has
+// neither Bun nor jq, so the generated file stays flat: one `key = value` per
+// line, scalars and single-line arrays only, no tables. These helpers refuse any
+// value that would need escaping rather than emitting something the shell
+// readers would silently mis-parse.
+function worktreeString(value: string): string {
+	if (/["\\]/.test(value) || [...value].some((c) => c.charCodeAt(0) < 32)) {
+		throw new Error(`Unsafe worktree contract value: ${value}`);
+	}
+	return `"${value}"`;
+}
+
+function worktreeStringArray(values: string[]): string {
+	return `[${values.map(worktreeString).join(", ")}]`;
+}
+
+// Everything the runtime scripts read about themselves, derived from one
+// authority. Downstream projects own the rendered file directly; this repository
+// regenerates it and scripts/template/worktree-contract.ts fails on drift.
+export function renderWorktreeContract(
+	parameters: TemplateParameters,
+	fixtureName?: string,
+): string {
+	const hostConfigRoot = posix.dirname(parameters.paths.common_secrets);
+	const state = parameters.paths.generated_state;
+	const services = parameters.services.filter(
+		(service) =>
+			(!fixtureName || service.profiles.includes(fixtureName)) &&
+			(!service.capability ||
+				parameters.capabilities.defaults[service.capability] === true),
+	);
+	const lines: string[] = [
+		"# Machine-readable isolated worktree runtime contract.",
+		"#",
+		"# Flat scalar and array keys only: the runtime scripts read this file with",
+		"# sed before Bun or jq exist on the host, and the renderer's capability",
+		"# fences are line based. Every value is derived from one authority -",
+		"# template-parameters.toml - by renderWorktreeContract() in",
+		"# scripts/template/render-fixture.ts, and scripts/template/worktree-contract.ts",
+		"# fails the build on drift.",
+		"version = 1",
+		`project_slug = ${worktreeString(parameters.project.slug)}`,
+		`environment_prefix = ${worktreeString(parameters.project.environment_prefix)}`,
+		`docker_resource_prefix = ${worktreeString(parameters.project.docker_resource_prefix)}`,
+		`local_domain_stem = ${worktreeString(parameters.project.local_domain_stem)}`,
+		`development_user = ${worktreeString(parameters.container.development_user)}`,
+		`container_workspace = ${worktreeString(parameters.paths.container_workspace)}`,
+		`generated_state = ${worktreeString(state)}`,
+		`mutable_persistence = ${worktreeString(parameters.paths.mutable_persistence)}`,
+		`shared_cache = ${worktreeString(parameters.paths.shared_cache)}`,
+		`host_config_root = ${worktreeString(hostConfigRoot)}`,
+		`registry_directory = ${worktreeString(`${hostConfigRoot}/ports-registry`)}`,
+		`manifest_directory = ${worktreeString(`${hostConfigRoot}/worktrees`)}`,
+		`caddy_snippet_directory = ${worktreeString(`${hostConfigRoot}/caddy`)}`,
+		`generated_environment = ${worktreeString(`${state}/worktree.env`)}`,
+		`generated_container_environment = ${worktreeString(`${state}/worktree.container.env`)}`,
+		`run_directory = ${worktreeString(`${state}/run`)}`,
+		'devcontainer_config = ".devcontainer/devcontainer.json"',
+		`published_container_port = ${parameters.routing.published_container_port}`,
+		`published_host_port_variable = ${worktreeString(`${parameters.project.environment_prefix}_PUBLISHED_HOST_PORT`)}`,
+		`preferred_offset_modulus = ${parameters.worktrees.preferred_offset_modulus}`,
+		`collision_scan_limit = ${parameters.worktrees.collision_scan_limit}`,
+		`manifest_schema_version = ${parameters.worktrees.manifest_schema_version}`,
+		"registry_schema_version = 1",
+		`default_probe_timeout_seconds = ${parameters.worktrees.default_probe_timeout_seconds}`,
+		`startup_timeout_seconds = ${parameters.worktrees.startup_timeout_seconds}`,
+		`diagnostic_staggered_mode = ${parameters.worktrees.diagnostic_staggered_mode}`,
+		`friendly_domain_pattern = ${worktreeString(parameters.routing.friendly_domain_pattern)}`,
+		`direct_host = ${worktreeString(parameters.routing.direct_host)}`,
+		`host_caddy = ${worktreeString(parameters.routing.host_caddy)}`,
+		`always_publish_direct_url = ${parameters.routing.always_publish_direct_url}`,
+		'container_engine = "docker"',
+		'container_cli = "devcontainer"',
+		'container_cli_package = "@devcontainers/cli"',
+		`definition_fingerprint_inputs = ${worktreeStringArray(WORKTREE_FINGERPRINT_INPUTS)}`,
+		"legacy_cleanup_commands = []",
+		`runtime_scripts = ${worktreeStringArray(WORKTREE_RUNTIME_SCRIPTS)}`,
+		'bridge_command = "bash scripts/worktree/exec.sh"',
+		'ensure_command = "bash scripts/worktree/ensure.sh"',
+		`services = ${worktreeStringArray(services.map((service) => service.name))}`,
+	];
+	for (const service of services) {
+		lines.push(
+			`service_${service.name}_kind = ${worktreeString(service.kind)}`,
+			`service_${service.name}_base_port = ${service.base_port}`,
+			`service_${service.name}_depends_on = ${worktreeStringArray(service.depends_on)}`,
+			`service_${service.name}_directory = ${worktreeString(service.directory)}`,
+			`service_${service.name}_command = ${worktreeString(service.command)}`,
+			`service_${service.name}_health_path = ${worktreeString(service.health_path)}`,
+			`service_${service.name}_health_expectation = ${worktreeString(service.health_expectation)}`,
+			`service_${service.name}_profiles = ${worktreeStringArray(service.profiles)}`,
+		);
+		if (service.capability) {
+			lines.push(
+				`service_${service.name}_capability = ${worktreeString(service.capability)}`,
+			);
+		}
+	}
+	// Every cloud reference sits inside one fence: the codex_cloud capability
+	// signature scans for CODEX_CLOUD, so an unfenced key would fail the minimal
+	// fixture's anti-residue scan. The stripped remainder is still valid TOML.
+	lines.push(
+		"# capability:start codex_cloud",
+		'cloud_doctor_command = "bash .codex/cloud/doctor.sh --quiet"',
+		'cloud_marker_variable = "CODEX_CLOUD"',
+		"# capability:end codex_cloud",
+	);
+	return `${lines.join("\n")}\n`;
 }
 
 async function renderPackage(
@@ -777,6 +912,16 @@ async function renderContent(
 		return renderTsconfig(source, parameters);
 	if (entry.path === ".vscode/extensions.json")
 		return renderExtensions(root, parameters);
+	if (entry.path === "scripts/worktree/contract.toml") {
+		// Regenerated rather than text-substituted: the runtime contract is a pure
+		// projection of the parameter registry, so a fixture's identity, ports, and
+		// service set come from its resolved parameters and never from the
+		// template's committed values.
+		return filterCapabilityBlocks(
+			renderWorktreeContract(parameters, fixture.fixture.name),
+			parameters.capabilities.defaults,
+		);
+	}
 	const bytes = new Uint8Array(await Bun.file(source).arrayBuffer());
 	if (bytes.includes(0)) return bytes;
 	let content: string;
