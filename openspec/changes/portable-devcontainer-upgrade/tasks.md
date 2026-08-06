@@ -1,4 +1,4 @@
-**Current status (2026-07-15):** 20 of 82 tasks are complete. Stages 0 through 3 have merged; Stage 4 is next.
+**Current status (2026-08-05):** 25 of 82 tasks are complete. Stages 0 through 4 have merged; Stage 5A is next.
 
 ## 1. Stage 0 PR — Inventory, Parameters, and Baseline
 
@@ -44,11 +44,11 @@ This stage adds pinned browser and agent runtime payloads, local-only plugin set
 
 This stage gives Codex Cloud the same verified core and browser toolchain as the local devcontainer, with bounded bootstrap, a read-only doctor, and safe direct execution.
 
-- [ ] 5.1 Add a validated cloud contract with core/browser profiles, exact aligned tools, architectures, checksums, markers, commands, fingerprint inputs, and network posture
-- [ ] 5.2 Add the shared checksum-pinned Proto installer and idempotent bounded bootstrap with frozen dependencies, profile-specific browser setup, and fresh-shell environment persistence
-- [ ] 5.3 Add the fail-closed read-only cloud doctor for marker/profile/fingerprint/tool/dependency/browser validation
-- [ ] 5.4 Route verified cloud commands directly before host orchestration and forbid Docker, worktree lifecycle, deployment, and production credentials in cloud
-- [ ] 5.5 Add hermetic bootstrap/contract mutation tests and separate path/schedule/manual core/browser network smoke; record rollback/evidence and update rules/docs/`CHANGES.md`
+- [x] 5.1 Add a validated cloud contract with core/browser profiles, exact aligned tools, architectures, checksums, markers, commands, fingerprint inputs, and network posture
+- [x] 5.2 Add the shared checksum-pinned Proto installer and idempotent bounded bootstrap with frozen dependencies, profile-specific browser setup, and fresh-shell environment persistence
+- [x] 5.3 Add the fail-closed read-only cloud doctor for marker/profile/fingerprint/tool/dependency/browser validation
+- [x] 5.4 Route verified cloud commands directly before host orchestration and forbid Docker, worktree lifecycle, deployment, and production credentials in cloud
+- [x] 5.5 Add hermetic bootstrap/contract mutation tests and separate path/schedule/manual core/browser network smoke; record rollback/evidence and update rules/docs/`CHANGES.md`
 
 ## 6. Stage 5A PR — Additive Isolated Worktree Runtime
 
