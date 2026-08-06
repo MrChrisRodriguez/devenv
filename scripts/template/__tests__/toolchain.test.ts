@@ -30,8 +30,6 @@ const CONTRACT_FILES = [
 	"scripts/template/tsconfig.json",
 	"tsconfig.base.json",
 	"tsconfig.lib.base.json",
-	"tsconfig.next.base.json",
-	"tsconfig.stagehand.base.json",
 	"tsconfig.start.base.json",
 	"tsconfig.worker.base.json",
 ] as const;
@@ -175,7 +173,7 @@ describe("repository toolchain contract", () => {
 				".prototools",
 				(source) =>
 					source.replace("786005a6ef2371ae1c7893610d065ac5612d61a9", "main"),
-				"proto: plugin direnv must use an immutable commit URL",
+				"proto: plugin jq must use an immutable commit URL",
 			);
 			await mutate(
 				temporary,

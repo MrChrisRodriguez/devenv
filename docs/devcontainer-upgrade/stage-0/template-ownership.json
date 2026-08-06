@@ -276,7 +276,6 @@
 		}
 	],
 	"artifactRules": [
-		{ "pattern": ".moon/**", "requiresAll": ["moon"] },
 		{ "pattern": "openspec/config.yaml", "requiresAll": ["openspec"] },
 		{
 			"pattern": "tsconfig.worker.base.json",
@@ -285,10 +284,6 @@
 		{
 			"pattern": "tsconfig.start.base.json",
 			"requiresAll": ["tanstack_start"]
-		},
-		{
-			"pattern": "tsconfig.stagehand.base.json",
-			"requiresAll": ["playwright"]
 		},
 		{
 			"pattern": "scripts/browser-preflight.ts",
@@ -457,7 +452,6 @@
 		"openspec": { "paths": [], "tokens": ["@fission-ai/openspec"] },
 		"playwright": {
 			"paths": [
-				"tsconfig.stagehand.base.json",
 				"scripts/browser-preflight.ts",
 				"scripts/template/browser-contract.ts",
 				"scripts/template/validate-browser.ts"

@@ -47,6 +47,20 @@ const EXPECTED_MUTATIONS: Record<(typeof REQUIRED_MUTATIONS)[number], string> =
 			"Reject an unpinned setup-bun action in local composite metadata",
 	};
 
+// These strings mirror the merge-sealed `observed` values in
+// evidence/stage-1-toolchain.json, which validateStageOneEvidence re-checks
+// against the sealed commit. Editing an entry here fails template:validate with
+// "mutation proof <name> observation drifted" unless the evidence is recaptured
+// and re-sealed in the same change.
+//
+// Two entries are knowingly stale relative to what the live guards emit today.
+// They must be corrected in the same commit that recaptures Stage 1 evidence,
+// never before:
+//   - workspace-path-priority: toolchain.ts moved the PATH guard off
+//     .shell_common; the live test now observes
+//     "path: environment.sh resolves Proto before workspace binaries".
+//   - mutable-proto-plugin: direnv was dropped from .prototools; the live test
+//     now observes "proto: plugin jq must use an immutable commit URL".
 const EXPECTED_OBSERVATIONS: Record<
 	(typeof REQUIRED_MUTATIONS)[number],
 	string

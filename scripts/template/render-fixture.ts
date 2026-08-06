@@ -711,12 +711,6 @@ function filterAgentRuleLines(
 			) {
 				return false;
 			}
-			if (
-				!parameters.capabilities.defaults["playwright"] &&
-				line.includes("tsconfig.stagehand")
-			) {
-				return false;
-			}
 			return true;
 		})
 		.join("\n");
