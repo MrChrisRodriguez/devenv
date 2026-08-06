@@ -123,9 +123,9 @@ describe("template parameter registry", () => {
 		)) as {
 			capabilities: Record<string, boolean>;
 		};
-		fixture.capabilities["moon"] = false;
+		fixture.capabilities["codex"] = false;
 		expect(() => validateFixtureDefinition(fixture, parameters)).toThrow(
-			"moon_affected_selection requires moon",
+			"codex_cloud requires codex",
 		);
 	});
 
@@ -296,11 +296,6 @@ describe("deterministic fixture renderer", () => {
 			).toBe(false);
 			expect(
 				await Bun.file(resolve(output, "tsconfig.start.base.json")).exists(),
-			).toBe(false);
-			expect(
-				await Bun.file(
-					resolve(output, "tsconfig.stagehand.base.json"),
-				).exists(),
 			).toBe(false);
 			const devcontainer = await Bun.file(
 				resolve(output, ".devcontainer/devcontainer.json"),
@@ -476,7 +471,7 @@ describe("deterministic fixture renderer", () => {
 			).toBe(true);
 			expect(
 				await Bun.file(
-					resolve(temporary, "cloud/tsconfig.stagehand.base.json"),
+					resolve(temporary, "cloud/tsconfig.start.base.json"),
 				).exists(),
 			).toBe(false);
 			const cloudPackage = await Bun.file(
@@ -513,7 +508,6 @@ describe("deterministic fixture renderer", () => {
 			).toBe(false);
 			for (const file of [
 				"tsconfig.worker.base.json",
-				"tsconfig.stagehand.base.json",
 				"tsconfig.start.base.json",
 			]) {
 				expect(await Bun.file(resolve(temporary, "full", file)).exists()).toBe(

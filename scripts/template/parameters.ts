@@ -842,12 +842,11 @@ export function validateTemplateParameters(value: unknown): TemplateParameters {
 	if (!booleanAt(ci, "require_negative_guard_tests", "ci", issues)) {
 		issues.push("ci.require_negative_guard_tests must be true");
 	}
-	if (
-		affectedMode === "moon" &&
-		(!defaults["moon"] || !defaults["moon_affected_selection"])
-	) {
+	// Moon itself is core (hard-pinned in .prototools, always rendered), so only
+	// the affected-selection capability gates the moon CI mode.
+	if (affectedMode === "moon" && !defaults["moon_affected_selection"]) {
 		issues.push(
-			"ci.affected_mode_initial moon requires moon and moon_affected_selection",
+			"ci.affected_mode_initial moon requires moon_affected_selection",
 		);
 	}
 

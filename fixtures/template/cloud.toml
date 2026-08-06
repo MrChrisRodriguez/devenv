@@ -11,7 +11,6 @@ local_domain_stem = "fixture-cloud"
 
 [capabilities]
 devcontainer = true
-moon = true
 moon_affected_selection = false
 openspec = false
 codex = true
