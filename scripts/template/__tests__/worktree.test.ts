@@ -11,7 +11,10 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { validateWorktreeContract } from "../worktree-contract";
+import {
+	DOCTOR_CHECK_IDS,
+	validateWorktreeContract,
+} from "../worktree-contract";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const RUNTIME_FILES = [
@@ -4364,6 +4367,7 @@ const CONTRACT_FILES = [
 	"package.json",
 	"template-parameters.toml",
 	"template-parameters.schema.json",
+	".prototools",
 	"AGENTS.md",
 	".devcontainer/devcontainer.json",
 	".devcontainer/devcontainer-fingerprint.sh",
@@ -4695,6 +4699,120 @@ describe("worktree runtime contract guard", () => {
 				"worktree: agent rules must describe the cutover, not the soak",
 			);
 
+			// The read-only doctor. Its whole value is that it changes nothing, so
+			// every one of these mutations is a diagnostic quietly becoming a
+			// participant in the state it claims to be describing.
+			await mutate(
+				temporary,
+				"scripts/worktree/contract.toml",
+				(source) => source.replace("doctor_schema_version = 1\n", ""),
+				"worktree: contract key doctor_schema_version is missing",
+			);
+			// Pointed at a lifecycle script, `doctor_command` turns every document
+			// and guard that binds to it into an instruction to reconcile.
+			await mutate(
+				temporary,
+				"scripts/worktree/contract.toml",
+				(source) =>
+					source.replace(
+						'doctor_command = "bash scripts/worktree/doctor.sh"',
+						'doctor_command = "bash scripts/worktree/up.sh"',
+					),
+				"worktree: doctor_command must name a declared runtime script",
+			);
+			// Undeclared, the doctor escapes every per-script guard: mode, syntax,
+			// fail-closed shell options, and the unscoped-prune scan.
+			await mutate(
+				temporary,
+				"scripts/worktree/contract.toml",
+				(source) => source.replace(', "scripts/worktree/doctor.sh"]', "]"),
+				"worktree: doctor_command must name a declared runtime script",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/contract.toml",
+				(source) =>
+					source.replace(
+						'toolchain_manifest = ".prototools"',
+						'toolchain_manifest = ".prototools.bak"',
+					),
+				"worktree: toolchain_manifest must match the Proto authority",
+			);
+			// The ordered add_result calls are the registry; the printed inventory
+			// is a copy of it. A rename that touches only one of them is exactly
+			// the drift a single comparison would miss.
+			await mutate(
+				temporary,
+				"scripts/worktree/doctor.sh",
+				(source) =>
+					source.replace(
+						"add_result PASS registry.lock ",
+						"add_result PASS registry.locks ",
+					),
+				"worktree: doctor check ids drifted from the declared set",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/doctor.sh",
+				(source) =>
+					source.replace(
+						"check_host_context() {\n",
+						'check_host_context() {\n\tdocker rm -f "$CONTAINER_ID"\n',
+					),
+				"worktree: scripts/worktree/doctor.sh must not change the state it reports on",
+			);
+			// A diagnostic that takes the registry lock stops the allocation it was
+			// asked to describe, and leaks the lock if it dies mid-report.
+			await mutate(
+				temporary,
+				"scripts/worktree/doctor.sh",
+				(source) =>
+					source.replace(
+						"check_registry_lock() {\n",
+						'check_registry_lock() {\n\tportable_lock_acquire "$REGISTRY_LOCK_DIRECTORY"\n',
+					),
+				"worktree: the doctor must never take a runtime lock",
+			);
+			// A hardcoded tool list is wrong the moment the Proto authority gains a
+			// tool, and wrong without saying so.
+			await mutate(
+				temporary,
+				"scripts/worktree/doctor.sh",
+				(source) =>
+					source.replace(
+						'\ttools="$(required_tools)" || tools=""\n',
+						'\ttools="bun node moon"\n',
+					),
+				"worktree: the doctor must derive required tools from the Proto manifest",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/doctor.sh",
+				(source) =>
+					source.replace("\nset -euo pipefail\n", "\nset -uo pipefail\n"),
+				"worktree: scripts/worktree/doctor.sh must fail closed with set -euo pipefail",
+			);
+			// An agent that cannot name the read-only diagnosis reaches for a
+			// reconciling command to answer a diagnostic question.
+			await mutate(
+				temporary,
+				"AGENTS.md",
+				(source) =>
+					source.replaceAll(
+						"bash scripts/worktree/doctor.sh",
+						"bash scripts/worktree/diagnose.sh",
+					),
+				"worktree: agent rules must document the read-only doctor",
+			);
+
+			const doctor = resolve(temporary, "scripts/worktree/doctor.sh");
+			await chmod(doctor, 0o644);
+			expect(await validateWorktreeContract(temporary)).toContain(
+				"worktree: scripts/worktree/doctor.sh must be executable",
+			);
+			await chmod(doctor, 0o755);
+			expect(await validateWorktreeContract(temporary)).toEqual([]);
+
 			// The executable bit is part of the contract: a runtime script Git
 			// records as 0644 cannot be run by the callers that depend on it.
 			const bridge = resolve(temporary, "scripts/worktree/exec.sh");
@@ -4708,6 +4826,14 @@ describe("worktree runtime contract guard", () => {
 			await rm(temporary, { recursive: true, force: true });
 		}
 	}, 300_000);
+
+	// The guard's copy of the inventory and this file's copy are written
+	// independently and compared here, so neither can be "fixed" to agree with a
+	// script that drifted: the doctor's own --list-checks is asserted against
+	// this file's copy above, and the guard asserts its own against the script.
+	test("declares the same doctor inventory the runtime prints", () => {
+		expect([...DOCTOR_CHECK_IDS]).toEqual([...DOCTOR_CHECK_INVENTORY]);
+	});
 
 	test("requires the cloud keys only when the cloud capability ships", async () => {
 		const temporary = await contractFixture();

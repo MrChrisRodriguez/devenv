@@ -53,7 +53,16 @@ bash scripts/worktree/up.sh          # environment, container, route, services
 bash scripts/worktree/exec.sh <cmd>  # run a project command in this checkout
 bash scripts/worktree/down.sh        # stop, keeping ports and data
 bash scripts/worktree/cleanup.sh     # release everything this checkout owns
+bash scripts/worktree/doctor.sh      # diagnose it, changing nothing
 ```
+
+When something is wrong, ask before you act: `bash scripts/worktree/doctor.sh`
+checks the whole host-to-container path — prerequisites, Git metadata, generated
+state, container ownership and mounts, tools, routing, both URLs, and the port
+registry — and provably changes none of it. It exits **0** healthy, **1** on a
+failure, and **2** on an unsupported argument; add `--strict` to make warnings
+fatal, `--json` for tooling, and `--list-checks` to see the inventory without
+probing anything. It never repairs — it points at the command that does.
 
 `up.sh` prints two URLs. The direct one, `http://127.0.0.1:<port>`, is always
 published and always authoritative. The friendly one,
