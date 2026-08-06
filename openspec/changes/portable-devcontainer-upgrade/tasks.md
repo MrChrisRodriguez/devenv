@@ -1,4 +1,4 @@
-**Current status (2026-08-06):** 31 of 82 tasks are complete. Stages 0 through 5A have merged; Stage 5B is next.
+**Current status (2026-08-06):** 35 of 82 tasks are complete. Stages 0 through 5B have merged; Stage 6 is next.
 
 ## 1. Stage 0 PR — Inventory, Parameters, and Baseline
 
@@ -65,10 +65,10 @@ This stage builds the new multi-worktree runtime alongside the existing entrypoi
 
 This stage switches users and tooling to the isolated command bridge after soak testing, removes superseded orchestration, and proves onboarding and rollback end to end.
 
-- [ ] 7.1 Route host project tooling, hooks that need project tools, onboarding commands, generated README content, and agent instructions through the isolated bridge
-- [ ] 7.2 Keep project commands direct inside the devcontainer/verified cloud and keep Docker, lifecycle, routing, and remote pushes host-owned
-- [ ] 7.3 Remove obsolete competing orchestration/install paths after soak while preserving data formats and the documented rollback commit
-- [ ] 7.4 Run a fresh-clone onboarding journey from prerequisites through setup/up/diagnosis/down/cleanup, update evidence/rules/docs/`CHANGES.md`, and prove rollback restores the predecessor path
+- [x] 7.1 Route host project tooling, hooks that need project tools, onboarding commands, generated README content, and agent instructions through the isolated bridge
+- [x] 7.2 Keep project commands direct inside the devcontainer/verified cloud and keep Docker, lifecycle, routing, and remote pushes host-owned
+- [x] 7.3 Remove obsolete competing orchestration/install paths after soak while preserving data formats and the documented rollback commit
+- [x] 7.4 Run a fresh-clone onboarding journey from prerequisites through setup/up/diagnosis/down/cleanup, update evidence/rules/docs/`CHANGES.md`, and prove rollback restores the predecessor path
 
 ## 8. Stage 6 PR — Secure Read-only Worktree Doctor
 
