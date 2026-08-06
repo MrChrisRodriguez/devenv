@@ -1,0 +1,12 @@
+Worktree down: no services are declared
+Worktree manifest: devenv-main is inactive; its ports stay reserved
+Worktree down: this worktree keeps its registered ports; run cleanup.sh to release them
+Worktree manifest: removed the manifest and route for devenv-main
+Worktree cleanup: removing container 90d63ad407d379bb9b1e124a11868c311d6756917123b5fe2b69c96a7e77b1c3
+Worktree cleanup: removing volume claude-code-shellhistory-16kmcp2vr26jdte0r45g86jregg9ukds5tlnutc12s2fha17veag
+Worktree cleanup: removing volume claude-code-config-16kmcp2vr26jdte0r45g86jregg9ukds5tlnutc12s2fha17veag
+Worktree cleanup: removing volume codex-home-16kmcp2vr26jdte0r45g86jregg9ukds5tlnutc12s2fha17veag
+Worktree cleanup: removing volume gemini-home-16kmcp2vr26jdte0r45g86jregg9ukds5tlnutc12s2fha17veag
+Worktree cleanup: removing volume config-home-16kmcp2vr26jdte0r45g86jregg9ukds5tlnutc12s2fha17veag
+Worktree environment: warning: the main checkout owns offset 0 and is never registered; nothing to release
+Worktree cleanup: removed every resource owned by devenv-main

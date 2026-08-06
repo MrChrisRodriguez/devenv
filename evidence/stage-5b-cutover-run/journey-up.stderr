@@ -1,0 +1,10 @@
+Worktree environment: devenv-main uses offset 0 (main); published host port 8080
+Worktree environment: devenv-main uses offset 0 (main); published host port 8080
+Worktree ensure: starting the container for /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone
+Worktree up: container 90d63ad407d379bb9b1e124a11868c311d6756917123b5fe2b69c96a7e77b1c3
+Worktree manifest: direct URL http://127.0.0.1:8080
+Worktree manifest: friendly URL http://main.devenv.localhost
+Worktree up: no services are declared
+Worktree up: devenv-main is up
+Worktree up: direct URL http://127.0.0.1:8080
+Worktree up: friendly URL http://main.devenv.localhost

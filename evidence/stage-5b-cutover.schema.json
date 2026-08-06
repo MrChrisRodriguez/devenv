@@ -1,0 +1,266 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"stage",
+		"capturedAt",
+		"run",
+		"source",
+		"host",
+		"precondition",
+		"journey",
+		"commands",
+		"boundary",
+		"legacy",
+		"cleanup",
+		"rollback"
+	],
+	"properties": {
+		"schemaVersion": { "const": 1 },
+		"stage": { "const": "stage-5b-entrypoint-cutover" },
+		"capturedAt": { "type": "string", "format": "date-time" },
+		"run": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"logRoot",
+				"temporaryRoot",
+				"isolatedHome",
+				"originPath"
+			],
+			"properties": {
+				"id": {
+					"type": "string",
+					"pattern": "^stage5b-[0-9]{8}t[0-9]{6}z-[0-9a-f]{8}$"
+				},
+				"logRoot": { "const": "evidence/stage-5b-cutover-run" },
+				"temporaryRoot": {
+					"type": "string",
+					"pattern": "^/[^\\s]*/devenv-stage5b-stage5b-[0-9a-z-]+$"
+				},
+				"isolatedHome": { "type": "string", "pattern": "^/[^\\s]+/home$" },
+				"originPath": { "type": "string", "pattern": "^/[^\\s]+$" }
+			}
+		},
+		"source": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["baseSha", "implementationSha", "treeClean"],
+			"properties": {
+				"baseSha": { "$ref": "#/$defs/gitSha" },
+				"implementationSha": { "$ref": "#/$defs/gitSha" },
+				"treeClean": { "const": true }
+			}
+		},
+		"host": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"os",
+				"architecture",
+				"kernel",
+				"home",
+				"dockerVersion",
+				"devcontainerCliVersion",
+				"pythonVersion",
+				"hostBunPresent"
+			],
+			"properties": {
+				"os": { "enum": ["darwin", "linux"] },
+				"architecture": { "type": "string", "minLength": 3 },
+				"kernel": { "type": "string", "minLength": 1 },
+				"home": { "type": "string", "pattern": "^/[^\\s]*[^/\\s]$" },
+				"dockerVersion": { "$ref": "#/$defs/version" },
+				"devcontainerCliVersion": { "$ref": "#/$defs/version" },
+				"pythonVersion": { "$ref": "#/$defs/version" },
+				"hostBunPresent": { "type": "boolean" }
+			}
+		},
+		"precondition": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["mainCheckoutContainerReady", "checkReadyExitCode"],
+			"properties": {
+				"mainCheckoutContainerReady": { "const": false },
+				"checkReadyExitCode": { "type": "integer", "minimum": 1 }
+			}
+		},
+		"journey": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"clonePath",
+				"workspaceId",
+				"family",
+				"offset",
+				"publishedHostPort",
+				"directUrl",
+				"containerId",
+				"devcontainerId",
+				"definitionFingerprint",
+				"hookExecutionOs",
+				"hookContainerId"
+			],
+			"properties": {
+				"clonePath": { "type": "string", "pattern": "^/[^\\s]+/clone$" },
+				"workspaceId": {
+					"type": "string",
+					"pattern": "^[a-z0-9][a-z0-9-]{0,62}$"
+				},
+				"family": { "const": "main" },
+				"offset": { "const": 0 },
+				"publishedHostPort": { "$ref": "#/$defs/port" },
+				"directUrl": {
+					"type": "string",
+					"pattern": "^http://127\\.0\\.0\\.1:[0-9]+$"
+				},
+				"containerId": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+				"devcontainerId": { "type": "string", "pattern": "^[0-9a-v]{52}$" },
+				"definitionFingerprint": { "$ref": "#/$defs/sha256" },
+				"hookExecutionOs": { "const": "Linux" },
+				"hookContainerId": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+			}
+		},
+		"commands": {
+			"type": "array",
+			"minItems": 15,
+			"maxItems": 15,
+			"items": { "$ref": "#/$defs/commandResult" }
+		},
+		"boundary": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["refusalCommandId", "refusalExitCode", "commandExecuted"],
+			"properties": {
+				"refusalCommandId": { "const": "journey-hook-refusal" },
+				"refusalExitCode": { "const": 7 },
+				"commandExecuted": { "const": false }
+			}
+		},
+		"legacy": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "scannedFiles", "allowListed", "remaining"],
+			"properties": {
+				"commandId": { "const": "legacy-orchestration-scan" },
+				"scannedFiles": { "type": "integer", "minimum": 1 },
+				"allowListed": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"remaining": { "type": "array", "maxItems": 0 }
+			}
+		},
+		"cleanup": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"commandId",
+				"removed",
+				"remaining",
+				"mainCheckoutStateDigest",
+				"mainCheckoutStateUnchanged"
+			],
+			"properties": {
+				"commandId": { "const": "journey-cleanup" },
+				"removed": {
+					"type": "array",
+					"minItems": 3,
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"remaining": { "type": "array", "maxItems": 0 },
+				"mainCheckoutStateDigest": { "$ref": "#/$defs/sha256" },
+				"mainCheckoutStateUnchanged": { "const": true }
+			}
+		},
+		"rollback": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["mode", "command", "runtimeCleanup", "scope", "proof"],
+			"properties": {
+				"mode": { "const": "atomic" },
+				"command": { "$ref": "#/$defs/command" },
+				"runtimeCleanup": { "$ref": "#/$defs/command" },
+				"scope": { "type": "string", "minLength": 40 },
+				"proof": {
+					"type": "object",
+					"required": [
+						"commandId",
+						"predecessorSha",
+						"implementationSha",
+						"predecessorTree",
+						"revertedTree",
+						"treeMatchesPredecessor",
+						"restoredPaths",
+						"predecessorPathRestored"
+					],
+					"properties": {
+						"treeMatchesPredecessor": { "const": true },
+						"predecessorPathRestored": { "const": true },
+						"restoredPaths": {
+							"type": "array",
+							"minItems": 2,
+							"items": { "type": "string", "minLength": 1 }
+						}
+					}
+				}
+			}
+		}
+	},
+	"$defs": {
+		"gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+		"sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+		"port": { "type": "integer", "minimum": 1024, "maximum": 65535 },
+		"version": {
+			"type": "string",
+			"pattern": "^[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:[-+][0-9A-Za-z.-]+)?$"
+		},
+		"command": {
+			"type": "array",
+			"minItems": 1,
+			"items": { "type": "string", "minLength": 1 }
+		},
+		"commandResult": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"command",
+				"runId",
+				"startedAt",
+				"completedAt",
+				"durationMs",
+				"stdoutPath",
+				"stderrPath",
+				"stdoutSha256",
+				"stderrSha256",
+				"exitCode",
+				"status"
+			],
+			"properties": {
+				"id": { "type": "string", "minLength": 1 },
+				"command": { "$ref": "#/$defs/command" },
+				"runId": { "type": "string", "minLength": 1 },
+				"startedAt": { "type": "string", "format": "date-time" },
+				"completedAt": { "type": "string", "format": "date-time" },
+				"durationMs": { "type": "integer", "minimum": 1 },
+				"stdoutPath": {
+					"type": "string",
+					"pattern": "^evidence/stage-5b-cutover-run/[a-z0-9-]+\\.stdout$"
+				},
+				"stderrPath": {
+					"type": "string",
+					"pattern": "^evidence/stage-5b-cutover-run/[a-z0-9-]+\\.stderr$"
+				},
+				"stdoutSha256": { "$ref": "#/$defs/sha256" },
+				"stderrSha256": { "$ref": "#/$defs/sha256" },
+				"exitCode": { "type": "integer", "minimum": 0 },
+				"status": { "enum": ["pass", "refused"] }
+			}
+		}
+	}
+}

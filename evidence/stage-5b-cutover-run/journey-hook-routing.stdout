@@ -1,0 +1,10 @@
+hookExecutionOs=Linux
+hookHostname=90d63ad407d3
+hookContainerId=90d63ad407d379bb9b1e124a11868c311d6756917123b5fe2b69c96a7e77b1c3
+acceptedSha=56976ef516be5ab95ebd1c54f72f250a40f6d9d1
+acceptedSubject=test(journey): stage 5b bridged hook probe
+hooksPath=.husky/_
+rejectedExitCode=1
+rejectedHuskyLine=husky - commit-msg script failed (code 1)
+headAfterRejection=56976ef516be5ab95ebd1c54f72f250a40f6d9d1
+rejectedSubjectLanded=0

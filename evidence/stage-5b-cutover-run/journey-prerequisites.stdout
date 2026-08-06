@@ -1,0 +1,11 @@
+mainCheckoutStateDigest=d0d0c090a075c9ae4edaf21846084d2742cecfc930dee45ffbd46cf74869a2e7
+mainCheckoutReadyExitCode=1
+isolatedHome=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/home
+hostDirectories=codex-auth container-env secrets.d 
+dockerVersion=29.4.0
+containerCliVersion=0.87.0
+pythonVersion=3.12.8
+hostBunPresent=true
+initHostSyntax=ok
+initHostInstallsContainerCli=1
+initHostVerifiesPython=4
