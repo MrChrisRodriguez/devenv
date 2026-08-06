@@ -1,0 +1,56 @@
+# Machine-readable Codex Cloud contract.
+#
+# Flat scalar keys only: the cloud scripts read this file with sed before Proto,
+# Bun, or jq exist, and the renderer's capability fences are line based. Every
+# pinned value mirrors one existing repository authority - .prototools,
+# .devcontainer/proto-checksums.txt, the Docker build arguments, and the package
+# catalog - and scripts/template/cloud-contract.ts fails the build on drift.
+version = 1
+default_profile = "core"
+setup_command = "bash .codex/cloud/bootstrap.sh"
+maintenance_command = "bash .codex/cloud/bootstrap.sh"
+doctor_command = "bash .codex/cloud/doctor.sh"
+selftest_command = "bash .codex/cloud/selftest.sh"
+exec_command = "bash .codex/cloud/exec.sh"
+agent_internet_access = "unrestricted"
+network_attempts = 2
+network_timeout_seconds = 120
+required_environment_variables = ["CODEX_CLOUD=true"]
+profile_environment_variable = "CODEX_CLOUD_PROFILE"
+persisted_environment = "~/.config/devenv/codex-cloud.env"
+persisted_secrets_environment = "~/.config/devenv/codex-cloud-secrets.env"
+extra_environment_variable = "CODEX_CLOUD_PERSIST_EXTRA_ENV"
+fingerprint_marker_directory = "~/.cache/devenv/codex-cloud"
+frozen_dependency_command = "bun install --frozen-lockfile"
+proto_installer = ".devcontainer/install-proto.sh"
+proto_checksums = ".devcontainer/proto-checksums.txt"
+supported_architectures = ["x86_64-unknown-linux-gnu", "aarch64-unknown-linux-gnu"]
+proto_sha256_x86_64_linux = "3f13534217fcf315c0579db6e1f87edd022d850144d9f3b0957a29586de34838"
+proto_sha256_aarch64_linux = "85406d411687412b729ef21f58f8ac2ddafa9e51eafc8ec1b4772af1b6ab98db"
+required_tools = ["proto", "bun", "node", "moon", "python", "uv", "jq"]
+tool_proto = "0.55.4"
+tool_bun = "1.3.13"
+tool_node = "24.18.0"
+tool_moon = "2.3.5"
+tool_python = "3.14.2"
+tool_uv = "0.9.7"
+tool_jq = "1.8.1"
+fingerprint_inputs = [".prototools", "package.json", "bun.lock", ".devcontainer/proto-checksums.txt", ".devcontainer/install-proto.sh", ".codex/cloud/contract.toml", ".codex/cloud/lib.sh", ".codex/cloud/bootstrap.sh", ".codex/cloud/doctor.sh", ".codex/cloud/exec.sh"]
+secret_allow_list = ["ANTHROPIC_API_KEY", "CONTEXT7_API_KEY", "GEMINI_API_KEY", "GH_TOKEN", "GIT_USER_EMAIL", "GIT_USER_NAME", "OPENAI_API_KEY", "OPENROUTER_API_KEY"]
+forbidden_cloud_commands = ["docker", "devpod", "devcontainer", "wrangler deploy", "git push", ".devcontainer/host/"]
+# capability:start graphify
+graphify_version = "0.9.16"
+graphify_package = "graphifyy[gemini,sql]"
+graphify_binary = "graphify"
+# capability:end graphify
+# capability:start playwright
+browser_profile = "browser"
+browser_network_timeout_seconds = 600
+browser_playwright_version = "1.59.1"
+browser_payload_root = "${HOME}/.payloads/browser"
+browser_environment_variable = "PLAYWRIGHT_BROWSERS_PATH"
+browser_marker_basename = ".devenv-playwright-version"
+browser_reference_marker_path = "/home/vscode/.payloads/browser/.devenv-playwright-version"
+browser_required_command = "bun run browser:preflight"
+browser_install_command = "install --only-shell chromium"
+# capability:end playwright
