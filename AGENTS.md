@@ -1,6 +1,6 @@
 # Agent Guidelines
 
-Shared conventions for all AI coding tools (Claude Code, Cursor, etc.).
+Shared conventions for all AI coding tools (Claude Code, Codex, Gemini CLI, etc.).
 
 ## Runtime
 
@@ -46,8 +46,8 @@ scripts/   # one-off tooling scripts
 - **TypeScript:** strict mode, extend from the appropriate base config in the repo root:
   - `tsconfig.base.json` — general use
   - `tsconfig.lib.base.json` — shared libraries
-  - `tsconfig.next.base.json` — Next.js apps
   - `tsconfig.worker.base.json` — Cloudflare Workers
+  - `tsconfig.start.base.json` — TanStack Start apps
 
 ## Toolchain Ownership
 

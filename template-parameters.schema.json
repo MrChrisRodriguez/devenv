@@ -227,7 +227,6 @@
 		"capabilityName": {
 			"enum": [
 				"devcontainer",
-				"moon",
 				"moon_affected_selection",
 				"openspec",
 				"codex",
@@ -253,7 +252,6 @@
 			"additionalProperties": false,
 			"required": [
 				"devcontainer",
-				"moon",
 				"moon_affected_selection",
 				"openspec",
 				"codex",
@@ -275,7 +273,6 @@
 			],
 			"properties": {
 				"devcontainer": { "type": "boolean" },
-				"moon": { "type": "boolean" },
 				"moon_affected_selection": { "type": "boolean" },
 				"openspec": { "type": "boolean" },
 				"codex": { "type": "boolean" },

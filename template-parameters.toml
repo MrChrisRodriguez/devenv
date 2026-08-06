@@ -65,7 +65,6 @@ proto_checksums = ".devcontainer/proto-checksums.txt"
 
 [capabilities.supported]
 devcontainer = true
-moon = true
 moon_affected_selection = true
 openspec = true
 codex = true
@@ -87,7 +86,6 @@ tanstack_start = true
 
 [capabilities.defaults]
 devcontainer = true
-moon = true
 moon_affected_selection = false
 openspec = true
 codex = true
@@ -108,7 +106,6 @@ vite_websocket_proxy = false
 tanstack_start = false
 
 [capability_dependencies]
-moon_affected_selection = ["moon"]
 codex_cloud = ["codex"]
 ccstatusline = ["claude"]
 claude_octopus = ["claude"]

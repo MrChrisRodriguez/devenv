@@ -711,12 +711,6 @@ function filterAgentRuleLines(
 			) {
 				return false;
 			}
-			if (
-				!parameters.capabilities.defaults["playwright"] &&
-				line.includes("tsconfig.stagehand")
-			) {
-				return false;
-			}
 			return true;
 		})
 		.join("\n");
@@ -774,12 +768,8 @@ async function renderContent(
 	}
 	if (entry.path === "package.json")
 		return renderPackage(source, parameters, await loadTemplateOwnership(root));
-	if (
-		entry.path === ".cursor/mcp.json" ||
-		entry.path === ".claude/settings.json"
-	) {
+	if (entry.path === ".claude/settings.json")
 		return renderMcpSettings(source, parameters);
-	}
 	if (entry.path === "tsconfig.base.json")
 		return renderTsconfig(source, parameters);
 	if (entry.path === ".vscode/extensions.json")

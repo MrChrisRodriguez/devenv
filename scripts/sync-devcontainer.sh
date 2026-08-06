@@ -43,10 +43,8 @@ set -euo pipefail
 # Template-removed paths to also delete downstream that auto-detection might miss
 # (e.g. locally-modified or untracked leftovers). Pristine template deletions are
 # detected automatically; this is just an explicit safety list. Edit per sync.
-PRUNE_PATHS=(
-  opencode.jsonc
-  .opencode
-)
+# Empty is the steady state — add paths only for the sync that removes them.
+PRUNE_PATHS=()
 
 # Paths never synced (project content, regenerated artifacts, template-only files).
 is_excluded() {
@@ -352,11 +350,13 @@ while IFS= read -r f; do
   fi
 done < <(git ls-files)
 
-# explicit safety list
-for p in "${PRUNE_PATHS[@]}"; do
-  [ -e "$p" ] || continue
-  prune_one "$p" "$ASSUME_YES"
-done
+# explicit safety list (guarded: `set -u` rejects "${empty[@]}" on bash < 4.4)
+if [ "${#PRUNE_PATHS[@]}" -gt 0 ]; then
+  for p in "${PRUNE_PATHS[@]}"; do
+    [ -e "$p" ] || continue
+    prune_one "$p" "$ASSUME_YES"
+  done
+fi
 [ "$n_pruned" -eq 0 ] && c_dim "   (nothing to prune)"
 echo
 

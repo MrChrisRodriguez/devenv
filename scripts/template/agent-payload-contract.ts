@@ -521,7 +521,6 @@ export async function validateAgentPayloadContract(
 		context7Enabled,
 		errors,
 	);
-	await validateMcpConfig(root, ".cursor/mcp.json", context7Enabled, errors);
 	// capability:end context7
 	for (const path of [
 		".devcontainer/on-create/setup-claude.sh",

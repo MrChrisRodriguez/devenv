@@ -25,7 +25,6 @@ const CONTRACT_FILES = [
 	"template-parameters.toml",
 	"docs/devcontainer-upgrade/stage-0/template-ownership.json",
 	".claude/settings.json",
-	".cursor/mcp.json",
 	".claude/skills/graphify/SKILL.md",
 	".codex/skills/graphify/SKILL.md",
 	".gemini/skills/graphify/SKILL.md",

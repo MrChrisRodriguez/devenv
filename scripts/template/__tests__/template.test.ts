@@ -123,9 +123,9 @@ describe("template parameter registry", () => {
 		)) as {
 			capabilities: Record<string, boolean>;
 		};
-		fixture.capabilities["moon"] = false;
+		fixture.capabilities["codex"] = false;
 		expect(() => validateFixtureDefinition(fixture, parameters)).toThrow(
-			"moon_affected_selection requires moon",
+			"codex_cloud requires codex",
 		);
 	});
 
@@ -297,11 +297,6 @@ describe("deterministic fixture renderer", () => {
 			expect(
 				await Bun.file(resolve(output, "tsconfig.start.base.json")).exists(),
 			).toBe(false);
-			expect(
-				await Bun.file(
-					resolve(output, "tsconfig.stagehand.base.json"),
-				).exists(),
-			).toBe(false);
 			const devcontainer = await Bun.file(
 				resolve(output, ".devcontainer/devcontainer.json"),
 			).json();
@@ -331,7 +326,6 @@ describe("deterministic fixture renderer", () => {
 				expect(generatedScripts[match[1] ?? ""]).toBeString();
 			}
 			for (const path of [
-				".cursor/mcp.json",
 				".claude/settings.json",
 				".devcontainer/on-create/setup-claude.sh",
 				".devcontainer/secrets.example",
@@ -399,11 +393,6 @@ describe("deterministic fixture renderer", () => {
 				expect(minimalPackage.workspaces.catalog[packageName]).toBeUndefined();
 				expect(minimalPackage.devDependencies[packageName]).toBeUndefined();
 			}
-			const link = resolve(
-				output,
-				".cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc",
-			);
-			expect((await lstat(link)).isSymbolicLink()).toBe(true);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
@@ -476,7 +465,7 @@ describe("deterministic fixture renderer", () => {
 			).toBe(true);
 			expect(
 				await Bun.file(
-					resolve(temporary, "cloud/tsconfig.stagehand.base.json"),
+					resolve(temporary, "cloud/tsconfig.start.base.json"),
 				).exists(),
 			).toBe(false);
 			const cloudPackage = await Bun.file(
@@ -513,7 +502,6 @@ describe("deterministic fixture renderer", () => {
 			).toBe(false);
 			for (const file of [
 				"tsconfig.worker.base.json",
-				"tsconfig.stagehand.base.json",
 				"tsconfig.start.base.json",
 			]) {
 				expect(await Bun.file(resolve(temporary, "full", file)).exists()).toBe(

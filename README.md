@@ -64,12 +64,9 @@ devpod version
 
 #### 4. An IDE (code editor)
 
-You need one of these — the container integrates with them automatically:
+You need **[VS Code](https://code.visualstudio.com/)** — Microsoft's free code editor. The container integrates with it automatically.
 
-- **[Cursor](https://www.cursor.com/)** — AI-native editor built on VS Code
-- **[VS Code](https://code.visualstudio.com/)** — Microsoft's free code editor
-
-Install one and open it once so DevPod can detect it.
+Install it and open it once so DevPod can detect it.
 
 #### 5. GitHub CLI (recommended)
 
@@ -99,12 +96,20 @@ Then add the public key to GitHub: copy the output of `cat ~/.ssh/id_ed25519.pub
 
 #### 7. Host directories
 
-The container bind-mounts a config directory from your host. Create it so Docker doesn't complain:
+The container bind-mounts config directories from your host. Create them so Docker doesn't auto-create them root-owned:
 
 ```bash
-mkdir -p ~/.config/devcontainer/secrets.d
-chmod 700 ~/.config/devcontainer/secrets.d
+for dir in secrets.d container-env codex-auth; do
+  mkdir -p ~/.config/devcontainer/"$dir"
+  chmod 700 ~/.config/devcontainer/"$dir"
+done
 ```
+
+- `secrets.d/` — per-project secret files you author, as `secrets.d/<project>`.
+- `container-env/` — the validated Docker `--env-file`. On every `devpod up`, `.devcontainer/host/prepare-container-env.sh` merges `~/.config/devcontainer/secrets` and `secrets.d/<project>` into `container-env/<project>.env` (mode `0600`); `runArgs` in `devcontainer.json` names that file with `--env-file`, so it is how host secrets reach every container process.
+- `codex-auth/` — read-write mount source for the Codex auth snapshot, as `codex-auth/<project>`. It must be host-owned so the container user can write the captured-back token.
+
+`init-host.sh` creates all three for you. The per-project leaf names are created at `devpod up`.
 
 ---
 
@@ -241,7 +246,7 @@ You're now ready to start building!
 - [Gemini CLI](https://github.com/google-gemini/gemini-cli)
 - [Codex CLI](https://github.com/openai/codex)
 - [OpenSpec](https://github.com/fission-ai/openspec) — spec-driven workflow
-- [Context7 MCP](https://context7.com) — up-to-date library docs for Claude Code and Cursor
+- [Context7 MCP](https://context7.com) — up-to-date library docs for Claude Code
 - [Claude Octopus](https://github.com/nyldn/claude-octopus) and [Warp integration](https://github.com/warpdotdev/claude-code-warp) — checksum-verified local plugin payloads with no first-run network install
 - [Graphify](https://github.com/safishamsi/graphify) and ccstatusline — image-owned knowledge-graph and Claude status tooling
 - [Biome](https://biomejs.dev) — formatter and linter
