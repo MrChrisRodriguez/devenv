@@ -1082,6 +1082,55 @@ describe("worktree container ensure", () => {
 		}
 	}, 180_000);
 
+	// A failed reconcile used to reach the log line and nowhere else: the id was
+	// interpolated with a command substitution, which discards its own exit
+	// status, so `up.sh` printed an empty container id and went on to publish an
+	// active route and report URLs for a container that had never started. The
+	// first thing a developer did next was run a command in it.
+	test("refuses to publish a route when the container start fails", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			expect(run(alpha, fixture.home, "env.sh").exitCode).toBe(0);
+			const environment = await generatedEnvironment(alpha);
+			const workspaceId = environmentValue(environment, "DEVENV_WORKSPACE_ID");
+			await Bun.write(resolve(tooling.state, "fail"), "");
+
+			const failed = run(
+				alpha,
+				fixture.home,
+				"up.sh",
+				[],
+				toolingEnvironment(fixture, tooling),
+			);
+			expect(failed.exitCode).not.toBe(0);
+			expect(failed.stderr).toContain("stub devcontainer up failed");
+			expect(failed.stderr).toContain(
+				"Worktree up: the container could not be reconciled; no route was published",
+			);
+			// The three claims a successful run would have made, and none of them
+			// may appear after a reconcile that did not happen.
+			expect(failed.stderr).not.toContain("Worktree up: container \n");
+			expect(failed.stderr).not.toContain("is up");
+			expect(failed.stderr).not.toContain("direct URL");
+			// No manifest, no route, and no reason for any other worktree to see
+			// this one as an active claim on its port.
+			expect(
+				await Bun.file(manifestPath(fixture.home, workspaceId)).exists(),
+			).toBe(false);
+			expect(
+				await Bun.file(snippetPath(fixture.home, workspaceId)).exists(),
+			).toBe(false);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
 	test("releases the lifecycle lock when the container start fails", async () => {
 		const fixture = await harness();
 		try {

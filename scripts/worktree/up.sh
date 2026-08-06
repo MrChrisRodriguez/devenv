@@ -106,6 +106,8 @@ start_services() {
 }
 
 main() {
+	local container_id="" status=0
+
 	if in_container; then
 		# Inside the container there is no container to reconcile and no host
 		# configuration to publish to: adopt the host-generated environment and
@@ -116,7 +118,20 @@ main() {
 	fi
 
 	bash "$WORKTREE_RUNTIME_DIR/env.sh"
-	wt_log "container $(bash "$WORKTREE_RUNTIME_DIR/ensure.sh")"
+	# The reconcile is captured into a variable rather than interpolated into the
+	# log line. A command substitution that sits inside another command's
+	# arguments discards its own exit status, so `wt_log "container $(ensure.sh)"`
+	# would print an empty id after a failed build and this script would go on to
+	# publish an active route for a container that does not exist. The assignment
+	# is what makes the failure fatal; an empty id is treated as one too, because
+	# the caller's next step is to run commands in whatever this named.
+	container_id="$(bash "$WORKTREE_RUNTIME_DIR/ensure.sh")" || status=$?
+	[ "$status" -ne 0 ] || [ -n "$container_id" ] || status=1
+	if [ "$status" -ne 0 ]; then
+		wt_die "the container could not be reconciled; no route was published" \
+			"$status"
+	fi
+	wt_log "container $container_id"
 	bash "$WORKTREE_RUNTIME_DIR/manifest.sh" active
 	start_services
 	report_routes

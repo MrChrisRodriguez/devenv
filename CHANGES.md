@@ -4,6 +4,35 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-08-06 — Fix: stop `up.sh` publishing a route for a container that never started
+
+**Goal:** `bash scripts/worktree/up.sh` reported success after a failed container build. When the `devcontainer` CLI could not start the container — a failed `onCreateCommand`, a transient registry error during the in-container dependency install, anything — `ensure.sh` printed its own diagnosis and exited non-zero, and `up.sh` carried straight on: it logged `Worktree up: container ` with an empty id, published the manifest as **active**, and printed both URLs and `<workspace> is up`. The developer's next command then ran against a container that did not exist, and every *other* worktree on the host saw an active claim on that port. Found by the Stage 6 live evidence capture, which hit a real transient tarball-extraction failure inside the container and got a "healthy" report back.
+
+**How to implement:** One line in `scripts/worktree/up.sh`. The reconcile was interpolated into the log line:
+
+```sh
+wt_log "container $(bash "$WORKTREE_RUNTIME_DIR/ensure.sh")"
+```
+
+A command substitution that sits **inside another command's arguments discards its own exit status**, and `set -e` never sees it — that is the whole bug, and it is invisible at a glance because the script does fail closed everywhere else. Capture the id into a variable instead, so the assignment is a command in its own right and `set -e` applies to it:
+
+```sh
+container_id="$(bash "$WORKTREE_RUNTIME_DIR/ensure.sh")" || status=$?
+[ "$status" -ne 0 ] || [ -n "$container_id" ] || status=1
+if [ "$status" -ne 0 ]; then
+	wt_die "the container could not be reconciled; no route was published" "$status"
+fi
+wt_log "container $container_id"
+```
+
+`ensure.sh`'s own exit code is propagated rather than flattened to 1, and an empty id is treated as a failure even when the exit code was zero, because the caller's next step is to run commands in whatever that named. `local container_id="$(...)"` would have reintroduced the same bug — `local` is a builtin whose status masks the substitution's — so the declaration and the assignment are separate statements. Nothing else in the runtime has this shape: `exec.sh`, `down.sh`, and `selftest.sh` all assign first and test the status.
+
+**Why downstream cares:** Replace the `wt_log "container $(...)"` line in your `scripts/worktree/up.sh` with the capture above. Until you do, a failed build is reported as a successful start, and the published manifest makes it a failure other worktrees can see. This is a runtime script fix only: no contract key changes, no `.devcontainer` change, and therefore **no container rebuild**.
+
+**Changed files:**
+- `scripts/worktree/up.sh` — the captured reconcile, the propagated exit code, the empty-id guard, and the refusal that publishes no route.
+- `scripts/template/__tests__/worktree.test.ts` — a regression test that fails the container start and asserts a non-zero exit, the reconcile failure and the refusal both on stderr, none of the three success claims (`container `, `is up`, `direct URL`), and neither a manifest nor a route snippet on disk afterwards.
+
 ## 2026-08-06 — Add: secure read-only worktree doctor
 
 **Goal:** Give every checkout one command that explains the whole host-to-container path — host prerequisites, linked-worktree Git metadata, generated state, container ownership and mounts, required tools, host routing, the direct and friendly URLs, the port registry, and cross-worktree port collisions — and that provably changes none of it. Diagnosis has been the gap since the runtime landed: `up.sh` reconciles, `cleanup.sh` removes, and neither is safe to run when the question is "what is wrong?". `bash scripts/worktree/doctor.sh` answers that question and nothing else. It is host-only, read-only, and additive: no `.devcontainer/**` file changes, so adopting this stage costs **no container rebuild**.
