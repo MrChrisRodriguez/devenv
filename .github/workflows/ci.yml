@@ -169,3 +169,52 @@ jobs:
             devenv-browser-ci \
             bun run browser:preflight
   # capability:end playwright
+
+  # THE one required status check. Set this job's display name as the sole
+  # required context in branch protection; no other job in this file is
+  # individually required, and every real gating job funnels into it via needs.
+  #
+  # `always()` so the gate ALWAYS reports. A run whose jobs were skipped — a
+  # draft pull request, or a lane this project's capabilities removed — must
+  # never strand a required check in a pending state that no further push can
+  # clear. Because it always reports, "no checks ran" is not reachable.
+  #
+  # `needs` names EVERY other job in this file. Exclusions are explicit rather
+  # than implicit, and inside this workflow there are none.
+  # capability:start codex_cloud
+  # codex-cloud-smoke.yml is deliberately outside this gate: it is a separate
+  # workflow and a real-network lane, so an upstream registry outage must never
+  # redden an unrelated pull request. The hermetic contract guard and bootstrap
+  # selftest in the `ci` job carry the required signal instead — which is what
+  # `[ci] network_smoke_is_required = false` records in template-parameters.toml.
+  # capability:end codex_cloud
+  #
+  # The informational-exclusion list is empty. A job that is allowed to fail
+  # without failing the gate has to earn that with a written reason.
+  ci-gate:
+    name: CI gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: ${{ always() }}
+    needs:
+      - ci
+      - image
+      # capability:start playwright
+      - browser
+      # capability:end playwright
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Verify no required job failed
+        # The verdict is derived from `join(needs.*.result)` rather than a
+        # hand-maintained list, so a new job cannot be forgotten here — only in
+        # `needs`, which the workflow guard checks separately.
+        #
+        # Both values arrive through `env:` and never through interpolation.
+        # Pull-request metadata is attacker-influenced text; interpolated into a
+        # `run:` body it would be spliced into the script the runner executes.
+        env:
+          RESULTS: ${{ join(needs.*.result, ',') }}
+          DRAFT: ${{ github.event.pull_request.draft }}
+        run: bash scripts/ci/aggregate-gate.sh

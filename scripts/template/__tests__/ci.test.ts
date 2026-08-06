@@ -4,6 +4,7 @@ import { describe, expect, test } from "bun:test";
 import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
+import { filterCapabilityBlocks } from "../render-fixture";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const ACTION_PATH = ".github/actions/setup-bun/action.yml";
@@ -386,6 +387,105 @@ describe("pull request trigger policy", () => {
 				if (id === gateName) continue;
 				if (path.endsWith("codex-cloud-smoke.yml")) continue;
 				expect(job["if"]).toBe("${{ !github.event.pull_request.draft }}");
+			}
+		}
+	});
+});
+
+describe("aggregate gate", () => {
+	const GATE_SCRIPT = resolve(ROOT, "scripts/ci/aggregate-gate.sh");
+
+	function runGate(results: string, draft: string): number {
+		return Bun.spawnSync({
+			cmd: ["bash", GATE_SCRIPT],
+			cwd: ROOT,
+			env: { ...process.env, RESULTS: results, DRAFT: draft },
+			stdout: "pipe",
+			stderr: "pipe",
+		}).exitCode;
+	}
+
+	test("derives its verdict from the upstream results", () => {
+		// The matrix runs against the committed script, not a paraphrase of it.
+		expect(runGate("success,skipped", "false")).toBe(0);
+		expect(runGate("success,success", "")).toBe(0);
+		expect(runGate("success,failure", "false")).toBe(1);
+		// A cancelled job is an unbounded job or a superseded run, never a pass.
+		expect(runGate("success,cancelled", "false")).toBe(1);
+		// Nothing fed the gate: a green here would be a gate over nothing.
+		expect(runGate("", "false")).toBe(1);
+	});
+
+	test("refuses to go green on a draft even when every job was skipped", () => {
+		// Gating jobs carry `if: !draft`, so on a draft they all report skipped and
+		// the results check alone would pass — letting the PR merge the instant it
+		// is marked ready, before anything revalidated it.
+		expect(runGate("skipped,skipped", "true")).toBe(1);
+		const result = Bun.spawnSync({
+			cmd: ["bash", GATE_SCRIPT],
+			cwd: ROOT,
+			env: { ...process.env, RESULTS: "skipped,skipped", DRAFT: "true" },
+			stdout: "pipe",
+			stderr: "pipe",
+		});
+		expect(result.stderr.toString()).toContain("Mark it ready for review");
+	});
+
+	test("depends on every other job and always reports", async () => {
+		const parameters = Bun.TOML.parse(
+			await Bun.file(resolve(ROOT, "template-parameters.toml")).text(),
+		) as Record<string, Record<string, unknown>>;
+		const gateId = String(parameters["ci"]?.["aggregate_gate_name"]);
+		const source = await Bun.file(resolve(ROOT, WORKFLOWS[0])).text();
+		const jobs = (Bun.YAML.parse(source) as Record<string, unknown>)[
+			"jobs"
+		] as Record<string, Record<string, unknown>>;
+		const gate = jobs[gateId];
+		expect(gate).toBeDefined();
+		expect(gate?.["name"]).toBe("CI gate");
+		// Without always() a skipped upstream leaves the required check pending
+		// forever, which no further push can clear.
+		expect(gate?.["if"]).toBe("${{ always() }}");
+		// Membership: forgetting a job here is how a gate silently stops gating.
+		expect(gate?.["needs"]).toEqual(
+			Object.keys(jobs).filter((id) => id !== gateId),
+		);
+		const steps = gate?.["steps"] as CompositeStep[];
+		const verdict = steps.at(-1) as Record<string, unknown>;
+		expect(verdict["run"]).toBe("bash scripts/ci/aggregate-gate.sh");
+		const env = verdict["env"] as Record<string, string>;
+		expect(env["RESULTS"]).toBe("${{ join(needs.*.result, ',') }}");
+		expect(env["DRAFT"]).toBe("${{ github.event.pull_request.draft }}");
+	});
+
+	test("keeps a need outside every capability fence", async () => {
+		const source = await Bun.file(resolve(ROOT, WORKFLOWS[0])).text();
+		// A fenced job and its fenced `needs` entry have to disappear together, or
+		// the rendered workflow depends on a job that is not there.
+		const stripped = filterCapabilityBlocks(source, {});
+		const value = Bun.YAML.parse(stripped) as Record<string, unknown>;
+		const jobs = value["jobs"] as Record<string, Record<string, unknown>>;
+		expect(Object.hasOwn(jobs, "browser")).toBe(false);
+		const needs = jobs["ci-gate"]?.["needs"] as string[];
+		expect(needs).not.toContain("browser");
+		// Never fence a needs list into emptiness: a gate with no dependencies
+		// reports success on a run in which nothing happened.
+		expect(needs.length).toBeGreaterThan(0);
+		for (const need of needs) expect(Object.hasOwn(jobs, need)).toBe(true);
+	});
+
+	test("interpolates no event metadata into a shell body", async () => {
+		for (const path of WORKFLOWS) {
+			const value = Bun.YAML.parse(
+				await Bun.file(resolve(ROOT, path)).text(),
+			) as Record<string, unknown>;
+			const jobs = value["jobs"] as Record<string, Record<string, unknown>>;
+			for (const job of Object.values(jobs)) {
+				for (const step of (job["steps"] ?? []) as CompositeStep[]) {
+					// Event metadata is attacker-influenced text. It may reach a step
+					// as an `env:` value, never spliced into the script itself.
+					expect(step.run ?? "").not.toContain("${{ github.event.");
+				}
 			}
 		}
 	});
