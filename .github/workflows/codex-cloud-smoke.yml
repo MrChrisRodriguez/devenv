@@ -7,6 +7,13 @@ name: Codex cloud smoke
 
 on:
   pull_request:
+    # No `branches:` filter, for the same reason ci.yml has none: that filter
+    # matches the PR's BASE branch, so it would silently disable this smoke on
+    # every stacked pull request. `paths:` is the intended narrowing.
+    #
+    # `ready_for_review` keeps this lane consistent with the gating workflow: a
+    # PR promoted out of draft revalidates immediately.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - ".codex/cloud/**"
       - ".prototools"
@@ -19,8 +26,10 @@ on:
     - cron: "30 8 * * *"
   workflow_dispatch:
 
+# Same draft/ready lane separation as the gating workflow, so a ready_for_review
+# run never cancels the draft run whose jobs are still attached to this head.
 concurrency:
-  group: codex-cloud-smoke-${{ github.ref }}
+  group: codex-cloud-smoke-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'draft' || 'ready' }}
   cancel-in-progress: true
 
 permissions:

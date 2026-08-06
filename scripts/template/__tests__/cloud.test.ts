@@ -211,10 +211,7 @@ describe("codex cloud contract", () => {
 				temporary,
 				".github/workflows/codex-cloud-smoke.yml",
 				(source) =>
-					source.replace(
-						"  pull_request:\n    paths:",
-						"  pull_request:\n    branches: [main]\n    paths:",
-					),
+					source.replace("\n    paths:", "\n    branches: [main]\n    paths:"),
 				"cloud: smoke pull_request must not filter base branches",
 			);
 			await mutate(

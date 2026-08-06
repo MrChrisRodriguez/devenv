@@ -4,7 +4,37 @@ on:
   push:
     branches: [main]
   pull_request:
-    branches: [main]
+    # There is deliberately NO `branches:` filter here. A `branches:` filter on
+    # pull_request matches the PR's BASE branch, so `branches: [main]` runs ZERO
+    # gating jobs on a stacked PR — not a narrower run, no run at all, and the
+    # pull request then shows a green page with no checks on it. Every gating
+    # lane must trigger on any base branch; `paths`/`paths-ignore` remain the
+    # only intended narrowing.
+    #
+    # `ready_for_review` is listed so a PR opened as a draft — whose gating jobs
+    # were skipped — revalidates the moment it is marked ready, instead of
+    # waiting for the next push that may never come.
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+# There is deliberately no `schedule:` here. This file has no paths filtering, so
+# every job already runs on every push and every pull request: a nightly run
+# would repeat the same work and add no signal.
+# capability:start codex_cloud
+# The nightly lane that genuinely covers something else — real network, real
+# registries — is .github/workflows/codex-cloud-smoke.yml.
+# capability:end codex_cloud
+
+# Cancel superseded runs on the same ref, but keep draft and ready runs in
+# separate lanes. Without the suffix a ready_for_review run cancels the draft run
+# it supersedes, and the cancelled draft jobs stay attached to the exact head
+# commit — so the head remains red after every ready-state job has passed.
+concurrency:
+  group: ci-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'draft' || 'ready' }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 # The single Bun authority for this file. The chain is deliberately one-way:
 # .prototools -> env.BUN_VERSION -> the setup-bun action's required input ->
@@ -14,9 +44,14 @@ env:
   BUN_VERSION: "1.3.13"
 
 jobs:
+  # Draft pull requests skip the gating jobs; the aggregate gate refuses to go
+  # green while a PR is a draft, so a skipped lane can never be mistaken for a
+  # validated one.
   ci:
     name: Lint, Typecheck & Test
     runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: ${{ !github.event.pull_request.draft }}
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -80,6 +115,7 @@ jobs:
     name: Build devcontainer image
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    if: ${{ !github.event.pull_request.draft }}
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -94,6 +130,7 @@ jobs:
     name: Launch baked browser payload
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    if: ${{ !github.event.pull_request.draft }}
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

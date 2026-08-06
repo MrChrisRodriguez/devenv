@@ -286,3 +286,107 @@ describe("workflow bootstrap wiring", () => {
 		}
 	});
 });
+
+// The `pull_request` `branches:` filter matches the PR's BASE branch. A stacked
+// pull request therefore matches nothing, runs zero jobs, and presents a page
+// with no checks on it at all — which reads as "nothing to see here" rather than
+// as "nothing ran". Detecting it needs both spellings, and comments that merely
+// discuss the filter must not count as one.
+function hasBaseBranchFilter(block: string): boolean {
+	const uncommented = block
+		.split("\n")
+		.filter((line) => !line.trimStart().startsWith("#"))
+		.join("\n");
+	return /(?:^|[{,\s])["']?branches(?:-ignore)?["']?\s*:/m.test(uncommented);
+}
+
+function pullRequestBlocks(source: string): string[] {
+	const lines = source.split("\n");
+	const blocks: string[] = [];
+	for (let index = 0; index < lines.length; index += 1) {
+		const line = lines[index] ?? "";
+		const header = /^(\s*)pull_request:/.exec(line);
+		if (!header) continue;
+		const indent = (header[1] ?? "").length;
+		const body = [line];
+		for (let next = index + 1; next < lines.length; next += 1) {
+			const candidate = lines[next] ?? "";
+			if (candidate.trim() === "") {
+				body.push(candidate);
+				continue;
+			}
+			if ((/^\s*/.exec(candidate)?.[0] ?? "").length <= indent) break;
+			body.push(candidate);
+		}
+		blocks.push(body.join("\n"));
+	}
+	return blocks;
+}
+
+describe("pull request trigger policy", () => {
+	test("detects a base-branch filter in either spelling", () => {
+		expect(hasBaseBranchFilter("  pull_request:\n    branches: [main]\n")).toBe(
+			true,
+		);
+		expect(
+			hasBaseBranchFilter('  pull_request: { "branches-ignore": [release] }'),
+		).toBe(true);
+		expect(
+			hasBaseBranchFilter(
+				"  pull_request:\n    # branches: would break stacked PRs\n    types: [opened]\n",
+			),
+		).toBe(false);
+	});
+
+	test("triggers every lane on any base branch and on readiness", async () => {
+		for (const path of WORKFLOWS) {
+			const source = await Bun.file(resolve(ROOT, path)).text();
+			const blocks = pullRequestBlocks(source);
+			expect(blocks.length).toBeGreaterThan(0);
+			for (const block of blocks) {
+				expect(hasBaseBranchFilter(block)).toBe(false);
+				expect(block).toContain("ready_for_review");
+			}
+			const triggers = (Bun.YAML.parse(source) as Record<string, unknown>)[
+				"on"
+			] as Record<string, unknown>;
+			expect(Object.hasOwn(triggers, "workflow_dispatch")).toBe(true);
+		}
+	});
+
+	test("keeps draft and ready runs in separate cancellation lanes", async () => {
+		for (const path of WORKFLOWS) {
+			const source = await Bun.file(resolve(ROOT, path)).text();
+			const concurrency = /^concurrency:\s*\n((?:^[ \t]+.*(?:\n|$))+)/m.exec(
+				source,
+			)?.[1];
+			expect(concurrency).toBeDefined();
+			expect(concurrency).toContain("github.ref");
+			expect(concurrency).toContain("github.event.pull_request.draft");
+			expect(concurrency).toContain("'draft' || 'ready'");
+			expect(concurrency).toContain("cancel-in-progress: true");
+		}
+	});
+
+	test("bounds every job and skips every gating job on a draft", async () => {
+		const parameters = Bun.TOML.parse(
+			await Bun.file(resolve(ROOT, "template-parameters.toml")).text(),
+		) as Record<string, Record<string, unknown>>;
+		const gateName = parameters["ci"]?.["aggregate_gate_name"];
+		for (const path of WORKFLOWS) {
+			const value = Bun.YAML.parse(
+				await Bun.file(resolve(ROOT, path)).text(),
+			) as Record<string, unknown>;
+			const jobs = value["jobs"] as Record<string, Record<string, unknown>>;
+			for (const [id, job] of Object.entries(jobs)) {
+				// An unbounded job cannot fail; it can only hang until the platform
+				// cancels it, which the aggregate gate reads as a failure with no
+				// diagnosis attached.
+				expect(typeof job["timeout-minutes"]).toBe("number");
+				if (id === gateName) continue;
+				if (path.endsWith("codex-cloud-smoke.yml")) continue;
+				expect(job["if"]).toBe("${{ !github.event.pull_request.draft }}");
+			}
+		}
+	});
+});
