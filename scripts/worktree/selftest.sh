@@ -72,12 +72,13 @@ local_domain_stem development_user container_workspace generated_state
 mutable_persistence shared_cache host_config_root registry_directory
 manifest_directory caddy_snippet_directory generated_environment
 generated_container_environment run_directory devcontainer_config
-published_container_port published_host_port_variable preferred_offset_modulus
-collision_scan_limit manifest_schema_version registry_schema_version
-default_probe_timeout_seconds startup_timeout_seconds diagnostic_staggered_mode
+toolchain_manifest published_container_port published_host_port_variable
+preferred_offset_modulus collision_scan_limit manifest_schema_version
+registry_schema_version doctor_schema_version default_probe_timeout_seconds
+startup_timeout_seconds diagnostic_staggered_mode
 friendly_domain_pattern direct_host host_caddy always_publish_direct_url
 container_engine container_cli container_cli_package bridge_command
-ensure_command"
+ensure_command doctor_command"
 
 LIST_KEYS="definition_fingerprint_inputs legacy_cleanup_commands runtime_scripts services"
 
@@ -245,7 +246,7 @@ check_bridge_degradation() {
 
 check_argument_handling() {
 	local script status
-	for script in env.sh ensure.sh exec.sh manifest.sh services.sh up.sh down.sh cleanup.sh; do
+	for script in env.sh ensure.sh exec.sh manifest.sh services.sh up.sh down.sh cleanup.sh doctor.sh; do
 		status=0
 		sandbox_run "$SANDBOX/linked" \
 			bash "$SANDBOX/linked/scripts/worktree/$script" --devenv-unsupported-argument \
@@ -258,6 +259,30 @@ check_argument_handling() {
 	pass "every entry point rejects an unsupported argument with a usage message"
 }
 
+# The doctor's check inventory is its published contract, and --list-checks is
+# the bounded, probe-free way to read it. Asserting the generated state is
+# byte-identical listing-wise afterwards is the hermetic half of the read-only
+# claim the doctor makes about itself.
+check_doctor_inventory() {
+	local state before after output status=0
+	state="$SANDBOX/linked/$(wt_contract_value generated_state)"
+	before="$(find "$state" | LC_ALL=C sort)"
+	output="$(sandbox_run "$SANDBOX/linked" \
+		bash "$SANDBOX/linked/scripts/worktree/doctor.sh" --list-checks \
+		2>"$SANDBOX/doctor.err")" || status=$?
+	after="$(find "$state" | LC_ALL=C sort)"
+	[ "$status" -eq 0 ] ||
+		fail "the doctor could not list its checks: $(cat "$SANDBOX/doctor.err")"
+	[ -n "$output" ] || fail "the doctor listed no checks"
+	case "$output" in
+		host.context*) ;;
+		*) fail "the doctor's inventory must begin with host.context" ;;
+	esac
+	[ "$before" = "$after" ] ||
+		fail "listing the doctor's checks changed the generated state"
+	pass "the doctor lists its check inventory without probing or writing"
+}
+
 main() {
 	check_contract
 	check_runtime_scripts
@@ -266,6 +291,7 @@ main() {
 	check_generated_environment
 	check_bridge_degradation
 	check_argument_handling
+	check_doctor_inventory
 	printf '%s: %d checks passed\n' "$WORKTREE_LABEL" "$CHECKS"
 	printf 'Worktree selftest: passed\n'
 }

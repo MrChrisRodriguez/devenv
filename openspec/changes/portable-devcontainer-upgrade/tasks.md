@@ -1,4 +1,4 @@
-**Current status (2026-08-06):** 35 of 82 tasks are complete. Stages 0 through 5B have merged; Stage 6 is next.
+**Current status (2026-08-06):** 40 of 82 tasks are complete. Stages 0 through 6 have merged; Stage 7 is next.
 
 ## 1. Stage 0 PR — Inventory, Parameters, and Baseline
 
@@ -74,11 +74,11 @@ This stage switches users and tooling to the isolated command bridge after soak 
 
 This stage adds a read-only doctor that explains environment health in human and JSON form while safely rejecting malformed or untrusted generated state.
 
-- [ ] 8.1 Implement human and schema-versioned JSON output, stable check IDs/statuses, configurable bounded probes, normal/strict exit semantics, and invalid-argument exit 2
-- [ ] 8.2 Add checks for host requirements, Docker/devcontainer CLI, generated state, ownership/readiness/Git mount, volumes/ports/tools, optional Caddy, routes, and duplicate active port claims
-- [ ] 8.3 Parse only allowlisted fields, canonicalize/contain paths, reject traversal/symlink/control/malformed/external targets, restrict probes to loopback/`.localhost`, and redact secrets
-- [ ] 8.4 Add healthy/recoverable/wrong-owner/missing-tool/route/collision/strict/JSON/inside-container and malicious-state fixtures with before/after non-mutation snapshots
-- [ ] 8.5 Run unit and live doctor acceptance, record rollback/evidence, and update rules/docs/`CHANGES.md`
+- [x] 8.1 Implement human and schema-versioned JSON output, stable check IDs/statuses, configurable bounded probes, normal/strict exit semantics, and invalid-argument exit 2
+- [x] 8.2 Add checks for host requirements, Docker/devcontainer CLI, generated state, ownership/readiness/Git mount, volumes/ports/tools, optional Caddy, routes, and duplicate active port claims
+- [x] 8.3 Parse only allowlisted fields, canonicalize/contain paths, reject traversal/symlink/control/malformed/external targets, restrict probes to loopback/`.localhost`, and redact secrets
+- [x] 8.4 Add healthy/recoverable/wrong-owner/missing-tool/route/collision/strict/JSON/inside-container and malicious-state fixtures with before/after non-mutation snapshots
+- [x] 8.5 Run unit and live doctor acceptance, record rollback/evidence, and update rules/docs/`CHANGES.md`
 
 ## 9. Stage 7 PR — CI Bootstrap and Workflow Safety
 

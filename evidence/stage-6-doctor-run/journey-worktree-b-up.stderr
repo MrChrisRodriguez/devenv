@@ -1,0 +1,10 @@
+Worktree environment: devenv-s6-beta uses offset 481 (preferred); published host port 8561
+Worktree environment: devenv-s6-beta uses offset 481 (preferred); published host port 8561
+Worktree ensure: starting the container for /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta
+Worktree up: container 1d3986e95245c17eae55b78cadd52974dc0bff3dc66254fe1ad4d8e49a2c2bc5
+Worktree manifest: direct URL http://127.0.0.1:8561
+Worktree manifest: friendly URL http://s6-beta.devenv.localhost
+Worktree up: no services are declared
+Worktree up: devenv-s6-beta is up
+Worktree up: direct URL http://127.0.0.1:8561
+Worktree up: friendly URL http://s6-beta.devenv.localhost

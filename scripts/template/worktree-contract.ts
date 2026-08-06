@@ -70,12 +70,14 @@ const BASE_KEYS = [
 	"generated_container_environment",
 	"run_directory",
 	"devcontainer_config",
+	"toolchain_manifest",
 	"published_container_port",
 	"published_host_port_variable",
 	"preferred_offset_modulus",
 	"collision_scan_limit",
 	"manifest_schema_version",
 	"registry_schema_version",
+	"doctor_schema_version",
 	"default_probe_timeout_seconds",
 	"startup_timeout_seconds",
 	"diagnostic_staggered_mode",
@@ -91,12 +93,125 @@ const BASE_KEYS = [
 	"runtime_scripts",
 	"bridge_command",
 	"ensure_command",
+	"doctor_command",
 	"services",
 ] as const;
 
 // Cloud keys live behind the codex_cloud fence, so they are required in a tree
 // that ships the capability and forbidden in one that does not.
 const CLOUD_KEYS = ["cloud_doctor_command", "cloud_marker_variable"] as const;
+
+// The doctor's published check inventory, in emission order. Two independent
+// copies of it live in the script — the ordered `add_result` calls, which are
+// the registry, and the heredoc `--list-checks` prints — and both are compared
+// against this list, so a check that is added, removed, or reordered has to be
+// declared here on purpose rather than drifting into the report.
+export const DOCTOR_CHECK_IDS = [
+	"host.context",
+	"host.command.git",
+	"host.command.engine",
+	"host.command.cli",
+	"host.command.python3",
+	"host.command.curl",
+	"git.worktree-integrity",
+	"host.engine-daemon",
+	"state.environment",
+	"state.manifest-state",
+	"state.values",
+	"state.paths",
+	"state.manifest",
+	"container.record",
+	"container.ready-record",
+	"container.runtime",
+	"container.ownership",
+	"container.definition",
+	"container.fast-ready",
+	"container.workspace-mount",
+	"container.git-mount",
+	"container.port",
+	"container.volumes",
+	"container.tools",
+	"caddy.binary",
+	"caddy.config",
+	"caddy.import",
+	"caddy.snippet",
+	"route.direct",
+	"route.friendly",
+	"registry.readable",
+	"registry.lock",
+	"registry.entry",
+	"registry.offset-match",
+	"registry.port-collision",
+	"manifests.port-collision",
+] as const;
+
+// Engine verbs that change what the engine is holding. The engine reaches the
+// doctor through the contract, so both spellings are scanned: the script
+// invokes `"$CONTAINER_ENGINE"`, and a line that typed the binary's own name
+// would otherwise walk straight past a scan that only knew the variable.
+const ENGINE_MUTATIONS = [
+	"run",
+	"create",
+	"start",
+	"stop",
+	"restart",
+	"kill",
+	"pause",
+	"unpause",
+	"rm",
+	"rmi",
+	"build",
+	"commit",
+	"cp",
+	"push",
+	"pull",
+	"tag",
+	"load",
+	"import",
+	"export",
+	"rename",
+	"update",
+	"prune",
+	"network",
+	"system",
+	"volume create",
+	"volume rm",
+	"volume prune",
+	"container rm",
+	"container prune",
+	"image rm",
+	"image prune",
+] as const;
+
+// Container CLI verbs that build or enter a container rather than describe one.
+const CLI_MUTATIONS = ["up", "build", "exec", "run-user-commands"] as const;
+
+// Everything else that would make the doctor a participant in the state it is
+// reporting on. The lifecycle scripts are named because a diagnostic that
+// called one of them would reconcile, allocate, publish, or remove behind the
+// report's back. `ensure.sh --check-ready` is the one deliberate exception and
+// is deliberately absent from this list: asking the reconciler its own
+// read-only question is the only way to report the answer the bridge will
+// really get.
+const DOCTOR_FORBIDDEN = [
+	/(?:^|[^A-Za-z0-9_./-])(?:env|up|down|cleanup)\.sh(?![A-Za-z0-9_-])/,
+	/\bmanifest\.sh\s+(?:active|inactive|remove)\b/,
+	/\bwt_atomic_write\b/,
+	/(?:^|[^A-Za-z0-9_-])mkdir\s/,
+	/(?:^|[^A-Za-z0-9_-])mktemp\b/,
+	/(?:^|[^A-Za-z0-9_-])rm\s/,
+	/(?:^|[^A-Za-z0-9_-])touch\s/,
+	/\bgit\s+(?:-C\s+\S+\s+)?(?:checkout|reset|clean|commit|add|stash|gc|worktree\s+(?:add|prune|remove|repair))\b/,
+	/(?:\bcaddy\b|\$\{?CADDY_BINARY\}?"?)\s+(?:reload|start|stop|run|fmt)\b/,
+] as const;
+
+// The doctor describes the registry lock and never holds one. A live holder in
+// the middle of a read-modify-write is exactly the process a diagnostic must
+// not disturb, and a lock the doctor took is a lock the doctor can leak.
+const DOCTOR_LOCK_TOKENS = [
+	/(?:^|[^A-Za-z0-9_./-])lock\.sh(?![A-Za-z0-9_-])/,
+	/\bportable_lock_(?:acquire|release)\b/,
+] as const;
 
 const SERVICE_KEYS = [
 	"kind",
@@ -116,6 +231,7 @@ const POSITIVE_INTEGER_KEYS = [
 	"collision_scan_limit",
 	"manifest_schema_version",
 	"registry_schema_version",
+	"doctor_schema_version",
 	"default_probe_timeout_seconds",
 	"startup_timeout_seconds",
 ] as const;
@@ -170,6 +286,10 @@ function list(record: JsonRecord, key: string): string[] | undefined {
 
 function sorted(values: readonly string[]): string {
 	return [...values].sort().join(",");
+}
+
+function sameValue(left: unknown, right: unknown): boolean {
+	return JSON.stringify(left) === JSON.stringify(right);
 }
 
 async function exists(path: string): Promise<boolean> {
@@ -266,6 +386,68 @@ function legacyLauncherFiles(root: string): string[] | undefined {
 	if (result.exitCode === 1) return [];
 	if (result.exitCode !== 0) return undefined;
 	return result.stdout.toString().split("\n").filter(Boolean);
+}
+
+function escapeRegExp(value: string): string {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+// The ordered `add_result` calls are the doctor's real registry. Reading them
+// out of the source is what makes a renamed id a failure rather than a silent
+// divergence between the calls and the inventory the script prints.
+function declaredCheckIds(body: string): string[] {
+	const found: string[] = [];
+	for (const match of body.matchAll(
+		/\badd_result\s+(?:PASS|WARN|FAIL|SKIP)\s+([A-Za-z0-9][A-Za-z0-9._-]*)/g,
+	)) {
+		const id = match[1];
+		if (id && !found.includes(id)) found.push(id);
+	}
+	return found;
+}
+
+// Spawned rather than read out of the file, because the claim under test is
+// that the shipped script really prints this inventory, and only running it
+// establishes that. The flag runs no probe and touches nothing, which is what
+// makes it safe to invoke from a guard.
+function listedCheckIds(root: string, script: string): string[] | undefined {
+	const result = Bun.spawnSync(
+		["bash", resolve(root, script), "--list-checks"],
+		{
+			cwd: root,
+			stdout: "pipe",
+			stderr: "pipe",
+		},
+	);
+	if (result.exitCode !== 0) return undefined;
+	return result.stdout.toString().split("\n").filter(Boolean);
+}
+
+// The top-level `name = "version"` lines of the Proto manifest, which is the
+// same slice of the authority the doctor's own reader takes.
+function manifestTools(source: string): string[] {
+	const tools: string[] = [];
+	for (const line of source.split("\n")) {
+		if (line.trimStart().startsWith("[")) break;
+		const match = /^([A-Za-z0-9_.-]+)\s*=\s*"[^"]*"\s*$/.exec(line);
+		if (match?.[1]) tools.push(match[1]);
+	}
+	return tools;
+}
+
+// One invocation form for a binary the contract names, covering both the
+// literal command and the variable the runtime actually calls it through.
+function invokes(
+	body: string,
+	command: string,
+	variable: string,
+	verb: string,
+) {
+	const invocation = `(?:\\b${escapeRegExp(command)}\\b|\\$\\{?${variable}\\}?"?)`;
+	const arguments_ = verb.replace(/ /g, "\\s+");
+	return new RegExp(`${invocation}\\s+${arguments_}(?![A-Za-z0-9_-])`).test(
+		body,
+	);
 }
 
 // The image owns the fingerprint. Reading its inputs out of the authority means
@@ -375,6 +557,11 @@ export async function validateWorktreeContract(
 	if (!friendlyPattern.endsWith(".localhost"))
 		errors.push("worktree: friendly_domain_pattern must end with .localhost");
 
+	// The Proto authority's own name for its manifest, when this tree still
+	// carries the generator that publishes it into the contract. A rendered
+	// project has no template-parameters.toml, so the binding below abstains
+	// there rather than inventing an authority to compare against.
+	let protoManifest: string | undefined;
 	const parameterPath = resolve(root, PARAMETER_PATH);
 	if (await exists(parameterPath)) {
 		try {
@@ -384,6 +571,7 @@ export async function validateWorktreeContract(
 			const { loadTemplateParameters } = await import("./parameters");
 			const { renderWorktreeContract } = await import("./render-fixture");
 			const parameters = await loadTemplateParameters(root);
+			protoManifest = parameters.toolchain["proto_manifest"];
 			const regenerated = renderWorktreeContract(parameters);
 			if ((await Bun.file(contractPath).text()) !== regenerated)
 				errors.push("worktree: contract drifted from template-parameters.toml");
@@ -478,11 +666,14 @@ export async function validateWorktreeContract(
 			errors.push(`worktree: ${script} has a bash syntax error`);
 		const source = await Bun.file(path).text();
 		sources.set(script, source);
-		if (!source.includes("set -euo pipefail"))
+		// Read out of the executable body rather than the whole file: a comment
+		// that quotes the shell options is documentation, not a setting, and a
+		// script whose only copy of them is in prose does not fail closed.
+		const body = stripComments(source);
+		if (!body.includes("set -euo pipefail"))
 			errors.push(
 				`worktree: ${script} must fail closed with set -euo pipefail`,
 			);
-		const body = stripComments(source);
 		for (const sweep of forbiddenSweeps) {
 			if (body.includes(sweep))
 				errors.push(`worktree: ${script} must not run an unscoped prune`);
@@ -559,6 +750,85 @@ export async function validateWorktreeContract(
 		!/wt_die\s+"[^"]*not ready[^"]*"\s+7\b/.test(bridgeScript)
 	)
 		errors.push("worktree: bridge must expose a ready-only mode for hooks");
+
+	// The toolchain authority reaches the doctor as a contract value so the
+	// container tool check can derive which commands to require without naming
+	// one. Republishing it means it can drift from the authority, which is
+	// exactly what this binds shut.
+	const toolchainManifest = scalar(contract, "toolchain_manifest") ?? "";
+	if (
+		toolchainManifest === "" ||
+		(protoManifest !== undefined && toolchainManifest !== protoManifest) ||
+		!(await exists(resolve(root, toolchainManifest)))
+	)
+		errors.push("worktree: toolchain_manifest must match the Proto authority");
+
+	// The doctor is the one runtime script whose whole value is that it changes
+	// nothing. Documentation can claim that; the scans below are the fact.
+	const doctorCommand = scalar(contract, "doctor_command") ?? "";
+	const doctorScript = doctorCommand.split(" ").pop() ?? "";
+	const doctorBody = stripComments(sources.get(doctorScript) ?? "");
+	// Identified by what it does, not by what it is called: the script the
+	// contract points at has to be the one that publishes a check inventory.
+	const isDoctor =
+		doctorBody.includes("--list-checks") && doctorBody.includes("add_result");
+	if (
+		!doctorCommand.startsWith("bash ") ||
+		!runtimeScripts.includes(doctorScript) ||
+		!isDoctor
+	) {
+		errors.push("worktree: doctor_command must name a declared runtime script");
+	} else {
+		const listed = listedCheckIds(root, doctorScript);
+		if (
+			!sameValue(listed, [...DOCTOR_CHECK_IDS]) ||
+			!sameValue(declaredCheckIds(doctorBody), [...DOCTOR_CHECK_IDS])
+		)
+			errors.push("worktree: doctor check ids drifted from the declared set");
+
+		const engine = scalar(contract, "container_engine") ?? "docker";
+		const cli = scalar(contract, "container_cli") ?? "devcontainer";
+		const mutates =
+			ENGINE_MUTATIONS.some((verb) =>
+				invokes(doctorBody, engine, "CONTAINER_ENGINE", verb),
+			) ||
+			CLI_MUTATIONS.some((verb) =>
+				invokes(doctorBody, cli, "CONTAINER_CLI", verb),
+			) ||
+			DOCTOR_FORBIDDEN.some((pattern) => pattern.test(doctorBody));
+		if (mutates)
+			errors.push(
+				`worktree: ${doctorScript} must not change the state it reports on`,
+			);
+		if (DOCTOR_LOCK_TOKENS.some((pattern) => pattern.test(doctorBody)))
+			errors.push("worktree: the doctor must never take a runtime lock");
+
+		// A hardcoded tool list is wrong the moment the authority gains a tool,
+		// and wrong quietly. One tool name can appear legitimately in prose — the
+		// container CLI install hint names the package manager — so the scan looks
+		// for a *list*: two or more of the authority's tools on a single line,
+		// plus the manifest's own path, which only a reader that went around the
+		// contract would ever need to spell out.
+		const declaredTools = manifestTools(
+			await readText(resolve(root, toolchainManifest)),
+		);
+		const namesToolList =
+			declaredTools.length > 1 &&
+			doctorBody.split("\n").some((line) => {
+				const named = declaredTools.filter((tool) =>
+					new RegExp(`\\b${escapeRegExp(tool)}\\b`).test(line),
+				);
+				return named.length > 1;
+			});
+		if (
+			!doctorBody.includes("TOOLCHAIN_MANIFEST") ||
+			namesToolList ||
+			(toolchainManifest !== "" && doctorBody.includes(toolchainManifest))
+		)
+			errors.push(
+				"worktree: the doctor must derive required tools from the Proto manifest",
+			);
+	}
 
 	const declaredPrefixes = volumePrefixes(configuration);
 	const persistence = scalar(contract, "mutable_persistence") ?? "";
@@ -640,6 +910,11 @@ export async function validateWorktreeContract(
 		errors.push(
 			"worktree: agent rules must describe the cutover, not the soak",
 		);
+	// An agent that cannot name the read-only diagnostic reaches for a
+	// reconciling command to answer a diagnostic question, which is how a
+	// question about a broken checkout becomes a rebuild of it.
+	if (agents !== "" && doctorCommand !== "" && !agents.includes(doctorCommand))
+		errors.push("worktree: agent rules must document the read-only doctor");
 
 	// Hook routing. Both hooks are optional on disk; any that ships must reach
 	// project tooling through the bridge, in ready-only mode, with the only
@@ -695,6 +970,8 @@ export async function validateWorktreeContract(
 		errors.push(
 			"worktree: onboarding must document the bridge as the entry point",
 		);
+	if (readme !== "" && doctorCommand !== "" && !readme.includes(doctorCommand))
+		errors.push("worktree: onboarding must document the read-only doctor");
 
 	// The non-vacuous proof: no tracked file outside the record allow-list still
 	// names the superseded launcher.

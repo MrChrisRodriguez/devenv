@@ -1,9 +1,20 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: Mutations quote the literal ${localEnv:} and shell substitutions the runtime carries.
 import { describe, expect, test } from "bun:test";
-import { chmod, copyFile, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
+import {
+	chmod,
+	copyFile,
+	mkdir,
+	mkdtemp,
+	readdir,
+	rm,
+	symlink,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { validateWorktreeContract } from "../worktree-contract";
+import {
+	DOCTOR_CHECK_IDS,
+	validateWorktreeContract,
+} from "../worktree-contract";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const RUNTIME_FILES = [
@@ -19,6 +30,7 @@ const RUNTIME_FILES = [
 	"down.sh",
 	"cleanup.sh",
 	"selftest.sh",
+	"doctor.sh",
 ] as const;
 
 interface Harness {
@@ -207,6 +219,14 @@ case "\${1:-}" in
 		;;
 	exec)
 		printf '%s\\n' "$*" >>"$state/exec.log"
+		[ ! -f "$state/exec-fail" ] || exit 1
+		[ ! -f "$state/exec-output" ] || cat "$state/exec-output"
+		exit 0
+		;;
+	port)
+		printf '%s\\n' "$*" >>"$state/port.log"
+		[ ! -f "$state/port-fail" ] || exit 1
+		[ ! -f "$state/port" ] || cat "$state/port"
 		exit 0
 		;;
 	rm)
@@ -306,7 +326,10 @@ function healthyInspect(worktree: string, commonDirectory: string): string {
 		"true",
 		worktree,
 		resolve(worktree, ".devcontainer/devcontainer.json"),
-		`${commonDirectory}>${commonDirectory};`,
+		// The workspace bind mount and the Git metadata mount, in the format the
+		// reconciler reads. Both entries are present because a healthy container
+		// carries both, and the doctor reports on each separately.
+		`${worktree}>/workspace;${commonDirectory}>${commonDirectory};`,
 	].join("\t");
 }
 
@@ -363,6 +386,12 @@ async function markReady(
 		await Bun.file(resolve(tooling.state, "inspect.healthy")).text(),
 	);
 	await Bun.write(resolve(tooling.state, "owned"), "");
+	// The published binding the engine would report for a container this runtime
+	// started, so a diagnostic reading it back sees the worktree's own port.
+	await Bun.write(
+		resolve(tooling.state, "port"),
+		`127.0.0.1:${environmentValue(await generatedEnvironment(worktree), "DEVENV_PUBLISHED_HOST_PORT")}\n`,
+	);
 }
 
 async function upLog(tooling: Tooling): Promise<string[]> {
@@ -1052,6 +1081,55 @@ describe("worktree container ensure", () => {
 			await rm(fixture.root, { recursive: true, force: true });
 		}
 	}, 180_000);
+
+	// A failed reconcile used to reach the log line and nowhere else: the id was
+	// interpolated with a command substitution, which discards its own exit
+	// status, so `up.sh` printed an empty container id and went on to publish an
+	// active route and report URLs for a container that had never started. The
+	// first thing a developer did next was run a command in it.
+	test("refuses to publish a route when the container start fails", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			expect(run(alpha, fixture.home, "env.sh").exitCode).toBe(0);
+			const environment = await generatedEnvironment(alpha);
+			const workspaceId = environmentValue(environment, "DEVENV_WORKSPACE_ID");
+			await Bun.write(resolve(tooling.state, "fail"), "");
+
+			const failed = run(
+				alpha,
+				fixture.home,
+				"up.sh",
+				[],
+				toolingEnvironment(fixture, tooling),
+			);
+			expect(failed.exitCode).not.toBe(0);
+			expect(failed.stderr).toContain("stub devcontainer up failed");
+			expect(failed.stderr).toContain(
+				"Worktree up: the container could not be reconciled; no route was published",
+			);
+			// The three claims a successful run would have made, and none of them
+			// may appear after a reconcile that did not happen.
+			expect(failed.stderr).not.toContain("Worktree up: container \n");
+			expect(failed.stderr).not.toContain("is up");
+			expect(failed.stderr).not.toContain("direct URL");
+			// No manifest, no route, and no reason for any other worktree to see
+			// this one as an active claim on its port.
+			expect(
+				await Bun.file(manifestPath(fixture.home, workspaceId)).exists(),
+			).toBe(false);
+			expect(
+				await Bun.file(snippetPath(fixture.home, workspaceId)).exists(),
+			).toBe(false);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
 
 	test("releases the lifecycle lock when the container start fails", async () => {
 		const fixture = await harness();
@@ -2015,7 +2093,12 @@ async function stubCaddy(fixture: Harness): Promise<Caddy> {
 	const binary = resolve(fixture.root, "caddy-bin/caddy");
 	const config = resolve(fixture.root, "Caddyfile");
 	await writeExecutable(binary, CADDY_STUB);
-	await Bun.write(config, "import caddy/*.caddy\n");
+	// The import line names the real snippet directory, which is what the host
+	// configuration a project is told to write looks like.
+	await Bun.write(
+		config,
+		`import ${resolve(fixture.home, ".config/devcontainer/caddy")}/*.caddy\n`,
+	);
 	return {
 		binary,
 		config,
@@ -2960,6 +3043,75 @@ describe("worktree service lifecycle", () => {
 		}
 	}, 120_000);
 
+	// The identity and volume-prefix derivations belong to the library, not to
+	// removal: the destructive path has to know exactly what this checkout owns
+	// and the diagnostic path has to look for exactly the same set, and two
+	// derivations would be two answers that diverge without anyone noticing.
+	// Both are pure reads, and the identity has to agree with the container CLI's
+	// own ${devcontainerId} algorithm or the volume names name nothing.
+	test("shared identity derivation is pure and matches the container CLI", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const expected = await declareVolumes(alpha);
+			const probe = Bun.spawnSync(
+				[
+					"bash",
+					"-c",
+					'. "$1/scripts/worktree/lib.sh"; ' +
+						'config="$1/.devcontainer/devcontainer.json"; ' +
+						'printf "identity=%s\\n" "$(wt_devcontainer_identity "$1" "$config")"; ' +
+						'wt_volume_prefixes "$config" | sed -e "s/^/prefix=/"; ' +
+						'wt_is_port 8080 && printf "port-accepts-8080\\n"; ' +
+						'wt_is_port 80 || printf "port-rejects-80\\n"; ' +
+						'wt_is_identifier "devenv-alpha" ' +
+						'"^[a-z0-9][a-z0-9-]{0,62}$" && printf "id-accepts-slug\\n"; ' +
+						'wt_is_identifier "EVIL.example" ' +
+						'"^[a-z0-9][a-z0-9-]{0,62}$" || printf "id-rejects-host\\n"',
+					"bash",
+					alpha,
+				],
+				{
+					cwd: alpha,
+					env: runtimeEnvironment(fixture.home),
+					stdout: "pipe",
+					stderr: "pipe",
+				},
+			);
+			expect(probe.stderr.toString()).toBe("");
+			expect(probe.exitCode).toBe(0);
+			const lines = probe.stdout.toString().trim().split("\n");
+			const identity = lines
+				.filter((line) => line.startsWith("identity="))
+				.map((line) => line.slice("identity=".length))[0];
+			const prefixes = lines
+				.filter((line) => line.startsWith("prefix="))
+				.map((line) => line.slice("prefix=".length));
+
+			expect(identity).toBe(devcontainerIdentity(alpha));
+			expect(prefixes).toEqual([...VOLUME_PREFIXES]);
+			expect(prefixes.map((prefix) => `${prefix}-${identity}`)).toEqual(
+				expected,
+			);
+			// The shape predicates answer instead of dying, which is what lets a
+			// diagnostic keep reporting past a malformed value.
+			expect(lines).toContain("port-accepts-8080");
+			expect(lines).toContain("port-rejects-80");
+			expect(lines).toContain("id-accepts-slug");
+			expect(lines).toContain("id-rejects-host");
+
+			// Deriving is reading: no registry, no generated state, nothing.
+			expect(await readdir(fixture.home)).toEqual([]);
+			expect(await Bun.file(resolve(alpha, ".dev")).exists()).toBe(false);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
 	test("no runtime script hardcodes a volume prefix or the persistence path", async () => {
 		const configuration = await Bun.file(
 			resolve(ROOT, ".devcontainer/devcontainer.json"),
@@ -2988,6 +3140,1224 @@ describe("worktree service lifecycle", () => {
 			expect(`${name}:${source.includes(persistence)}`).toBe(`${name}:false`);
 		}
 	});
+});
+
+// The doctor's published inventory, in emission order. The doctor prints this
+// same list from --list-checks, so a check that is added, removed, or reordered
+// has to be reflected here on purpose rather than by accident.
+const DOCTOR_CHECK_INVENTORY = [
+	"host.context",
+	"host.command.git",
+	"host.command.engine",
+	"host.command.cli",
+	"host.command.python3",
+	"host.command.curl",
+	"git.worktree-integrity",
+	"host.engine-daemon",
+	"state.environment",
+	"state.manifest-state",
+	"state.values",
+	"state.paths",
+	"state.manifest",
+	"container.record",
+	"container.ready-record",
+	"container.runtime",
+	"container.ownership",
+	"container.definition",
+	"container.fast-ready",
+	"container.workspace-mount",
+	"container.git-mount",
+	"container.port",
+	"container.volumes",
+	"container.tools",
+	"caddy.binary",
+	"caddy.config",
+	"caddy.import",
+	"caddy.snippet",
+	"route.direct",
+	"route.friendly",
+	"registry.readable",
+	"registry.lock",
+	"registry.entry",
+	"registry.offset-match",
+	"registry.port-collision",
+	"manifests.port-collision",
+] as const;
+
+interface DoctorCheck {
+	id: string;
+	status: string;
+	summary: string;
+	detail: string;
+	remediation: string;
+}
+
+interface DoctorReport {
+	schemaVersion: number;
+	workspace: {
+		id: string;
+		family: string;
+		offset: string;
+		repoRoot: string;
+	};
+	checks: DoctorCheck[];
+	summary: { pass: number; warn: number; fail: number; skip: number };
+	exitCode: number;
+}
+
+function doctorReport(result: RunResult): DoctorReport {
+	return JSON.parse(result.stdout) as DoctorReport;
+}
+
+function doctorCheck(report: DoctorReport, id: string): DoctorCheck {
+	const found = report.checks.find((check) => check.id === id);
+	if (!found) throw new Error(`The doctor emitted no ${id} check`);
+	return found;
+}
+
+// A PATH holding nothing but the named utilities. Removing a host tool is the
+// only honest way to exercise the doctor's degradation paths, and stubbing the
+// tools it does find keeps the result the same on a laptop with Docker and in
+// CI without it.
+const TOOL_STUB = `#!/usr/bin/env bash
+exit 0
+`;
+
+const NARROW_UTILITIES = [
+	"bash",
+	"cat",
+	"dirname",
+	"grep",
+	"head",
+	"sed",
+	"tr",
+	"env",
+	"uname",
+] as const;
+
+async function narrowTooling(
+	fixture: Harness,
+	name: string,
+	stubbed: string[],
+): Promise<string> {
+	const bin = resolve(fixture.root, `narrow-${name}`);
+	await mkdir(bin, { recursive: true });
+	for (const utility of NARROW_UTILITIES) {
+		const source = Bun.which(utility);
+		if (!source) continue;
+		await symlink(source, resolve(bin, utility));
+	}
+	for (const tool of stubbed) {
+		const path = resolve(bin, tool);
+		await Bun.write(path, TOOL_STUB);
+		await chmod(path, 0o755);
+	}
+	return bin;
+}
+
+async function treeListing(root: string): Promise<string[]> {
+	return (await readdir(root, { recursive: true })).sort();
+}
+
+// A probe client that records every invocation and answers a configurable code
+// per route. The doctor must never reach a host it did not itself derive, so the
+// log is as much of the assertion as the status is.
+const CURL_STUB = `#!/usr/bin/env bash
+set -u
+printf '%s\\n' "$*" >>"\${CURL_LOG:-/dev/null}"
+url=""
+for argument in "$@"; do
+	case "$argument" in
+		http://* | https://*) url="$argument" ;;
+	esac
+done
+case "$url" in
+	*.localhost*) printf '%s' "\${CURL_FRIENDLY_CODE:-200}" ;;
+	*) printf '%s' "\${CURL_DIRECT_CODE:-200}" ;;
+esac
+exit 0
+`;
+
+interface ProbeClient {
+	bin: string;
+	log: string;
+}
+
+async function stubProbeClient(fixture: Harness): Promise<ProbeClient> {
+	const bin = resolve(fixture.root, "probe-bin");
+	await writeExecutable(resolve(bin, "curl"), CURL_STUB);
+	return { bin, log: resolve(fixture.root, "curl.log") };
+}
+
+interface DoctorFixture {
+	fixture: Harness;
+	worktree: string;
+	tooling: Tooling;
+	caddy: Caddy;
+	probe: ProbeClient;
+	workspaceId: string;
+	hostPort: string;
+	manifest: string;
+}
+
+// One healthy worktree, brought to the exact state the doctor is supposed to
+// report as clean: generated environment, published manifest and route, a ready
+// record agreeing with an owned running container, and its port published on
+// loopback.
+async function doctorFixture(): Promise<DoctorFixture> {
+	const fixture = await harness();
+	const worktree = await addWorktree(fixture, "agent/worktrees/alpha", "alpha");
+	const tooling = await stubTooling(fixture, worktree);
+	const caddy = await stubCaddy(fixture);
+	const probe = await stubProbeClient(fixture);
+	await markReady(fixture, worktree, tooling);
+	expect(
+		run(
+			worktree,
+			fixture.home,
+			"manifest.sh",
+			["active"],
+			toolingEnvironment(fixture, tooling, caddyEnvironment(caddy)),
+		).exitCode,
+	).toBe(0);
+	const environment = await generatedEnvironment(worktree);
+	const workspaceId = environmentValue(environment, "DEVENV_WORKSPACE_ID");
+	return {
+		fixture,
+		worktree,
+		tooling,
+		caddy,
+		probe,
+		workspaceId,
+		hostPort: environmentValue(environment, "DEVENV_PUBLISHED_HOST_PORT"),
+		manifest: manifestPath(fixture.home, workspaceId),
+	};
+}
+
+function doctorEnvironment(
+	subject: DoctorFixture,
+	overrides: Record<string, string> = {},
+): Record<string, string> {
+	return {
+		PATH: `${subject.probe.bin}:${subject.tooling.bin}:${process.env["PATH"] ?? ""}`,
+		STUB_STATE: subject.tooling.state,
+		CURL_LOG: subject.probe.log,
+		...caddyEnvironment(subject.caddy),
+		...overrides,
+	};
+}
+
+function runDoctor(
+	subject: DoctorFixture,
+	args: string[] = ["--json"],
+	overrides: Record<string, string> = {},
+): RunResult {
+	return run(
+		subject.worktree,
+		subject.fixture.home,
+		"doctor.sh",
+		args,
+		doctorEnvironment(subject, overrides),
+	);
+}
+
+// Everything the stub engine was ever asked to do, concatenated. A read-only
+// claim is only worth what the invocation record says.
+async function engineInvocations(tooling: Tooling): Promise<string> {
+	const names = await readdir(tooling.state);
+	let text = "";
+	for (const name of names) {
+		if (!name.endsWith(".log")) continue;
+		text += await Bun.file(resolve(tooling.state, name)).text();
+	}
+	return text;
+}
+
+// One non-printable byte, written into generated state exactly as a corrupted
+// writer would leave it. Assembled rather than typed so the source file itself
+// stays printable.
+const CONTROL_BYTE = String.fromCharCode(1);
+
+// Rewrite a generated file in place. Every one of these is state the doctor is
+// supposed to distrust, so corrupting it exactly as an attacker or a bug would
+// is the only way to prove the distrust is real.
+async function patchEnvironmentFile(
+	path: string,
+	replacements: Record<string, string>,
+): Promise<void> {
+	let source = await Bun.file(path).text();
+	for (const [key, value] of Object.entries(replacements)) {
+		const line = new RegExp(`^${key}=.*$`, "m");
+		source = line.test(source)
+			? source.replace(line, `${key}=${value}`)
+			: `${source}${key}=${value}\n`;
+	}
+	await Bun.write(path, source);
+}
+
+async function corruptState(
+	subject: DoctorFixture,
+	replacements: Record<string, string>,
+): Promise<void> {
+	const applied = new Set<string>();
+	for (const relative of [
+		".dev/state/worktree.env",
+		".dev/state/run/manifest.env",
+	]) {
+		const path = resolve(subject.worktree, relative);
+		const source = await Bun.file(path).text();
+		const present = Object.entries(replacements).filter(([key]) =>
+			new RegExp(`^${key}=`, "m").test(source),
+		);
+		if (present.length === 0) continue;
+		for (const [key] of present) applied.add(key);
+		await patchEnvironmentFile(path, Object.fromEntries(present));
+	}
+	// A key neither generated file carries yet still belongs in the host view.
+	const leftover = Object.entries(replacements).filter(
+		([key]) => !applied.has(key),
+	);
+	if (leftover.length > 0)
+		await patchEnvironmentFile(
+			resolve(subject.worktree, ".dev/state/worktree.env"),
+			Object.fromEntries(leftover),
+		);
+}
+
+async function stateSnapshot(subject: DoctorFixture): Promise<string[]> {
+	const home = subject.fixture.home;
+	const entries: string[] = [];
+	for (const directory of [
+		resolve(home, ".config/devcontainer/worktrees"),
+		resolve(home, ".config/devcontainer/caddy"),
+		resolve(home, ".config/devcontainer/ports-registry"),
+		resolve(subject.worktree, ".dev/state"),
+	]) {
+		for (const name of await treeListing(directory)) {
+			const path = resolve(directory, name);
+			const file = Bun.file(path);
+			const body = (await file.exists()) ? await file.text() : "<dir>";
+			entries.push(`${path}\n${body}`);
+		}
+	}
+	return entries;
+}
+
+describe("worktree doctor", () => {
+	test("rejects invalid arguments before running a single check", async () => {
+		const fixture = await harness();
+		try {
+			for (const args of [
+				["--timeout", "0"],
+				["--timeout"],
+				["--timeout=31"],
+				["--timeout", "abc"],
+				["--bogus"],
+			]) {
+				const refused = run(fixture.main, fixture.home, "doctor.sh", args);
+				expect(`${args.join(" ")}:${refused.exitCode}`).toBe(
+					`${args.join(" ")}:2`,
+				);
+				expect(refused.stdout).toBe("");
+			}
+			const bounded = run(fixture.main, fixture.home, "doctor.sh", [
+				"--timeout",
+				"0",
+			]);
+			expect(bounded.stderr).toContain("timeout must be between 1 and 30");
+			const unknown = run(fixture.main, fixture.home, "doctor.sh", ["--bogus"]);
+			expect(unknown.stderr).toContain(
+				"Usage: bash scripts/worktree/doctor.sh",
+			);
+			const help = run(fixture.main, fixture.home, "doctor.sh", ["--help"]);
+			expect(help.exitCode).toBe(0);
+			expect(help.stderr).toContain("host-only and read-only");
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("lists its check inventory without probing or writing", async () => {
+		const fixture = await harness();
+		try {
+			const before = await treeListing(fixture.main);
+			const listed = run(fixture.main, fixture.home, "doctor.sh", [
+				"--list-checks",
+			]);
+			expect(listed.exitCode).toBe(0);
+			expect(listed.stderr).toBe("");
+			expect(listed.stdout.trim().split("\n")).toEqual([
+				...DOCTOR_CHECK_INVENTORY,
+			]);
+			expect(await treeListing(fixture.main)).toEqual(before);
+			// Listing is not diagnosing: no probe ran, so no state was consulted and
+			// the generated environment was never created.
+			expect(
+				await Bun.file(
+					resolve(fixture.main, ".dev/state/worktree.env"),
+				).exists(),
+			).toBe(false);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("emits one stable JSON document whose checks follow the inventory", async () => {
+		const fixture = await harness();
+		try {
+			const bin = await narrowTooling(fixture, "healthy", [
+				"git",
+				"docker",
+				"devcontainer",
+				"python3",
+				"curl",
+			]);
+			const result = run(fixture.main, fixture.home, "doctor.sh", ["--json"], {
+				PATH: bin,
+			});
+			const report = doctorReport(result);
+			const contract = Bun.TOML.parse(
+				await Bun.file(resolve(ROOT, "scripts/worktree/contract.toml")).text(),
+			) as Record<string, unknown>;
+
+			expect(report.schemaVersion).toBe(
+				Number(contract["doctor_schema_version"]),
+			);
+			expect(report.checks.map((check) => check.id)).toEqual([
+				...DOCTOR_CHECK_INVENTORY,
+			]);
+			for (const check of report.checks) {
+				expect(Object.keys(check).sort()).toEqual([
+					"detail",
+					"id",
+					"remediation",
+					"status",
+					"summary",
+				]);
+				expect(["PASS", "WARN", "FAIL", "SKIP"]).toContain(check.status);
+			}
+			const total =
+				report.summary.pass +
+				report.summary.warn +
+				report.summary.fail +
+				report.summary.skip;
+			expect(total).toBe(DOCTOR_CHECK_INVENTORY.length);
+			expect(report.summary.fail).toBe(0);
+			expect(report.exitCode).toBe(result.exitCode);
+			expect(result.exitCode).toBe(0);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("refuses to diagnose a host from inside the container", async () => {
+		const fixture = await harness();
+		try {
+			const json = run(fixture.main, fixture.home, "doctor.sh", ["--json"], {
+				DEVCONTAINER: "true",
+			});
+			const report = doctorReport(json);
+			expect(json.exitCode).toBe(1);
+			expect(
+				report.checks.map((check) => ({ id: check.id, status: check.status })),
+			).toEqual([{ id: "host.context", status: "FAIL" }]);
+			expect(report.exitCode).toBe(1);
+
+			const human = run(fixture.main, fixture.home, "doctor.sh", [], {
+				DEVCONTAINER: "true",
+			});
+			expect(human.exitCode).toBe(1);
+			expect(human.stdout).toContain("[FAIL] host.context");
+			expect(human.stdout).toContain("Summary: 0 pass, 0 warn, 1 fail, 0 skip");
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("strict mode changes the exit code and nothing else", async () => {
+		const fixture = await harness();
+		try {
+			// curl bounds the optional route probes only, so its absence is a warning
+			// rather than a failure — the exact shape --strict exists to promote.
+			const bin = await narrowTooling(fixture, "nocurl", [
+				"git",
+				"docker",
+				"devcontainer",
+				"python3",
+			]);
+			const normal = run(fixture.main, fixture.home, "doctor.sh", ["--json"], {
+				PATH: bin,
+			});
+			const strict = run(
+				fixture.main,
+				fixture.home,
+				"doctor.sh",
+				["--json", "--strict"],
+				{ PATH: bin },
+			);
+			const normalReport = doctorReport(normal);
+			const strictReport = doctorReport(strict);
+
+			expect(doctorCheck(normalReport, "host.command.curl").status).toBe(
+				"WARN",
+			);
+			expect(normal.exitCode).toBe(0);
+			expect(strict.exitCode).toBe(1);
+			expect(strictReport.checks).toEqual(normalReport.checks);
+			expect(strictReport.summary).toEqual(normalReport.summary);
+			expect(normalReport.exitCode).toBe(0);
+			expect(strictReport.exitCode).toBe(1);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("reports a healthy worktree without changing any of it", async () => {
+		const subject = await doctorFixture();
+		try {
+			const before = await stateSnapshot(subject);
+			const result = runDoctor(subject);
+			const report = doctorReport(result);
+
+			expect(result.exitCode).toBe(0);
+			expect(report.summary).toEqual({
+				pass: DOCTOR_CHECK_INVENTORY.length,
+				warn: 0,
+				fail: 0,
+				skip: 0,
+			});
+			expect(report.workspace.id).toBe(subject.workspaceId);
+			expect(report.workspace.repoRoot).toBe(subject.worktree);
+
+			// Byte-identical state, and an engine that was only ever asked to read.
+			expect(await stateSnapshot(subject)).toEqual(before);
+			const invocations = await engineInvocations(subject.tooling);
+			for (const verb of [
+				"run ",
+				"create ",
+				"start ",
+				"stop ",
+				"rm ",
+				"volume rm",
+				"network",
+			]) {
+				expect(`${verb}:${invocations.includes(verb)}`).toBe(`${verb}:false`);
+			}
+			expect(await upLog(subject.tooling)).toEqual([]);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("fails a container owned by another checkout and skips what depends on it", async () => {
+		const subject = await doctorFixture();
+		try {
+			await Bun.write(
+				resolve(subject.tooling.state, "inspect"),
+				healthyInspect(
+					resolve(subject.fixture.root, "somebody-else"),
+					gitCommonDirectory(subject.worktree),
+				),
+			);
+			const report = doctorReport(runDoctor(subject));
+
+			expect(doctorCheck(report, "container.ownership").status).toBe("FAIL");
+			expect(doctorCheck(report, "container.ownership").remediation).toContain(
+				"Do not execute commands in this container",
+			);
+			expect(doctorCheck(report, "container.tools").status).toBe("SKIP");
+			expect(doctorCheck(report, "container.port").status).toBe("SKIP");
+			expect(report.exitCode).toBe(1);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("warns rather than fails on a stopped container", async () => {
+		const subject = await doctorFixture();
+		try {
+			const stopped = healthyInspect(
+				subject.worktree,
+				gitCommonDirectory(subject.worktree),
+			).replace(/^true/, "false");
+			await Bun.write(resolve(subject.tooling.state, "inspect"), stopped);
+
+			const normal = runDoctor(subject);
+			const report = doctorReport(normal);
+			expect(doctorCheck(report, "container.runtime").status).toBe("WARN");
+			expect(doctorCheck(report, "container.fast-ready").status).toBe("SKIP");
+			expect(normal.exitCode).toBe(0);
+
+			const strict = runDoctor(subject, ["--json", "--strict"]);
+			expect(strict.exitCode).toBe(1);
+			expect(doctorReport(strict).checks).toEqual(report.checks);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("warns that a changed definition needs a rebuild without starting one", async () => {
+		const subject = await doctorFixture();
+		try {
+			await Bun.write(
+				resolve(subject.worktree, ".dev/state/run/container.ready"),
+				`${CONTAINER_ID} ${"0".repeat(64)}\n`,
+			);
+			const report = doctorReport(runDoctor(subject));
+
+			expect(doctorCheck(report, "container.definition").status).toBe("WARN");
+			expect(doctorCheck(report, "container.definition").summary).toContain(
+				"rebuild is pending",
+			);
+			// Reporting a pending rebuild is not performing one.
+			expect(await upLog(subject.tooling)).toEqual([]);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("fails closed when the linked worktree Git pointer is broken", async () => {
+		const subject = await doctorFixture();
+		try {
+			await Bun.write(
+				resolve(subject.worktree, ".git"),
+				`gitdir: ${resolve(subject.fixture.root, "pruned/admin")}\n`,
+			);
+			const report = doctorReport(runDoctor(subject));
+
+			expect(doctorCheck(report, "git.worktree-integrity").status).toBe("FAIL");
+			expect(doctorCheck(report, "git.worktree-integrity").summary).toContain(
+				"administrative directory is missing",
+			);
+			// The fingerprint comparison never runs against untrusted Git metadata.
+			expect(doctorCheck(report, "container.definition").status).toBe("SKIP");
+			expect(doctorCheck(report, "container.fast-ready").status).toBe("SKIP");
+			expect(report.exitCode).toBe(1);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("reports a corrupt manifest while keeping the JSON document parseable", async () => {
+		const subject = await doctorFixture();
+		try {
+			await Bun.write(subject.manifest, "{not-json\n");
+			const result = runDoctor(subject);
+			const report = doctorReport(result);
+
+			expect(doctorCheck(report, "state.manifest").status).toBe("FAIL");
+			expect(result.exitCode).toBe(1);
+			// And the file it refused to trust is exactly as it found it.
+			expect(await Bun.file(subject.manifest).text()).toBe("{not-json\n");
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("fails a manifest that claims this identity for another repository", async () => {
+		const subject = await doctorFixture();
+		try {
+			const document = (await Bun.file(subject.manifest).json()) as Record<
+				string,
+				unknown
+			>;
+			document["repoPath"] = resolve(subject.fixture.root, "other-clone");
+			await Bun.write(subject.manifest, `${JSON.stringify(document)}\n`);
+			const report = doctorReport(runDoctor(subject));
+
+			expect(doctorCheck(report, "state.manifest").status).toBe("FAIL");
+			expect(doctorCheck(report, "state.manifest").detail).toContain(
+				"other-clone",
+			);
+			expect(doctorCheck(report, "state.manifest").remediation).toContain(
+				"one clone of a project",
+			);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("derives required container tools from the toolchain authority", async () => {
+		const subject = await doctorFixture();
+		try {
+			await Bun.write(
+				resolve(subject.worktree, ".prototools"),
+				'bun = "1.3.13"\nmoon = "2.3.5"\nproto = "0.55.4"\n\n[settings]\npin-latest = "local"\n',
+			);
+			// Two of the three declared commands are absent inside the container.
+			await Bun.write(
+				resolve(subject.tooling.state, "exec-output"),
+				"moon\nproto\n",
+			);
+			const missing = doctorReport(runDoctor(subject));
+			const tools = doctorCheck(missing, "container.tools");
+			expect(tools.status).toBe("FAIL");
+			expect(tools.detail).toContain("moon");
+			expect(tools.detail).toContain("proto");
+			expect(tools.detail).not.toContain("bun");
+
+			// The probe asked about exactly what the authority declares, nothing else.
+			const asked = await Bun.file(
+				resolve(subject.tooling.state, "exec.log"),
+			).text();
+			for (const tool of ["bun", "moon", "proto"]) {
+				expect(`${tool}:${asked.includes(`command -v ${tool}`)}`).toBe(
+					`${tool}:true`,
+				);
+			}
+
+			// A probe that could not run at all is a different diagnosis from a probe
+			// that ran and found gaps.
+			await Bun.write(resolve(subject.tooling.state, "exec-fail"), "");
+			const broken = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"container.tools",
+			);
+			expect(broken.status).toBe("FAIL");
+			expect(broken.summary).toContain("could not run");
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("warns when a declared per-worktree volume is absent", async () => {
+		const fixture = await harness();
+		try {
+			const worktree = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const expected = await declareVolumes(worktree);
+			const tooling = await stubTooling(fixture, worktree);
+			const caddy = await stubCaddy(fixture);
+			const probe = await stubProbeClient(fixture);
+			await markReady(fixture, worktree, tooling);
+			const subject: DoctorFixture = {
+				fixture,
+				worktree,
+				tooling,
+				caddy,
+				probe,
+				workspaceId: "",
+				hostPort: "",
+				manifest: "",
+			};
+
+			// Only the first of the two declared volumes exists on this host.
+			await Bun.write(resolve(tooling.state, "volumes"), `${expected[0]}\n`);
+			const volumes = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"container.volumes",
+			);
+			expect(volumes.status).toBe("WARN");
+			expect(volumes.detail).toContain(expected[1] ?? "");
+			expect(volumes.detail).not.toContain(`absent: ${expected[0]}`);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("treats host routing as optional and promotable", async () => {
+		const subject = await doctorFixture();
+		try {
+			const absent = resolve(subject.fixture.root, "no-such-caddy");
+			const overrides = { DEVENV_HOST_CADDY_BIN: absent };
+			const normal = runDoctor(subject, ["--json"], overrides);
+			const report = doctorReport(normal);
+
+			expect(doctorCheck(report, "caddy.binary").status).toBe("WARN");
+			expect(doctorCheck(report, "caddy.config").status).toBe("SKIP");
+			expect(doctorCheck(report, "caddy.import").status).toBe("SKIP");
+			// The friendly route is a convenience; the direct URL is the contract.
+			expect(doctorCheck(report, "route.direct").status).toBe("PASS");
+			expect(normal.exitCode).toBe(0);
+
+			const strict = runDoctor(subject, ["--json", "--strict"], overrides);
+			expect(strict.exitCode).toBe(1);
+			expect(doctorReport(strict).checks).toEqual(report.checks);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("skips every routing check when the project declares no host proxy", async () => {
+		const subject = await doctorFixture();
+		try {
+			await rewriteContract(subject.worktree, (source) =>
+				source.replace(/^host_caddy = .*/m, 'host_caddy = "disabled"'),
+			);
+			const report = doctorReport(runDoctor(subject));
+			for (const id of [
+				"caddy.binary",
+				"caddy.config",
+				"caddy.import",
+				"caddy.snippet",
+				"route.friendly",
+			]) {
+				expect(`${id}:${doctorCheck(report, id).status}`).toBe(`${id}:SKIP`);
+			}
+			expect(doctorCheck(report, "route.direct").status).toBe("PASS");
+			// Nothing was asked of the friendly host that does not exist.
+			const asked = await Bun.file(subject.probe.log).text();
+			expect(asked).not.toContain(".localhost");
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("probes each route independently and bounds every request", async () => {
+		const subject = await doctorFixture();
+		try {
+			const report = doctorReport(
+				runDoctor(subject, ["--json", "--timeout", "5"], {
+					CURL_DIRECT_CODE: "200",
+					CURL_FRIENDLY_CODE: "000",
+				}),
+			);
+			expect(doctorCheck(report, "route.direct").status).toBe("PASS");
+			expect(doctorCheck(report, "route.friendly").status).toBe("FAIL");
+			// The remediation for the optional half names the half that always works.
+			expect(doctorCheck(report, "route.friendly").remediation).toContain(
+				`http://127.0.0.1:${subject.hostPort}`,
+			);
+
+			const asked = (await Bun.file(subject.probe.log).text())
+				.trim()
+				.split("\n")
+				.filter(Boolean);
+			expect(asked.length).toBe(2);
+			for (const invocation of asked) {
+				expect(invocation).toContain("--max-time 5");
+			}
+			expect(asked.join("\n")).toContain(
+				`http://127.0.0.1:${subject.hostPort}`,
+			);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("diagnoses the port registry without repairing it", async () => {
+		const subject = await doctorFixture();
+		const registry = registryPath(subject.fixture.home);
+		try {
+			const healthy = doctorReport(runDoctor(subject));
+			for (const id of [
+				"registry.readable",
+				"registry.entry",
+				"registry.offset-match",
+				"registry.port-collision",
+			]) {
+				expect(`${id}:${doctorCheck(healthy, id).status}`).toBe(`${id}:PASS`);
+			}
+
+			const original = await readRegistry(subject.fixture.home);
+			const own = original.entries[subject.workspaceId];
+			if (!own) throw new Error("The fixture worktree holds no registry entry");
+
+			// A registry that is not a JSON document is reported and left exactly as
+			// it was found: repairing it belongs to the allocator, not to a report.
+			await Bun.write(registry, "not json\n");
+			const unreadable = runDoctor(subject);
+			expect(
+				doctorCheck(doctorReport(unreadable), "registry.readable").status,
+			).toBe("FAIL");
+			expect(
+				doctorCheck(doctorReport(unreadable), "registry.entry").status,
+			).toBe("SKIP");
+			expect(unreadable.exitCode).toBe(1);
+			expect(await Bun.file(registry).text()).toBe("not json\n");
+
+			await rm(registry);
+			const missing = doctorReport(runDoctor(subject));
+			expect(doctorCheck(missing, "registry.readable").status).toBe("WARN");
+			expect(doctorCheck(missing, "registry.entry").status).toBe("SKIP");
+
+			const moved = {
+				...original,
+				entries: {
+					[subject.workspaceId]: {
+						...own,
+						path: resolve(subject.fixture.root, "moved-away"),
+					},
+				},
+			};
+			await Bun.write(registry, JSON.stringify(moved));
+			const relocated = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"registry.entry",
+			);
+			expect(relocated.status).toBe("WARN");
+			expect(relocated.detail).toContain("moved-away");
+
+			await Bun.write(
+				registry,
+				JSON.stringify({
+					...original,
+					entries: { [subject.workspaceId]: { ...own, offset: 9 } },
+				}),
+			);
+			const drifted = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"registry.offset-match",
+			);
+			expect(drifted.status).toBe("FAIL");
+			expect(drifted.detail).toBe(`registry=9 env=${own.offset}`);
+
+			await Bun.write(
+				registry,
+				JSON.stringify({
+					...original,
+					entries: {
+						...original.entries,
+						squatter: { ...own, path: "/squatter" },
+					},
+				}),
+			);
+			const overlapping = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"registry.port-collision",
+			);
+			expect(overlapping.status).toBe("FAIL");
+			expect(overlapping.detail).toContain(subject.workspaceId);
+			expect(overlapping.detail).toContain("squatter");
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("skips registry membership for the main checkout", async () => {
+		const fixture = await harness();
+		try {
+			const tooling = await stubTooling(fixture, fixture.main);
+			const caddy = await stubCaddy(fixture);
+			const probe = await stubProbeClient(fixture);
+			await markReady(fixture, fixture.main, tooling);
+			const subject: DoctorFixture = {
+				fixture,
+				worktree: fixture.main,
+				tooling,
+				caddy,
+				probe,
+				workspaceId: "",
+				hostPort: "",
+				manifest: "",
+			};
+			const report = doctorReport(runDoctor(subject));
+			expect(doctorCheck(report, "registry.entry").status).toBe("SKIP");
+			expect(doctorCheck(report, "registry.offset-match").status).toBe("SKIP");
+			expect(doctorCheck(report, "registry.entry").detail).toContain(
+				"offset 0",
+			);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("inspects the registry lock without ever taking or clearing it", async () => {
+		const subject = await doctorFixture();
+		const lockDirectory = resolve(
+			subject.fixture.home,
+			".config/devcontainer/ports-registry/ports.lock.d",
+		);
+		try {
+			expect(
+				doctorCheck(doctorReport(runDoctor(subject)), "registry.lock").status,
+			).toBe("PASS");
+
+			await mkdir(lockDirectory, { recursive: true });
+			await Bun.write(
+				resolve(lockDirectory, "owner"),
+				`${process.pid} ${Math.floor(Date.now() / 1000)}\n`,
+			);
+			const live = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"registry.lock",
+			);
+			expect(live.status).toBe("WARN");
+			expect(live.summary).toContain("in flight");
+
+			// A holder that is provably gone reads as abandoned, and the doctor still
+			// leaves the directory exactly where it found it.
+			await Bun.write(resolve(lockDirectory, "owner"), "2147483647 1\n");
+			const abandoned = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"registry.lock",
+			);
+			expect(abandoned.status).toBe("WARN");
+			expect(abandoned.detail).toContain("no live holder");
+			expect(abandoned.remediation).toContain(lockDirectory);
+			expect(await Bun.file(resolve(lockDirectory, "owner")).exists()).toBe(
+				true,
+			);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("names both worktrees when two of them claim one host port", async () => {
+		const subject = await doctorFixture();
+		const directory = resolve(
+			subject.fixture.home,
+			".config/devcontainer/worktrees",
+		);
+		try {
+			const own = (await Bun.file(subject.manifest).json()) as Record<
+				string,
+				unknown
+			>;
+			await Bun.write(
+				resolve(directory, "devenv-squatter.json"),
+				`${JSON.stringify({
+					...own,
+					workspaceId: "devenv-squatter",
+					repoPath: resolve(subject.fixture.root, "squatter"),
+					status: "active",
+				})}\n`,
+			);
+			const collided = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"manifests.port-collision",
+			);
+			expect(collided.status).toBe("FAIL");
+			expect(collided.detail).toContain(subject.workspaceId);
+			expect(collided.detail).toContain("devenv-squatter");
+			expect(collided.detail).toContain(subject.hostPort);
+
+			// One unreadable manifest among many is a gap in the scan, not a verdict.
+			await rm(resolve(directory, "devenv-squatter.json"));
+			await Bun.write(resolve(directory, "devenv-broken.json"), "{\n");
+			const partial = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"manifests.port-collision",
+			);
+			expect(partial.status).toBe("WARN");
+			expect(partial.detail).toContain("malformed");
+
+			// And the scan is bounded by the contract's own limit.
+			await rewriteContract(subject.worktree, (source) =>
+				source.replace(
+					/^collision_scan_limit = .*/m,
+					"collision_scan_limit = 1",
+				),
+			);
+			const bounded = doctorCheck(
+				doctorReport(runDoctor(subject)),
+				"manifests.port-collision",
+			);
+			expect(bounded.detail).toContain(
+				"bounded at the declared scan limit of 1",
+			);
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+	test("refuses recorded paths that leave the host configuration root", async () => {
+		const subject = await doctorFixture();
+		const configRoot = resolve(subject.fixture.home, ".config/devcontainer");
+		const manifestDirectory = resolve(configRoot, "worktrees");
+		try {
+			// Three shapes of one escape: a sibling path, a traversal, and a symlink
+			// planted inside the very directory that is supposed to contain it.
+			await Bun.write(
+				resolve(configRoot, "sibling.json"),
+				'{"secret": "DO_NOT_READ_THIS_VALUE"}\n',
+			);
+			await Bun.write(
+				resolve(configRoot, "external-secret.json"),
+				'{"secret": "TRAVERSAL_SECRET"}\n',
+			);
+			await Bun.write(
+				resolve(subject.fixture.root, "outside.json"),
+				'{"secret": "SYMLINK_SECRET"}\n',
+			);
+			await symlink(
+				resolve(subject.fixture.root, "outside.json"),
+				resolve(manifestDirectory, "planted.json"),
+			);
+
+			for (const [candidate, marker] of [
+				[resolve(configRoot, "sibling.json"), "DO_NOT_READ_THIS_VALUE"],
+				[`${manifestDirectory}/../external-secret.json`, "TRAVERSAL_SECRET"],
+				[resolve(manifestDirectory, "planted.json"), "SYMLINK_SECRET"],
+			] as const) {
+				await corruptState(subject, { DEVENV_MANIFEST_PATH: candidate });
+				const result = runDoctor(subject);
+				const report = doctorReport(result);
+				expect(doctorCheck(report, "state.paths").status).toBe("FAIL");
+				expect(doctorCheck(report, "state.manifest").status).toBe("SKIP");
+				expect(result.exitCode).toBe(1);
+				// The file was never opened, so its contents never reached the report.
+				expect(result.stdout).not.toContain(marker);
+				expect(result.stderr).not.toContain(marker);
+			}
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("refuses a route path outside the route directory", async () => {
+		const subject = await doctorFixture();
+		try {
+			await corruptState(subject, {
+				DEVENV_CADDY_SNIPPET_PATH: resolve(
+					subject.fixture.home,
+					".config/devcontainer/elsewhere.caddy",
+				),
+			});
+			const report = doctorReport(runDoctor(subject));
+			expect(doctorCheck(report, "state.paths").status).toBe("FAIL");
+			expect(doctorCheck(report, "state.paths").detail).toContain("route path");
+			expect(doctorCheck(report, "caddy.snippet").status).toBe("SKIP");
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("never probes a route derived from a malformed identity", async () => {
+		const subject = await doctorFixture();
+		try {
+			for (const replacements of [
+				{ DEVENV_WORKSPACE_ID: "example.com/path" },
+				{ DEVENV_WORKTREE_FAMILY: "EVIL.example" },
+				{ DEVENV_PUBLISHED_HOST_PORT: "8123@evil.example" },
+			]) {
+				await rm(subject.probe.log, { force: true });
+				await corruptState(subject, replacements);
+				const result = runDoctor(subject);
+				const report = doctorReport(result);
+				expect(doctorCheck(report, "state.values").status).toBe("FAIL");
+				for (const id of ["route.direct", "route.friendly"]) {
+					expect(`${id}:${doctorCheck(report, id).status}`).toBe(`${id}:SKIP`);
+				}
+				expect(result.exitCode).toBe(1);
+				// Not a request was made, so not a hostile host was resolved.
+				expect(await Bun.file(subject.probe.log).exists()).toBe(false);
+			}
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("refuses an external URL that generated state advertises", async () => {
+		const subject = await doctorFixture();
+		try {
+			await corruptState(subject, { DEVENV_DIRECT_URL: "https://example.com" });
+			const report = doctorReport(runDoctor(subject));
+			const direct = doctorCheck(report, "route.direct");
+			expect(direct.status).toBe("FAIL");
+			expect(direct.summary).toContain("Refused an unexpected direct URL");
+			expect(direct.detail).toContain("https://example.com");
+
+			// The refusal happened before any request, and the friendly probe that did
+			// run was aimed at a host this script derived for itself.
+			const asked = await Bun.file(subject.probe.log).text();
+			expect(asked).not.toContain("example.com");
+			expect(asked).toContain(".localhost");
+			// No remediation offered the attacker's URL back as advice either.
+			for (const check of report.checks) {
+				expect(check.remediation).not.toContain("https://example.com");
+			}
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("keeps the JSON document valid when generated state carries control bytes", async () => {
+		const subject = await doctorFixture();
+		try {
+			await corruptState(subject, {
+				DEVENV_WORKSPACE_ID: `devenv-${CONTROL_BYTE}alpha`,
+			});
+			const result = runDoctor(subject);
+			const report = doctorReport(result);
+			expect(doctorCheck(report, "state.values").status).toBe("FAIL");
+			expect(result.exitCode).toBe(1);
+			// The raw byte never reaches the document; its escape does.
+			expect(result.stdout).not.toContain(CONTROL_BYTE);
+			expect(result.stdout).toContain("\\u0001");
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("never interpolates a non-hexadecimal container id into a command", async () => {
+		const subject = await doctorFixture();
+		const sentinel = resolve(subject.fixture.root, "pwned");
+		try {
+			await Bun.write(
+				resolve(subject.worktree, ".dev/state/run/container.id"),
+				`not-hex-$(touch ${sentinel})\n`,
+			);
+			const result = runDoctor(subject);
+			const report = doctorReport(result);
+
+			expect(doctorCheck(report, "container.record").status).toBe("FAIL");
+			expect(doctorCheck(report, "container.runtime").status).toBe("SKIP");
+			expect(doctorCheck(report, "container.port").status).toBe("SKIP");
+			expect(result.exitCode).toBe(1);
+			expect(await Bun.file(sentinel).exists()).toBe(false);
+			const invocations = await engineInvocations(subject.tooling);
+			expect(invocations).not.toContain("not-hex");
+			expect(invocations).not.toContain("touch");
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("survives an entirely hostile generated state without touching anything", async () => {
+		const subject = await doctorFixture();
+		const configRoot = resolve(subject.fixture.home, ".config/devcontainer");
+		try {
+			await Bun.write(
+				resolve(configRoot, "hostile.json"),
+				'{"secret": "OMNIBUS_SECRET_MARKER"}\n',
+			);
+			await corruptState(subject, {
+				DEVENV_WORKSPACE_ID: "example.com/path",
+				DEVENV_WORKTREE_FAMILY: "EVIL.example",
+				DEVENV_WORKTREE_OFFSET: "999999999",
+				DEVENV_PUBLISHED_HOST_PORT: "8123@evil.example",
+				DEVENV_DIRECT_URL: "https://example.com",
+				DEVENV_FRIENDLY_URL: "https://example.com",
+				DEVENV_MANIFEST_PATH: resolve(configRoot, "hostile.json"),
+				DEVENV_CADDY_SNIPPET_PATH: "/etc/passwd",
+			});
+			await Bun.write(
+				resolve(subject.worktree, ".dev/state/run/container.id"),
+				"zzzz-not-hex\n",
+			);
+			await rm(subject.probe.log, { force: true });
+
+			const before = await stateSnapshot(subject);
+			const result = runDoctor(subject);
+			const report = doctorReport(result);
+
+			expect(result.exitCode).toBe(1);
+			expect(doctorCheck(report, "state.values").status).toBe("FAIL");
+			expect(doctorCheck(report, "state.paths").status).toBe("SKIP");
+			expect(doctorCheck(report, "state.manifest").status).toBe("SKIP");
+			expect(doctorCheck(report, "container.record").status).toBe("FAIL");
+			// Hostile input costs the report no check: the inventory is unchanged.
+			expect(report.checks.map((check) => check.id)).toEqual([
+				...DOCTOR_CHECK_INVENTORY,
+			]);
+
+			// Nothing was read that it should not have read, nothing was requested,
+			// and nothing on this host moved.
+			expect(result.stdout).not.toContain("OMNIBUS_SECRET_MARKER");
+			expect(result.stderr).not.toContain("OMNIBUS_SECRET_MARKER");
+			expect(await Bun.file(subject.probe.log).exists()).toBe(false);
+			expect(await stateSnapshot(subject)).toEqual(before);
+			const invocations = await engineInvocations(subject.tooling);
+			for (const verb of ["run ", "create ", "start ", "stop ", "rm "]) {
+				expect(`${verb}:${invocations.includes(verb)}`).toBe(`${verb}:false`);
+			}
+		} finally {
+			await rm(subject.fixture.root, { recursive: true, force: true });
+		}
+	}, 180_000);
 });
 
 describe("worktree runtime selftest", () => {
@@ -3020,6 +4390,7 @@ describe("worktree runtime selftest", () => {
 				"down.sh",
 				"cleanup.sh",
 				"selftest.sh",
+				"doctor.sh",
 			]) {
 				const refused = run(fixture.main, fixture.home, script, [
 					"--known-bad",
@@ -3045,6 +4416,7 @@ const CONTRACT_FILES = [
 	"package.json",
 	"template-parameters.toml",
 	"template-parameters.schema.json",
+	".prototools",
 	"AGENTS.md",
 	".devcontainer/devcontainer.json",
 	".devcontainer/devcontainer-fingerprint.sh",
@@ -3065,6 +4437,7 @@ const CONTRACT_FILES = [
 	"scripts/worktree/down.sh",
 	"scripts/worktree/cleanup.sh",
 	"scripts/worktree/selftest.sh",
+	"scripts/worktree/doctor.sh",
 	"docs/devcontainer-upgrade/stage-0/template-ownership.json",
 	".husky/commit-msg",
 	".husky/pre-commit",
@@ -3375,6 +4748,120 @@ describe("worktree runtime contract guard", () => {
 				"worktree: agent rules must describe the cutover, not the soak",
 			);
 
+			// The read-only doctor. Its whole value is that it changes nothing, so
+			// every one of these mutations is a diagnostic quietly becoming a
+			// participant in the state it claims to be describing.
+			await mutate(
+				temporary,
+				"scripts/worktree/contract.toml",
+				(source) => source.replace("doctor_schema_version = 1\n", ""),
+				"worktree: contract key doctor_schema_version is missing",
+			);
+			// Pointed at a lifecycle script, `doctor_command` turns every document
+			// and guard that binds to it into an instruction to reconcile.
+			await mutate(
+				temporary,
+				"scripts/worktree/contract.toml",
+				(source) =>
+					source.replace(
+						'doctor_command = "bash scripts/worktree/doctor.sh"',
+						'doctor_command = "bash scripts/worktree/up.sh"',
+					),
+				"worktree: doctor_command must name a declared runtime script",
+			);
+			// Undeclared, the doctor escapes every per-script guard: mode, syntax,
+			// fail-closed shell options, and the unscoped-prune scan.
+			await mutate(
+				temporary,
+				"scripts/worktree/contract.toml",
+				(source) => source.replace(', "scripts/worktree/doctor.sh"]', "]"),
+				"worktree: doctor_command must name a declared runtime script",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/contract.toml",
+				(source) =>
+					source.replace(
+						'toolchain_manifest = ".prototools"',
+						'toolchain_manifest = ".prototools.bak"',
+					),
+				"worktree: toolchain_manifest must match the Proto authority",
+			);
+			// The ordered add_result calls are the registry; the printed inventory
+			// is a copy of it. A rename that touches only one of them is exactly
+			// the drift a single comparison would miss.
+			await mutate(
+				temporary,
+				"scripts/worktree/doctor.sh",
+				(source) =>
+					source.replace(
+						"add_result PASS registry.lock ",
+						"add_result PASS registry.locks ",
+					),
+				"worktree: doctor check ids drifted from the declared set",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/doctor.sh",
+				(source) =>
+					source.replace(
+						"check_host_context() {\n",
+						'check_host_context() {\n\tdocker rm -f "$CONTAINER_ID"\n',
+					),
+				"worktree: scripts/worktree/doctor.sh must not change the state it reports on",
+			);
+			// A diagnostic that takes the registry lock stops the allocation it was
+			// asked to describe, and leaks the lock if it dies mid-report.
+			await mutate(
+				temporary,
+				"scripts/worktree/doctor.sh",
+				(source) =>
+					source.replace(
+						"check_registry_lock() {\n",
+						'check_registry_lock() {\n\tportable_lock_acquire "$REGISTRY_LOCK_DIRECTORY"\n',
+					),
+				"worktree: the doctor must never take a runtime lock",
+			);
+			// A hardcoded tool list is wrong the moment the Proto authority gains a
+			// tool, and wrong without saying so.
+			await mutate(
+				temporary,
+				"scripts/worktree/doctor.sh",
+				(source) =>
+					source.replace(
+						'\ttools="$(required_tools)" || tools=""\n',
+						'\ttools="bun node moon"\n',
+					),
+				"worktree: the doctor must derive required tools from the Proto manifest",
+			);
+			await mutate(
+				temporary,
+				"scripts/worktree/doctor.sh",
+				(source) =>
+					source.replace("\nset -euo pipefail\n", "\nset -uo pipefail\n"),
+				"worktree: scripts/worktree/doctor.sh must fail closed with set -euo pipefail",
+			);
+			// An agent that cannot name the read-only diagnosis reaches for a
+			// reconciling command to answer a diagnostic question.
+			await mutate(
+				temporary,
+				"AGENTS.md",
+				(source) =>
+					source.replaceAll(
+						"bash scripts/worktree/doctor.sh",
+						"bash scripts/worktree/diagnose.sh",
+					),
+				"worktree: agent rules must document the read-only doctor",
+			);
+
+			const doctor = resolve(temporary, "scripts/worktree/doctor.sh");
+			await chmod(doctor, 0o644);
+			expect(await validateWorktreeContract(temporary)).toContain(
+				"worktree: scripts/worktree/doctor.sh must be executable",
+			);
+			await chmod(doctor, 0o755);
+			expect(await validateWorktreeContract(temporary)).toEqual([]);
+
 			// The executable bit is part of the contract: a runtime script Git
 			// records as 0644 cannot be run by the callers that depend on it.
 			const bridge = resolve(temporary, "scripts/worktree/exec.sh");
@@ -3388,6 +4875,14 @@ describe("worktree runtime contract guard", () => {
 			await rm(temporary, { recursive: true, force: true });
 		}
 	}, 300_000);
+
+	// The guard's copy of the inventory and this file's copy are written
+	// independently and compared here, so neither can be "fixed" to agree with a
+	// script that drifted: the doctor's own --list-checks is asserted against
+	// this file's copy above, and the guard asserts its own against the script.
+	test("declares the same doctor inventory the runtime prints", () => {
+		expect([...DOCTOR_CHECK_IDS]).toEqual([...DOCTOR_CHECK_INVENTORY]);
+	});
 
 	test("requires the cloud keys only when the cloud capability ships", async () => {
 		const temporary = await contractFixture();

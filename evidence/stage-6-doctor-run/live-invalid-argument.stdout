@@ -1,0 +1,3 @@
+doctorExitCode=2
+refusalMessage=Worktree doctor: timeout must be between 1 and 30 seconds
+stdoutBytes=0

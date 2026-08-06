@@ -132,6 +132,7 @@ const WORKTREE_RUNTIME_SCRIPTS = [
 	"scripts/worktree/down.sh",
 	"scripts/worktree/cleanup.sh",
 	"scripts/worktree/selftest.sh",
+	"scripts/worktree/doctor.sh",
 ];
 
 const GLOBAL_FORBIDDEN_TOKENS = [
@@ -543,12 +544,14 @@ export function renderWorktreeContract(
 		`generated_container_environment = ${worktreeString(`${state}/worktree.container.env`)}`,
 		`run_directory = ${worktreeString(`${state}/run`)}`,
 		'devcontainer_config = ".devcontainer/devcontainer.json"',
+		`toolchain_manifest = ${worktreeString(parameters.toolchain["proto_manifest"] ?? "")}`,
 		`published_container_port = ${parameters.routing.published_container_port}`,
 		`published_host_port_variable = ${worktreeString(`${parameters.project.environment_prefix}_PUBLISHED_HOST_PORT`)}`,
 		`preferred_offset_modulus = ${parameters.worktrees.preferred_offset_modulus}`,
 		`collision_scan_limit = ${parameters.worktrees.collision_scan_limit}`,
 		`manifest_schema_version = ${parameters.worktrees.manifest_schema_version}`,
 		"registry_schema_version = 1",
+		`doctor_schema_version = ${parameters.worktrees.doctor_schema_version}`,
 		`default_probe_timeout_seconds = ${parameters.worktrees.default_probe_timeout_seconds}`,
 		`startup_timeout_seconds = ${parameters.worktrees.startup_timeout_seconds}`,
 		`diagnostic_staggered_mode = ${parameters.worktrees.diagnostic_staggered_mode}`,
@@ -564,6 +567,7 @@ export function renderWorktreeContract(
 		`runtime_scripts = ${worktreeStringArray(WORKTREE_RUNTIME_SCRIPTS)}`,
 		'bridge_command = "bash scripts/worktree/exec.sh"',
 		'ensure_command = "bash scripts/worktree/ensure.sh"',
+		'doctor_command = "bash scripts/worktree/doctor.sh"',
 		`services = ${worktreeStringArray(services.map((service) => service.name))}`,
 	];
 	for (const service of services) {

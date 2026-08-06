@@ -168,10 +168,29 @@ wt_sanitize_name() {
 	printf '%s\n' "$value"
 }
 
+# The shape rules, stated once as predicates. A caller that must not proceed on a
+# malformed value wraps them in the wt_require_* pair below and dies; a caller
+# whose whole job is to report malformed values asks the predicate directly and
+# keeps going. Two implementations of "is this a legal workspace id" would be two
+# answers, and the diagnostic one would be the one nobody notices drifting.
+#
+# wt_is_identifier <value> <extended_regex>
+wt_is_identifier() {
+	printf '%s\n' "$1" | grep -qE "$2"
+}
+
+# wt_is_port <value>
+wt_is_port() {
+	case "$1" in
+		'' | *[!0-9]*) return 1 ;;
+	esac
+	[ "$1" -ge 1024 ] && [ "$1" -le 65535 ]
+}
+
 # wt_require_identifier <value> <extended_regex> <label>
 wt_require_identifier() {
 	local value="$1" pattern="$2" label="$3"
-	if ! printf '%s\n' "$value" | grep -qE "$pattern"; then
+	if ! wt_is_identifier "$value" "$pattern"; then
 		wt_die "$label '$value' does not match $pattern"
 	fi
 	printf '%s\n' "$value"
@@ -183,7 +202,7 @@ wt_require_port() {
 	case "$value" in
 		'' | *[!0-9]*) wt_die "$label '$value' is not a port number" ;;
 	esac
-	if [ "$value" -lt 1024 ] || [ "$value" -gt 65535 ]; then
+	if ! wt_is_port "$value"; then
 		wt_die "$label $value is outside 1024-65535"
 	fi
 	printf '%s\n' "$value"
@@ -219,6 +238,69 @@ wt_require_container_tooling() {
 	if ! command -v "$cli" >/dev/null 2>&1; then
 		wt_die "the ${cli} CLI is unavailable on this host; install it with 'bun add --global ${package}' or 'npm install --global ${package}'" 6
 	fi
+}
+
+# The same algorithm the container CLI uses for the ${devcontainerId} template
+# variable, so this runtime can name a checkout's own volumes without asking the
+# engine or the editor extension which ones they are. Removal needs it to know
+# what it owns and diagnosis needs it to know what to look for, so it lives here
+# rather than in either of them.
+#
+# wt_devcontainer_identity <repo_root> <devcontainer_config_path>
+wt_devcontainer_identity() {
+	local root="$1" config="$2" python
+	python="$(wt_python)"
+	DEVCONTAINER_LOCAL_FOLDER="$root" \
+		DEVCONTAINER_CONFIG_FILE="$config" \
+		"$python" - <<'PYTHON'
+import hashlib
+import json
+import os
+
+alphabet = "0123456789abcdefghijklmnopqrstuv"
+payload = json.dumps(
+    {
+        "devcontainer.config_file": os.environ["DEVCONTAINER_CONFIG_FILE"],
+        "devcontainer.local_folder": os.environ["DEVCONTAINER_LOCAL_FOLDER"],
+    },
+    separators=(",", ":"),
+    sort_keys=True,
+)
+value = int.from_bytes(hashlib.sha256(payload.encode("utf-8")).digest(), "big")
+digits = ""
+while value:
+    value, remainder = divmod(value, 32)
+    digits = alphabet[remainder] + digits
+print(digits.rjust(52, "0"))
+PYTHON
+}
+
+# Volume prefixes are DERIVED from the container definition, never listed here: a
+# hardcoded list drifts the moment devcontainer.json gains a mount, and the drift
+# is silent because a missed volume looks exactly like a clean host.
+#
+# wt_volume_prefixes <devcontainer_config_path>
+wt_volume_prefixes() {
+	local config="$1" python
+	python="$(wt_python)"
+	DEVCONTAINER_CONFIG_FILE="$config" "$python" - <<'PYTHON'
+import os
+import re
+
+path = os.environ["DEVCONTAINER_CONFIG_FILE"]
+try:
+    with open(path, "r", encoding="utf-8") as handle:
+        source = handle.read()
+except OSError:
+    raise SystemExit(0)
+seen = []
+pattern = r"source=([A-Za-z0-9][A-Za-z0-9_.-]*)-\$\{devcontainerId\}"
+for match in re.finditer(pattern, source):
+    if match.group(1) not in seen:
+        seen.append(match.group(1))
+for name in seen:
+    print(name)
+PYTHON
 }
 
 # Exact bash re-implementation of .devcontainer/devcontainer-fingerprint.sh,

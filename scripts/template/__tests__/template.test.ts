@@ -537,6 +537,21 @@ describe("deterministic fixture renderer", () => {
 					resolved.routing.published_container_port,
 				);
 				expect(parsed["services"]).toEqual([]);
+				// The doctor is contract driven end to end: its schema version, its
+				// command, and the toolchain authority it derives required tools from
+				// all come from the same parameters everything else does.
+				expect(parsed["doctor_schema_version"]).toBe(
+					resolved.worktrees.doctor_schema_version,
+				);
+				expect(parsed["doctor_command"]).toBe(
+					"bash scripts/worktree/doctor.sh",
+				);
+				expect(parsed["toolchain_manifest"]).toBe(
+					resolved.toolchain["proto_manifest"],
+				);
+				expect(parsed["runtime_scripts"]).toContain(
+					"scripts/worktree/doctor.sh",
+				);
 				// The contract is regenerated from the fixture's own parameters, so
 				// none of the template's identity survives into it.
 				expect(contract).not.toContain('= "devenv"');
@@ -551,6 +566,20 @@ describe("deterministic fixture renderer", () => {
 				expect(parsed["cloud_doctor_command"]).toBe(
 					cloudEnabled ? "bash .codex/cloud/doctor.sh --quiet" : undefined,
 				);
+
+				// The doctor's one cloud reference lives inside a capability fence, so
+				// a fixture without the capability carries no residue and the stripped
+				// remainder is still a valid script.
+				const doctorPath = resolve(output, "scripts/worktree/doctor.sh");
+				const doctor = await Bun.file(doctorPath).text();
+				expect(doctor).not.toContain("capability:start");
+				expect(doctor.includes("CODEX_CLOUD")).toBe(cloudEnabled);
+				const syntax = Bun.spawnSync(["bash", "-n", doctorPath], {
+					stdout: "pipe",
+					stderr: "pipe",
+				});
+				expect(syntax.stderr.toString()).toBe("");
+				expect(syntax.exitCode).toBe(0);
 			}
 		} finally {
 			await rm(temporary, { recursive: true, force: true });

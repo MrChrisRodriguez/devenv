@@ -1,0 +1,15 @@
+realCheckoutStateDigest=d0d0c090a075c9ae4edaf21846084d2742cecfc930dee45ffbd46cf74869a2e7
+headSha=4a8894c2fb05c75bf2959ecedf9ca72ceb4f675b
+gitDir=/Users/mrcr/Code/templates/devenv/.git/worktrees/beta
+gitCommonDir=/Users/mrcr/Code/templates/devenv/.git
+isolatedHome=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home
+containerId=1d3986e95245c17eae55b78cadd52974dc0bff3dc66254fe1ad4d8e49a2c2bc5
+environmentJson={"containerEnvironmentFile":"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta/.dev/state/worktree.container.env","directUrl":"http://127.0.0.1:8561","environmentFile":"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta/.dev/state/worktree.env","environmentPrefix":"DEVENV","family":"s6-beta","friendlyHost":"s6-beta.devenv.localhost","layout":"worktree","offset":481,"offsetSource":"preferred","portSet":[8561],"preferredOffset":481,"publishedContainerPort":8080,"publishedHostPort":8561,"repoPath":"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/s6/beta","schemaVersion":1,"workspaceId":"devenv-s6-beta"}
+manifestPath=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage6-stage6-20260806t160000z-4a8894c2/home/.config/devcontainer/worktrees/devenv-s6-beta.json
+definitionFingerprint=d6ff95c907fd7c44a4e8ddb11fbdecf434a468a19c1fb6e2d9fe94ba76588654
+publishedMapping=127.0.0.1:8561
+containerVolumes=claude-code-config-15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue codex-home-15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue gemini-home-15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue config-home-15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue claude-code-shellhistory-15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue 
+listener=python -m http.server 8080
+directUrl=http://127.0.0.1:8561
+directProbeCode=200
+listenerAnswers=true

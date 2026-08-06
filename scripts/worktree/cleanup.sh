@@ -138,63 +138,10 @@ resolve_identity() {
 	esac
 }
 
-# The same algorithm the container CLI uses for the ${devcontainerId} template
-# variable, so this runtime can name a checkout's own volumes without asking the
-# engine or the editor extension which ones they are.
-resolve_devcontainer_identity() {
-	local python
-	python="$(wt_python)"
-	DEVCONTAINER_LOCAL_FOLDER="$REPO_ROOT" \
-		DEVCONTAINER_CONFIG_FILE="$CONFIG_PATH" \
-		"$python" - <<'PYTHON'
-import hashlib
-import json
-import os
-
-alphabet = "0123456789abcdefghijklmnopqrstuv"
-payload = json.dumps(
-    {
-        "devcontainer.config_file": os.environ["DEVCONTAINER_CONFIG_FILE"],
-        "devcontainer.local_folder": os.environ["DEVCONTAINER_LOCAL_FOLDER"],
-    },
-    separators=(",", ":"),
-    sort_keys=True,
-)
-value = int.from_bytes(hashlib.sha256(payload.encode("utf-8")).digest(), "big")
-digits = ""
-while value:
-    value, remainder = divmod(value, 32)
-    digits = alphabet[remainder] + digits
-print(digits.rjust(52, "0"))
-PYTHON
-}
-
-# Volume prefixes are DERIVED from the container definition, never listed here: a
-# hardcoded list drifts the moment devcontainer.json gains a mount, and the drift
-# is silent because a missed volume looks exactly like a clean host.
-volume_prefixes() {
-	local python
-	python="$(wt_python)"
-	DEVCONTAINER_CONFIG_FILE="$CONFIG_PATH" "$python" - <<'PYTHON'
-import os
-import re
-
-path = os.environ["DEVCONTAINER_CONFIG_FILE"]
-try:
-    with open(path, "r", encoding="utf-8") as handle:
-        source = handle.read()
-except OSError:
-    raise SystemExit(0)
-seen = []
-pattern = r"source=([A-Za-z0-9][A-Za-z0-9_.-]*)-\$\{devcontainerId\}"
-for match in re.finditer(pattern, source):
-    if match.group(1) not in seen:
-        seen.append(match.group(1))
-for name in seen:
-    print(name)
-PYTHON
-}
-
+# Identity and the volume prefixes both come from lib.sh, which is the single
+# authority for them: removal has to know exactly what this checkout owns, and
+# diagnosis has to look for exactly the same set. A second derivation here would
+# be a second answer, and the two would diverge silently.
 scoped_volume_names() {
 	local prefix
 	[ -n "$DEVCONTAINER_IDENTITY" ] || return 0
@@ -202,7 +149,7 @@ scoped_volume_names() {
 		[ -n "$prefix" ] || continue
 		printf '%s-%s\n' "$prefix" "$DEVCONTAINER_IDENTITY"
 	done <<EOF
-$(volume_prefixes)
+$(wt_volume_prefixes "$CONFIG_PATH")
 EOF
 }
 
@@ -352,7 +299,7 @@ main() {
 	fi
 	wt_require_container_tooling
 	resolve_identity
-	DEVCONTAINER_IDENTITY="$(resolve_devcontainer_identity)"
+	DEVCONTAINER_IDENTITY="$(wt_devcontainer_identity "$REPO_ROOT" "$CONFIG_PATH")"
 
 	bash "$WORKTREE_RUNTIME_DIR/down.sh" || wt_warn "the shutdown step reported an error"
 	bash "$WORKTREE_RUNTIME_DIR/manifest.sh" remove ||

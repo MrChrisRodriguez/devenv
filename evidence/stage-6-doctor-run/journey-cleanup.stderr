@@ -1,0 +1,24 @@
+Worktree down: no services are declared
+Worktree manifest: devenv-s6-alpha is inactive; its ports stay reserved
+Worktree down: this worktree keeps its registered ports; run cleanup.sh to release them
+Worktree manifest: removed the manifest and route for devenv-s6-alpha
+Worktree cleanup: removing container f3978ef37c752e742d6a5bcaa7f72995c7258e44a6726deb9a3a42e64c1cafa8
+Worktree cleanup: removing volume claude-code-shellhistory-1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n
+Worktree cleanup: removing volume claude-code-config-1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n
+Worktree cleanup: removing volume codex-home-1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n
+Worktree cleanup: removing volume gemini-home-1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n
+Worktree cleanup: removing volume config-home-1n8tqp6qi7cj50etu3aaiq67im43seq62rd8rp8ot6ose6q9jt6n
+Worktree environment: released the registry entry for devenv-s6-alpha
+Worktree cleanup: removed every resource owned by devenv-s6-alpha
+Worktree down: no services are declared
+Worktree manifest: devenv-s6-beta is inactive; its ports stay reserved
+Worktree down: this worktree keeps its registered ports; run cleanup.sh to release them
+Worktree manifest: removed the manifest and route for devenv-s6-beta
+Worktree cleanup: removing container 1d3986e95245c17eae55b78cadd52974dc0bff3dc66254fe1ad4d8e49a2c2bc5
+Worktree cleanup: removing volume claude-code-shellhistory-15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue
+Worktree cleanup: removing volume claude-code-config-15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue
+Worktree cleanup: removing volume codex-home-15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue
+Worktree cleanup: removing volume gemini-home-15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue
+Worktree cleanup: removing volume config-home-15s9gmluptpc50bftqht1d8s4vinjfl418kd7hhbnogqam5qpmue
+Worktree environment: released the registry entry for devenv-s6-beta
+Worktree cleanup: removed every resource owned by devenv-s6-beta
