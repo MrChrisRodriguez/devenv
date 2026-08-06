@@ -61,7 +61,7 @@ Two of its rules are worth calling out. `validateWorkflowGraph` is exported and 
 - `scripts/sync-devcontainer.sh` — `scripts/ci/*` marked template-owned so downstream syncs receive the install wrapper.
 - `scripts/template/ci-contract.ts`, `scripts/template/validate-ci.ts` — new; the workflow policy contract and its entry point, wired into `template:validate` and exposed as `bun run ci:check`.
 - `package.json` — the `ci:check` script; `docs/devcontainer-upgrade/stage-0/template-ownership.json` — copy rules for both new guard modules ahead of the `scripts/template/**` omit catch-all, so a rendered project receives its own workflow guard.
-- `scripts/template/__tests__/ci.test.ts` — new; executes the action's committed shell bodies and the retry script against fake toolchains rather than reading them.
+- `scripts/template/__tests__/ci.test.ts` — new; one mutation battery that drives ~30 known-bad workflow edits through `validateCiContract` on a throwaway Git fixture (each asserting its exact error and restoring to clean), a rendered-fixture pass that YAML-parses and graph-checks every workflow the three profiles emit, and execution tests that run the action's committed shell bodies, the retry script, the gate script's verdict matrix, and both "nothing to check yet" wrappers against fake toolchains rather than reading them.
 
 ## 2026-08-06 — Fix: stop `up.sh` publishing a route for a container that never started
 

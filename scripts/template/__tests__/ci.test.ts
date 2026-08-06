@@ -1,17 +1,39 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Parsed YAML is a strict record.
-// biome-ignore-all lint/suspicious/noTemplateCurlyInString: Workflow fixtures quote runner expressions verbatim.
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: Workflow fixtures and mutations quote runner expressions verbatim.
 import { describe, expect, test } from "bun:test";
-import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { chmod, copyFile, mkdir, mkdtemp, readdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
-import { filterCapabilityBlocks } from "../render-fixture";
+import { dirname, resolve } from "node:path";
+import { validateCiContract, validateWorkflowGraph } from "../ci-contract";
+import { renderFixture } from "../render-fixture";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const ACTION_PATH = ".github/actions/setup-bun/action.yml";
 const RETRY_SCRIPT = resolve(ROOT, "scripts/ci/bun-install-retry.sh");
-const WORKFLOWS = [
-	".github/workflows/ci.yml",
-	".github/workflows/codex-cloud-smoke.yml",
+const CI_WORKFLOW = ".github/workflows/ci.yml";
+const SMOKE_WORKFLOW = ".github/workflows/codex-cloud-smoke.yml";
+const WORKFLOWS = [CI_WORKFLOW, SMOKE_WORKFLOW] as const;
+
+// Everything validateCiContract reads. The fixture is a real Git repository
+// because two of the rules — compiler coverage and its "tracked file" scope —
+// are answered out of the index rather than out of a directory walk.
+const CONTRACT_FILES = [
+	"package.json",
+	"template-parameters.toml",
+	"tsconfig.json",
+	"scripts/template/tsconfig.json",
+	"scripts/browser-preflight.ts",
+	"scripts/template/ci-contract.ts",
+	"scripts/template/validate-ci.ts",
+	"scripts/sync-devcontainer.sh",
+	"scripts/ci/aggregate-gate.sh",
+	"scripts/ci/bun-install-retry.sh",
+	"scripts/ci/run-tests.sh",
+	"scripts/ci/run-typecheck.sh",
+	ACTION_PATH,
+	CI_WORKFLOW,
+	SMOKE_WORKFLOW,
+	"docs/devcontainer-upgrade/stage-0/template-ownership.json",
 ] as const;
 
 interface CompositeStep {
@@ -73,43 +95,441 @@ function runScript(
 	};
 }
 
-describe("CI bootstrap action", () => {
-	test("declares one required, defaultless Bun version input", async () => {
-		const value = Bun.YAML.parse(await actionSource()) as Record<
-			string,
-			unknown
-		>;
-		const inputs = value["inputs"] as Record<string, Record<string, unknown>>;
-		const bunVersion = inputs["bun-version"];
-		expect(bunVersion).toBeDefined();
-		expect(bunVersion?.["required"]).toBe(true);
-		// A default here would be a second Bun authority sitting outside the
-		// version guard, which reads bun-version assignments and nothing else.
-		expect(Object.hasOwn(bunVersion ?? {}, "default")).toBe(false);
-		expect(inputs["install"]?.["default"]).toBe("true");
+// A deliberately narrow environment: HOME points inside the fixture so no
+// developer's global Git configuration can change what the index contains.
+function git(cwd: string, ...args: string[]): void {
+	const result = Bun.spawnSync(["git", "-C", cwd, ...args], {
+		env: { PATH: process.env["PATH"] ?? "", HOME: cwd },
+		stdout: "pipe",
+		stderr: "pipe",
 	});
-
-	test("writes no unavailable context expression into its metadata", async () => {
-		// Composite metadata is a template the runner evaluates in full before any
-		// step runs, and a composite action has none of these contexts. One such
-		// expression anywhere in the file - a `with:` value or a documentation
-		// sentence alike - fails the action to LOAD and reddens every caller.
-		const source = await actionSource();
-		expect(source).not.toMatch(/\$\{\{\s*(?:env|secrets|vars|needs|matrix)\./);
-	});
-
-	test("pins its third-party action to an immutable commit", async () => {
-		const steps = await actionSteps();
-		const setup = steps.find((step) =>
-			step.uses?.includes("oven-sh/setup-bun"),
+	if (result.exitCode !== 0)
+		throw new Error(
+			`git ${args.join(" ")} failed: ${result.stderr.toString()}`,
 		);
-		expect(setup?.uses).toMatch(/^oven-sh\/setup-bun@[0-9a-f]{40}$/);
+}
+
+async function contractFixture(): Promise<string> {
+	const temporary = await mkdtemp(resolve(tmpdir(), "devenv-ci-contract-"));
+	for (const path of CONTRACT_FILES) {
+		const destination = resolve(temporary, path);
+		await mkdir(dirname(destination), { recursive: true });
+		await copyFile(resolve(ROOT, path), destination);
+		if (path.endsWith(".sh")) await chmod(destination, 0o755);
+	}
+	git(temporary, "init", "-q", "-b", "main");
+	git(temporary, "add", "-A");
+	return temporary;
+}
+
+async function mutate(
+	root: string,
+	path: string,
+	transform: (source: string) => string,
+	expected: string,
+): Promise<void> {
+	const target = resolve(root, path);
+	const original = await Bun.file(target).text();
+	const changed = transform(original);
+	if (changed === original) throw new Error(`Mutation did not change ${path}`);
+	await Bun.write(target, changed);
+	expect(await validateCiContract(root)).toContain(expected);
+	await Bun.write(target, original);
+	expect(await validateCiContract(root)).toEqual([]);
+}
+
+// The other half of a non-vacuous scan: an edit that merely looks like the
+// forbidden one has to be accepted, or the rule is a substring search wearing a
+// contract's clothes.
+async function tolerate(
+	root: string,
+	path: string,
+	transform: (source: string) => string,
+): Promise<void> {
+	const target = resolve(root, path);
+	const original = await Bun.file(target).text();
+	const changed = transform(original);
+	if (changed === original) throw new Error(`Mutation did not change ${path}`);
+	await Bun.write(target, changed);
+	expect(await validateCiContract(root)).toEqual([]);
+	await Bun.write(target, original);
+}
+
+async function withTrackedFile(
+	root: string,
+	path: string,
+	contents: string,
+	expected: string,
+): Promise<void> {
+	const target = resolve(root, path);
+	await mkdir(dirname(target), { recursive: true });
+	await Bun.write(target, contents);
+	git(root, "add", "-A");
+	expect(await validateCiContract(root)).toContain(expected);
+	await rm(target);
+	git(root, "add", "-A");
+	expect(await validateCiContract(root)).toEqual([]);
+}
+
+describe("workflow policy contract", () => {
+	test("passes the real tree and rejects known-bad ci mutations", async () => {
+		expect(await validateCiContract(ROOT)).toEqual([]);
+		const temporary = await contractFixture();
+		try {
+			expect(await validateCiContract(temporary)).toEqual([]);
+
+			// --- Triggers -----------------------------------------------------
+			// A `branches:` filter on pull_request matches the PR's BASE branch,
+			// so a stacked pull request runs ZERO jobs and shows a page with no
+			// checks on it. Every spelling of it has to be caught.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"  pull_request:\n",
+						"  pull_request:\n    branches: [main]\n",
+					),
+				"ci: .github/workflows/ci.yml pull_request must not filter base branches",
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"  pull_request:\n",
+						'  pull_request:\n    "branches": [main]\n',
+					),
+				"ci: .github/workflows/ci.yml pull_request must not filter base branches",
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"  pull_request:\n",
+						"  pull_request:\n    branches-ignore: [release]\n",
+					),
+				"ci: .github/workflows/ci.yml pull_request must not filter base branches",
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						/ {2}pull_request:\n(?:.*\n)*? {4}types: \[[^\]]*\]\n/,
+						"  pull_request: { types: [opened, ready_for_review], branches: [main] }\n",
+					),
+				"ci: .github/workflows/ci.yml pull_request must not filter base branches",
+			);
+			// ... and a comment that discusses the filter is documentation.
+			await tolerate(temporary, CI_WORKFLOW, (source) =>
+				source.replace(
+					"  pull_request:\n",
+					"  pull_request:\n    # branches: [main] would run zero jobs on a stacked PR\n",
+				),
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) => source.replace(", ready_for_review]", "]"),
+				"ci: .github/workflows/ci.yml pull_request types must include ready_for_review",
+			);
+			// One cancellation lane means the ready_for_review run cancels the draft
+			// run it supersedes, leaving cancelled jobs attached to the same head.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"  group: ci-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'draft' || 'ready' }}",
+						"  group: ci-${{ github.ref }}",
+					),
+				"ci: .github/workflows/ci.yml must separate draft and ready cancellation lanes",
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"cancel-in-progress: true",
+						"cancel-in-progress: false",
+					),
+				"ci: .github/workflows/ci.yml must cancel superseded runs",
+			);
+
+			// --- Bounds and tolerance -----------------------------------------
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) => source.replace("    timeout-minutes: 20\n", ""),
+				"ci: .github/workflows/ci.yml job ci must declare timeout-minutes",
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"        run: bunx biome check --no-errors-on-unmatched .\n",
+						"        run: bunx biome check --no-errors-on-unmatched .\n        continue-on-error: true\n",
+					),
+				"ci: .github/workflows/ci.yml must not tolerate a failing step",
+			);
+
+			// --- Bootstrap ownership -------------------------------------------
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"actions/checkout@11d5960a326750d5838078e36cf38b85af677262",
+						"actions/checkout@v4",
+					),
+				"ci: .github/workflows/ci.yml must pin actions/checkout@v4 to an immutable commit",
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"      - uses: ./.github/actions/setup-bun\n",
+						"      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0\n",
+					),
+				"ci: .github/workflows/ci.yml must reach Bun through the committed action",
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"bun-version: ${{ env.BUN_VERSION }}",
+						'bun-version: "1.3.13"',
+					),
+				"ci: .github/workflows/ci.yml must pass bun-version through env.BUN_VERSION",
+			);
+			// Actions silently ignore an input they do not declare, so a phantom
+			// cache reads as cached and caches nothing, forever.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"          bun-version: ${{ env.BUN_VERSION }}\n",
+						'          bun-version: ${{ env.BUN_VERSION }}\n          cache: "true"\n',
+					),
+				"ci: .github/workflows/ci.yml passes unsupported input cache to ./.github/actions/setup-bun",
+			);
+			await mutate(
+				temporary,
+				ACTION_PATH,
+				(source) =>
+					source.replace(
+						"        bun-version: ${{ inputs.bun-version }}\n",
+						'        bun-version: ${{ inputs.bun-version }}\n        cache: "true"\n',
+					),
+				"ci: .github/actions/setup-bun/action.yml passes unsupported input cache to oven-sh/setup-bun",
+			);
+			await mutate(
+				temporary,
+				ACTION_PATH,
+				(source) =>
+					source.replace(
+						"    required: true\n",
+						'    required: true\n    default: "latest"\n',
+					),
+				"ci: .github/actions/setup-bun/action.yml must declare bun-version required without a default",
+			);
+			// Composite metadata is evaluated in full before any step runs, and a
+			// composite action has none of these contexts: one such expression, in
+			// prose or not, fails the action to LOAD and reddens every caller.
+			await mutate(
+				temporary,
+				ACTION_PATH,
+				(source) =>
+					source.replace(
+						"the dollar-and-double-brace form",
+						"${{ env.BUN_VERSION }}",
+					),
+				"ci: .github/actions/setup-bun/action.yml must not name an unavailable context",
+			);
+
+			// --- The aggregate gate ---------------------------------------------
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) => source.replace("      - image\n", ""),
+				"ci: the aggregate gate must depend on every job in .github/workflows/ci.yml",
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace("    if: ${{ always() }}", "    if: ${{ success() }}"),
+				"ci: the aggregate gate must report with always()",
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"RESULTS: ${{ join(needs.*.result, ',') }}",
+						"RESULTS: ${{ needs.ci.result }}",
+					),
+				"ci: the aggregate gate must derive its verdict from join(needs.*.result)",
+			);
+			// A fenced job and its fenced `needs` entry disappear together or the
+			// rendered workflow depends on a job that is not there.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"      # capability:start playwright\n      - browser\n      # capability:end playwright\n",
+						"      - browser\n",
+					),
+				"ci: .github/workflows/ci.yml job ci-gate needs browser, which the file does not declare with every capability disabled",
+			);
+			// The real file names the non-gating lane only inside comments; naming
+			// it anywhere executable would let a registry outage redden a PR.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"          DRAFT: ${{ github.event.pull_request.draft }}\n",
+						"          DRAFT: ${{ github.event.pull_request.draft }}\n          SMOKE: .github/workflows/codex-cloud-smoke.yml\n",
+					),
+				"ci: the gating workflow must not depend on the non-gating .github/workflows/codex-cloud-smoke.yml",
+			);
+
+			// --- Shell bodies ----------------------------------------------------
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"        run: bun run toolchain:check",
+						"        run: |\n          sleep 5\n          bun run toolchain:check",
+					),
+				"ci: .github/workflows/ci.yml job ci must not sleep in a workflow body",
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"        run: bun run image:check",
+						'        run: echo "${{ github.event.pull_request.title }}"',
+					),
+				"ci: .github/workflows/ci.yml job ci must not interpolate event metadata into a shell body",
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"        run: bunx biome check",
+						"        run: npx biome check",
+					),
+				"ci: .github/workflows/ci.yml job ci must not invoke a foreign package runtime",
+			);
+
+			// --- Ownership and isolation ------------------------------------------
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0\n\n      - name: Build selected image target",
+						"actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0\n        with:\n          fetch-depth: 0\n\n      - name: Build selected image target",
+					),
+				"ci: .github/workflows/ci.yml job image must not claim ownership of repository history",
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						'  BUN_VERSION: "1.3.13"',
+						'  BUN_VERSION: "1.3.13"\n  MOON_REMOTE_HOST: "grpc://cache.example"',
+					),
+				"ci: .github/workflows/ci.yml must not configure remote build execution",
+			);
+			await mutate(
+				temporary,
+				SMOKE_WORKFLOW,
+				(source) =>
+					source.replace(
+						"            ~/.proto\n",
+						"            ~/.proto\n            ~/.bun/install/cache\n",
+					),
+				"ci: .github/workflows/codex-cloud-smoke.yml must not cache an extracted dependency tree",
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"      - name: Validate workflow policy contract\n        run: bun run ci:check\n\n",
+						"",
+					),
+				"ci: the gating workflow must run the workflow policy guard",
+			);
+
+			// --- Compiler coverage -------------------------------------------------
+			// A tracked source no project claims is a file the compiler never sees,
+			// which is exactly the hole a root tsconfig was added to close.
+			await withTrackedFile(
+				temporary,
+				"tools/stray.ts",
+				"export const stray = 1;\n",
+				"ci: tools/stray.ts is outside every committed TypeScript project",
+			);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 180_000);
+
+	test("keeps every rendered workflow's dependency graph whole", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			for (const fixtureName of ["minimal", "cloud", "full"]) {
+				const output = resolve(temporary, fixtureName);
+				await renderFixture({ root: ROOT, fixtureName, output });
+				const directory = resolve(output, ".github/workflows");
+				const files = await readdir(directory);
+				expect(files.length).toBeGreaterThan(0);
+				for (const file of files) {
+					const source = await Bun.file(resolve(directory, file)).text();
+					// Every rendered workflow still has to be YAML at all: a fence that
+					// removed a mapping's last key produces a file the runner rejects
+					// before it reports anything.
+					expect(
+						Bun.YAML.parse(source) as Record<string, unknown>,
+					).toBeObject();
+					expect(
+						validateWorkflowGraph(source, `.github/workflows/${file}`),
+					).toEqual([]);
+				}
+			}
+			// A project without the capability renders neither the job nor the
+			// gate's dependency on it — and nothing else that names it either.
+			const minimal = await Bun.file(
+				resolve(temporary, "minimal/.github/workflows/ci.yml"),
+			).text();
+			expect(minimal).not.toContain("browser");
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 180_000);
+});
+
+describe("CI bootstrap action", () => {
+	test("routes its install through the committed retry wrapper", async () => {
+		const steps = await actionSteps();
 		const install = steps.find((step) => step.name === "Install dependencies");
 		expect(install?.run?.trim()).toBe("bash scripts/ci/bun-install-retry.sh");
 		expect(install?.if).toBe("inputs.install != 'false'");
-		// timeout-minutes is unsupported on composite steps; a bound written here
-		// would be silently ignored rather than rejected.
-		expect(await actionSource()).not.toMatch(/^\s*timeout-minutes:/m);
 	});
 
 	test("refuses an empty Bun version and accepts a supplied one", async () => {
@@ -268,130 +688,6 @@ describe("bounded dependency install", () => {
 	}, 30_000);
 });
 
-describe("workflow bootstrap wiring", () => {
-	test("routes every job through the committed action at a pinned ref", async () => {
-		for (const path of WORKFLOWS) {
-			const source = await Bun.file(resolve(ROOT, path)).text();
-			// The action is the sole owner of "how a job gets Bun"; a direct
-			// setup-bun call is a second owner that drifts on its own schedule.
-			expect(source).not.toMatch(/uses:\s*oven-sh\/setup-bun/);
-			expect(source).toContain("uses: ./.github/actions/setup-bun");
-			expect(source).toMatch(/^env:\n(?:.*\n)*?\s+BUN_VERSION: "1\.3\.13"$/m);
-			for (const match of source.matchAll(/bun-version:\s*(\S.*)$/gm))
-				expect(match[1]).toBe("${{ env.BUN_VERSION }}");
-			for (const match of source.matchAll(/^\s+-?\s*uses:\s*(\S+)/gm)) {
-				const reference = match[1] ?? "";
-				if (reference.startsWith("./")) continue;
-				expect(reference).toMatch(/@[0-9a-f]{40}$/);
-			}
-		}
-	});
-});
-
-// The `pull_request` `branches:` filter matches the PR's BASE branch. A stacked
-// pull request therefore matches nothing, runs zero jobs, and presents a page
-// with no checks on it at all — which reads as "nothing to see here" rather than
-// as "nothing ran". Detecting it needs both spellings, and comments that merely
-// discuss the filter must not count as one.
-function hasBaseBranchFilter(block: string): boolean {
-	const uncommented = block
-		.split("\n")
-		.filter((line) => !line.trimStart().startsWith("#"))
-		.join("\n");
-	return /(?:^|[{,\s])["']?branches(?:-ignore)?["']?\s*:/m.test(uncommented);
-}
-
-function pullRequestBlocks(source: string): string[] {
-	const lines = source.split("\n");
-	const blocks: string[] = [];
-	for (let index = 0; index < lines.length; index += 1) {
-		const line = lines[index] ?? "";
-		const header = /^(\s*)pull_request:/.exec(line);
-		if (!header) continue;
-		const indent = (header[1] ?? "").length;
-		const body = [line];
-		for (let next = index + 1; next < lines.length; next += 1) {
-			const candidate = lines[next] ?? "";
-			if (candidate.trim() === "") {
-				body.push(candidate);
-				continue;
-			}
-			if ((/^\s*/.exec(candidate)?.[0] ?? "").length <= indent) break;
-			body.push(candidate);
-		}
-		blocks.push(body.join("\n"));
-	}
-	return blocks;
-}
-
-describe("pull request trigger policy", () => {
-	test("detects a base-branch filter in either spelling", () => {
-		expect(hasBaseBranchFilter("  pull_request:\n    branches: [main]\n")).toBe(
-			true,
-		);
-		expect(
-			hasBaseBranchFilter('  pull_request: { "branches-ignore": [release] }'),
-		).toBe(true);
-		expect(
-			hasBaseBranchFilter(
-				"  pull_request:\n    # branches: would break stacked PRs\n    types: [opened]\n",
-			),
-		).toBe(false);
-	});
-
-	test("triggers every lane on any base branch and on readiness", async () => {
-		for (const path of WORKFLOWS) {
-			const source = await Bun.file(resolve(ROOT, path)).text();
-			const blocks = pullRequestBlocks(source);
-			expect(blocks.length).toBeGreaterThan(0);
-			for (const block of blocks) {
-				expect(hasBaseBranchFilter(block)).toBe(false);
-				expect(block).toContain("ready_for_review");
-			}
-			const triggers = (Bun.YAML.parse(source) as Record<string, unknown>)[
-				"on"
-			] as Record<string, unknown>;
-			expect(Object.hasOwn(triggers, "workflow_dispatch")).toBe(true);
-		}
-	});
-
-	test("keeps draft and ready runs in separate cancellation lanes", async () => {
-		for (const path of WORKFLOWS) {
-			const source = await Bun.file(resolve(ROOT, path)).text();
-			const concurrency = /^concurrency:\s*\n((?:^[ \t]+.*(?:\n|$))+)/m.exec(
-				source,
-			)?.[1];
-			expect(concurrency).toBeDefined();
-			expect(concurrency).toContain("github.ref");
-			expect(concurrency).toContain("github.event.pull_request.draft");
-			expect(concurrency).toContain("'draft' || 'ready'");
-			expect(concurrency).toContain("cancel-in-progress: true");
-		}
-	});
-
-	test("bounds every job and skips every gating job on a draft", async () => {
-		const parameters = Bun.TOML.parse(
-			await Bun.file(resolve(ROOT, "template-parameters.toml")).text(),
-		) as Record<string, Record<string, unknown>>;
-		const gateName = parameters["ci"]?.["aggregate_gate_name"];
-		for (const path of WORKFLOWS) {
-			const value = Bun.YAML.parse(
-				await Bun.file(resolve(ROOT, path)).text(),
-			) as Record<string, unknown>;
-			const jobs = value["jobs"] as Record<string, Record<string, unknown>>;
-			for (const [id, job] of Object.entries(jobs)) {
-				// An unbounded job cannot fail; it can only hang until the platform
-				// cancels it, which the aggregate gate reads as a failure with no
-				// diagnosis attached.
-				expect(typeof job["timeout-minutes"]).toBe("number");
-				if (id === gateName) continue;
-				if (path.endsWith("codex-cloud-smoke.yml")) continue;
-				expect(job["if"]).toBe("${{ !github.event.pull_request.draft }}");
-			}
-		}
-	});
-});
-
 describe("aggregate gate", () => {
 	const GATE_SCRIPT = resolve(ROOT, "scripts/ci/aggregate-gate.sh");
 
@@ -431,77 +727,29 @@ describe("aggregate gate", () => {
 		expect(result.stderr.toString()).toContain("Mark it ready for review");
 	});
 
-	test("depends on every other job and always reports", async () => {
+	test("skips every gating job on a draft", async () => {
 		const parameters = Bun.TOML.parse(
 			await Bun.file(resolve(ROOT, "template-parameters.toml")).text(),
 		) as Record<string, Record<string, unknown>>;
 		const gateId = String(parameters["ci"]?.["aggregate_gate_name"]);
-		const source = await Bun.file(resolve(ROOT, WORKFLOWS[0])).text();
-		const jobs = (Bun.YAML.parse(source) as Record<string, unknown>)[
-			"jobs"
-		] as Record<string, Record<string, unknown>>;
-		const gate = jobs[gateId];
-		expect(gate).toBeDefined();
-		expect(gate?.["name"]).toBe("CI gate");
-		// Without always() a skipped upstream leaves the required check pending
-		// forever, which no further push can clear.
-		expect(gate?.["if"]).toBe("${{ always() }}");
-		// Membership: forgetting a job here is how a gate silently stops gating.
-		expect(gate?.["needs"]).toEqual(
-			Object.keys(jobs).filter((id) => id !== gateId),
-		);
-		const steps = gate?.["steps"] as CompositeStep[];
-		const verdict = steps.at(-1) as Record<string, unknown>;
-		expect(verdict["run"]).toBe("bash scripts/ci/aggregate-gate.sh");
-		const env = verdict["env"] as Record<string, string>;
-		expect(env["RESULTS"]).toBe("${{ join(needs.*.result, ',') }}");
-		expect(env["DRAFT"]).toBe("${{ github.event.pull_request.draft }}");
-	});
-
-	test("keeps a need outside every capability fence", async () => {
-		const source = await Bun.file(resolve(ROOT, WORKFLOWS[0])).text();
-		// A fenced job and its fenced `needs` entry have to disappear together, or
-		// the rendered workflow depends on a job that is not there.
-		const stripped = filterCapabilityBlocks(source, {});
-		const value = Bun.YAML.parse(stripped) as Record<string, unknown>;
+		const value = Bun.YAML.parse(
+			await Bun.file(resolve(ROOT, CI_WORKFLOW)).text(),
+		) as Record<string, unknown>;
 		const jobs = value["jobs"] as Record<string, Record<string, unknown>>;
-		expect(Object.hasOwn(jobs, "browser")).toBe(false);
-		const needs = jobs["ci-gate"]?.["needs"] as string[];
-		expect(needs).not.toContain("browser");
-		// Never fence a needs list into emptiness: a gate with no dependencies
-		// reports success on a run in which nothing happened.
-		expect(needs.length).toBeGreaterThan(0);
-		for (const need of needs) expect(Object.hasOwn(jobs, need)).toBe(true);
-	});
-
-	test("interpolates no event metadata into a shell body", async () => {
-		for (const path of WORKFLOWS) {
-			const value = Bun.YAML.parse(
-				await Bun.file(resolve(ROOT, path)).text(),
-			) as Record<string, unknown>;
-			const jobs = value["jobs"] as Record<string, Record<string, unknown>>;
-			for (const job of Object.values(jobs)) {
-				for (const step of (job["steps"] ?? []) as CompositeStep[]) {
-					// Event metadata is attacker-influenced text. It may reach a step
-					// as an `env:` value, never spliced into the script itself.
-					expect(step.run ?? "").not.toContain("${{ github.event.");
-				}
-			}
+		// The gate itself is exempt: it is the job that has to keep reporting when
+		// every other one was skipped.
+		expect(jobs[gateId]?.["name"]).toBe("CI gate");
+		for (const [id, job] of Object.entries(jobs)) {
+			if (id === gateId) continue;
+			expect(job["if"]).toBe("${{ !github.event.pull_request.draft }}");
 		}
 	});
 });
 
 describe("failure tolerance", () => {
-	test("tolerates no step failure anywhere in the gating workflow", async () => {
-		const source = await Bun.file(resolve(ROOT, WORKFLOWS[0])).text();
-		// A step allowed to fail is a step nobody reads: green while reporting
-		// nothing. The two cases that used to need one are classified in scripts.
-		expect(source).not.toMatch(/^\s*continue-on-error:/m);
-	});
-
 	test("runs the suite and the compiler through their committed wrappers", async () => {
 		const value = Bun.YAML.parse(
-			await Bun.file(resolve(ROOT, WORKFLOWS[0])).text(),
+			await Bun.file(resolve(ROOT, CI_WORKFLOW)).text(),
 		) as Record<string, unknown>;
 		const jobs = value["jobs"] as Record<string, Record<string, unknown>>;
 		const steps = jobs["ci"]?.["steps"] as CompositeStep[];
@@ -517,6 +765,7 @@ describe("failure tolerance", () => {
 			}
 		).scripts;
 		expect(scripts["typecheck"]).toBe("bash scripts/ci/run-typecheck.sh");
+		expect(scripts["ci:check"]).toBe("bun scripts/template/validate-ci.ts");
 	});
 
 	test("separates an empty suite from a failing one", async () => {
@@ -548,10 +797,41 @@ describe("failure tolerance", () => {
 		}
 	}, 60_000);
 
-	test("caches no extracted dependency tree in the smoke lane", async () => {
-		const source = await Bun.file(resolve(ROOT, WORKFLOWS[1])).text();
-		// Restoring Bun's global cache repeats the two operations that make a
-		// cold install cold, and evicts the caches that do pay for themselves.
-		expect(source).not.toMatch(/^\s+~\/\.bun\/install\/cache\s*$/m);
+	test("separates an empty compiler run from a failing one", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			await Bun.write(
+				resolve(temporary, "tsconfig.json"),
+				`${JSON.stringify({ include: ["src/**/*.ts"] }, null, "\t")}\n`,
+			);
+			const script = resolve(ROOT, "scripts/ci/run-typecheck.sh");
+			// TS18003 is the one tsc failure that means "there was nothing to
+			// check"; every other diagnostic means the check found something.
+			const empty = runScript(script, { cwd: temporary });
+			expect(empty.exitCode).toBe(0);
+			expect(empty.output).toContain("::notice::");
+
+			await mkdir(resolve(temporary, "src"), { recursive: true });
+			await Bun.write(
+				resolve(temporary, "src/broken.ts"),
+				"export const answer: number = 'not a number';\n",
+			);
+			const failing = runScript(script, { cwd: temporary });
+			expect(failing.exitCode).not.toBe(0);
+			expect(failing.output).not.toContain("::notice::");
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("keeps the trigger and tolerance policy identical in both lanes", async () => {
+		for (const path of WORKFLOWS) {
+			const source = await Bun.file(resolve(ROOT, path)).text();
+			// The contract owns these rules; this asserts the non-gating lane is
+			// really inside its scope rather than quietly exempted.
+			expect(source).toContain("ready_for_review");
+			expect(source).not.toMatch(/^\s*continue-on-error:/m);
+			expect(source).toContain("uses: ./.github/actions/setup-bun");
+		}
 	});
 });
