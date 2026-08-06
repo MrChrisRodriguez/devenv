@@ -326,7 +326,6 @@ describe("deterministic fixture renderer", () => {
 				expect(generatedScripts[match[1] ?? ""]).toBeString();
 			}
 			for (const path of [
-				".cursor/mcp.json",
 				".claude/settings.json",
 				".devcontainer/on-create/setup-claude.sh",
 				".devcontainer/secrets.example",
@@ -394,11 +393,6 @@ describe("deterministic fixture renderer", () => {
 				expect(minimalPackage.workspaces.catalog[packageName]).toBeUndefined();
 				expect(minimalPackage.devDependencies[packageName]).toBeUndefined();
 			}
-			const link = resolve(
-				output,
-				".cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc",
-			);
-			expect((await lstat(link)).isSymbolicLink()).toBe(true);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}

@@ -1,6 +1,6 @@
 # Agent Guidelines
 
-Shared conventions for all AI coding tools (Claude Code, Cursor, etc.).
+Shared conventions for all AI coding tools (Claude Code, Codex, Gemini CLI, etc.).
 
 ## Runtime
 

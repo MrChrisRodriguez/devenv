@@ -71,7 +71,7 @@ load_completions() {
 # Secrets are NOT sourced here. They arrive two ways, both value-safe:
 #   • Docker --env-file (host-side .devcontainer/host/prepare-container-env.sh)
 #     puts them in the container's process environment for every reader,
-#     including the VS Code/Cursor extension host and MCP subprocesses.
+#     including the VS Code extension host and MCP subprocesses.
 #   • .devcontainer/environment.sh re-reads the host bind-mount at
 #     /run/devcontainer-config through the strict KEY=value parser in
 #     .devcontainer/lib/env-file.sh, so keys added AFTER container create reach

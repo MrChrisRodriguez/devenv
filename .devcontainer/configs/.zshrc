@@ -7,7 +7,7 @@ unset _devcontainer_workspace_root
 # Shell-specific proto activation
 eval "$(proto activate zsh)"
 
-# Don't load plugins in Cursor agentic mode terminal
+# Don't load plugins in an agent-driven (non-interactive) editor terminal
 if [[ "$PAGER" == "head -n 10000 | cat" || "$COMPOSER_NO_INTERACTION" == "1" ]]; then
   return
 fi

@@ -205,13 +205,6 @@
 			"sourceOfTruth": "canonical agent rules"
 		},
 		{
-			"pattern": ".cursor/**",
-			"classification": "template-owned",
-			"syncPolicy": "merge",
-			"renderPolicy": "copy",
-			"sourceOfTruth": "canonical agent rules"
-		},
-		{
 			"pattern": ".codex/**",
 			"classification": "template-owned",
 			"syncPolicy": "merge",
@@ -302,21 +295,13 @@
 			"pattern": ".codex/skills/graphify/**",
 			"requiresAll": ["graphify"]
 		},
-		{ "pattern": ".codex/skills/openspec-*/**", "requiresAll": ["openspec"] },
 		{ "pattern": ".gemini/**", "requiresAll": ["gemini"] },
-		{ "pattern": ".gemini/commands/opsx/**", "requiresAll": ["openspec"] },
 		{ "pattern": ".gemini/skills/graphify/**", "requiresAll": ["graphify"] },
 		{ "pattern": ".claude/**", "requiresAll": ["claude"] },
 		{ "pattern": ".claude/commands/opsx/**", "requiresAll": ["openspec"] },
 		{ "pattern": ".claude/skills/openspec-*/**", "requiresAll": ["openspec"] },
 		{ "pattern": ".claude/skills/graphify/**", "requiresAll": ["graphify"] },
-		{ "pattern": ".cursor/commands/opsx-*.md", "requiresAll": ["openspec"] },
-		{ "pattern": ".cursor/skills/openspec-*/**", "requiresAll": ["openspec"] },
 		{ "pattern": "CLAUDE.md", "requiresAll": ["claude"] },
-		{
-			"pattern": ".cursor/rules/use-bun-instead-of-node-vite-npm-pnpm.mdc",
-			"requiresAll": ["claude"]
-		},
 		{ "pattern": "GEMINI.md", "requiresAll": ["gemini"] },
 		{
 			"pattern": ".devcontainer/ccstatusline-settings.json",
@@ -420,7 +405,7 @@
 				"wrangler"
 			]
 		},
-		"codex_cloud": { "paths": [".codex/cloud/**"], "tokens": ["CODEX_CLOUD"] },
+		"codex_cloud": { "paths": [], "tokens": ["CODEX_CLOUD"] },
 		"context7": {
 			"paths": [],
 			"tokens": ["context7", "CONTEXT7_API_KEY", "@upstash/context7-mcp"]
