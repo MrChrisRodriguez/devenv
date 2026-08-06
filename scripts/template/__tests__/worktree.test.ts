@@ -1886,6 +1886,37 @@ function stopServices(worktree: string, home: string): void {
 	run(worktree, home, "services.sh", ["stop"]);
 }
 
+async function probePort(port: number): Promise<boolean> {
+	try {
+		const response = await fetch(`http://127.0.0.1:${port}/health`, {
+			signal: AbortSignal.timeout(2_000),
+		});
+		await response.text();
+		return response.ok;
+	} catch {
+		return false;
+	}
+}
+
+// Whether the port is still being served, polled until it settles on the
+// expected answer. Stopping is judged here rather than by the recorded pid: the
+// listener is frequently a grandchild of whatever pid the launch recorded, and a
+// killed leader stays signalable until something reaps it, so a pid check can
+// report a running service that is gone and a gone service that is running.
+async function serviceAnswers(
+	port: number,
+	expected: boolean,
+	timeoutMs = 10_000,
+): Promise<boolean> {
+	const deadline = Date.now() + timeoutMs;
+	let answered = await probePort(port);
+	while (answered !== expected && Date.now() < deadline) {
+		await Bun.sleep(100);
+		answered = await probePort(port);
+	}
+	return answered;
+}
+
 function devcontainerIdentity(worktree: string): string {
 	const payload = JSON.stringify({
 		"devcontainer.config_file": resolve(
@@ -2195,14 +2226,11 @@ describe("worktree service lifecycle", () => {
 					DEVENV_SERVICE_START_TIMEOUT: "40",
 				}).exitCode,
 			).toBe(0);
-			const pid = Number(
-				(
-					await Bun.file(
-						resolve(alpha, ".dev/state/run/services/gateway.pid"),
-					).text()
-				).trim(),
-			);
-			expect(() => process.kill(pid, 0)).not.toThrow();
+			// The port is the question, not the pid. A recorded pid can be a shell
+			// that forked the real listener, and a killed leader lingers as a zombie
+			// until something reaps it, so on both counts "is anything still
+			// answering" is the only assertion that means what it says.
+			expect(await serviceAnswers(39101, true)).toBe(true);
 
 			// Inside the container the shutdown is the one that actually stops the
 			// processes; on the host it is delegated across the boundary.
@@ -2210,7 +2238,11 @@ describe("worktree service lifecycle", () => {
 				DEVCONTAINER: "true",
 			});
 			expect(insideDown.exitCode).toBe(0);
-			expect(() => process.kill(pid, 0)).toThrow();
+			for (const port of [39101, 39102, 39103]) {
+				expect(`${port}:${await serviceAnswers(port, false)}`).toBe(
+					`${port}:false`,
+				);
+			}
 			expect(
 				await Bun.file(resolve(alpha, ".dev/state/run/services")).exists(),
 			).toBe(false);

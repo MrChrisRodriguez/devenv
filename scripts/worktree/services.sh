@@ -174,7 +174,25 @@ service_running() {
 	case "$pid" in
 		'' | *[!0-9]*) return 1 ;;
 	esac
-	kill -0 "$pid" 2>/dev/null
+	if kill -0 "$pid" 2>/dev/null; then
+		return 0
+	fi
+	# The leader can exit while the listener it spawned keeps running, so a dead
+	# leader is not proof the service is gone: ask the whole process group.
+	kill -0 -- "-$pid" 2>/dev/null
+}
+
+# Signal the recorded process group, not one process. A declared start command is
+# a process TREE far more often than it is a single binary - a package manager
+# wrapping a server, or a /bin/sh that forks instead of exec'ing, which is what
+# dash does and what bash does not. Signalling only the recorded pid kills the
+# shell and orphans the listener, which then holds its port forever. The bare pid
+# is the fallback for a group that no longer exists.
+signal_service_tree() {
+	local pid="$1" signal="$2"
+	kill "-$signal" -- "-$pid" 2>/dev/null && return 0
+	kill "-$signal" "$pid" 2>/dev/null || true
+	return 0
 }
 
 report_log_tail() {
@@ -272,14 +290,20 @@ start_service() {
 	if [ ! -d "$working" ]; then
 		wt_die "service '$name' declares directory '$directory', which does not exist here"
 	fi
+	# Job control, deliberately: it makes this launch the leader of its OWN
+	# process group, so the recorded pid names a whole service tree that can be
+	# stopped as one. Without it the job joins this script's group, where the only
+	# safe target is the single recorded pid - and that pid is whichever shell
+	# happened to survive, not necessarily the process holding the port.
+	set -m
 	(
 		cd "$working" || exit 1
 		export PORT="$port"
-		# The contract records a command line, so a shell has to interpret it. It
-		# replaces this subshell, which keeps the recorded pid the service's own.
+		# The contract records a command line, so a shell has to interpret it.
 		exec /bin/sh -c "$command"
 	) >"$log" 2>&1 &
 	printf '%s\n' "$!" >"$SERVICES_DIR/$name.pid"
+	set +m
 	wt_log "started $name (pid $(cat "$SERVICES_DIR/$name.pid")) on port $port"
 }
 
@@ -335,11 +359,11 @@ stop_services() {
 		case "$pid" in
 			'' | *[!0-9]*) rm -f "$SERVICES_DIR/$name.pid" && continue ;;
 		esac
-		if kill -0 "$pid" 2>/dev/null; then
-			kill -TERM "$pid" 2>/dev/null || true
+		if service_running "$name"; then
+			signal_service_tree "$pid" TERM
 			sleep 1
-			if kill -0 "$pid" 2>/dev/null; then
-				kill -KILL "$pid" 2>/dev/null || true
+			if service_running "$name"; then
+				signal_service_tree "$pid" KILL
 			fi
 			stopped=$((stopped + 1))
 		fi
