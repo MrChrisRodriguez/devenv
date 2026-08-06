@@ -446,10 +446,20 @@ describe("repository toolchain contract", () => {
 			expect(setup).toContain("Rebuild/recreate the devcontainer");
 			expect(setup).not.toContain("/workspace/.devcontainer/install-proto.sh");
 			expect(setup).not.toMatch(/\bproto\s+(?:install|use)\b/);
-			const openspec = await Bun.file(
+			const openspecSetup = await Bun.file(
 				resolve(ROOT, ".devcontainer/on-create/setup-openspec.sh"),
 			).text();
-			expect(openspec).toContain("--force || return 1");
+			const openspecCode = openspecSetup
+				.split("\n")
+				.filter((line) => !line.trimStart().startsWith("#"))
+				.join("\n");
+			// Committed artifacts are the source of truth. Create-time must verify
+			// the CLI and its project config, then stop: `openspec init` writes a
+			// second, uncommitted slash-command family under different names.
+			expect(openspecCode).not.toMatch(/\bopenspec\s+init\b/);
+			expect(openspecCode).toContain("node_modules/.bin/openspec");
+			expect(openspecCode).toContain("openspec/config.yaml");
+			expect(openspecCode).toContain("return 1");
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
