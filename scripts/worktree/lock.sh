@@ -15,6 +15,10 @@
 #   portable_lock_acquire <path> [timeout_seconds]
 #   portable_lock_release
 
+# Every consumer already fails closed; declaring it here too keeps the whole
+# runtime uniform and lets the guard hold one rule for every declared script.
+set -euo pipefail
+
 PORTABLE_LOCK_PATH=""
 PORTABLE_LOCK_MODE=""
 PORTABLE_LOCK_STALE_SECONDS="${PORTABLE_LOCK_STALE_SECONDS:-${WORKTREE_LOCK_STALE_SECONDS:-7200}}"

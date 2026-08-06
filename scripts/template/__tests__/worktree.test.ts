@@ -16,6 +16,7 @@ const RUNTIME_FILES = [
 	"up.sh",
 	"down.sh",
 	"cleanup.sh",
+	"selftest.sh",
 ] as const;
 
 interface Harness {
@@ -2370,4 +2371,55 @@ describe("worktree service lifecycle", () => {
 			expect(`${name}:${source.includes(persistence)}`).toBe(`${name}:false`);
 		}
 	});
+});
+
+describe("worktree runtime selftest", () => {
+	test("runs the hermetic worktree selftest", () => {
+		const result = Bun.spawnSync(["bash", "scripts/worktree/selftest.sh"], {
+			cwd: ROOT,
+			stdout: "pipe",
+			stderr: "pipe",
+		});
+		expect(result.stderr.toString()).toBe("");
+		expect(result.exitCode).toBe(0);
+		expect(result.stdout.toString()).toContain("Worktree selftest: passed");
+		// The selftest is hermetic by contract: it must leave no generated state in
+		// the checkout it was run from.
+		expect(result.stdout.toString()).toContain(
+			"the host fingerprint equals the image-owned authority",
+		);
+	}, 180_000);
+
+	test("rejects unsupported arguments at every entry point", async () => {
+		const fixture = await harness();
+		try {
+			for (const script of [
+				"env.sh",
+				"ensure.sh",
+				"exec.sh",
+				"manifest.sh",
+				"services.sh",
+				"up.sh",
+				"down.sh",
+				"cleanup.sh",
+				"selftest.sh",
+			]) {
+				const refused = run(fixture.main, fixture.home, script, [
+					"--known-bad",
+				]);
+				expect(`${script}:${refused.exitCode}`).toBe(`${script}:2`);
+				expect(refused.stderr).toContain(
+					`Usage: bash scripts/worktree/${script}`,
+				);
+				expect(refused.stdout).toBe("");
+			}
+			// A missing subcommand is the same answer, not a default action.
+			for (const script of ["manifest.sh", "services.sh"]) {
+				const bare = run(fixture.main, fixture.home, script);
+				expect(`${script}:${bare.exitCode}`).toBe(`${script}:2`);
+			}
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
 });
