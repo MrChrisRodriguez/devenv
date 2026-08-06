@@ -763,6 +763,55 @@ describe("deterministic fixture renderer", () => {
 		}
 	});
 
+	test("renders the entrypoint cutover into every fixture", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			// Assembled rather than written out: the worktree guard scans tracked
+			// files for this token and this file is not on its allow-list.
+			const legacyLauncher = `dev${"pod"}`;
+			// Three rendered files name the superseded launcher on purpose: the
+			// cloud contract forbids it by name, its guard checks that list, and the
+			// worktree guard carries the token in order to scan for it. Nothing else
+			// may.
+			const sealed = ["scripts/template/worktree-contract.ts"];
+			const sealedWithCloud = [
+				".codex/cloud/contract.toml",
+				"scripts/template/cloud-contract.ts",
+				...sealed,
+			].sort();
+			for (const fixtureName of ["minimal", "cloud", "full"]) {
+				const output = resolve(temporary, fixtureName);
+				await renderFixture({ root: ROOT, fixtureName, output });
+				for (const hook of [".husky/commit-msg", ".husky/pre-commit"]) {
+					const source = await Bun.file(resolve(output, hook)).text();
+					expect(source).toContain(
+						"bash scripts/worktree/exec.sh --require-ready",
+					);
+					// The documented fallback survives rendering, because it is a run
+					// time file test rather than a capability fence.
+					expect(source).toContain("if [ -x scripts/worktree/exec.sh ]");
+				}
+				const readme = await Bun.file(resolve(output, "README.md")).text();
+				expect(readme).toContain("bash scripts/worktree/exec.sh");
+				const residue = (
+					await Bun.$`grep -rlI -i ${legacyLauncher} ${output}`
+						.quiet()
+						.nothrow()
+						.text()
+				)
+					.split("\n")
+					.filter(Boolean)
+					.map((path) => path.slice(output.length + 1))
+					.sort();
+				expect(residue).toEqual(
+					fixtureName === "minimal" ? sealed : sealedWithCloud,
+				);
+			}
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	});
+
 	test("rendered readme honors capability and template-only fences", async () => {
 		const temporary = await temporaryDirectory();
 		try {

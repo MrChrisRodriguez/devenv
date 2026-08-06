@@ -3066,6 +3066,12 @@ const CONTRACT_FILES = [
 	"scripts/worktree/cleanup.sh",
 	"scripts/worktree/selftest.sh",
 	"docs/devcontainer-upgrade/stage-0/template-ownership.json",
+	".husky/commit-msg",
+	".husky/pre-commit",
+	".devcontainer/on-create.sh",
+	"init-host.sh",
+	"README.md",
+	"README.template.md",
 ] as const;
 
 async function contractFixture(): Promise<string> {
@@ -3081,6 +3087,25 @@ async function contractFixture(): Promise<string> {
 		// copy landed with.
 		if (path.startsWith("scripts/worktree/") && path.endsWith(".sh"))
 			await chmod(destination, 0o755);
+	}
+	// The legacy-launcher scan reads tracked files through Git, so the fixture has
+	// to be a repository or the scan abstains and the mutations below prove
+	// nothing. Staging is enough: `git grep` reads the working tree.
+	const environment = {
+		PATH: process.env["PATH"] ?? "",
+		HOME: temporary,
+	};
+	for (const args of [
+		["init", "-q", "-b", "main"],
+		["add", "-A"],
+	]) {
+		const result = Bun.spawnSync(["git", "-C", temporary, ...args], {
+			env: environment,
+			stdout: "pipe",
+			stderr: "pipe",
+		});
+		if (result.exitCode !== 0)
+			throw new Error(`git ${args.join(" ")} failed in the contract fixture`);
 	}
 	return temporary;
 }
@@ -3266,6 +3291,88 @@ describe("worktree runtime contract guard", () => {
 				"scripts/worktree/lib.sh",
 				(source) => `${source}fi\n`,
 				"worktree: scripts/worktree/lib.sh has a bash syntax error",
+			);
+
+			// The entrypoint cutover. A hook that reaches project tooling directly
+			// runs it against whatever the host happens to have installed.
+			await mutate(
+				temporary,
+				".husky/commit-msg",
+				(source) =>
+					source.replace(
+						'bash scripts/worktree/exec.sh --require-ready bunx commitlint --edit "$1"',
+						'bunx commitlint --edit "$1"',
+					),
+				"worktree: git hooks must run project tooling through the bridge",
+			);
+			// A hook that may start a container turns every commit into a build.
+			await mutate(
+				temporary,
+				".husky/pre-commit",
+				(source) =>
+					source.replace(
+						"exec.sh --require-ready bunx lint-staged",
+						"exec.sh bunx lint-staged",
+					),
+				"worktree: git hooks must not start a container",
+			);
+			// Without the arm the hooks' flag falls through to the reconciling path.
+			await mutate(
+				temporary,
+				"scripts/worktree/exec.sh",
+				(source) =>
+					source.replace(
+						'\t\t--require-ready)\n\t\t\tREQUIRE_READY="true"\n\t\t\tshift\n\t\t\t;;\n',
+						"",
+					),
+				"worktree: bridge must expose a ready-only mode for hooks",
+			);
+			await mutate(
+				temporary,
+				"init-host.sh",
+				(source) =>
+					source.replace(
+						"brew install devcontainer",
+						`brew install dev${"pod"}`,
+					),
+				"worktree: init-host.sh still installs the superseded launcher",
+			);
+			await mutate(
+				temporary,
+				"init-host.sh",
+				(source) =>
+					source.replace("    brew install devcontainer\n", "    true\n"),
+				"worktree: onboarding must install the container CLI",
+			);
+			await mutate(
+				temporary,
+				"README.template.md",
+				(source) =>
+					source.replaceAll(
+						"bash scripts/worktree/exec.sh",
+						"bash scripts/worktree/run.sh",
+					),
+				"worktree: onboarding must document the bridge as the entry point",
+			);
+			// The non-vacuous half: a tracked file that still names the superseded
+			// launcher is a fact no document can talk its way out of. This file is
+			// not on the guard's allow-list, so the two mutations that need the
+			// literal token assemble it instead of writing it.
+			await mutate(
+				temporary,
+				".devcontainer/on-create.sh",
+				(source) => `${source}\ndev${"pod"} up .\n`,
+				"worktree: .devcontainer/on-create.sh still routes onboarding through the superseded launcher",
+			);
+			await mutate(
+				temporary,
+				"AGENTS.md",
+				(source) =>
+					source.replace(
+						"- This runtime is the entry point, not an addition to one.",
+						"- This runtime is additive during the soak.",
+					),
+				"worktree: agent rules must describe the cutover, not the soak",
 			);
 
 			// The executable bit is part of the contract: a runtime script Git
