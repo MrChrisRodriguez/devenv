@@ -797,6 +797,41 @@ describe("failure tolerance", () => {
 		}
 	}, 60_000);
 
+	// The case above can only ever exercise whichever wording THIS machine's Bun
+	// emits, and the two are not the same: macOS builds say `error: 0 test files
+	// matching ...`, the Linux runners CI uses say `No tests found!`. A wrapper
+	// that classifies only the local one is green on a laptop and red on every
+	// runner, so both are driven here through a stand-in `bun` — together with a
+	// real failure that merely quotes the same words, which must still fail.
+	test("classifies every wording of an empty suite and nothing else", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const script = resolve(ROOT, "scripts/ci/run-tests.sh");
+			const run = async (body: string) => {
+				const binDirectory = await fakeBinary(temporary, "bun", body);
+				return runScript(script, {
+					cwd: temporary,
+					env: { PATH: `${binDirectory}:${process.env["PATH"] ?? ""}` },
+				});
+			};
+			for (const report of [
+				'echo "error: 0 test files matching **{.test,.spec}.{js,ts} in --cwd=/x"',
+				'echo "No tests found!"',
+			]) {
+				const absorbed = await run(`${report}\nexit 1`);
+				expect(absorbed.exitCode).toBe(0);
+				expect(absorbed.output).toContain("::notice::");
+			}
+			const quoted = await run(
+				'echo "(fail) reports No tests found! for the empty case"\nexit 1',
+			);
+			expect(quoted.exitCode).toBe(1);
+			expect(quoted.output).not.toContain("::notice::");
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 60_000);
+
 	test("separates an empty compiler run from a failing one", async () => {
 		const temporary = await temporaryDirectory();
 		try {

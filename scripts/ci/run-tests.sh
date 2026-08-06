@@ -33,7 +33,16 @@ fi
 # exits 1. It is the only non-zero exit that is not a test result, so it is the
 # only one this script is allowed to absorb. The match is deliberately narrow: a
 # suite that ran and failed must never look like a suite that was not there.
-if printf '%s' "$output" | grep -q "^error: 0 test files matching "; then
+#
+# Bun words that one condition in two ways, and which one you get is a property
+# of the build rather than of the project: the macOS builds a maintainer runs
+# locally print `error: 0 test files matching <glob> in --cwd=<path>`, and the
+# Linux runners this repository's CI uses print `No tests found!` instead. Both
+# are anchored whole lines, both mean zero test files were executed, and neither
+# can be produced by a suite that ran and failed. Matching only the local wording
+# made this wrapper correct on a laptop and red on every runner.
+if printf '%s\n' "$output" |
+	grep -qE '^(error: 0 test files matching |No tests found!$)'; then
 	echo "::notice::No test files matched yet; the suite reported nothing to run."
 	exit 0
 fi
