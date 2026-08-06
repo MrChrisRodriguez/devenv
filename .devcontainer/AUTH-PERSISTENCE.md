@@ -376,12 +376,15 @@ the allowlist is how you turn off a provider you don't want a given repo to use.
 
 This repo allows **`claude codex gemini`** — the three CLIs it installs.
 To disable one, drop it from the list; to enable another, add its name. The
-provider names Octopus recognizes are `codex`, `gemini`, `opencode`, `copilot`,
-`qwen`, `ollama`, `openrouter`, `perplexity`, plus `claude`. **Keep `claude` in
-the list — it's the orchestrator.** Recognized aliases: `claude`/`anthropic`/
-`sonnet`, `codex`/`openai`, `gemini`/`google`, `local`→`ollama`. A provider you
-add here also needs its key in host secrets (e.g. `openrouter` →
-`OPENROUTER_API_KEY`).
+accepted values come from Claude Octopus upstream, whose own provider
+vocabulary is
+`claude|codex|gemini|opencode|copilot|qwen|ollama|openrouter|perplexity` —
+this template installs only `claude`, `codex`, and `gemini`, so every other
+name in that string is Octopus's to support, not something this repo ships.
+**Keep `claude` in the list — it's the orchestrator.** Octopus's own aliases:
+`claude`/`anthropic`/`sonnet`, `codex`/`openai`, `gemini`/`google`,
+`local`→`ollama`. A provider you add here also needs its key in host secrets
+(e.g. `openrouter` → `OPENROUTER_API_KEY`).
 <!-- capability:end claude_octopus -->
 
 ## GitHub push auth (credential routing by org)
