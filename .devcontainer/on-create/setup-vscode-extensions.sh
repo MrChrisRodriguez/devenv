@@ -32,7 +32,7 @@ fi
 # Check if code command is available and functional (not just a non-working shim)
 if ! command -v code &> /dev/null || ! code --list-extensions &> /dev/null; then
 	echo "⚠️  VS Code CLI (code) not found or not functional. Extensions will be installed when VS Code connects."
-	echo "   This is normal for DevPod - extensions will install automatically when the editor connects."
+	echo "   This is normal for a CLI-started container - extensions will install automatically when the editor connects."
 	return 0
 fi
 

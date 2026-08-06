@@ -1,0 +1,3 @@
+Worktree down: no services are declared
+Worktree manifest: devenv-main is inactive; its ports stay reserved
+Worktree down: this worktree keeps its registered ports; run cleanup.sh to release them

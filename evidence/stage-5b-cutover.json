@@ -1,0 +1,422 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-5b-entrypoint-cutover",
+	"capturedAt": "2026-08-06T08:27:52.219Z",
+	"run": {
+		"id": "stage5b-20260806t082542z-c270e179",
+		"logRoot": "evidence/stage-5b-cutover-run",
+		"temporaryRoot": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179",
+		"isolatedHome": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/home",
+		"originPath": "/Users/mrcr/Code/templates/devenv"
+	},
+	"source": {
+		"baseSha": "9b7e0576c4e360c25291ad84190cd3bec3e3d9b2",
+		"implementationSha": "c270e179af6408b74fee2b518487e5a3575d280f",
+		"treeClean": true
+	},
+	"host": {
+		"os": "darwin",
+		"architecture": "arm64",
+		"kernel": "25.5.0",
+		"home": "/Users/mrcr",
+		"dockerVersion": "29.4.0",
+		"devcontainerCliVersion": "0.87.0",
+		"pythonVersion": "3.12.8",
+		"hostBunPresent": true
+	},
+	"precondition": {
+		"mainCheckoutContainerReady": false,
+		"checkReadyExitCode": 1
+	},
+	"journey": {
+		"clonePath": "/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone",
+		"workspaceId": "devenv-main",
+		"family": "main",
+		"offset": 0,
+		"publishedHostPort": 8080,
+		"directUrl": "http://127.0.0.1:8080",
+		"containerId": "90d63ad407d379bb9b1e124a11868c311d6756917123b5fe2b69c96a7e77b1c3",
+		"devcontainerId": "16kmcp2vr26jdte0r45g86jregg9ukds5tlnutc12s2fha17veag",
+		"definitionFingerprint": "d6ff95c907fd7c44a4e8ddb11fbdecf434a468a19c1fb6e2d9fe94ba76588654",
+		"hookExecutionOs": "Linux",
+		"hookContainerId": "90d63ad407d379bb9b1e124a11868c311d6756917123b5fe2b69c96a7e77b1c3"
+	},
+	"commands": [
+		{
+			"id": "cutover-guard",
+			"command": ["bun", "run", "worktree:check"],
+			"runId": "stage5b-20260806t082542z-c270e179",
+			"startedAt": "2026-08-06T08:25:42.153Z",
+			"completedAt": "2026-08-06T08:25:42.267Z",
+			"durationMs": 114,
+			"stdoutPath": "evidence/stage-5b-cutover-run/cutover-guard.stdout",
+			"stderrPath": "evidence/stage-5b-cutover-run/cutover-guard.stderr",
+			"stdoutSha256": "b8fc787fad0cc3f993f929092349ec69500a2a05c0162ba2b0fa03d85e0fb54c",
+			"stderrSha256": "b21172c02c58cf08110b00d513cdbce996f4ccd7813f16729358cd34cb9daad7",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "hermetic-selftest",
+			"command": ["bash", "scripts/worktree/selftest.sh"],
+			"runId": "stage5b-20260806t082542z-c270e179",
+			"startedAt": "2026-08-06T08:25:42.270Z",
+			"completedAt": "2026-08-06T08:25:44.035Z",
+			"durationMs": 1765,
+			"stdoutPath": "evidence/stage-5b-cutover-run/hermetic-selftest.stdout",
+			"stderrPath": "evidence/stage-5b-cutover-run/hermetic-selftest.stderr",
+			"stdoutSha256": "84914daac0da2764842c72f3045b401080365704941d1d6653c9c71be59a9ba9",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "cutover-known-bad-fixtures",
+			"command": ["bun", "test", "scripts/template/__tests__/worktree.test.ts"],
+			"runId": "stage5b-20260806t082542z-c270e179",
+			"startedAt": "2026-08-06T08:25:44.035Z",
+			"completedAt": "2026-08-06T08:26:58.703Z",
+			"durationMs": 74668,
+			"stdoutPath": "evidence/stage-5b-cutover-run/cutover-known-bad-fixtures.stdout",
+			"stderrPath": "evidence/stage-5b-cutover-run/cutover-known-bad-fixtures.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "fa75b0874452c678d62754886a3d44114d0f9514e61e9952465997a04d1c2a46",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "template-known-bad-fixtures",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/template.test.ts",
+				"-t",
+				"residue"
+			],
+			"runId": "stage5b-20260806t082542z-c270e179",
+			"startedAt": "2026-08-06T08:26:58.703Z",
+			"completedAt": "2026-08-06T08:26:59.645Z",
+			"durationMs": 942,
+			"stdoutPath": "evidence/stage-5b-cutover-run/template-known-bad-fixtures.stdout",
+			"stderrPath": "evidence/stage-5b-cutover-run/template-known-bad-fixtures.stderr",
+			"stdoutSha256": "2049f6899d4e06caaf484eef3a174a0c285665a64df7e774277932356739ca7a",
+			"stderrSha256": "17df9cd628704ae44316a01453d99ddd3189d22d3ab1858cf06a1a74159f1d3a",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "legacy-orchestration-scan",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-five-b-evidence.ts",
+				"scan-legacy"
+			],
+			"runId": "stage5b-20260806t082542z-c270e179",
+			"startedAt": "2026-08-06T08:26:59.645Z",
+			"completedAt": "2026-08-06T08:26:59.690Z",
+			"durationMs": 45,
+			"stdoutPath": "evidence/stage-5b-cutover-run/legacy-orchestration-scan.stdout",
+			"stderrPath": "evidence/stage-5b-cutover-run/legacy-orchestration-scan.stderr",
+			"stdoutSha256": "972c3e4c56d08b5a03475a3ebeba3920e696b05b4ecfc64c4fab4cc3ebf168d5",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "journey-fresh-clone",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/home\"\nmkdir -p \"$HOME\"\ngit clone --quiet \"/Users/mrcr/Code/templates/devenv\" \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone\"\ngit checkout --quiet --detach c270e179af6408b74fee2b518487e5a3575d280f\ngit config user.name \"Stage 5B journey\"\ngit config user.email \"stage-5b-journey@example.invalid\"\ngit config commit.gpgsign false\nprintf 'headSha=%s\\n' \"$(git rev-parse HEAD)\"\nprintf 'gitDir=%s\\n' \"$(git rev-parse --path-format=absolute --git-dir)\"\nprintf 'statusLines=%s\\n' \"$(git status --porcelain | wc -l | tr -d ' ')\"\nprintf 'hooksPath=%s\\n' \"$(git config --get core.hooksPath || printf none)\"\nprintf 'huskyRunnerPresent=%s\\n' \"$([ -e .husky/_/h ] && printf present || printf absent)\"\nprintf 'generatedStatePresent=%s\\n' \"$([ -e .dev ] && printf present || printf absent)\"\nprintf 'nodeModulesPresent=%s\\n' \"$([ -e node_modules ] && printf present || printf absent)\"\nprintf 'bridgeExecutable=%s\\n' \"$([ -x scripts/worktree/exec.sh ] && printf true || printf false)\"\nprintf 'commitMsgRoutes=%s\\n' \"$(grep -c 'exec.sh --require-ready' .husky/commit-msg | tr -d ' ')\"\nprintf 'preCommitRoutes=%s\\n' \"$(grep -c 'exec.sh --require-ready' .husky/pre-commit | tr -d ' ')\""
+			],
+			"runId": "stage5b-20260806t082542z-c270e179",
+			"startedAt": "2026-08-06T08:26:59.690Z",
+			"completedAt": "2026-08-06T08:27:01.823Z",
+			"durationMs": 2133,
+			"stdoutPath": "evidence/stage-5b-cutover-run/journey-fresh-clone.stdout",
+			"stderrPath": "evidence/stage-5b-cutover-run/journey-fresh-clone.stderr",
+			"stdoutSha256": "037f83890a5614679fb9d23ab14d08caab8e1d934a4ad5ecb0c1e1e7e8ced707",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "journey-prerequisites",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nmain_state_digest() {\n\t(cd \"/Users/mrcr/.config/devcontainer\" 2>/dev/null &&\n\t\tfind ports-registry worktrees caddy -type f -print0 2>/dev/null |\n\t\tsort -z | xargs -0 shasum -a 256 2>/dev/null || true) |\n\t\tshasum -a 256 | awk '{ print $1 }'\n}\nprintf 'mainCheckoutStateDigest=%s\\n' \"$(main_state_digest)\"\nstatus=0\n(cd \"/Users/mrcr/Code/templates/devenv\" && HOME=\"/Users/mrcr\" bash scripts/worktree/ensure.sh --check-ready) >/dev/null 2>&1 || status=$?\nprintf 'mainCheckoutReadyExitCode=%s\\n' \"$status\"\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\nfor directory in secrets.d container-env codex-auth; do\n\tmkdir -p \"$HOME/.config/devcontainer/$directory\"\n\tchmod 700 \"$HOME/.config/devcontainer/$directory\"\ndone\nmkdir -p \"$HOME/.ssh\"\nchmod 700 \"$HOME/.ssh\"\nprintf 'isolatedHome=%s\\n' \"$HOME\"\nprintf 'hostDirectories=%s\\n' \"$(ls \"$HOME/.config/devcontainer\" | sort | tr '\\n' ' ')\"\nprintf 'dockerVersion=%s\\n' \"$(docker version --format '{{.Server.Version}}')\"\nprintf 'containerCliVersion=%s\\n' \"$(devcontainer --version)\"\nprintf 'pythonVersion=%s\\n' \"$(python3 -c 'import platform; print(platform.python_version())')\"\nprintf 'hostBunPresent=%s\\n' \"$(command -v bun >/dev/null 2>&1 && printf true || printf false)\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone\"\nbash -n init-host.sh\nprintf 'initHostSyntax=ok\\n'\nprintf 'initHostInstallsContainerCli=%s\\n' \"$(grep -c 'brew install devcontainer' init-host.sh | tr -d ' ')\"\nprintf 'initHostVerifiesPython=%s\\n' \"$(grep -c 'python3' init-host.sh | tr -d ' ')\""
+			],
+			"runId": "stage5b-20260806t082542z-c270e179",
+			"startedAt": "2026-08-06T08:27:01.823Z",
+			"completedAt": "2026-08-06T08:27:02.101Z",
+			"durationMs": 278,
+			"stdoutPath": "evidence/stage-5b-cutover-run/journey-prerequisites.stdout",
+			"stderrPath": "evidence/stage-5b-cutover-run/journey-prerequisites.stderr",
+			"stdoutSha256": "125b231cbac9c7de1888251e236972ed5b8e939701a94e5618adb41c8f779779",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "journey-up",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone\"\nbash scripts/worktree/up.sh\ncontainer_id=\"$(bash scripts/worktree/ensure.sh --check-ready)\"\nprintf 'containerId=%s\\n' \"$container_id\"\nprintf 'containerLocalFolder=%s\\n' \"$(docker inspect --format '{{ index .Config.Labels \"devcontainer.local_folder\" }}' \"$container_id\")\"\nprintf 'containerConfigFile=%s\\n' \"$(docker inspect --format '{{ index .Config.Labels \"devcontainer.config_file\" }}' \"$container_id\")\"\nprintf 'containerVolumes=%s\\n' \"$(docker inspect --format '{{range .Mounts}}{{if eq .Type \"volume\"}}{{.Name}} {{end}}{{end}}' \"$container_id\")\"\nprintf 'publishedMapping=%s\\n' \"$(docker port \"$container_id\" 8080/tcp | head -1)\"\nprintf 'environmentJson=%s\\n' \"$(bash scripts/worktree/env.sh --json | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\nprintf 'manifestPath=%s\\n' \"$(bash scripts/worktree/manifest.sh path)\"\nprintf 'definitionFingerprint=%s\\n' \"$(bash scripts/worktree/ensure.sh --definition-fingerprint)\"\nprintf 'hooksPathAfterUp=%s\\n' \"$(git config --get core.hooksPath || printf none)\"\nprintf 'nodeModulesAfterUp=%s\\n' \"$([ -e node_modules ] && printf present || printf absent)\"\nprintf 'huskyRunnerAfterUp=%s\\n' \"$([ -e .husky/_/h ] && printf present || printf absent)\"\nprintf 'persistenceRoot=%s\\n' \"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_env_file_value \"$REPO_ROOT/$(wt_contract_value generated_environment)\" \"$2\"' bash \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone\" DEVENV_PERSISTENCE_ROOT)\""
+			],
+			"runId": "stage5b-20260806t082542z-c270e179",
+			"startedAt": "2026-08-06T08:27:02.101Z",
+			"completedAt": "2026-08-06T08:27:33.423Z",
+			"durationMs": 31322,
+			"stdoutPath": "evidence/stage-5b-cutover-run/journey-up.stdout",
+			"stderrPath": "evidence/stage-5b-cutover-run/journey-up.stderr",
+			"stdoutSha256": "10006b5132f7a5d6478a19a5aac5074f001550789f3aee2e3707d6832e02f781",
+			"stderrSha256": "c9297a3dee7b1de5e6fc902d568ec396eb574b56f6bd4a7c03af5d396d29597b",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "journey-bridge-install",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone\"\nbash scripts/worktree/exec.sh bun install --frozen-lockfile\nprintf 'installOs=%s\\n' \"$(bash scripts/worktree/exec.sh --require-ready uname -s)\"\nprintf 'installBunPath=%s\\n' \"$(bash scripts/worktree/exec.sh --require-ready sh -c 'command -v bun')\"\nprintf 'hooksPath=%s\\n' \"$(git config --get core.hooksPath || printf none)\"\nprintf 'huskyRunnerPresent=%s\\n' \"$([ -e .husky/_/h ] && printf present || printf absent)\"\nprintf 'nodeModulesOnHost=%s\\n' \"$([ -e node_modules ] && printf present || printf absent)\"\nprintf 'commitlintVersion=%s\\n' \"$(bash scripts/worktree/exec.sh --require-ready bunx commitlint --version)\"\nprintf 'lintStagedVersion=%s\\n' \"$(bash scripts/worktree/exec.sh --require-ready bunx lint-staged --version)\""
+			],
+			"runId": "stage5b-20260806t082542z-c270e179",
+			"startedAt": "2026-08-06T08:27:33.424Z",
+			"completedAt": "2026-08-06T08:27:36.704Z",
+			"durationMs": 3280,
+			"stdoutPath": "evidence/stage-5b-cutover-run/journey-bridge-install.stdout",
+			"stderrPath": "evidence/stage-5b-cutover-run/journey-bridge-install.stderr",
+			"stdoutSha256": "faa9f60e1752286a11ffdd09e909dc5c8d990b1f202bbfe95f8f4aa87858ab62",
+			"stderrSha256": "1549e9b8128b223662d253210e73f7e29e9494049b92b239101a926f6f5b3d95",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "journey-hook-routing",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone\"\nprintf 'hookExecutionOs=%s\\n' \"$(bash scripts/worktree/exec.sh --require-ready uname -s)\"\nhook_hostname=\"$(bash scripts/worktree/exec.sh --require-ready hostname)\"\nprintf 'hookHostname=%s\\n' \"$hook_hostname\"\nprintf 'hookContainerId=%s\\n' \"$(docker inspect --format '{{.Id}}' \"$hook_hostname\")\"\nprintf 'probe %s\\n' stage5b-20260806t082542z-c270e179 > journey-probe.txt\ngit add journey-probe.txt\ngit commit --quiet -m 'test(journey): stage 5b bridged hook probe'\nprintf 'acceptedSha=%s\\n' \"$(git rev-parse HEAD)\"\nprintf 'acceptedSubject=%s\\n' \"$(git log -1 --pretty=%s)\"\nprintf 'hooksPath=%s\\n' \"$(git config --get core.hooksPath)\"\nstatus=0\ngit commit --quiet --allow-empty -m 'Bad journey subject.' >/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/rejected-subject.log 2>&1 || status=$?\nprintf 'rejectedExitCode=%s\\n' \"$status\"\nprintf 'rejectedHuskyLine=%s\\n' \"$(grep -F 'commit-msg script failed' /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/rejected-subject.log || true)\"\nprintf 'headAfterRejection=%s\\n' \"$(git rev-parse HEAD)\"\nprintf 'rejectedSubjectLanded=%s\\n' \"$(git log --pretty=%s | grep -c -F 'Bad journey subject.' || true)\""
+			],
+			"runId": "stage5b-20260806t082542z-c270e179",
+			"startedAt": "2026-08-06T08:27:36.704Z",
+			"completedAt": "2026-08-06T08:27:43.340Z",
+			"durationMs": 6636,
+			"stdoutPath": "evidence/stage-5b-cutover-run/journey-hook-routing.stdout",
+			"stderrPath": "evidence/stage-5b-cutover-run/journey-hook-routing.stderr",
+			"stdoutSha256": "fc6a07aaec7de05c0c7a417f859336d1781521a756d459b07b174a3695fdd664",
+			"stderrSha256": "0ed901dbd33b1604fee8a2a943f5cef0797cb978b4cbaefbb3236a2126555338",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "journey-hook-refusal",
+			"command": [
+				"bash",
+				"-c",
+				"set -uo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone\"\ncontainer_id=\"$(bash scripts/worktree/ensure.sh --check-ready)\"\nprintf 'containerId=%s\\n' \"$container_id\"\ndocker stop \"$container_id\" >/dev/null\nready=0\nbash scripts/worktree/ensure.sh --check-ready >/dev/null 2>&1 || ready=$?\nprintf 'checkReadyExitCode=%s\\n' \"$ready\"\nbefore=\"$(git rev-parse HEAD)\"\nprintf 'headBefore=%s\\n' \"$before\"\nstatus=0\ngit commit --quiet --allow-empty -m 'test(journey): this commit must never land' >/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/refused-commit.log 2>&1 || status=$?\nprintf 'gitExitCode=%s\\n' \"$status\"\nprintf 'huskyLine=%s\\n' \"$(grep -F 'pre-commit script failed' /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/refused-commit.log || true)\"\nprintf 'bridgeRefusal=%s\\n' \"$(grep -F \"container is not ready\" /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/refused-commit.log || true)\"\nafter=\"$(git rev-parse HEAD)\"\nprintf 'headAfter=%s\\n' \"$after\"\nprintf 'commitExecuted=%s\\n' \"$([ \"$after\" = \"$before\" ] && printf false || printf true)\"\nprintf 'refusedSubjectLanded=%s\\n' \"$(git log --pretty=%s | grep -c -F 'test(journey): this commit must never land' || true)\"\nrefusal=\"$(sed -n 's/.*script failed (code \\([0-9][0-9]*\\)).*/\\1/p' /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/refused-commit.log | head -1)\"\nprintf 'refusalExitCode=%s\\n' \"$refusal\"\ndocker start \"$container_id\" >/dev/null\nprintf 'readyAfterRestart=%s\\n' \"$(bash scripts/worktree/ensure.sh --check-ready)\"\nexit \"$refusal\""
+			],
+			"runId": "stage5b-20260806t082542z-c270e179",
+			"startedAt": "2026-08-06T08:27:43.340Z",
+			"completedAt": "2026-08-06T08:27:47.296Z",
+			"durationMs": 3956,
+			"stdoutPath": "evidence/stage-5b-cutover-run/journey-hook-refusal.stdout",
+			"stderrPath": "evidence/stage-5b-cutover-run/journey-hook-refusal.stderr",
+			"stdoutSha256": "875e459f60cedbddb3bc443daaf69b29d621b087a48aabcf5b0e51c0553cc51b",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 7,
+			"status": "refused"
+		},
+		{
+			"id": "journey-inspect",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone\"\nprintf 'environmentJson=%s\\n' \"$(bash scripts/worktree/env.sh --json | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\nprintf 'manifestExports=%s\\n' \"$(bash scripts/worktree/manifest.sh env | tr '\\n' ';')\"\nprintf 'manifestPath=%s\\n' \"$(bash scripts/worktree/manifest.sh path)\"\nprintf 'manifestJson=%s\\n' \"$(python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))' <\"$(bash scripts/worktree/manifest.sh path)\")\"\nprintf 'servicesStatus=%s\\n' \"$(bash scripts/worktree/services.sh status 2>&1)\"\nprintf 'containerReady=%s\\n' \"$(bash scripts/worktree/ensure.sh --check-ready)\""
+			],
+			"runId": "stage5b-20260806t082542z-c270e179",
+			"startedAt": "2026-08-06T08:27:47.296Z",
+			"completedAt": "2026-08-06T08:27:48.249Z",
+			"durationMs": 953,
+			"stdoutPath": "evidence/stage-5b-cutover-run/journey-inspect.stdout",
+			"stderrPath": "evidence/stage-5b-cutover-run/journey-inspect.stderr",
+			"stdoutSha256": "3a5d1f1e5d53a6accbc60e912a3634050380ac39abdb8fac1c1525dd97667427",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "journey-down",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone\"\nbash scripts/worktree/down.sh\nmanifest=\"$(bash scripts/worktree/manifest.sh path)\"\nprintf 'manifestRemaining=%s\\n' \"$([ -e \"$manifest\" ] && printf present || printf absent)\"\nprintf 'manifestJson=%s\\n' \"$(python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))' <\"$manifest\")\"\nprintf 'environmentJson=%s\\n' \"$(bash scripts/worktree/env.sh --json | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\nprintf 'generatedStateRemaining=%s\\n' \"$([ -e .dev/state ] && printf present || printf absent)\"\nprintf 'ownedContainers=%s\\n' \"$(docker ps --all --no-trunc --quiet --filter label=devcontainer.local_folder=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone | wc -l | tr -d ' ')\"\nprintf 'containerReady=%s\\n' \"$(bash scripts/worktree/ensure.sh --check-ready)\""
+			],
+			"runId": "stage5b-20260806t082542z-c270e179",
+			"startedAt": "2026-08-06T08:27:48.250Z",
+			"completedAt": "2026-08-06T08:27:49.159Z",
+			"durationMs": 909,
+			"stdoutPath": "evidence/stage-5b-cutover-run/journey-down.stdout",
+			"stderrPath": "evidence/stage-5b-cutover-run/journey-down.stderr",
+			"stdoutSha256": "fb7f37c0ea19051a660db2a4d2a4ec1c118e12ea5171613f7f99dd5731647450",
+			"stderrSha256": "1eef555952c7d6333d9ab8dbe28f5a7b9a907dc5e49ae7f316b09149ad5848a3",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "journey-cleanup",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nexport HOME=\"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/home\"\nexport DOCKER_CONFIG=\"/Users/mrcr/.docker\"\ncd \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone\"\nmain_state_digest() {\n\t(cd \"/Users/mrcr/.config/devcontainer\" 2>/dev/null &&\n\t\tfind ports-registry worktrees caddy -type f -print0 2>/dev/null |\n\t\tsort -z | xargs -0 shasum -a 256 2>/dev/null || true) |\n\t\tshasum -a 256 | awk '{ print $1 }'\n}\ncontainer_id=\"$(bash scripts/worktree/ensure.sh --check-ready)\"\nvolumes=\"$(docker inspect --format '{{range .Mounts}}{{if eq .Type \"volume\"}}{{.Name}} {{end}}{{end}}' \"$container_id\")\"\nmanifest=\"$(bash scripts/worktree/manifest.sh path)\"\npersistence=\"$(bash -c '. \"$1/scripts/worktree/lib.sh\"; wt_env_file_value \"$REPO_ROOT/$(wt_contract_value generated_environment)\" \"$2\"' bash \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone\" DEVENV_PERSISTENCE_ROOT)\"\nworkspace=\"$(basename \"$manifest\" .json)\"\nprintf 'removedContainerId=%s\\n' \"$container_id\"\nprintf 'removedVolumes=%s\\n' \"$volumes\"\nprintf 'removedManifest=%s\\n' \"$manifest\"\nprintf 'workspaceId=%s\\n' \"$workspace\"\nbash scripts/worktree/cleanup.sh\nprintf 'containersRemaining=%s\\n' \"$(docker ps --all --no-trunc --quiet --filter label=devcontainer.local_folder=/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone | wc -l | tr -d ' ')\"\nremaining=0\nfor volume in $volumes; do\n\tif docker volume inspect \"$volume\" >/dev/null 2>&1; then remaining=$((remaining + 1)); fi\ndone\nprintf 'volumesRemaining=%s\\n' \"$remaining\"\nprintf 'manifestRemaining=%s\\n' \"$([ -e \"$manifest\" ] && printf present || printf absent)\"\nprintf 'generatedStateRemaining=%s\\n' \"$([ -e .dev/state ] && printf present || printf absent)\"\nprintf 'persistenceRemaining=%s\\n' \"$([ -e \"$persistence\" ] && printf present || printf absent)\"\nprintf 'cloneRemaining=%s\\n' \"$([ -e \"/private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/clone/README.md\" ] && printf present || printf absent)\"\nprintf 'mainCheckoutStateDigest=%s\\n' \"$(main_state_digest)\""
+			],
+			"runId": "stage5b-20260806t082542z-c270e179",
+			"startedAt": "2026-08-06T08:27:49.159Z",
+			"completedAt": "2026-08-06T08:27:51.553Z",
+			"durationMs": 2394,
+			"stdoutPath": "evidence/stage-5b-cutover-run/journey-cleanup.stdout",
+			"stderrPath": "evidence/stage-5b-cutover-run/journey-cleanup.stderr",
+			"stdoutSha256": "1c5d1dbc84e2fecf2dc26d8f70b55635b08c41fbdf140b1375187fca6ee8d76e",
+			"stderrSha256": "c809e1399159ff8eaa5b71b3acfbe8976d380d46b9a902df118e79a2ecb04af4",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rollback-proof",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-five-b-evidence.ts",
+				"probe-rollback",
+				"--base",
+				"9b7e0576c4e360c25291ad84190cd3bec3e3d9b2",
+				"--implementation",
+				"c270e179af6408b74fee2b518487e5a3575d280f",
+				"--workspace",
+				"/tmp/devenv-stage2-stage5b-20260806t082542z-c270e179-rollback"
+			],
+			"runId": "stage5b-20260806t082542z-c270e179",
+			"startedAt": "2026-08-06T08:27:51.553Z",
+			"completedAt": "2026-08-06T08:27:52.218Z",
+			"durationMs": 665,
+			"stdoutPath": "evidence/stage-5b-cutover-run/rollback-proof.stdout",
+			"stderrPath": "evidence/stage-5b-cutover-run/rollback-proof.stderr",
+			"stdoutSha256": "82569fc757614cd3d7836c02e0da22e2eee863bb7ff2dee954e8a8efc000b623",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		}
+	],
+	"boundary": {
+		"refusalCommandId": "journey-hook-refusal",
+		"refusalExitCode": 7,
+		"commandExecuted": false
+	},
+	"legacy": {
+		"commandId": "legacy-orchestration-scan",
+		"scannedFiles": 560,
+		"allowListed": [
+			".codex/cloud/contract.toml",
+			"CHANGES.md",
+			"docs/devcontainer-upgrade/stage-1/README.md",
+			"docs/devcontainer-upgrade/stage-2/README.md",
+			"docs/devcontainer-upgrade/stage-4/README.md",
+			"docs/devcontainer-upgrade/stage-5a/README.md",
+			"evidence/stage-0-baseline.json",
+			"evidence/stage-1-toolchain-results.json",
+			"evidence/stage-1-toolchain.json",
+			"evidence/stage-1-toolchain.schema.json",
+			"openspec/changes/portable-devcontainer-upgrade/design.md",
+			"scripts/template/cloud-contract.ts",
+			"scripts/template/evidence.ts",
+			"scripts/template/toolchain-evidence.ts",
+			"scripts/template/worktree-contract.ts"
+		],
+		"remaining": []
+	},
+	"cleanup": {
+		"commandId": "journey-cleanup",
+		"removed": [
+			"container 90d63ad407d379bb9b1e124a11868c311d6756917123b5fe2b69c96a7e77b1c3",
+			"volume claude-code-config-16kmcp2vr26jdte0r45g86jregg9ukds5tlnutc12s2fha17veag",
+			"volume codex-home-16kmcp2vr26jdte0r45g86jregg9ukds5tlnutc12s2fha17veag",
+			"volume gemini-home-16kmcp2vr26jdte0r45g86jregg9ukds5tlnutc12s2fha17veag",
+			"volume config-home-16kmcp2vr26jdte0r45g86jregg9ukds5tlnutc12s2fha17veag",
+			"volume claude-code-shellhistory-16kmcp2vr26jdte0r45g86jregg9ukds5tlnutc12s2fha17veag",
+			"manifest /private/var/folders/gb/4tst5hyd1575hz7hknb6w5b00000gn/T/devenv-stage5b-stage5b-20260806t082542z-c270e179/home/.config/devcontainer/worktrees/devenv-main.json"
+		],
+		"remaining": [],
+		"mainCheckoutStateDigest": "d0d0c090a075c9ae4edaf21846084d2742cecfc930dee45ffbd46cf74869a2e7",
+		"mainCheckoutStateUnchanged": true
+	},
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-5b-pr-merge-commit>"],
+		"runtimeCleanup": ["bash", "scripts/worktree/cleanup.sh"],
+		"scope": "Revert the ready-only bridge mode, the two bridged git hooks, the onboarding scripts, both READMEs, the agent rules, every launcher-neutral .devcontainer comment, the cutover guard, and the evidence as one Stage 5B bundle. Run cleanup.sh in every live worktree BEFORE reverting, then rebuild once because the container definition changed again. The revert restores the superseded launcher as the documented entry point but does not reinstall it; that install is a named manual step.",
+		"proof": {
+			"commandId": "rollback-proof",
+			"predecessorSha": "9b7e0576c4e360c25291ad84190cd3bec3e3d9b2",
+			"implementationSha": "c270e179af6408b74fee2b518487e5a3575d280f",
+			"syntheticMergeSha": "4b9400890fa30d8d7bd5fe96dcf4fbe816984393",
+			"syntheticMergeTree": "9aaf26e33f4896a0879771eac4789c721d781c2d",
+			"syntheticMergeParents": [
+				"9b7e0576c4e360c25291ad84190cd3bec3e3d9b2",
+				"c270e179af6408b74fee2b518487e5a3575d280f"
+			],
+			"predecessorTree": "dc67eabe9960b511e9ed7b37c1d3ce31d3b692c4",
+			"revertedTree": "dc67eabe9960b511e9ed7b37c1d3ce31d3b692c4",
+			"treeMatchesPredecessor": true,
+			"operations": [
+				["git", "rev-parse", "9b7e0576c4e360c25291ad84190cd3bec3e3d9b2^{tree}"],
+				["git", "rev-parse", "c270e179af6408b74fee2b518487e5a3575d280f^{tree}"],
+				[
+					"git",
+					"worktree",
+					"add",
+					"--detach",
+					"/tmp/devenv-stage2-stage5b-20260806t082542z-c270e179-rollback",
+					"9b7e0576c4e360c25291ad84190cd3bec3e3d9b2"
+				],
+				[
+					"git",
+					"commit-tree",
+					"9aaf26e33f4896a0879771eac4789c721d781c2d",
+					"-p",
+					"9b7e0576c4e360c25291ad84190cd3bec3e3d9b2",
+					"-p",
+					"c270e179af6408b74fee2b518487e5a3575d280f",
+					"-m",
+					"Stage 2 synthetic merge"
+				],
+				["git", "rev-parse", "4b9400890fa30d8d7bd5fe96dcf4fbe816984393^{tree}"],
+				[
+					"git",
+					"show",
+					"-s",
+					"--format=%P",
+					"4b9400890fa30d8d7bd5fe96dcf4fbe816984393"
+				],
+				[
+					"git",
+					"checkout",
+					"--detach",
+					"4b9400890fa30d8d7bd5fe96dcf4fbe816984393"
+				],
+				[
+					"git",
+					"revert",
+					"--no-edit",
+					"-m",
+					"1",
+					"4b9400890fa30d8d7bd5fe96dcf4fbe816984393"
+				],
+				["git", "rev-parse", "HEAD^{tree}"]
+			],
+			"restoredPaths": ["init-host.sh", "README.md"],
+			"predecessorPathRestored": true
+		}
+	}
+}

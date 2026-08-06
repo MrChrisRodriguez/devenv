@@ -79,7 +79,7 @@ load_completions() {
 
 # capability:start claude_warp
 # Warp ACP signals — captured on the host by initializeCommand
-# (.devcontainer/host/capture-warp-env.sh), refreshed on every `devpod up`.
+# (.devcontainer/host/capture-warp-env.sh), refreshed on every container start.
 # `set -a` exports them so Claude Code (a child of this shell) inherits the
 # Warp signals and switches to ACP structured output. Sourced here rather than
 # in environment.sh because they're only needed in interactive shells, and this

@@ -1,0 +1,17 @@
+scannedFiles=560
+match=.codex/cloud/contract.toml
+match=CHANGES.md
+match=docs/devcontainer-upgrade/stage-1/README.md
+match=docs/devcontainer-upgrade/stage-2/README.md
+match=docs/devcontainer-upgrade/stage-4/README.md
+match=docs/devcontainer-upgrade/stage-5a/README.md
+match=evidence/stage-0-baseline.json
+match=evidence/stage-1-toolchain-results.json
+match=evidence/stage-1-toolchain.json
+match=evidence/stage-1-toolchain.schema.json
+match=openspec/changes/portable-devcontainer-upgrade/design.md
+match=scripts/template/cloud-contract.ts
+match=scripts/template/evidence.ts
+match=scripts/template/toolchain-evidence.ts
+match=scripts/template/worktree-contract.ts
+remaining=0

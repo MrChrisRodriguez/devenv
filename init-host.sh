@@ -58,12 +58,29 @@ else
     echo "[ok] Docker ($(docker --version | awk '{print $3}' | tr -d ','))"
 fi
 
-# ── DevPod ───────────────────────────────────────────────────────────────────
-if ! command -v devpod &>/dev/null; then
-    echo "Installing DevPod..."
-    brew install devpod
+# ── Dev Container CLI ────────────────────────────────────────────────────────
+# The reference implementation of the Development Containers specification, and
+# the one this project's runtime is written against: scripts/worktree depends on
+# its ownership labels (devcontainer.local_folder, devcontainer.config_file), its
+# per-invocation --mount, --remove-existing-container, and ${devcontainerId}
+# volume identity. On Windows and Linux install it with
+# `npm install --global @devcontainers/cli` instead.
+if ! command -v devcontainer &>/dev/null; then
+    echo "Installing the Dev Container CLI..."
+    brew install devcontainer
 else
-    echo "[ok] DevPod ($(devpod version 2>/dev/null || echo "installed"))"
+    echo "[ok] Dev Container CLI ($(devcontainer --version 2>/dev/null || echo "installed"))"
+fi
+
+# ── python3 ──────────────────────────────────────────────────────────────────
+# Used for one thing only: the atomic JSON port-registry and manifest writes in
+# scripts/worktree. The Xcode Command Line Tools above already supply it, so
+# this verifies rather than installs — a second Python on the host helps nobody.
+if ! command -v python3 &>/dev/null; then
+    echo ">>> python3 was not found. Install it with: xcode-select --install"
+    echo "    scripts/worktree needs it for atomic registry and manifest writes."
+else
+    echo "[ok] python3 ($(python3 --version 2>&1 | awk '{print $2}'))"
 fi
 
 # ── Warp Terminal ─────────────────────────────────────────────────────────────
@@ -150,9 +167,9 @@ fi
 
 # ── Host Directories ─────────────────────────────────────────────────────────
 # Every bind-mount source devcontainer.json names must exist before `docker run`.
-# .devcontainer/host/prepare-container-env.sh recreates these on every `devpod up`,
-# but pre-creating them here fixes the ownership and mode before Docker can
-# auto-create any of them root-owned.
+# .devcontainer/host/prepare-container-env.sh recreates these on every container
+# start, but pre-creating them here fixes the ownership and mode before Docker
+# can auto-create any of them root-owned.
 #
 #   secrets.d/      per-project secret files you author (secrets.d/<project>)
 #   container-env/  the validated Docker --env-file prepare-container-env.sh
@@ -162,8 +179,8 @@ fi
 #   codex-auth/     read-write mount source for the Codex auth snapshot
 #                   (codex-auth/<project>), written back by the container user
 #
-# The per-project leaf names are created at `devpod up`, once the project slug
-# is known.
+# The per-project leaf names are created at container start, once the project
+# slug is known.
 echo "Creating host directories for container mounts..."
 for dir in secrets.d container-env codex-auth; do
     mkdir -p "$HOME/.config/devcontainer/$dir"
@@ -185,6 +202,9 @@ echo ""
 echo "  2. Initialize your project:"
 echo "     ./init-new-project.sh my-project"
 echo ""
-echo "  3. Start the devcontainer:"
-echo "     devpod up ."
+echo "  3. Start this checkout's development container:"
+echo "     bash scripts/worktree/up.sh"
+echo ""
+echo "  4. Run project commands inside it:"
+echo "     bash scripts/worktree/exec.sh bun install"
 echo ""

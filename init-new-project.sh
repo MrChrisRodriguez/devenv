@@ -220,3 +220,11 @@ fi
 
 echo ""
 echo "🎉 Project initialization complete!"
+echo ""
+echo "Start this checkout's development container, then work inside it:"
+echo "  bash scripts/worktree/up.sh"
+echo "  bash scripts/worktree/exec.sh bun install"
+echo ""
+echo "Keep one clone of this project per host. For parallel work add a linked"
+echo "worktree (git worktree add ../<name> -b <name>) and run up.sh there too;"
+echo "each checkout gets its own container, ports, data, and URL."

@@ -1493,6 +1493,148 @@ describe("worktree command bridge", () => {
 		}
 	}, 120_000);
 
+	test("refuses ready-only work rather than starting a container", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			const sentinel = resolve(fixture.root, "hook-command-ran");
+
+			// Nothing has reconciled this checkout, so the ready-only caller must
+			// stop at the refusal: no `devcontainer up`, no `docker exec`, and above
+			// all no requested command.
+			const refused = Bun.spawnSync(
+				[
+					"bash",
+					resolve(alpha, "scripts/worktree/exec.sh"),
+					"--require-ready",
+					"touch",
+					sentinel,
+				],
+				{
+					cwd: alpha,
+					env: {
+						...runtimeEnvironment(fixture.home),
+						...toolingEnvironment(fixture, tooling),
+					},
+					stdout: "pipe",
+					stderr: "pipe",
+				},
+			);
+			expect(refused.exitCode).toBe(7);
+			expect(refused.stderr.toString()).toContain(
+				"Worktree bridge: this checkout's container is not ready",
+			);
+			expect(refused.stderr.toString()).toContain(
+				"bash scripts/worktree/up.sh",
+			);
+			expect(await upLog(tooling)).toEqual([]);
+			expect(await Bun.file(resolve(tooling.state, "exec.log")).exists()).toBe(
+				false,
+			);
+			expect(await Bun.file(sentinel).exists()).toBe(false);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("runs ready-only work through the container it already has", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			await markReady(fixture, alpha, tooling);
+
+			const bridged = Bun.spawnSync(
+				[
+					"bash",
+					resolve(alpha, "scripts/worktree/exec.sh"),
+					"--require-ready",
+					"bunx",
+					"commitlint",
+					"--edit",
+					".git/COMMIT_EDITMSG",
+				],
+				{
+					cwd: alpha,
+					env: {
+						...runtimeEnvironment(fixture.home),
+						...toolingEnvironment(fixture, tooling),
+					},
+					stdout: "pipe",
+					stderr: "pipe",
+				},
+			);
+			expect(bridged.stderr.toString()).toBe("");
+			expect(bridged.exitCode).toBe(0);
+
+			// Exactly one container exec, carrying the command unchanged, and no
+			// lifecycle work at all.
+			const invocations = (
+				await Bun.file(resolve(tooling.state, "exec.log")).text()
+			)
+				.trim()
+				.split("\n");
+			expect(invocations).toHaveLength(1);
+			expect(invocations[0]).toContain(
+				`${CONTAINER_ID} /usr/bin/bash /workspace/scripts/worktree/exec.sh -- bunx commitlint --edit .git/COMMIT_EDITMSG`,
+			);
+			expect(await upLog(tooling)).toEqual([]);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("accepts ready-only as a no-op inside the container", async () => {
+		const fixture = await harness();
+		try {
+			const alpha = await addWorktree(
+				fixture,
+				"agent/worktrees/alpha",
+				"alpha",
+			);
+			const tooling = await stubTooling(fixture, alpha);
+			const log = resolve(fixture.root, "bridge.log");
+			const workspaceBin = resolve(alpha, "node_modules/.bin");
+			const environment = resolve(fixture.root, "environment.sh");
+			await writeExecutable(environment, ENVIRONMENT_STUB);
+			await mkdir(workspaceBin, { recursive: true });
+
+			// Readiness is a host-side question. Inside the container the flag is
+			// consumed and the command runs in place, exit status intact.
+			const executed = run(
+				alpha,
+				fixture.home,
+				"exec.sh",
+				["--require-ready", "bash", "-c", 'printf "ran"; exit 42'],
+				{
+					...toolingEnvironment(fixture, tooling),
+					DEVCONTAINER: "true",
+					DEVCONTAINER_ENVIRONMENT_FILE: environment,
+					BRIDGE_LOG: log,
+					WORKSPACE_BIN: workspaceBin,
+				},
+			);
+			expect(executed.exitCode).toBe(42);
+			expect(executed.stdout).toBe("ran");
+			expect(await bridgeLog(log)).toEqual(["sourced", "activated"]);
+			expect(await Bun.file(resolve(tooling.state, "exec.log")).exists()).toBe(
+				false,
+			);
+			expect(await upLog(tooling)).toEqual([]);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
 	test("rejects unsupported bridge arguments", async () => {
 		const fixture = await harness();
 		try {
@@ -1501,10 +1643,352 @@ describe("worktree command bridge", () => {
 			]);
 			expect(refused.exitCode).toBe(2);
 			expect(refused.stderr).toContain("Usage: bash scripts/worktree/exec.sh");
+
+			// The ready-only flag does not open a hole in option parsing.
+			const stillRefused = run(fixture.main, fixture.home, "exec.sh", [
+				"--require-ready",
+				"--known-bad",
+			]);
+			expect(stillRefused.exitCode).toBe(2);
+			expect(stillRefused.stderr).toContain(
+				"Usage: bash scripts/worktree/exec.sh",
+			);
 		} finally {
 			await rm(fixture.root, { recursive: true, force: true });
 		}
 	}, 60_000);
+});
+
+// Husky v9 wiring, reproduced exactly: core.hooksPath points at .husky/_, whose
+// per-hook wrapper runs the committed hook with `sh -e` from the top of the
+// working tree. The hooks are POSIX sh because that is what actually executes
+// them.
+const HUSKY_WRAPPER = `#!/usr/bin/env sh
+n=$(basename "$0")
+export PATH="node_modules/.bin:$PATH"
+sh -e ".husky/$n" "$@"
+c=$?
+[ $c != 0 ] && echo "husky - $n script failed (code $c)"
+exit $c
+`;
+
+// A bridge stand-in. These tests are about what the hooks ask for, not about
+// Docker: the stub records the exact argv, resolves the commit-message path the
+// way a container would have to, and answers with whatever status the test set.
+const HOOK_BRIDGE_STUB = `#!/usr/bin/env bash
+set -u
+printf 'invoke %s\\n' "$*" >>"$BRIDGE_LOG"
+last="\${!#}"
+if [ -f "$last" ]; then
+	printf 'message-file %s\\n' "$last" >>"$BRIDGE_LOG"
+	printf 'message-body %s\\n' "$(cat "$last")" >>"$BRIDGE_LOG"
+fi
+status="\${BRIDGE_EXIT:-0}"
+if [ "$status" != "0" ]; then
+	echo "Worktree bridge: this checkout's container is not ready; run bash scripts/worktree/up.sh" >&2
+fi
+exit "$status"
+`;
+
+const HOOK_FALLBACK_STUB = `#!/usr/bin/env bash
+set -u
+printf 'bunx %s\\n' "$*" >>"$FALLBACK_LOG"
+exit 0
+`;
+
+interface HookFixture {
+	root: string;
+	main: string;
+	bin: string;
+	bridgeLog: string;
+	fallbackLog: string;
+}
+
+function hookEnvironment(
+	fixture: HookFixture,
+	overrides: Record<string, string> = {},
+): Record<string, string> {
+	return {
+		PATH: `${fixture.bin}:${process.env["PATH"] ?? ""}`,
+		HOME: resolve(fixture.root, "home"),
+		TMPDIR: process.env["TMPDIR"] ?? "/tmp",
+		LANG: "C",
+		BRIDGE_LOG: fixture.bridgeLog,
+		FALLBACK_LOG: fixture.fallbackLog,
+		...overrides,
+	};
+}
+
+function gitRun(
+	cwd: string,
+	environment: Record<string, string>,
+	...args: string[]
+): RunResult {
+	const result = Bun.spawnSync(["git", ...args], {
+		cwd,
+		env: environment,
+		stdout: "pipe",
+		stderr: "pipe",
+	});
+	return {
+		exitCode: result.exitCode,
+		stdout: result.stdout.toString(),
+		stderr: result.stderr.toString(),
+	};
+}
+
+// `bridge: false` reproduces a project rendered without the devcontainer
+// capability: scripts/worktree does not exist at all, so the hooks' run-time file
+// test is the only thing that can decide.
+async function hookFixture(options: { bridge: boolean }): Promise<HookFixture> {
+	const root = await mkdtemp(resolve(tmpdir(), "devenv-hooks-"));
+	const main = resolve(root, "main");
+	const bin = resolve(root, "bin");
+	await mkdir(resolve(root, "home"), { recursive: true });
+	for (const name of ["commit-msg", "pre-commit"] as const) {
+		const destination = resolve(main, ".husky", name);
+		await mkdir(dirname(destination), { recursive: true });
+		await copyFile(resolve(ROOT, ".husky", name), destination);
+		await chmod(destination, 0o755);
+		await writeExecutable(resolve(main, ".husky/_", name), HUSKY_WRAPPER);
+	}
+	await writeExecutable(resolve(bin, "bunx"), HOOK_FALLBACK_STUB);
+	if (options.bridge)
+		await writeExecutable(
+			resolve(main, "scripts/worktree/exec.sh"),
+			HOOK_BRIDGE_STUB,
+		);
+	const fixture: HookFixture = {
+		root,
+		main,
+		bin,
+		bridgeLog: resolve(root, "bridge.log"),
+		fallbackLog: resolve(root, "fallback.log"),
+	};
+	const environment = hookEnvironment(fixture);
+	gitRun(main, environment, "init", "-q", "-b", "main");
+	gitRun(main, environment, "config", "user.email", "hooks@example.test");
+	gitRun(main, environment, "config", "user.name", "Hook Fixture");
+	gitRun(main, environment, "config", "core.hooksPath", ".husky/_");
+	gitRun(main, environment, "add", "-A");
+	const seeded = gitRun(
+		main,
+		environment,
+		"commit",
+		"--no-verify",
+		"-qm",
+		"chore: seed",
+	);
+	expect(seeded.exitCode).toBe(0);
+	return fixture;
+}
+
+async function hookLog(path: string): Promise<string[]> {
+	if (!(await Bun.file(path).exists())) return [];
+	return (await Bun.file(path).text()).trim().split("\n").filter(Boolean);
+}
+
+describe("worktree git hook routing", () => {
+	test("routes commitlint and lint-staged through the ready-only bridge", async () => {
+		const fixture = await hookFixture({ bridge: true });
+		try {
+			const environment = hookEnvironment(fixture);
+			await Bun.write(resolve(fixture.main, "feature.txt"), "one\n");
+			gitRun(fixture.main, environment, "add", "feature.txt");
+			const committed = gitRun(
+				fixture.main,
+				environment,
+				"commit",
+				"-m",
+				"feat(hooks): route through the bridge",
+			);
+			expect(committed.exitCode).toBe(0);
+
+			const invocations = await hookLog(fixture.bridgeLog);
+			expect(invocations).toContain("invoke --require-ready bunx lint-staged");
+			const commitlint = invocations.find((line) =>
+				line.startsWith("invoke --require-ready bunx commitlint --edit "),
+			);
+			expect(commitlint).toBeDefined();
+			// The bridge is never asked to build: hooks are not a build trigger.
+			const asked = invocations.filter((line) => line.startsWith("invoke "));
+			expect(asked).toHaveLength(2);
+			expect(
+				asked.every((line) => line.startsWith("invoke --require-ready ")),
+			).toBe(true);
+			// Whatever Git handed over resolved to the real message.
+			expect(invocations).toContain(
+				"message-body feat(hooks): route through the bridge",
+			);
+			expect(await hookLog(fixture.fallbackLog)).toEqual([]);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("reaches the commit message file from a linked worktree", async () => {
+		const fixture = await hookFixture({ bridge: true });
+		try {
+			const environment = hookEnvironment(fixture);
+			const linked = resolve(fixture.root, "worktrees/alpha");
+			expect(
+				gitRun(
+					fixture.main,
+					environment,
+					"worktree",
+					"add",
+					"-q",
+					linked,
+					"-b",
+					"alpha",
+				).exitCode,
+			).toBe(0);
+
+			await Bun.write(resolve(linked, "linked.txt"), "two\n");
+			gitRun(linked, environment, "add", "linked.txt");
+			const committed = gitRun(
+				linked,
+				environment,
+				"commit",
+				"-m",
+				"feat(hooks): commit from a linked worktree",
+			);
+			expect(committed.exitCode).toBe(0);
+
+			const invocations = await hookLog(fixture.bridgeLog);
+			const messageFile = invocations
+				.find((line) => line.startsWith("message-file "))
+				?.slice("message-file ".length);
+			expect(messageFile).toBeDefined();
+			// A linked worktree's message file lives under the shared Git common
+			// directory, which ensure.sh mounts inside the container at this exact
+			// absolute path. That is why the hook forwards "$1" unchanged.
+			const commonDirectory = gitRun(
+				linked,
+				environment,
+				"rev-parse",
+				"--path-format=absolute",
+				"--git-common-dir",
+			).stdout.trim();
+			expect(resolve(linked, messageFile ?? "")).toStartWith(
+				`${commonDirectory}/`,
+			);
+			expect(invocations).toContain(
+				"message-body feat(hooks): commit from a linked worktree",
+			);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("keeps the graphify staging guard on the host and ahead of the bridge", async () => {
+		const fixture = await hookFixture({ bridge: true });
+		try {
+			const environment = hookEnvironment(fixture);
+			await Bun.write(resolve(fixture.main, "graphify-out/graph.json"), "{}\n");
+			await Bun.write(resolve(fixture.main, "feature.txt"), "three\n");
+			gitRun(fixture.main, environment, "add", "-A");
+			const refused = gitRun(
+				fixture.main,
+				environment,
+				"commit",
+				"-m",
+				"feat(hooks): mixed graph and feature",
+			);
+			expect(refused.exitCode).not.toBe(0);
+			expect(refused.stderr).toContain(
+				"graphify-out/graph.json is staged alongside non-graphify files",
+			);
+			// Pure Git plumbing, so it answers while the container is down — and it
+			// answers before the bridge is consulted at all.
+			expect(await hookLog(fixture.bridgeLog)).toEqual([]);
+			expect(
+				gitRun(
+					fixture.main,
+					environment,
+					"rev-list",
+					"--count",
+					"HEAD",
+				).stdout.trim(),
+			).toBe("1");
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("falls back to direct tooling when the runtime is not rendered", async () => {
+		const fixture = await hookFixture({ bridge: false });
+		try {
+			const environment = hookEnvironment(fixture);
+			await Bun.write(resolve(fixture.main, "feature.txt"), "four\n");
+			gitRun(fixture.main, environment, "add", "feature.txt");
+			const committed = gitRun(
+				fixture.main,
+				environment,
+				"commit",
+				"-m",
+				"feat(hooks): direct tooling",
+			);
+			expect(committed.exitCode).toBe(0);
+
+			const direct = await hookLog(fixture.fallbackLog);
+			expect(direct).toContain("bunx lint-staged");
+			expect(
+				direct.some((line) => line.startsWith("bunx commitlint --edit ")),
+			).toBe(true);
+			expect(await hookLog(fixture.bridgeLog)).toEqual([]);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("refuses the commit when this checkout has no ready container", async () => {
+		const fixture = await hookFixture({ bridge: true });
+		try {
+			const environment = hookEnvironment(fixture, { BRIDGE_EXIT: "7" });
+			await Bun.write(resolve(fixture.main, "feature.txt"), "five\n");
+			gitRun(fixture.main, environment, "add", "feature.txt");
+			const refused = gitRun(
+				fixture.main,
+				environment,
+				"commit",
+				"-m",
+				"feat(hooks): refused while the container is down",
+			);
+			expect(refused.exitCode).not.toBe(0);
+			// The refusal reaches the terminal unswallowed, and Husky reports the
+			// hook's own status rather than flattening it.
+			expect(refused.stderr).toContain(
+				"this checkout's container is not ready",
+			);
+			expect(`${refused.stdout}${refused.stderr}`).toContain(
+				"pre-commit script failed (code 7)",
+			);
+			// Above all: the commit did not land.
+			expect(
+				gitRun(
+					fixture.main,
+					environment,
+					"rev-list",
+					"--count",
+					"HEAD",
+				).stdout.trim(),
+			).toBe("1");
+
+			// The documented escape hatch still works.
+			const forced = gitRun(
+				fixture.main,
+				environment,
+				"commit",
+				"--no-verify",
+				"-m",
+				"feat(hooks): escape hatch",
+			);
+			expect(forced.exitCode).toBe(0);
+		} finally {
+			await rm(fixture.root, { recursive: true, force: true });
+		}
+	}, 120_000);
 });
 
 // A host Caddy stand-in. The friendly route is optional by contract, so these
@@ -2582,6 +3066,12 @@ const CONTRACT_FILES = [
 	"scripts/worktree/cleanup.sh",
 	"scripts/worktree/selftest.sh",
 	"docs/devcontainer-upgrade/stage-0/template-ownership.json",
+	".husky/commit-msg",
+	".husky/pre-commit",
+	".devcontainer/on-create.sh",
+	"init-host.sh",
+	"README.md",
+	"README.template.md",
 ] as const;
 
 async function contractFixture(): Promise<string> {
@@ -2597,6 +3087,25 @@ async function contractFixture(): Promise<string> {
 		// copy landed with.
 		if (path.startsWith("scripts/worktree/") && path.endsWith(".sh"))
 			await chmod(destination, 0o755);
+	}
+	// The legacy-launcher scan reads tracked files through Git, so the fixture has
+	// to be a repository or the scan abstains and the mutations below prove
+	// nothing. Staging is enough: `git grep` reads the working tree.
+	const environment = {
+		PATH: process.env["PATH"] ?? "",
+		HOME: temporary,
+	};
+	for (const args of [
+		["init", "-q", "-b", "main"],
+		["add", "-A"],
+	]) {
+		const result = Bun.spawnSync(["git", "-C", temporary, ...args], {
+			env: environment,
+			stdout: "pipe",
+			stderr: "pipe",
+		});
+		if (result.exitCode !== 0)
+			throw new Error(`git ${args.join(" ")} failed in the contract fixture`);
 	}
 	return temporary;
 }
@@ -2782,6 +3291,88 @@ describe("worktree runtime contract guard", () => {
 				"scripts/worktree/lib.sh",
 				(source) => `${source}fi\n`,
 				"worktree: scripts/worktree/lib.sh has a bash syntax error",
+			);
+
+			// The entrypoint cutover. A hook that reaches project tooling directly
+			// runs it against whatever the host happens to have installed.
+			await mutate(
+				temporary,
+				".husky/commit-msg",
+				(source) =>
+					source.replace(
+						'bash scripts/worktree/exec.sh --require-ready bunx commitlint --edit "$1"',
+						'bunx commitlint --edit "$1"',
+					),
+				"worktree: git hooks must run project tooling through the bridge",
+			);
+			// A hook that may start a container turns every commit into a build.
+			await mutate(
+				temporary,
+				".husky/pre-commit",
+				(source) =>
+					source.replace(
+						"exec.sh --require-ready bunx lint-staged",
+						"exec.sh bunx lint-staged",
+					),
+				"worktree: git hooks must not start a container",
+			);
+			// Without the arm the hooks' flag falls through to the reconciling path.
+			await mutate(
+				temporary,
+				"scripts/worktree/exec.sh",
+				(source) =>
+					source.replace(
+						'\t\t--require-ready)\n\t\t\tREQUIRE_READY="true"\n\t\t\tshift\n\t\t\t;;\n',
+						"",
+					),
+				"worktree: bridge must expose a ready-only mode for hooks",
+			);
+			await mutate(
+				temporary,
+				"init-host.sh",
+				(source) =>
+					source.replace(
+						"brew install devcontainer",
+						`brew install dev${"pod"}`,
+					),
+				"worktree: init-host.sh still installs the superseded launcher",
+			);
+			await mutate(
+				temporary,
+				"init-host.sh",
+				(source) =>
+					source.replace("    brew install devcontainer\n", "    true\n"),
+				"worktree: onboarding must install the container CLI",
+			);
+			await mutate(
+				temporary,
+				"README.template.md",
+				(source) =>
+					source.replaceAll(
+						"bash scripts/worktree/exec.sh",
+						"bash scripts/worktree/run.sh",
+					),
+				"worktree: onboarding must document the bridge as the entry point",
+			);
+			// The non-vacuous half: a tracked file that still names the superseded
+			// launcher is a fact no document can talk its way out of. This file is
+			// not on the guard's allow-list, so the two mutations that need the
+			// literal token assemble it instead of writing it.
+			await mutate(
+				temporary,
+				".devcontainer/on-create.sh",
+				(source) => `${source}\ndev${"pod"} up .\n`,
+				"worktree: .devcontainer/on-create.sh still routes onboarding through the superseded launcher",
+			);
+			await mutate(
+				temporary,
+				"AGENTS.md",
+				(source) =>
+					source.replace(
+						"- This runtime is the entry point, not an addition to one.",
+						"- This runtime is additive during the soak.",
+					),
+				"worktree: agent rules must describe the cutover, not the soak",
 			);
 
 			// The executable bit is part of the contract: a runtime script Git

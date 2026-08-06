@@ -1,0 +1,10 @@
+bun install v1.3.13 (bf2e2cec)
+
+Checked 302 installs across 374 packages (no changes) [80.00ms]
+installOs=Linux
+installBunPath=/home/vscode/.proto/tools/bun/1.3.13/bun
+hooksPath=.husky/_
+huskyRunnerPresent=present
+nodeModulesOnHost=present
+commitlintVersion=@commitlint/cli@20.5.0
+lintStagedVersion=16.4.0

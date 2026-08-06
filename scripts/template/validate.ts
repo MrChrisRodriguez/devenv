@@ -11,6 +11,7 @@ import {
 	parseToml,
 	resolveFixtureParameters,
 } from "./parameters";
+import { validateStageFiveBEvidence } from "./stage-five-b-evidence";
 import { validateStageFiveEvidence } from "./stage-five-evidence";
 import { validateStageFourEvidence } from "./stage-four-evidence";
 import { validateStageThreeEvidence } from "./stage-three-evidence";
@@ -35,6 +36,8 @@ export interface ValidationReport {
 	cloudEvidenceSchemaFile: string;
 	worktreeEvidenceFile: string;
 	worktreeEvidenceSchemaFile: string;
+	cutoverEvidenceFile: string;
+	cutoverEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -59,6 +62,8 @@ export async function validateAll(
 		cloudEvidenceSchemaFile: "evidence/stage-4-cloud.schema.json",
 		worktreeEvidenceFile: "evidence/stage-5-worktree.json",
 		worktreeEvidenceSchemaFile: "evidence/stage-5-worktree.schema.json",
+		cutoverEvidenceFile: "evidence/stage-5b-cutover.json",
+		cutoverEvidenceSchemaFile: "evidence/stage-5b-cutover.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -158,6 +163,13 @@ export async function validateAll(
 				...worktreeEvidenceErrors.map((error) => `stage-5a evidence: ${error}`),
 			);
 		}
+		const cutoverEvidenceErrors = await validateStageFiveBEvidence(root);
+		if (cutoverEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...cutoverEvidenceErrors.map((error) => `stage-5b evidence: ${error}`),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -176,7 +188,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(

@@ -19,9 +19,20 @@
 #     directory to its container-relative path, and re-invoke this same script
 #     inside that container with an explicit, minimal environment.
 #
+# --require-ready is the mode git hooks use. A hook is not a build trigger: it
+# runs only against a container this checkout has ALREADY reconciled, and it
+# refuses with exit 7 rather than turning a commit into a container start. The
+# flag is host-side by definition, so inside the container and in a verified
+# cloud it is accepted and ignored.
+#
+# Exit status: 2 unsupported argument, 3 identity collision, 4 port exhaustion,
+# 6 missing container engine or CLI, 7 --require-ready with no ready container.
+#
 # Usage:
 #   bash scripts/worktree/exec.sh                    Open a login shell
 #   bash scripts/worktree/exec.sh <command> [args…]  Run one command
+#   bash scripts/worktree/exec.sh --require-ready <command> [args…]
+#                                                    Run one command, or exit 7
 
 set -euo pipefail
 
@@ -32,17 +43,27 @@ WORKTREE_RUNTIME_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 usage() {
 	cat >&2 <<'USAGE'
-Usage: bash scripts/worktree/exec.sh [--] [command [arguments...]]
-  (no command)  Open a login shell in this checkout's environment
-  --            End option parsing; everything after it is the command
+Usage: bash scripts/worktree/exec.sh [--require-ready] [--] [command [arguments...]]
+  (no command)     Open a login shell in this checkout's environment
+  --require-ready  Use the container this checkout already has, or exit 7
+  --               End option parsing; everything after it is the command
 USAGE
 }
 
+REQUIRE_READY="false"
+
 # The host branch re-invokes this script inside the container as
 # `exec.sh -- "$@"`, so a leading `--` is a separator and never a command.
-if [ "$#" -gt 0 ]; then
+# --require-ready is answered here, ahead of the unsupported-argument arm, so a
+# hook can never fall through to the reconciling path that starts a container.
+while [ "$#" -gt 0 ]; do
 	case "$1" in
 		--)
+			shift
+			break
+			;;
+		--require-ready)
+			REQUIRE_READY="true"
 			shift
 			;;
 		-h | --help)
@@ -53,8 +74,11 @@ if [ "$#" -gt 0 ]; then
 			usage
 			exit 2
 			;;
+		*)
+			break
+			;;
 	esac
-fi
+done
 
 ENVIRONMENT_PREFIX="$(wt_contract_value environment_prefix)"
 CONTAINER_ENGINE="$(wt_contract_value container_engine)"
@@ -122,6 +146,11 @@ if ! container_id="$(bash "$WORKTREE_RUNTIME_DIR/ensure.sh" --check-ready 2>/dev
 	container_id=""
 fi
 if [ -z "$container_id" ]; then
+	# Ready-only callers stop here, before any lifecycle work: the refusal is the
+	# whole point, and the requested command provably never runs.
+	if [ "$REQUIRE_READY" = "true" ]; then
+		wt_die "this checkout's container is not ready; run bash scripts/worktree/up.sh" 7
+	fi
 	container_id="$(bash "$WORKTREE_RUNTIME_DIR/ensure.sh")"
 fi
 

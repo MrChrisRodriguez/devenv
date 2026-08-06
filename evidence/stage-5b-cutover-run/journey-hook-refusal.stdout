@@ -1,0 +1,11 @@
+containerId=90d63ad407d379bb9b1e124a11868c311d6756917123b5fe2b69c96a7e77b1c3
+checkReadyExitCode=1
+headBefore=56976ef516be5ab95ebd1c54f72f250a40f6d9d1
+gitExitCode=1
+huskyLine=husky - pre-commit script failed (code 7)
+bridgeRefusal=Worktree bridge: this checkout's container is not ready; run bash scripts/worktree/up.sh
+headAfter=56976ef516be5ab95ebd1c54f72f250a40f6d9d1
+commitExecuted=false
+refusedSubjectLanded=0
+refusalExitCode=7
+readyAfterRestart=90d63ad407d379bb9b1e124a11868c311d6756917123b5fe2b69c96a7e77b1c3

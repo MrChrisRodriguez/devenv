@@ -2,7 +2,7 @@
 # Prepare the validated Docker --env-file used by every container process.
 #
 # Runs on the HOST via the UNCONDITIONAL `prepare-container-env` entry of
-# devcontainer.json's `initializeCommand` object, on every `devpod up` including
+# devcontainer.json's `initializeCommand` object, on every container start including
 # rebuilds. It must stay unconditional: `runArgs` names the file it writes with
 # `--env-file`, so `docker run` fails at create if nothing generated it. Anything
 # the host must guarantee regardless of optional capabilities belongs here — not

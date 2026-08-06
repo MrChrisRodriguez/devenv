@@ -17,6 +17,36 @@ const OWNERSHIP_PATH =
 const GUARD_CONTRACT = "scripts/template/worktree-contract.ts";
 const GUARD_ENTRYPOINT = "scripts/template/validate-worktree.ts";
 const AGENT_RULES = "AGENTS.md";
+const HOST_ONBOARDING = "init-host.sh";
+const README = "README.md";
+const README_TEMPLATE = "README.template.md";
+
+// The two hooks the cutover routes. Both are optional on disk — a downstream
+// project may not use Husky at all — but any hook that ships has to route.
+const GIT_HOOKS = [".husky/commit-msg", ".husky/pre-commit"] as const;
+
+// The launcher this stage supersedes. The scan below is the non-vacuous half of
+// the cutover: documentation can claim anything, but a tracked file still naming
+// the old entry point is a fact.
+const LEGACY_LAUNCHER = "devpod";
+
+// Paths whose mention of the superseded launcher is a record, not a route.
+// Sealed evidence and its validators describe runs that really did use it and
+// must never be "cleaned up"; the cloud contract forbids it by name; this guard
+// carries the literal token in order to look for it; graphify-out is derived
+// output regenerated from whatever the tree currently says.
+const LEGACY_ALLOW_LIST = [
+	"CHANGES.md",
+	"evidence/",
+	"docs/devcontainer-upgrade/",
+	"openspec/",
+	"graphify-out/",
+	"scripts/template/evidence.ts",
+	"scripts/template/toolchain-evidence.ts",
+	"scripts/template/cloud-contract.ts",
+	GUARD_CONTRACT,
+	CLOUD_CONTRACT,
+] as const;
 
 // The complete fixed key set, in the order the generator emits it. Anything
 // missing means a runtime script reads a value nobody writes; anything extra
@@ -181,6 +211,61 @@ function volumePrefixes(configuration: string): string[] {
 		if (prefix && !found.includes(prefix)) found.push(prefix);
 	}
 	return found;
+}
+
+// The documented degradation path: a project rendered without the devcontainer
+// capability ships no scripts/worktree at all, so the hooks decide at run time
+// with a file test. Only the lines inside that `else` may call project tooling
+// directly.
+function hookFallbackLines(hook: string, bridgePath: string): string[] {
+	const lines = hook.split("\n");
+	const guarded = lines.findIndex((line) =>
+		line.includes(`[ -x ${bridgePath} ]`),
+	);
+	if (guarded < 0) return [];
+	const otherwise = lines.findIndex(
+		(line, index) => index > guarded && line.trim() === "else",
+	);
+	if (otherwise < 0) return [];
+	const closed = lines.findIndex(
+		(line, index) => index > otherwise && line.trim() === "fi",
+	);
+	if (closed < 0) return [];
+	return lines.slice(otherwise + 1, closed);
+}
+
+function callsProjectTooling(line: string): boolean {
+	return /(?:^|\s)bunx?\s/.test(line);
+}
+
+function isLegacyAllowListed(path: string): boolean {
+	return (LEGACY_ALLOW_LIST as readonly string[]).some((entry) =>
+		entry.endsWith("/") ? path.startsWith(entry) : path === entry,
+	);
+}
+
+// Tracked files only, and read through Git rather than a directory walk so the
+// scan sees exactly what a clone would receive. `undefined` means the tree is
+// not a repository — a rendered fixture before `git init` — and the scan
+// abstains rather than reporting a clean result it never established.
+function legacyLauncherFiles(root: string): string[] | undefined {
+	const result = Bun.spawnSync(
+		[
+			"git",
+			"-C",
+			root,
+			"grep",
+			"--files-with-matches",
+			"--ignore-case",
+			"--fixed-strings",
+			"-I",
+			LEGACY_LAUNCHER,
+		],
+		{ stdout: "pipe", stderr: "pipe" },
+	);
+	if (result.exitCode === 1) return [];
+	if (result.exitCode !== 0) return undefined;
+	return result.stdout.toString().split("\n").filter(Boolean);
 }
 
 // The image owns the fingerprint. Reading its inputs out of the authority means
@@ -462,6 +547,19 @@ export async function validateWorktreeContract(
 			"worktree: bridge must execute through the canonical container environment",
 		);
 
+	// The hooks' mode. It has to be answered ahead of the unsupported-argument
+	// arm, or a hook falls through to the reconciling path and a commit silently
+	// becomes a container build. The refusal exits 7 and says what to run.
+	const readyOnlyArm = bridgeScript.indexOf("--require-ready)");
+	const unsupportedArm = bridgeScript.indexOf("-*)");
+	if (
+		readyOnlyArm < 0 ||
+		unsupportedArm < 0 ||
+		readyOnlyArm > unsupportedArm ||
+		!/wt_die\s+"[^"]*not ready[^"]*"\s+7\b/.test(bridgeScript)
+	)
+		errors.push("worktree: bridge must expose a ready-only mode for hooks");
+
 	const declaredPrefixes = volumePrefixes(configuration);
 	const persistence = scalar(contract, "mutable_persistence") ?? "";
 	for (const [script, source] of sources) {
@@ -532,6 +630,84 @@ export async function validateWorktreeContract(
 	const agents = await readText(resolve(root, AGENT_RULES));
 	if (agents !== "" && !agents.includes("scripts/worktree/exec.sh"))
 		errors.push("worktree: agent rules must own the command boundary");
+	// The soak is over. Rules that still present the runtime as an addition to a
+	// surviving legacy entry point describe a repository that no longer exists.
+	if (
+		agents !== "" &&
+		(/runtime is additive|during the soak/i.test(agents) ||
+			!agents.includes("--require-ready"))
+	)
+		errors.push(
+			"worktree: agent rules must describe the cutover, not the soak",
+		);
+
+	// Hook routing. Both hooks are optional on disk; any that ships must reach
+	// project tooling through the bridge, in ready-only mode, with the only
+	// direct invocations sitting inside the documented fallback branch.
+	const bridgeCommand = scalar(contract, "bridge_command") ?? "";
+	const bridgePath = bridgeCommand.split(" ").pop() ?? "";
+	for (const hookPath of GIT_HOOKS) {
+		const hook = stripComments(await readText(resolve(root, hookPath)));
+		if (hook.trim() === "") continue;
+		if (!hook.includes(bridgeCommand)) {
+			errors.push(
+				"worktree: git hooks must run project tooling through the bridge",
+			);
+			continue;
+		}
+		if (!hook.includes(`${bridgeCommand} --require-ready`))
+			errors.push("worktree: git hooks must not start a container");
+		const fallback = hookFallbackLines(hook, bridgePath);
+		for (const line of hook.split("\n")) {
+			if (!callsProjectTooling(line)) continue;
+			if (line.includes(bridgeCommand) || fallback.includes(line)) continue;
+			errors.push(
+				"worktree: git hooks must run project tooling through the bridge",
+			);
+		}
+	}
+
+	// Onboarding cutover. The host script installs the CLI this runtime is
+	// written against and nothing else, and the onboarding document a generated
+	// project actually receives names the bridge.
+	const containerCli = scalar(contract, "container_cli") ?? "";
+	const containerCliPackage = scalar(contract, "container_cli_package") ?? "";
+	const onboarding = await readText(resolve(root, HOST_ONBOARDING));
+	if (onboarding !== "") {
+		if (new RegExp(LEGACY_LAUNCHER, "i").test(onboarding))
+			errors.push(
+				`worktree: ${HOST_ONBOARDING} still installs the superseded launcher`,
+			);
+		const executable = stripComments(onboarding);
+		if (
+			!executable.includes(`brew install ${containerCli}`) &&
+			!executable.includes(`install --global ${containerCliPackage}`)
+		)
+			errors.push("worktree: onboarding must install the container CLI");
+	}
+	// A generated project receives README.md rendered from README.template.md, so
+	// the template is the authority wherever it still exists.
+	const onboardingReadme = (await exists(resolve(root, README_TEMPLATE)))
+		? README_TEMPLATE
+		: README;
+	const readme = await readText(resolve(root, onboardingReadme));
+	if (readme !== "" && !readme.includes(bridgeCommand))
+		errors.push(
+			"worktree: onboarding must document the bridge as the entry point",
+		);
+
+	// The non-vacuous proof: no tracked file outside the record allow-list still
+	// names the superseded launcher.
+	const legacy = legacyLauncherFiles(root);
+	if (legacy !== undefined) {
+		for (const path of legacy) {
+			if (isLegacyAllowListed(path)) continue;
+			errors.push(
+				`worktree: ${path} still routes onboarding through the superseded launcher`,
+			);
+		}
+	}
+
 	for (const path of [GUARD_CONTRACT, GUARD_ENTRYPOINT]) {
 		if (!(await exists(resolve(root, path))))
 			errors.push(`worktree: ${path} is missing`);
