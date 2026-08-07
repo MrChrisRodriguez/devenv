@@ -19,6 +19,7 @@ import {
 	validateStartContract,
 } from "../start-contract";
 import {
+	APP_DIRECTORY,
 	activeWorkspace,
 	appFiles,
 	compilerBinary,
@@ -466,6 +467,9 @@ describe("guard wiring and template ownership", () => {
 		}
 	});
 });
+
+/** The compatibility flag this stack's server bundle cannot boot without. */
+const COMPATIBILITY_FLAG = "nodejs_compat";
 
 /** The compiler, run for real against a project that really extends the base. */
 async function runCompiler(
@@ -1038,6 +1042,355 @@ describe("the declared application", () => {
 				},
 				"start: the proxy route shared is claimed by both platform and second",
 			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("the server render policy is a declared matrix, and streaming is waivable", async () => {
+		const { root, contract } = await activeWorkspace();
+		try {
+			await withRegistry(
+				root,
+				{ ...contract, ssr: { ...contract.ssr, mode: "streaming" } },
+				`start: ${REGISTRY_PATH} declares a streamed server render; the buffered render is the declared default because this worker runtime's backpressure and abort behaviour under a stream is unproven`,
+			);
+			// The tolerate half: "unproven" is a statement about a date rather than a
+			// law, so a reasoned waiver keeps it a decision the next reader can
+			// re-open with evidence.
+			await writeRegistry(root, {
+				...contract,
+				ssr: {
+					...contract.ssr,
+					mode: "streaming",
+					streamingWaiver: {
+						reason:
+							"Backpressure and abort behaviour were measured end to end on the pinned runtime.",
+					},
+				},
+			});
+			const waived = await inspectStartContract(root);
+			expect(waived.errors).toEqual([]);
+			expect(waived.notices).toContain(
+				"start: the server render is streamed under a declared waiver: Backpressure and abort behaviour were measured end to end on the pinned runtime.",
+			);
+			// ... and a waiver beside the buffered default lifts nothing.
+			await withRegistry(
+				root,
+				{
+					...contract,
+					ssr: {
+						...contract.ssr,
+						streamingWaiver: {
+							reason:
+								"Backpressure and abort behaviour were measured end to end on the pinned runtime.",
+						},
+					},
+				},
+				`start: ${REGISTRY_PATH} carries a streaming waiver that lifts nothing; a stale exemption widens itself`,
+			);
+			await withRegistry(
+				root,
+				{ ...contract, ssr: { ...contract.ssr, methods: ["GET"] } },
+				`start: ${REGISTRY_PATH} declares the document methods ["GET"]; a document is a read, and HEAD is answered with GET semantics minus the body`,
+			);
+			await withRegistry(
+				root,
+				{
+					...contract,
+					ssr: {
+						...contract.ssr,
+						methodRejection: { status: 404, allowHeader: "GET, HEAD" },
+					},
+				},
+				`start: ${REGISTRY_PATH} rejects an unsupported document method with 404; a document route that answers anything but 405 has told the caller the wrong thing`,
+			);
+			await withRegistry(
+				root,
+				{
+					...contract,
+					ssr: {
+						...contract.ssr,
+						methodRejection: { status: 405, allowHeader: "GET" },
+					},
+				},
+				`start: ${REGISTRY_PATH} rejects with the allow header "GET" while declaring the methods ["GET","HEAD"]`,
+			);
+			await withRegistry(
+				root,
+				{ ...contract, ssr: { ...contract.ssr, cacheControl: "no-store" } },
+				`start: ${REGISTRY_PATH} declares the cache directive "no-store"; these payloads are per-user and must never be shared-cached, on every response class alike`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("the hand-written worker configuration is reconciled with the declaration", async () => {
+		const { root, contract } = await activeWorkspace();
+		const config = `${APP_DIRECTORY}/wrangler.jsonc`;
+		try {
+			await mutate(
+				root,
+				config,
+				(source) =>
+					source.replace(
+						`"${COMPATIBILITY_FLAG}"`,
+						'"streams_enable_constructors"',
+					),
+				`start: ${config} omits the compatibility flag ${COMPATIBILITY_FLAG}; this stack's server bundle requires it and its absence fails at module evaluation rather than at a request`,
+			);
+			await mutate(
+				root,
+				config,
+				(source) =>
+					source.replace('"workers_dev": false', '"workers_dev": true'),
+				`start: ${config} must declare workers_dev as false; a generated subdomain is a public origin nobody enumerated`,
+			);
+			await mutate(
+				root,
+				config,
+				(source) =>
+					source.replace('"preview_urls": false', '"preview_urls": true'),
+				`start: ${config} must declare preview_urls as false; a generated preview origin is a public origin nobody enumerated`,
+			);
+			await mutate(
+				root,
+				config,
+				(source) =>
+					source.replace(
+						'"workers_dev": false',
+						'"assets": { "directory": "./dist/client" },\n\t"workers_dev": false',
+					),
+				`start: ${config} hand-writes an assets block; the plugin synthesizes it into the generated configuration, so a hand-written one is a second authority for one directory`,
+			);
+			await mutate(
+				root,
+				config,
+				(source) =>
+					source.replace('"main": "src/server.ts"', '"main": "src/index.ts"'),
+				`start: ${config} declares the entry "src/index.ts" and ${REGISTRY_PATH} declares "src/server.ts"`,
+			);
+			await mutate(
+				root,
+				config,
+				(source) =>
+					source.replace(
+						'"workers_dev": false',
+						'"services": [{ "binding": "GATEWAY", "service": "gateway" }],\n\t"workers_dev": false',
+					),
+				`start: ${config} binds GATEWAY to gateway, which ${REGISTRY_PATH} does not declare; the allowlist is closed because a narrow binding set is what makes a leak structurally impossible`,
+			);
+			await mutate(
+				root,
+				config,
+				(source) =>
+					source.replace(
+						'"workers_dev": false',
+						'"kv_namespaces": [{ "binding": "CACHE", "id": "abc" }],\n\t"workers_dev": false',
+					),
+				`start: ${config} declares the forbidden binding kind kv_namespaces`,
+			);
+			// The tolerate half of the closed allowlist: a binding the registry
+			// declares is accepted in both the source configuration and the artefact.
+			const binding = { binding: "GATEWAY", service: "gateway" };
+			const original = await Bun.file(resolve(root, config)).text();
+			const builtPath = `${APP_DIRECTORY}/${contract.build.builtConfigPath}`;
+			const built = await Bun.file(resolve(root, builtPath)).text();
+			await Bun.write(
+				resolve(root, config),
+				original.replace(
+					'"workers_dev": false',
+					`"services": [${JSON.stringify(binding)}],\n\t"workers_dev": false`,
+				),
+			);
+			await Bun.write(
+				resolve(root, builtPath),
+				built.replace(
+					'"assets"',
+					`"services": [${JSON.stringify(binding)}],\n\t"assets"`,
+				),
+			);
+			await writeRegistry(root, {
+				...contract,
+				worker: { ...contract.worker, serviceBindings: [binding] },
+			});
+			expect(await validateStartContract(root)).toEqual([]);
+			// ... and an empty forbidden family is absence, not presence.
+			await Bun.write(
+				resolve(root, config),
+				original.replace(
+					'"workers_dev": false',
+					'"kv_namespaces": [],\n\t"workers_dev": false',
+				),
+			);
+			await Bun.write(resolve(root, builtPath), built);
+			await writeRegistry(root, contract);
+			expect(await validateStartContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("the built worker configuration is the only portable proof of a build", async () => {
+		const { root, contract } = await activeWorkspace();
+		const built = `${APP_DIRECTORY}/${contract.build.builtConfigPath}`;
+		try {
+			await mutate(
+				root,
+				built,
+				(source) => source.replace('"main": "index.js"', '"main": "server.js"'),
+				`start: ${built} declares the built entry "server.js" and ${REGISTRY_PATH} declares "index.js"`,
+			);
+			await mutate(
+				root,
+				built,
+				(source) =>
+					source.replace('"directory": "../client"', '"directory": "./client"'),
+				`start: ${built} serves assets from "./client" and ${REGISTRY_PATH} declares "../client"`,
+			);
+			await mutate(
+				root,
+				built,
+				(source) =>
+					source.replace(
+						'"assets"',
+						'"d1_databases": [{ "binding": "DB", "database_id": "x" }],\n\t"assets"',
+					),
+				`start: ${built} ships the forbidden binding kind d1_databases in a deploy artefact`,
+			);
+			await mutate(
+				root,
+				built,
+				(source) =>
+					source.replace(
+						'"assets"',
+						'"services": [{ "binding": "GATEWAY", "service": "gateway" }],\n\t"assets"',
+					),
+				`start: ${built} ships the service bindings ["GATEWAY=gateway"] and ${REGISTRY_PATH} declares []`,
+			);
+			// A harness oracle that reaches a deploy artefact is a harness oracle
+			// running in production, which is a hard failure and not a warning.
+			await writeRegistry(root, {
+				...contract,
+				worker: {
+					...contract.worker,
+					harnessOnlyVariables: ["START_E2E_READ_ORACLE"],
+				},
+			});
+			const original = await Bun.file(resolve(root, built)).text();
+			await Bun.write(
+				resolve(root, built),
+				original.replace(
+					'"assets"',
+					'"vars": { "START_E2E_READ_ORACLE": "1" },\n\t"assets"',
+				),
+			);
+			expect(await validateStartContract(root)).toContain(
+				`start: ${built} ships the harness-only variable START_E2E_READ_ORACLE in a deploy artefact`,
+			);
+			await Bun.write(resolve(root, built), original);
+			await writeRegistry(root, contract);
+			expect(await validateStartContract(root)).toEqual([]);
+
+			// An absent build output is a NOTICE: a build artefact is not tracked,
+			// and "could not compare" is not "found nothing wrong".
+			await rm(resolve(root, built));
+			const report = await inspectStartContract(root);
+			expect(report.errors).toEqual([]);
+			expect(report.notices).toContain(
+				`start: ${built} is absent, so the built worker configuration of platform was declared and not reconciled`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("the asset namespace, the route tree and the router options are decisions", async () => {
+		const { root, contract } = await activeWorkspace();
+		try {
+			await withRegistry(
+				root,
+				{
+					...contract,
+					apps: [declaredApp({ basePath: "/games/", routerBasepath: "/" })],
+				},
+				"start: the application platform serves /games/ and routes /; the public prefix and the router basepath are two spellings of one decision",
+			);
+			await withRegistry(
+				root,
+				{ ...contract, apps: [declaredApp({ assetsDir: "assets" })] },
+				`start: the application platform emits assets to assets and ${REGISTRY_PATH} declares ${contract.build.assetsPrefix}; rewriting document URLs does not move the directory the asset binding serves`,
+			);
+			await withRegistry(
+				root,
+				{
+					...contract,
+					router: { ...contract.router, defaultErrorComponent: false },
+				},
+				`start: ${REGISTRY_PATH} declares no default error component; without one the router installs NO catch boundary for a match, so a render throw escapes to the nearest ancestor gate and is misreported as a session failure`,
+			);
+			await withRegistry(
+				root,
+				{ ...contract, router: { ...contract.router, defaultPreload: true } },
+				`start: ${REGISTRY_PATH} enables router-wide preloading; only source-audited high-frequency link sites should speculate, and a router-wide default speculates on every one`,
+			);
+
+			const routeTree = `${APP_DIRECTORY}/src/${NEEDLES.routeTree}`;
+			await mutate(
+				root,
+				".gitignore",
+				(source) => `${source}\n**/${NEEDLES.routeTree}\n`,
+				`start: ${routeTree} is ignored by .gitignore; this route tree is governed as a committed artefact and an ignored one is an artefact nothing reviews`,
+			);
+			await mutate(
+				root,
+				"biome.jsonc",
+				(source) =>
+					source.replace(`"!**/${NEEDLES.routeTree}"`, '"!**/generated"'),
+				`start: ${routeTree} is not excluded from the formatter and the linter in biome.jsonc; the generator's raw style fails a lint pass over a freshly built tree that a checked-in copy does not`,
+			);
+			// The tolerate half: an override block with all three tools off is the
+			// other spelling of the same exclusion, and it is accepted. All three
+			// have to be off rather than just the formatter, because an assist action
+			// rewrites a file just as thoroughly as a format does.
+			const biome = resolve(root, "biome.jsonc");
+			const originalBiome = await Bun.file(biome).text();
+			await Bun.write(
+				biome,
+				`${JSON.stringify(
+					{
+						$schema: "https://biomejs.dev/schemas/2.4.16/schema.json",
+						files: { includes: ["**"] },
+						overrides: [
+							{
+								includes: [`**/${NEEDLES.routeTree}`],
+								linter: { enabled: false },
+								formatter: { enabled: false },
+								assist: { enabled: false },
+							},
+						],
+					},
+					null,
+					"\t",
+				)}\n`,
+			);
+			try {
+				expect(await validateStartContract(root)).toEqual([]);
+			} finally {
+				await Bun.write(biome, originalBiome);
+			}
+
+			// A declared artefact that does not exist is a declaration nothing
+			// produced.
+			const entry = resolve(root, `${APP_DIRECTORY}/src/env.d.ts`);
+			const ambient = await Bun.file(entry).text();
+			await rm(entry);
+			expect(await validateStartContract(root)).toContain(
+				`start: the application platform declares ${APP_DIRECTORY}/src/env.d.ts, which is missing`,
+			);
+			await Bun.write(entry, ambient);
+			expect(await validateStartContract(root)).toEqual([]);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}

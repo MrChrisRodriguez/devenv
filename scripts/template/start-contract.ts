@@ -1273,6 +1273,421 @@ export function validateTypeScriptBase(
 	return { errors: [...new Set(errors)].sort(), notices };
 }
 
+// ── The server render, the worker and the built artefact ───────────────────
+
+const BUFFERED = "buffered";
+const BIOME_CONFIG_PATH = "biome.jsonc";
+const IGNORE_FILE_PATH = ".gitignore";
+
+/** A glob matched against a repository-relative path, POSIX-style. */
+export function globMatches(pattern: string, path: string): boolean {
+	// Scanned rather than chain-replaced. Every expansion below itself contains
+	// `*` and `?`, so a second pass over the output would rewrite the regex the
+	// first pass just produced — a bug that presents as a glob which simply
+	// never matches anything.
+	let source = "";
+	for (let index = 0; index < pattern.length; index += 1) {
+		const character = pattern[index] ?? "";
+		if (character === "*") {
+			if (pattern[index + 1] === "*") {
+				if (pattern[index + 2] === "/") {
+					source += "(?:.*/)?";
+					index += 2;
+					continue;
+				}
+				source += ".*";
+				index += 1;
+				continue;
+			}
+			source += "[^/]*";
+			continue;
+		}
+		if (character === "?") {
+			source += "[^/]";
+			continue;
+		}
+		source += character.replace(/[.+^${}()|[\]\\]/, "\\$&");
+	}
+	try {
+		return new RegExp(`^${source}$`).test(path);
+	} catch {
+		return false;
+	}
+}
+
+/** Whether the ignore file ignores a path, negations included. */
+export function ignoredByGit(source: string, path: string): boolean {
+	let ignored = false;
+	for (const raw of source.split("\n")) {
+		const line = raw.trim();
+		if (line === "" || line.startsWith("#")) continue;
+		const negated = line.startsWith("!");
+		const body = (negated ? line.slice(1) : line).replace(/\/$/, "");
+		const anchored = body.startsWith("/");
+		const pattern = anchored ? body.slice(1) : body;
+		const candidates =
+			anchored || pattern.includes("/")
+				? [pattern]
+				: [pattern, `**/${pattern}`];
+		if (
+			candidates.some(
+				(candidate) =>
+					globMatches(candidate, path) || globMatches(`${candidate}/**`, path),
+			)
+		)
+			ignored = !negated;
+	}
+	return ignored;
+}
+
+/**
+ * Every glob under which the formatter, the linter or the assist is switched
+ * off.
+ *
+ * Two shapes, because the tool spells the same intention two ways: a negated
+ * entry in the top-level include list, and an override block whose three tools
+ * are disabled. All three have to be off rather than just the formatter — an
+ * assist action rewrites a file just as thoroughly as a format does.
+ */
+export function formatterExclusions(source: string): string[] {
+	let value: unknown;
+	try {
+		value = Bun.JSONC.parse(source) as unknown;
+	} catch {
+		return [];
+	}
+	if (!isRecord(value)) return [];
+	const found: string[] = [];
+	const files = isRecord(value["files"]) ? value["files"] : {};
+	for (const entry of strings(files["includes"])) {
+		if (entry.startsWith("!")) found.push(entry.slice(1));
+	}
+	for (const override of records(value["overrides"])) {
+		const disabled = ["formatter", "linter", "assist"].every((tool) => {
+			const block = override[tool];
+			return isRecord(block) && block["enabled"] === false;
+		});
+		if (disabled) found.push(...strings(override["includes"]));
+	}
+	return found;
+}
+
+/**
+ * The server-render response policy, declared as a matrix rather than
+ * discovered from a handler.
+ *
+ * Buffered is the default and streaming is a waivable refusal, because the
+ * repository that runs four of these applications in production chose buffered
+ * and wrote down why: the worker runtime's backpressure and abort behaviour
+ * under a streamed render is unproven. "Unproven" is a statement about a date
+ * rather than a law, so a reasoned waiver keeps it a decision the next reader
+ * can re-open with evidence — and a waiver that lifts nothing is refused in
+ * turn, because a stale exemption widens itself.
+ *
+ * The rest of the matrix is the part a machine can assert about a document
+ * route without an application: exactly the two read methods, a 405 that names
+ * them rather than a 404 that tells the caller the wrong thing, and a cache
+ * directive on EVERY response class, since a directive applied to the success
+ * path alone is the version of this rule that leaks a per-user payload into a
+ * shared cache.
+ */
+export function validateSsrPolicy(contract: StartSurface): StartReport {
+	const ssr = contract.ssr;
+	const errors: string[] = [];
+	const notices: string[] = [];
+	if (ssr.mode === BUFFERED) {
+		if (ssr.streamingWaiver !== null)
+			errors.push(
+				`start: ${REGISTRY_PATH} carries a streaming waiver that lifts nothing; a stale exemption widens itself`,
+			);
+	} else if (ssr.streamingWaiver === null)
+		errors.push(
+			`start: ${REGISTRY_PATH} declares a streamed server render; the buffered render is the declared default because this worker runtime's backpressure and abort behaviour under a stream is unproven`,
+		);
+	else
+		notices.push(
+			`start: the server render is streamed under a declared waiver: ${ssr.streamingWaiver.reason}`,
+		);
+
+	if (JSON.stringify(ssr.methods) !== JSON.stringify(["GET", "HEAD"]))
+		errors.push(
+			`start: ${REGISTRY_PATH} declares the document methods ${JSON.stringify(ssr.methods)}; a document is a read, and HEAD is answered with GET semantics minus the body`,
+		);
+	if (ssr.methodRejection.status !== 405)
+		errors.push(
+			`start: ${REGISTRY_PATH} rejects an unsupported document method with ${ssr.methodRejection.status}; a document route that answers anything but 405 has told the caller the wrong thing`,
+		);
+	const allowed = ssr.methodRejection.allowHeader
+		.split(",")
+		.map((entry) => entry.trim())
+		.filter((entry) => entry !== "");
+	if (JSON.stringify(allowed) !== JSON.stringify(ssr.methods))
+		errors.push(
+			`start: ${REGISTRY_PATH} rejects with the allow header ${JSON.stringify(ssr.methodRejection.allowHeader)} while declaring the methods ${JSON.stringify(ssr.methods)}`,
+		);
+	if (ssr.cacheControl !== "private, no-store")
+		errors.push(
+			`start: ${REGISTRY_PATH} declares the cache directive ${JSON.stringify(ssr.cacheControl)}; these payloads are per-user and must never be shared-cached, on every response class alike`,
+		);
+	return { errors: [...new Set(errors)].sort(), notices };
+}
+
+/** A JSON-with-comments document, or undefined when it is not one. */
+function jsonDocument(root: string, path: string): JsonRecord | undefined {
+	const source = textOf(resolve(root, path));
+	if (source === "") return undefined;
+	try {
+		const value = Bun.JSONC.parse(source) as unknown;
+		return isRecord(value) ? value : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/** Whether a forbidden binding family is present with anything in it. */
+function bindingKindPopulated(document: JsonRecord, kind: string): boolean {
+	const value = document[kind];
+	if (value === undefined) return false;
+	if (Array.isArray(value)) return value.length > 0;
+	if (isRecord(value))
+		return Object.values(value).some((entry) =>
+			Array.isArray(entry) ? entry.length > 0 : entry !== undefined,
+		);
+	return true;
+}
+
+function declaredBindings(document: JsonRecord): StartServiceBinding[] {
+	return records(document["services"]).flatMap((entry) =>
+		typeof entry["binding"] === "string" && typeof entry["service"] === "string"
+			? [{ binding: entry["binding"], service: entry["service"] }]
+			: [],
+	);
+}
+
+function sortedBindings(bindings: StartServiceBinding[]): string {
+	return JSON.stringify(
+		[...bindings]
+			.map((entry) => `${entry.binding}=${entry.service}`)
+			.sort((left, right) => left.localeCompare(right)),
+	);
+}
+
+/**
+ * The hand-written worker configuration of every declared application.
+ *
+ * The binding allowlist is CLOSED rather than advisory, and that is the whole
+ * safety argument: a narrow binding set is what makes a leak between two
+ * services structurally impossible, and one undeclared binding dissolves it.
+ * The Node compatibility flag is required because this stack's server bundle
+ * needs it and its absence fails at module evaluation rather than at a request.
+ * And an `assets` block in a SOURCE configuration is itself a refusal: the
+ * plugin synthesizes that block into the generated configuration, so a
+ * hand-written one is a second authority for the same directory.
+ */
+export function validateWorkerConfig(
+	root: string,
+	contract: StartSurface,
+): string[] {
+	const errors: string[] = [];
+	for (const app of contract.apps) {
+		const path = `${app.directory}/${app.wranglerConfig}`;
+		const document = jsonDocument(root, path);
+		if (!document) {
+			errors.push(
+				`start: the application ${app.id} declares the worker configuration ${path}, which is missing or does not parse`,
+			);
+			continue;
+		}
+		if (document["main"] !== app.serverEntry)
+			errors.push(
+				`start: ${path} declares the entry ${JSON.stringify(document["main"])} and ${REGISTRY_PATH} declares ${JSON.stringify(app.serverEntry)}`,
+			);
+		if (document["compatibility_date"] !== contract.worker.compatibilityDate)
+			errors.push(
+				`start: ${path} declares the compatibility date ${JSON.stringify(document["compatibility_date"])} and ${REGISTRY_PATH} declares ${JSON.stringify(contract.worker.compatibilityDate)}`,
+			);
+		const flags = strings(document["compatibility_flags"]);
+		for (const flag of contract.worker.compatibilityFlags) {
+			if (!flags.includes(flag))
+				errors.push(
+					`start: ${path} omits the compatibility flag ${flag}; this stack's server bundle requires it and its absence fails at module evaluation rather than at a request`,
+				);
+		}
+		if (document["workers_dev"] !== contract.worker.workersDev)
+			errors.push(
+				`start: ${path} must declare workers_dev as ${String(contract.worker.workersDev)}; a generated subdomain is a public origin nobody enumerated`,
+			);
+		if (document["preview_urls"] !== contract.worker.previewUrls)
+			errors.push(
+				`start: ${path} must declare preview_urls as ${String(contract.worker.previewUrls)}; a generated preview origin is a public origin nobody enumerated`,
+			);
+		if (document["assets"] !== undefined)
+			errors.push(
+				`start: ${path} hand-writes an assets block; the plugin synthesizes it into the generated configuration, so a hand-written one is a second authority for one directory`,
+			);
+		for (const binding of declaredBindings(document)) {
+			if (
+				!contract.worker.serviceBindings.some(
+					(declared) =>
+						declared.binding === binding.binding &&
+						declared.service === binding.service,
+				)
+			)
+				errors.push(
+					`start: ${path} binds ${binding.binding} to ${binding.service}, which ${REGISTRY_PATH} does not declare; the allowlist is closed because a narrow binding set is what makes a leak structurally impossible`,
+				);
+		}
+		for (const kind of contract.worker.forbiddenBindingKinds) {
+			if (bindingKindPopulated(document, kind))
+				errors.push(
+					`start: ${path} declares the forbidden binding kind ${kind}`,
+				);
+		}
+	}
+	return [...new Set(errors)].sort();
+}
+
+/**
+ * The BUILT worker configuration, which is the only proof of a build that a
+ * template with no application can execute.
+ *
+ * It is also the artefact a deploy actually ships, so its shape is checked
+ * against the declaration rather than against the source configuration it was
+ * generated from: the two are different files with different keys, and the one
+ * that reaches production is this one. The harness-only variable rule is a hard
+ * failure rather than a warning for the same reason — a test oracle that
+ * reaches a deploy artefact is a test oracle running in production.
+ */
+export function validateBuiltArtifact(
+	root: string,
+	contract: StartSurface,
+): StartReport {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	for (const app of contract.apps) {
+		const path = `${app.directory}/${contract.build.builtConfigPath}`;
+		const document = jsonDocument(root, path);
+		if (!document) {
+			// A build output is not a tracked artefact, so its absence is a NOTICE:
+			// the contract still holds and the guard says out loud that it could not
+			// compare, rather than reporting that it found nothing wrong.
+			notices.push(
+				`start: ${path} is absent, so the built worker configuration of ${app.id} was declared and not reconciled`,
+			);
+			continue;
+		}
+		if (document["main"] !== contract.build.serverModule)
+			errors.push(
+				`start: ${path} declares the built entry ${JSON.stringify(document["main"])} and ${REGISTRY_PATH} declares ${JSON.stringify(contract.build.serverModule)}`,
+			);
+		const assets = isRecord(document["assets"]) ? document["assets"] : {};
+		if (assets["directory"] !== contract.build.assetsDirectory)
+			errors.push(
+				`start: ${path} serves assets from ${JSON.stringify(assets["directory"])} and ${REGISTRY_PATH} declares ${JSON.stringify(contract.build.assetsDirectory)}`,
+			);
+		if (
+			sortedBindings(declaredBindings(document)) !==
+			sortedBindings(contract.worker.serviceBindings)
+		)
+			errors.push(
+				`start: ${path} ships the service bindings ${sortedBindings(declaredBindings(document))} and ${REGISTRY_PATH} declares ${sortedBindings(contract.worker.serviceBindings)}`,
+			);
+		for (const kind of contract.worker.forbiddenBindingKinds) {
+			if (bindingKindPopulated(document, kind))
+				errors.push(
+					`start: ${path} ships the forbidden binding kind ${kind} in a deploy artefact`,
+				);
+		}
+		const vars = isRecord(document["vars"]) ? document["vars"] : {};
+		for (const variable of contract.worker.harnessOnlyVariables) {
+			if (variable in vars)
+				errors.push(
+					`start: ${path} ships the harness-only variable ${variable} in a deploy artefact`,
+				);
+		}
+	}
+	return { errors: [...new Set(errors)].sort(), notices };
+}
+
+/**
+ * The asset namespace, the route tree and the router options.
+ *
+ * The namespace rules look like style and are not. Rewriting document URLs to a
+ * different public prefix does not move the physical directory the asset
+ * binding serves, which made every rewritten URL 404 in the built worker while
+ * the development server stayed perfectly green — so the public prefix, the
+ * router basepath and the emitted asset directory are three spellings of one
+ * decision and drift between them is invisible until production.
+ *
+ * The route tree is governed as a COMMITTED artefact rather than a regenerable
+ * one: tracked, un-ignored, and excluded from the formatter and the linter,
+ * because the generator emits casts and unorganized imports in its raw style
+ * and a freshly built tree fails a lint pass that a checked-in copy does not.
+ * Whether it is CURRENT is deliberately not a rule here — see the stage README.
+ */
+export function validateNamespaceAndRouteTree(
+	root: string,
+	contract: StartSurface,
+): StartReport {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	const ignoreSource = textOf(resolve(root, IGNORE_FILE_PATH));
+	const exclusions = formatterExclusions(
+		textOf(resolve(root, BIOME_CONFIG_PATH)),
+	);
+	for (const app of contract.apps) {
+		const expectedBase =
+			app.routerBasepath === "/" ? "/" : `${app.routerBasepath}/`;
+		if (app.basePath !== expectedBase)
+			errors.push(
+				`start: the application ${app.id} serves ${app.basePath} and routes ${app.routerBasepath}; the public prefix and the router basepath are two spellings of one decision`,
+			);
+		if (app.assetsDir !== contract.build.assetsPrefix)
+			errors.push(
+				`start: the application ${app.id} emits assets to ${app.assetsDir} and ${REGISTRY_PATH} declares ${contract.build.assetsPrefix}; rewriting document URLs does not move the directory the asset binding serves`,
+			);
+		for (const artefact of [
+			app.serverEntry,
+			app.clientEntry,
+			app.routerModule,
+			app.routeTree,
+			...app.ambientDeclarations,
+		]) {
+			if (!exists(resolve(root, `${app.directory}/${artefact}`)))
+				errors.push(
+					`start: the application ${app.id} declares ${app.directory}/${artefact}, which is missing`,
+				);
+		}
+		const routeTree = `${app.directory}/${app.routeTree}`;
+		if (ignoreSource !== "" && ignoredByGit(ignoreSource, routeTree))
+			errors.push(
+				`start: ${routeTree} is ignored by ${IGNORE_FILE_PATH}; this route tree is governed as a committed artefact and an ignored one is an artefact nothing reviews`,
+			);
+		const tracked = isTracked(root, routeTree);
+		if (tracked === undefined)
+			notices.push(
+				`start: no tracked index is available under ${root}, so ${routeTree} was declared and not checked for tracking`,
+			);
+		else if (!tracked)
+			errors.push(
+				`start: ${routeTree} is not tracked; this route tree is governed as a committed artefact`,
+			);
+		if (!exclusions.some((pattern) => globMatches(pattern, routeTree)))
+			errors.push(
+				`start: ${routeTree} is not excluded from the formatter and the linter in ${BIOME_CONFIG_PATH}; the generator's raw style fails a lint pass over a freshly built tree that a checked-in copy does not`,
+			);
+	}
+	if (contract.mode === "active" && !contract.router.defaultErrorComponent)
+		errors.push(
+			`start: ${REGISTRY_PATH} declares no default error component; without one the router installs NO catch boundary for a match, so a render throw escapes to the nearest ancestor gate and is misreported as a session failure`,
+		);
+	if (contract.mode === "active" && contract.router.defaultPreload)
+		errors.push(
+			`start: ${REGISTRY_PATH} enables router-wide preloading; only source-audited high-frequency link sites should speculate, and a router-wide default speculates on every one`,
+		);
+	return { errors: [...new Set(errors)].sort(), notices };
+}
+
 /**
  * The rules that hold for this stack and live in CORE, named rather than
  * duplicated.
@@ -1323,6 +1738,12 @@ export async function inspectStartContract(
 	notices.push(...devServer.notices);
 	const typescriptBase = validateTypeScriptBase(root, contract);
 	notices.push(...typescriptBase.notices);
+	const ssr = validateSsrPolicy(contract);
+	notices.push(...ssr.notices);
+	const built = validateBuiltArtifact(root, contract);
+	notices.push(...built.notices);
+	const namespace = validateNamespaceAndRouteTree(root, contract);
+	notices.push(...namespace.notices);
 	notices.push(...coreCrossReferences(contract));
 
 	const errors = [
@@ -1333,6 +1754,10 @@ export async function inspectStartContract(
 		...proxy.errors,
 		...devServer.errors,
 		...typescriptBase.errors,
+		...ssr.errors,
+		...validateWorkerConfig(root, contract),
+		...built.errors,
+		...namespace.errors,
 	];
 	return { errors: [...new Set(errors)].sort(), notices };
 }
