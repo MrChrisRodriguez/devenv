@@ -1,7 +1,7 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Parsed YAML is a strict record.
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: Fixtures quote TypeScript path templates verbatim.
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import {
@@ -17,6 +17,7 @@ import {
 	MOON_QUERY_ARGV,
 	validateUniverseRegistry,
 } from "../graph-contract";
+import { reconcileWithMoon, validateGraphContract } from "../validate-graph";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 
@@ -597,5 +598,91 @@ describe("ci matrix universe registry", () => {
 		expect(
 			await validateUniverseRegistry(ROOT, await buildProjectGraph(ROOT)),
 		).toEqual([]);
+	});
+});
+
+describe("live moon reconciliation", () => {
+	const FAKE_MOON = resolve(import.meta.dir, "fixtures/fake-moon.ts");
+
+	// MOON_BIN takes a path to an executable, so the fixture is reached through a
+	// two-line wrapper rather than by committing an executable TypeScript file.
+	// The wrapper also proves the pinned argv end to end: fake-moon exits 2 on
+	// anything other than `query projects`.
+	async function fakeMoonBinary(root: string, mode: string): Promise<string> {
+		const path = resolve(root, "fake-moon");
+		await Bun.write(
+			path,
+			`#!/usr/bin/env bash\nexport FAKE_MOON_MODE=${mode}\nexec ${process.execPath} ${FAKE_MOON} "$@"\n`,
+		);
+		await chmod(path, 0o755);
+		return path;
+	}
+
+	async function reconcile(mode: string): Promise<string[]> {
+		const root = await workspace({
+			projects: [
+				{ source: "libs/ui", packageName: "@synthetic/ui" },
+				{
+					source: "apps/web",
+					packageName: "@synthetic/web",
+					dependencies: { "@synthetic/ui": "workspace:*" },
+				},
+			],
+		});
+		const previous = process.env["MOON_BIN"];
+		try {
+			process.env["MOON_BIN"] = await fakeMoonBinary(root, mode);
+			return await reconcileWithMoon(root, await buildProjectGraph(root));
+		} finally {
+			if (previous === undefined) delete process.env["MOON_BIN"];
+			else process.env["MOON_BIN"] = previous;
+			await rm(root, { recursive: true, force: true });
+		}
+	}
+
+	test("agrees with a healthy graph", async () => {
+		expect(await reconcile("healthy")).toEqual([]);
+	});
+
+	test("fails closed on every abnormal query outcome", async () => {
+		// Each of these has told the guard NOTHING about the graph. Treating any
+		// of them as "no drift found" is how a live oracle becomes a step that
+		// always passes — worse than absent, because CI then claims the graph
+		// was verified.
+		for (const [mode, expected] of [
+			["failure", "exited 1"],
+			["silent", "produced no output"],
+			["not-json", "did not produce JSON"],
+			["unexpected-shape", "reported a project in an unexpected shape"],
+		] as const) {
+			const errors = await reconcile(mode);
+			expect([mode, errors.length]).toEqual([mode, 1]);
+			expect([mode, errors[0]]).toEqual([
+				mode,
+				expect.stringContaining(expected),
+			]);
+		}
+	});
+
+	test("names each way moon and the committed graph can disagree", async () => {
+		expect(await reconcile("extra-project")).toEqual([
+			"graph: moon reports the project ghost, which the committed graph does not declare",
+		]);
+		expect(await reconcile("missing-project")).toEqual([
+			"graph: moon does not report the project ui, which the committed graph declares",
+		]);
+		expect(await reconcile("unknown-edge")).toEqual([
+			"graph: moon reports the edge web -> root, which nothing in the manifests or sources justifies",
+		]);
+		expect(await reconcile("missing-edge")).toEqual([
+			"graph: moon does not report the derived edge web -> ui",
+		]);
+	});
+
+	test("passes the committed tree with the live leg disabled", async () => {
+		// The host has neither moon nor proto, so the hermetic leg is the one
+		// that has to hold here — and it has to hold on the real tree, not only
+		// on synthetic fixtures.
+		expect(await validateGraphContract(ROOT)).toEqual([]);
 	});
 });

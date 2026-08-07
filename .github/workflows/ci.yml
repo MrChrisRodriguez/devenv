@@ -75,6 +75,15 @@ jobs:
       - name: Validate image contract
         run: bun run image:check
 
+      # capability:start moon_affected_selection
+      # The hermetic leg only. It rebuilds the project graph from the manifests
+      # and the sources, so it needs no moon binary and belongs in the lane that
+      # already has Bun. The live leg — reconciling that graph with what moon
+      # itself reports — needs a real toolchain and runs in the moon-graph job.
+      - name: Validate moon project graph
+        run: bun run graph:check
+      # capability:end moon_affected_selection
+
       # capability:start playwright
       - name: Validate browser runtime contract
         run: bun run browser:check

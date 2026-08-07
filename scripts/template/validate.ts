@@ -20,6 +20,7 @@ import { validateStageSixEvidence } from "./stage-six-evidence";
 import { validateStageThreeEvidence } from "./stage-three-evidence";
 import { validateToolchainContract } from "./toolchain";
 import { validateStageOneEvidence } from "./toolchain-evidence";
+import { validateGraphContract } from "./validate-graph";
 import { validateWorktreeContract } from "./worktree-contract";
 
 export interface ValidationReport {
@@ -143,6 +144,14 @@ export async function validateAll(
 		if (ciErrors.length > 0) {
 			report.status = "fail";
 			report.errors.push(...ciErrors);
+		}
+		// The hermetic leg only: `template:validate` runs on a developer host
+		// that has neither moon nor proto, and a leg that needs a binary would be
+		// skipped there rather than run — which is the same as not having it.
+		const graphErrors = await validateGraphContract(root);
+		if (graphErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...graphErrors);
 		}
 		const toolchainEvidenceErrors = await validateStageOneEvidence(root);
 		if (toolchainEvidenceErrors.length > 0) {
