@@ -82,6 +82,13 @@ jobs:
       # itself reports — needs a real toolchain and runs in the moon-graph job.
       - name: Validate moon project graph
         run: bun run graph:check
+
+      # The selection guard's static half: guard wiring, the universe registry,
+      # template ownership, and the recorded initial mode. It needs neither moon
+      # nor a pull request's history, so it belongs beside the graph's hermetic
+      # leg rather than in the lane that computes a selection.
+      - name: Validate affected selection contract
+        run: bun run affected:check
       # capability:end moon_affected_selection
 
       # capability:start playwright

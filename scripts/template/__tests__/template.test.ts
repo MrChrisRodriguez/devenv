@@ -910,6 +910,8 @@ describe("deterministic fixture renderer", () => {
 				"ci-matrix-universes.json",
 				"scripts/template/graph-contract.ts",
 				"scripts/template/generate-graph.ts",
+				"scripts/template/affected-contract.ts",
+				"scripts/template/validate-affected.ts",
 			])
 				expect(await Bun.file(resolve(output, path)).exists()).toBe(false);
 			const minimalPackage = await Bun.file(
@@ -917,6 +919,11 @@ describe("deterministic fixture renderer", () => {
 			).json();
 			expect(minimalPackage.scripts["graph:check"]).toBeUndefined();
 			expect(minimalPackage.scripts["graph:generate"]).toBeUndefined();
+			expect(minimalPackage.scripts["affected:check"]).toBeUndefined();
+			const minimalCi = await Bun.file(
+				resolve(output, ".github/workflows/ci.yml"),
+			).text();
+			expect(minimalCi).not.toContain("affected:check");
 
 			// The registry path was a PRE-DECLARED capability signature before the
 			// file existed, so a leaked copy has to be named by the scan rather
@@ -937,6 +944,24 @@ describe("deterministic fixture renderer", () => {
 				signature: "ci-matrix-universes.json",
 				kind: "path",
 			});
+			// The selection surface's own paths, named the same way. Each one is a
+			// declared signature, so a leak has to be REPORTED rather than merely
+			// absent — "the render did not write it" and "nothing would notice if
+			// it did" are different claims.
+			for (const path of [
+				"scripts/template/affected-contract.ts",
+				"scripts/template/validate-affected.ts",
+			]) {
+				await Bun.write(resolve(output, path), "export const leaked = 1;\n");
+				const leaked = await scanDisabledResidue(output, resolved, ownership);
+				expect(leaked.findings).toContainEqual({
+					capability: "moon_affected_selection",
+					path,
+					signature: path,
+					kind: "path",
+				});
+				await rm(resolve(output, path));
+			}
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}

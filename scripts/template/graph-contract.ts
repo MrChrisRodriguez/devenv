@@ -696,6 +696,79 @@ function trackedFiles(root: string, pattern: string): string[] | undefined {
 }
 
 /**
+ * Read the matrix universe registry, or `undefined` when it is absent or not
+ * readable as the shape this repository declares.
+ *
+ * Exported so a consumer never has to name `ci-matrix-universes.json` a second
+ * time. The registry's path is this capability's Stage 0 signature, and a
+ * second spelling of it is a second authority: the validator below would keep
+ * checking one file while a selector read another.
+ *
+ * This deliberately does NOT validate — `validateUniverseRegistry` owns that,
+ * and every caller here runs it first and refuses to continue when it fails.
+ */
+export async function readUniverseRegistry(
+	root: string,
+): Promise<MatrixUniverse[] | undefined> {
+	const path = resolve(root, REGISTRY_PATH);
+	if (!(await exists(path))) return undefined;
+	let value: unknown;
+	try {
+		value = await Bun.file(path).json();
+	} catch {
+		return undefined;
+	}
+	if (!isRecord(value) || !Array.isArray(value["universes"])) return undefined;
+	const universes: MatrixUniverse[] = [];
+	for (const entry of value["universes"]) {
+		if (!isRecord(entry) || typeof entry["id"] !== "string") return undefined;
+		const projects = Array.isArray(entry["projects"])
+			? entry["projects"].filter(
+					(project): project is string => typeof project === "string",
+				)
+			: [];
+		universes.push({
+			id: entry["id"],
+			...(typeof entry["description"] === "string"
+				? { description: entry["description"] }
+				: {}),
+			projects: [...projects].sort(),
+		});
+	}
+	universes.sort((left, right) => left.id.localeCompare(right.id));
+	return universes;
+}
+
+/**
+ * Every project that would have to be rebuilt because one of the seeds changed:
+ * the seeds themselves plus the transitive closure of everything depending on
+ * them.
+ *
+ * The edges point from dependent to dependency (`from` depends on `to`), so
+ * this walks them BACKWARDS — a change to a library reaches the applications
+ * that import it, never the other way round. It is a fixpoint rather than a
+ * recursion so a dependency cycle terminates instead of overflowing the stack:
+ * a cycle is a defect the graph contract reports elsewhere, and a selector that
+ * crashed on one would fail the gate with a stack trace instead of an answer.
+ */
+export function dependentsOf(
+	graph: ProjectGraph,
+	seeds: Iterable<string>,
+): string[] {
+	const closure = new Set<string>(seeds);
+	let changed = true;
+	while (changed) {
+		changed = false;
+		for (const edge of graph.edges) {
+			if (!closure.has(edge.to) || closure.has(edge.from)) continue;
+			closure.add(edge.from);
+			changed = true;
+		}
+	}
+	return [...closure].sort();
+}
+
+/**
  * Validate the CI matrix universe registry against the project graph.
  *
  * The registry answers "which projects does a CI lane run over", and the only

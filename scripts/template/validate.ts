@@ -1,4 +1,5 @@
 import { resolve } from "node:path";
+import { validateAffectedContract } from "./affected-contract";
 import { validateBrowserContract } from "./browser-contract";
 import { validateCiContract } from "./ci-contract";
 import { validateCloudContract } from "./cloud-contract";
@@ -157,6 +158,11 @@ export async function validateAll(
 		if (graphErrors.length > 0) {
 			report.status = "fail";
 			report.errors.push(...graphErrors);
+		}
+		const affectedErrors = await validateAffectedContract(root);
+		if (affectedErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...affectedErrors);
 		}
 		const toolchainEvidenceErrors = await validateStageOneEvidence(root);
 		if (toolchainEvidenceErrors.length > 0) {

@@ -226,6 +226,20 @@
 			"sourceOfTruth": "moon project config generator"
 		},
 		{
+			"pattern": "scripts/template/validate-affected.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "affected selection contract entrypoint"
+		},
+		{
+			"pattern": "scripts/template/affected-contract.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "affected selection contract"
+		},
+		{
 			"pattern": "scripts/worktree/**",
 			"classification": "template-owned",
 			"syncPolicy": "merge",
@@ -394,6 +408,14 @@
 			"pattern": "scripts/template/generate-graph.ts",
 			"requiresAll": ["moon_affected_selection"]
 		},
+		{
+			"pattern": "scripts/template/affected-contract.ts",
+			"requiresAll": ["moon_affected_selection"]
+		},
+		{
+			"pattern": "scripts/template/validate-affected.ts",
+			"requiresAll": ["moon_affected_selection"]
+		},
 		{ "pattern": "scripts/worktree/**", "requiresAll": ["devcontainer"] },
 		{
 			"pattern": "scripts/template/worktree-contract.ts",
@@ -497,7 +519,7 @@
 			"capability": "moon_affected_selection",
 			"sections": [],
 			"packages": [],
-			"scripts": ["graph:check", "graph:generate"]
+			"scripts": ["affected:check", "graph:check", "graph:generate"]
 		},
 		{
 			"capability": "openspec",
@@ -567,11 +589,13 @@
 				".github/actions/setup-moon/**",
 				"ci-matrix-universes.json",
 				"scripts/ci/affected-matrices.sh",
+				"scripts/template/affected-contract.ts",
 				"scripts/template/graph-contract.ts",
 				"scripts/template/generate-graph.ts",
+				"scripts/template/validate-affected.ts",
 				"scripts/template/validate-graph.ts"
 			],
-			"tokens": ["MOON_AFFECTED_MODE", "graph:check"]
+			"tokens": ["MOON_AFFECTED_MODE", "affected:check", "graph:check"]
 		},
 		"openspec": { "paths": [], "tokens": ["@fission-ai/openspec"] },
 		"playwright": {

@@ -4,6 +4,30 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-08-06 — Add: Moon affected selection
+
+**Goal:** Stop running the whole suite for every change, without ever letting "we ran less" become "we checked nothing". The heavy CI lane is derived from the committed project graph, moon is consulted as a second opinion that may only *widen* the answer, and the whole thing is behind a single repository variable that fails safe to the old all-or-nothing behaviour when it is unset.
+
+**How to implement:**
+
+**The selector is ours; moon may only widen it.** `scripts/template/affected-contract.ts` exports `selectAffected`, which answers "which projects does this pull request reach" from the graph Stage 8A already derives — `classifyPath` for ownership, then a reverse-reachability closure over the committed edges — and never from moon. That order is the whole design. Stage 8A exists because a guard that asked moon what the graph is could only ever agree with moon; a selector that adopted moon's number would inherit exactly that circularity on the one decision that can skip the required suite. Moon is asked the same question separately, and any disagreement resolves to FULL.
+
+**Every ambiguity resolves to FULL, in a fixed order.** Reading the seven steps as reasons to give up on narrowing: the mode is not `moon` (the rollback switch, and the default); the event carries no base describing the change under review — `pull_request` and `merge_group` are the whole table, so a push to the default branch, a schedule, a deployment, a dispatch and every event nobody has written yet are all FULL; the base or head is not a 40-hex object this clone actually has; `git merge-base` or `git diff` failed; a changed path is a global input; or the diff found nothing, which is not evidence that nothing changed — it is also what a wrong base looks like.
+
+Two details in the diff are load-bearing. It runs from the **merge base**, not from the base branch's tip, so a stacked pull request is never charged with the commits its base branch gained since the branch point. And it passes `--no-renames`, so a file moved between projects yields the old path *and* the new one: without it git reports a single rename entry and the project the file **left** is never rebuilt.
+
+**A repository-wide project ends the selection.** Every workspace here declares one (`sources.root: '.'` is what keeps the graph non-empty), it contains every other project, and it is what an unrecognised top-level file falls to. Seeding it would say "a brand-new root config affects the root project only" — the exact silent skip a catch-all exists to prevent. So a changed path owned by a project whose source is `.` is FULL, which also makes the moon comparison meaningful: a project rooted at `.` is affected by literally every changed file.
+
+**One failure is fail-CLOSED.** An unusable matrix universe registry — missing, unparseable, or one the graph contract rejects — throws before anything is emitted. Every other path fails open to FULL because running everything is always a safe answer; this one cannot, because without the registry the selector does not *know* the full set, so "emit FULL" would emit **empty**: every project silently skipped on the sole required gate, reported green. Fail-closed-SAFE, never fail-closed-SILENT. The preflight runs ahead of the mode check, so not even the rollback switch can turn a broken registry into a quiet full-green run.
+
+**Where the rules live is a constraint, not a preference.** Every mode-aware rule is in `affected-contract.ts`, which the capability gates, and **none** is in `ci-contract.ts`. The anti-residue scan is a plain substring search for a capability's signature tokens over every file of a render whose capability is off, `MOON_AFFECTED_MODE` is a pre-declared Stage 0 signature token, and `ci-contract.ts` is copied into *every* project — so one mention of the variable there would fail the minimal fixture by construction, with no way to fence it.
+
+`bun run affected:check` (`scripts/template/validate-affected.ts`) is the static half: guard wiring, the universe registry, the template-ownership entries, and that `[ci] affected_mode_initial` is stated at all. It runs as a fenced step in the `ci` job beside the graph's hermetic leg — it needs neither moon nor a pull request's history — and it is part of `template:validate`.
+
+**Why downstream cares:** Copy `scripts/template/{affected-contract,validate-affected}.ts` and the `affected:check` script, keep `ci-matrix-universes.json` accurate, and add the fenced guard step. The selector is only useful with a real multi-project graph: in a repository whose only project is the root, it has exactly two outcomes — FULL for any code change and empty for a documentation-only one — which is honest rather than broken. This is tooling only: no `.devcontainer/**` file moves, so it costs **no container rebuild**.
+
+---
+
 ## 2026-08-06 — Fix: classify agent rule files as global inputs
 
 **Goal:** Stop `classifyPath` from calling the repository's own rule files "documentation" before anything starts *selecting* on that answer.
