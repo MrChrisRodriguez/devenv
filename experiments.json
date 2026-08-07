@@ -1,0 +1,51 @@
+{
+	"schemaVersion": 1,
+	"mode": "skeleton",
+	"policy": {
+		"workspaceGlobs": ["apps/*", "libs/*"],
+		"projectGlobs": ["apps/*", "libs/*"],
+		"typecheckProject": "tsconfig.json",
+		"typecheckIncludes": ["apps/**/*.ts", "libs/**/*.ts", "scripts/**/*.ts"],
+		"typecheckExcludes": [
+			"dist",
+			"graphify-out",
+			"node_modules",
+			"scripts/template",
+			"tmp"
+		],
+		"formatterConfig": "biome.jsonc",
+		"formatterNegations": ["**/worker-configuration.d.ts", "graphify-out"],
+		"formatterOverrides": ["**/generated/**", "**/openapi/**"],
+		"ignoreFile": ".gitignore",
+		"toleratedIgnorePatterns": [
+			"**/build/",
+			"**/coverage/",
+			"**/dist/",
+			"**/out/",
+			"**/tmp/"
+		],
+		"universeRegistryPath": "ci-matrix-universes.json",
+		"workflowRoot": ".github/workflows",
+		"toleratedWorkflowFailures": [],
+		"reservedDirectories": [
+			{ "directory": "libs/auth", "ownershipPattern": "libs/auth/**" },
+			{ "directory": "libs/forms", "ownershipPattern": "libs/forms/**" },
+			{
+				"directory": "libs/observability",
+				"ownershipPattern": "libs/observability/**"
+			}
+		],
+		"findingsRoots": ["CHANGES.md", "docs/", "openspec/changes/archive/"],
+		"retirementAllowList": [
+			"CHANGES.md",
+			"docs/devcontainer-upgrade/",
+			"evidence/",
+			"experiments.json",
+			"graphify-out/",
+			"openspec/",
+			"scripts/template/experiment-contract.ts"
+		]
+	},
+	"experiments": [],
+	"retired": []
+}

@@ -1,0 +1,277 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "Experiment lifecycle registry",
+	"description": "The enumerated declaration `scripts/template/experiment-contract.ts` validates. An experiment does not weaken a guard by existing — it weakens one by adding an exception, and every exception surface in this repository is a short, committed, enumerable list: the workspace globs, the Moon project globs, the typechecker's include/exclude pair, the formatter's negations and overrides, the ignore file, the CI tolerance list and the matrix universe registry. Those seven lists are declared under `policy` at their measured current values, so a drift in any of them is a decision somebody makes in a commit rather than a side effect of a directory appearing. `experiments` and `retired` are the lifecycle: a declared experiment is `disposable` or `promoted` and must carry the registrations its status implies, and a retired one keeps its record permanently — the directory is gone, so the only thing a guard can hold onto is the assertion that no tracked file still names it and that its findings outlived it. This surface is CORE. It carries no capability fence, no signature and no token, and it ships in every render, because `apps/**` and `libs/**` ship in every render.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": ["schemaVersion", "mode", "policy", "experiments", "retired"],
+	"properties": {
+		"schemaVersion": {
+			"type": "integer",
+			"const": 1
+		},
+		"mode": {
+			"description": "The declared tree state, compared with the derived one before any other rule runs. `skeleton` asserts positively that no directory under the workspace globs is an experiment; `active` asserts at least one is declared and present. A disagreement in either direction is the first error.",
+			"type": "string",
+			"enum": ["skeleton", "active"]
+		},
+		"policy": {
+			"description": "The seven exception surfaces, at their measured values. This block is what makes the guard non-vacuous over an empty `apps/`/`libs/`: with zero experiments the guard still inspects seven surfaces and reports the count, and zero surfaces inspected is a hard failure rather than a pass.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"workspaceGlobs",
+				"projectGlobs",
+				"typecheckProject",
+				"typecheckIncludes",
+				"typecheckExcludes",
+				"formatterConfig",
+				"formatterNegations",
+				"formatterOverrides",
+				"ignoreFile",
+				"toleratedIgnorePatterns",
+				"universeRegistryPath",
+				"workflowRoot",
+				"toleratedWorkflowFailures",
+				"reservedDirectories",
+				"findingsRoots",
+				"retirementAllowList"
+			],
+			"properties": {
+				"workspaceGlobs": {
+					"description": "`package.json#workspaces.packages`, verbatim. Narrowing one is how a directory stops being a workspace member while still looking like a package.",
+					"$ref": "#/$defs/globList"
+				},
+				"projectGlobs": {
+					"description": "`.moon/workspace.yml#projects.globs`, verbatim. These are pure allowlists: a directory outside them is not a Moon project and inherits none of the lint, typecheck, test and build tasks, which is dead code by construction rather than by neglect.",
+					"$ref": "#/$defs/globList"
+				},
+				"typecheckProject": {
+					"description": "The repository TypeScript project whose include/exclude pair is the typecheck exception surface.",
+					"$ref": "#/$defs/relativePath"
+				},
+				"typecheckIncludes": {
+					"description": "`include`, verbatim. Removing an entry is the quiet half of the same move an `exclude` entry makes loudly.",
+					"$ref": "#/$defs/globList"
+				},
+				"typecheckExcludes": {
+					"description": "`exclude`, verbatim. An entry naming a path under the workspace globs is refused even when it is declared here: declaring a weakening does not make it legal, it only makes it visible.",
+					"$ref": "#/$defs/globList"
+				},
+				"formatterConfig": {
+					"description": "The formatter and linter configuration whose negations and overrides are the dead-code exception surface.",
+					"$ref": "#/$defs/relativePath"
+				},
+				"formatterNegations": {
+					"description": "`files.includes` negations with the leading `!` removed, verbatim. A negation naming a workspace directory removes it from the formatter and the linter at once.",
+					"$ref": "#/$defs/globList"
+				},
+				"formatterOverrides": {
+					"description": "The union of every `overrides[].includes` glob, verbatim. An override that disables the linter for a path is a negation with better manners.",
+					"$ref": "#/$defs/globList"
+				},
+				"ignoreFile": {
+					"description": "The ignore file this guard asserts about and never edits. Ignoring an experiment's directory makes it invisible to every guard at once, which is the single cheapest way to produce dead code.",
+					"$ref": "#/$defs/relativePath"
+				},
+				"toleratedIgnorePatterns": {
+					"description": "Build-output ignore patterns that legitimately match inside an experiment. They are declared rather than special-cased so the list of things this rule does not catch is as legible as the list it does.",
+					"$ref": "#/$defs/globList"
+				},
+				"universeRegistryPath": {
+					"description": "The CI matrix universe registry, read as DATA and never imported. It is gated on `moon_affected_selection`, which defaults to false, so in most rendered projects the file is not there — and a core guard that imported the gated module which owns it would be a module-load crash in every one of them.",
+					"$ref": "#/$defs/relativePath"
+				},
+				"workflowRoot": {
+					"description": "The directory holding the workflows whose tolerance surface this guard reads.",
+					"$ref": "#/$defs/relativePath"
+				},
+				"toleratedWorkflowFailures": {
+					"description": "Declared `continue-on-error` tolerations. The general refusal belongs to `ci:check`; this list exists so a toleration that no longer corresponds to anything in the tree is refused here, because a stale exemption widens itself.",
+					"type": "array",
+					"uniqueItems": true,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["workflow", "job", "reason"],
+						"properties": {
+							"workflow": { "$ref": "#/$defs/relativePath" },
+							"job": { "type": "string", "minLength": 1 },
+							"reason": { "type": "string", "minLength": 24 }
+						}
+					}
+				},
+				"reservedDirectories": {
+					"description": "Directories under the workspace globs that a capability's artifact rule or signature already claims. None of them exists on disk; they are reserved names, and an experiment that claimed one would collide with a capability that has not been generated yet. The owning capability is identified by the ownership PATTERN that reserves it rather than by its own name, and that is a measured constraint rather than a stylistic one: one of these three capabilities has its own name as a residue token, this file is copied into every rendered project, and the anti-residue scan is a plain substring search over every file of a render whose capability is off.",
+					"type": "array",
+					"uniqueItems": true,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["directory", "ownershipPattern"],
+						"properties": {
+							"directory": { "$ref": "#/$defs/workspaceDirectory" },
+							"ownershipPattern": {
+								"description": "The `artifactRules` pattern or `capabilitySignatures` path in `template-ownership.json` that reserves this directory. The capability that owns it is named there, once.",
+								"type": "string",
+								"minLength": 1
+							}
+						}
+					}
+				},
+				"findingsRoots": {
+					"description": "Where a findings artefact may live. All three are documentation paths in the affected-selection oracle, so a findings file changes no build output and rebuilds nothing — which is exactly why it is the artefact that can outlive the code.",
+					"type": "array",
+					"minItems": 1,
+					"uniqueItems": true,
+					"items": { "$ref": "#/$defs/relativePath" }
+				},
+				"retirementAllowList": {
+					"description": "Paths whose mention of a retired experiment is a record rather than a registration. Sealed evidence and its validators describe work that really happened and must never be cleaned up; this registry carries the tokens in order to look for them; the guard carries them for the same reason; derived graph output is regenerated from whatever the tree currently says.",
+					"type": "array",
+					"minItems": 1,
+					"uniqueItems": true,
+					"items": { "$ref": "#/$defs/relativePath" }
+				}
+			}
+		},
+		"experiments": {
+			"description": "Every experiment that exists right now. The registry and the tree must agree in BOTH directions: a directory under the workspace globs with no entry here is an undeclared experiment, and an entry here whose directory is gone must be moved to `retired`. That totality is what keeps the count un-shrinkable — a deletion cannot quietly take a directory out of the sweep and leave the guard printing success over fewer of them.",
+			"type": "array",
+			"uniqueItems": true,
+			"items": { "$ref": "#/$defs/experiment" }
+		},
+		"retired": {
+			"description": "Every experiment that has been removed, permanently. Deleting an entry deletes the proof: a removal is a statement about something that is gone, and the only thing a guard can check is the record that says it was here, the assertion that no tracked file still names it, and the findings artefact that outlived it.",
+			"type": "array",
+			"uniqueItems": true,
+			"items": { "$ref": "#/$defs/retiredExperiment" }
+		}
+	},
+	"$defs": {
+		"relativePath": {
+			"type": "string",
+			"minLength": 1,
+			"pattern": "^[^/][^\\\\]*$"
+		},
+		"globList": {
+			"type": "array",
+			"uniqueItems": true,
+			"items": { "type": "string", "minLength": 1 }
+		},
+		"identifier": {
+			"type": "string",
+			"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+		},
+		"workspaceDirectory": {
+			"description": "An experiment lives under `apps/` or `libs/` and nowhere else. A quarantine directory would work — that is precisely why it is refused: code outside the workspace globs is invisible to Moon, to the workspace manifest and to the typechecker at the same time.",
+			"type": "string",
+			"pattern": "^(?:apps|libs)/[a-z0-9]+(?:-[a-z0-9]+)*$"
+		},
+		"waiver": {
+			"description": "A recorded claim, honoured and reported, never silently ignored. It exists because \"this spike taught us nothing\" is a real outcome and forcing a lie is worse than recording a reason.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["reason"],
+			"properties": {
+				"reason": { "type": "string", "minLength": 24 }
+			}
+		},
+		"promotion": {
+			"description": "The five registrations promotion adds: normal ownership, a graph entry, universe membership, tests and documentation. They are declared rather than inferred so the refusal can name the missing one.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["ownershipRule", "universeId", "testGlob", "documentation"],
+			"properties": {
+				"ownershipRule": {
+					"description": "The `ownershipRules` pattern that covers this directory. The `apps/**` and `libs/**` project-owned catch-alls are legal answers and must be named explicitly, so the reader knows which rule applied rather than guessing.",
+					"type": "string",
+					"minLength": 1
+				},
+				"universeId": {
+					"description": "The CI matrix universe this project belongs to. A universe id that the registry does not declare is refused here; a project that belongs to no universe at all is a sentence the Moon project-graph contract already owns, and this guard emits a notice rather than a second refusal for one defect.",
+					"$ref": "#/$defs/identifier"
+				},
+				"testGlob": {
+					"description": "A glob, relative to the experiment's own directory, that at least one file must match. It is not redundant with the CI test wrapper: that wrapper absorbs \"no test files matched\" as a notice and exits 0 by design, so a promoted experiment with no tests is green forever in a project that has no other tests.",
+					"type": "string",
+					"minLength": 1
+				},
+				"documentation": {
+					"description": "A tracked path under `policy.findingsRoots` describing what this is and why it was promoted.",
+					"$ref": "#/$defs/relativePath"
+				}
+			}
+		},
+		"experiment": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"directory",
+				"status",
+				"opened",
+				"findings",
+				"findingsWaiver",
+				"promotion"
+			],
+			"properties": {
+				"id": { "$ref": "#/$defs/identifier" },
+				"directory": { "$ref": "#/$defs/workspaceDirectory" },
+				"status": {
+					"description": "Marked disposable or promoted, and nothing else. A third state would be the thing this registry exists to prevent: a directory that is neither promoted nor disposed, checked by nothing, pointed at by nothing, and permanent.",
+					"type": "string",
+					"enum": ["disposable", "promoted"]
+				},
+				"opened": {
+					"type": "string",
+					"format": "date-time"
+				},
+				"findings": {
+					"description": "Optional while the experiment exists; required once it is retired, because a findings file inside the directory dies with it.",
+					"type": ["string", "null"]
+				},
+				"findingsWaiver": {
+					"oneOf": [{ "$ref": "#/$defs/waiver" }, { "type": "null" }]
+				},
+				"promotion": {
+					"oneOf": [{ "$ref": "#/$defs/promotion" }, { "type": "null" }]
+				}
+			}
+		},
+		"retiredExperiment": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"directory",
+				"retiredAt",
+				"findings",
+				"findingsWaiver",
+				"aliases"
+			],
+			"properties": {
+				"id": { "$ref": "#/$defs/identifier" },
+				"directory": { "$ref": "#/$defs/workspaceDirectory" },
+				"retiredAt": {
+					"type": "string",
+					"format": "date-time"
+				},
+				"findings": {
+					"description": "The artefact that outlived the code. It must exist, be tracked, live under `policy.findingsRoots`, and NOT be inside the directory that was deleted — which is the whole point, because that is what actually happens otherwise.",
+					"type": ["string", "null"]
+				},
+				"findingsWaiver": {
+					"oneOf": [{ "$ref": "#/$defs/waiver" }, { "type": "null" }]
+				},
+				"aliases": {
+					"description": "Every spelling this experiment answered to: its id, its directory, and its workspace package name. The residue scan is the union of these declared literals and NEVER a widened regex over the id — each spelling is declared, justified and individually falsifiable, because a three-character id turned into a pattern matches half the tree and the rule gets switched off within a week.",
+					"type": "array",
+					"minItems": 2,
+					"uniqueItems": true,
+					"items": { "type": "string", "minLength": 2 }
+				}
+			}
+		}
+	}
+}

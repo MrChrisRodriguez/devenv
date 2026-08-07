@@ -178,6 +178,18 @@ jobs:
         run: bun run start:check
       # capability:end tanstack_start
 
+      # Ungated, and that is the decision this step exists to express. Every
+      # other contract guard above sits inside a capability fence because the
+      # surface it governs can be switched off; `apps/**` and `libs/**` cannot.
+      # They are project-owned, they ship in every render of every profile, and
+      # a hygiene rule over them that a project could disable would be absent
+      # from exactly the trees that have the directories it governs. There is
+      # deliberately NO new job, for the same reason as the guards above: every
+      # sealed evidence record's run-shape assertions are anchored on the gate's
+      # own `needs`.
+      - name: Validate experiment lifecycle contract
+        run: bun run experiments:check
+
       # Ungated. Every project has agent rule files and a canonical AGENTS.md,
       # whatever else it disables, and the guard checks the mirrors only for
       # blocks the canonical file still declares — so a project that fenced a

@@ -67,6 +67,7 @@
 		"proxy:check": "bun scripts/template/validate-proxy.ts",
 		"telemetry:check": "bun scripts/template/validate-telemetry.ts",
 		"start:check": "bun scripts/template/validate-start.ts",
+		"experiments:check": "bun scripts/template/validate-experiment.ts",
 		"rules:check": "bun scripts/template/validate-agent-rules.ts",
 		"rules:sync": "bun scripts/template/sync-agent-rules.ts",
 		"worktree:check": "bun scripts/template/validate-worktree.ts",

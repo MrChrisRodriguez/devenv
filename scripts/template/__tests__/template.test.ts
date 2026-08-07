@@ -6,6 +6,7 @@ import {
 	activeRuntimePathChanges,
 	validateStageZeroEvidenceValue,
 } from "../evidence";
+import { CORE_PATHS, validateExperimentContract } from "../experiment-contract";
 import { validateJsonSchema } from "../json-schema";
 import {
 	loadFixtureDefinition,
@@ -1592,6 +1593,63 @@ describe("ownership and generated paths", () => {
 					await Bun.$`git -C ${checkout} status --porcelain`.quiet().text()
 				).trim(),
 			).toBe("");
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("the experiment lifecycle surface in a render", () => {
+	test("every fixture receives the core files, the script, and the step", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const parameters = await loadTemplateParameters(ROOT);
+			const ownership = await loadTemplateOwnership(ROOT);
+			for (const fixtureName of ["minimal", "cloud", "full"]) {
+				const output = resolve(temporary, fixtureName);
+				await renderFixture({ root: ROOT, fixtureName, output });
+				// The inverse of every previous stage's render assertion, and the
+				// point of the whole stage: `apps/**` and `libs/**` ship in every
+				// render, so the rule that governs what may appear in them ships in
+				// every render too. A `minimal` project can grow an experiment on
+				// day one, and a gated guard would not be there when it did.
+				for (const path of CORE_PATHS)
+					expect(await Bun.file(resolve(output, path)).exists()).toBe(true);
+				const manifest = await Bun.file(resolve(output, "package.json")).json();
+				expect(manifest.scripts["experiments:check"]).toBe(
+					"bun scripts/template/validate-experiment.ts",
+				);
+				const workflow = await Bun.file(
+					resolve(output, ".github/workflows/ci.yml"),
+				).text();
+				expect(workflow).toContain("bun run experiments:check");
+
+				// The residue scan reports nothing about this surface, and that is
+				// automatic because there is no signature to match. The assertion
+				// exists so that a future stage which DOES gate this surface has a
+				// failing test to notice rather than a silent behaviour change.
+				const fixture = await loadFixtureDefinition(
+					ROOT,
+					fixtureName,
+					parameters,
+				);
+				const resolved = resolveFixtureParameters(parameters, fixture);
+				const report = await scanDisabledResidue(output, resolved, ownership);
+				expect(
+					report.findings.filter((finding) =>
+						(CORE_PATHS as readonly string[]).includes(finding.path),
+					),
+				).toEqual([]);
+				expect(
+					report.findings.filter(
+						(finding) => finding.signature === "experiments:check",
+					),
+				).toEqual([]);
+
+				// And the guard returns a real verdict inside the rendered tree
+				// rather than merely being present in it.
+				expect(await validateExperimentContract(output)).toEqual([]);
+			}
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
