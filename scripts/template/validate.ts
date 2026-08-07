@@ -26,6 +26,7 @@ import { validateStageSevenEvidence } from "./stage-seven-evidence";
 import { validateStageSixEvidence } from "./stage-six-evidence";
 import { validateStageTenAEvidence } from "./stage-ten-a-evidence";
 import { validateStageThreeEvidence } from "./stage-three-evidence";
+import { validateTelemetryContract } from "./telemetry-contract";
 import { validateToolchainContract } from "./toolchain";
 import { validateStageOneEvidence } from "./toolchain-evidence";
 import { validateGraphContract } from "./validate-graph";
@@ -199,6 +200,15 @@ export async function validateAll(
 		if (formsErrors.length > 0) {
 			report.status = "fail";
 			report.errors.push(...formsErrors);
+		}
+		// The telemetry and external-write contract. Hermetic by construction for
+		// the same reason: it reads a committed declaration and reconciles it with
+		// the tracked tree, so it needs no telemetry account, no credential and no
+		// network to answer.
+		const telemetryErrors = await validateTelemetryContract(root);
+		if (telemetryErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...telemetryErrors);
 		}
 		// Hermetic again: the vendor-artifact leg spawns the pinned CLI, which
 		// `rules:check` owns.

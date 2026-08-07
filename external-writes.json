@@ -1,0 +1,13 @@
+{
+	"schemaVersion": 1,
+	"mode": "skeleton",
+	"telemetry": null,
+	"writes": [],
+	"allowedHosts": [],
+	"governedElsewhere": [
+		{
+			"path": "scripts/openspec/archive.sh",
+			"authority": "scripts/template/openspec-contract.ts"
+		}
+	]
+}
