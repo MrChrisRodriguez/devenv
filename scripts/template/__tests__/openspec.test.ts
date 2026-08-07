@@ -1448,6 +1448,64 @@ describe("openspec lifecycle contract", () => {
 			);
 		}, 60_000);
 
+		test("a container-absolute change directory is the same directory", async () => {
+			// The defect this case exists for was live, not hypothetical. The
+			// wrapper runs on the host and bridges only the CLI call, so the CLI
+			// answers from inside the container — where this repository is mounted
+			// at /workspace — and the post-check compared that against a host path.
+			// Archiving this repository's own change refused with "the CLI reported
+			// the change directory /workspace/openspec/changes/…" and had to be run
+			// with OPENSPEC_BRIDGE="" to get past a statement that was true.
+			await withWrapper(
+				async (harness) => {
+					const result = runWrapper(harness, ["--dry-run"]);
+					expect(result.exitCode).toBe(0);
+					expect(result.stdout).toContain("--dry-run, nothing was changed");
+					expect(result.stderr).not.toContain("change directory");
+				},
+				{
+					cli: "bridge-change-dir",
+					changes: [
+						{
+							name: "probe-one",
+							complete: 2,
+							remaining: 0,
+							requirement: "Probe Requirement",
+						},
+					],
+				},
+			);
+		}, 60_000);
+
+		test("a different change directory is still refused, mount point or not", async () => {
+			// The other half, and the reason the case above is not an acceptance of
+			// everything: the same container-absolute shape, a different change. The
+			// tail is what the comparison is made of, so a prefix nobody can resolve
+			// buys an answer nothing.
+			await withWrapper(
+				async (harness) => {
+					const before = treeState(harness.root);
+					const result = runWrapper(harness, ["--dry-run"]);
+					expect(result.exitCode).toBe(7);
+					expect(result.stderr).toContain(
+						"the CLI reported the change directory /workspace/openspec/changes/probe-one-elsewhere, which does not resolve to openspec/changes/probe-one in the tree the CLI ran in",
+					);
+					expect(treeState(harness.root)).toBe(before);
+				},
+				{
+					cli: "foreign-change-dir",
+					changes: [
+						{
+							name: "probe-one",
+							complete: 2,
+							remaining: 0,
+							requirement: "Probe Requirement",
+						},
+					],
+				},
+			);
+		}, 60_000);
+
 		test("a rejected push keeps the commit and prints every way out", async () => {
 			await withWrapper(
 				async (harness) => {

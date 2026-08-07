@@ -4,6 +4,28 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-08-07 — Fix: accept the container's own path in the archive post-check
+
+**Goal:** Make `bash scripts/openspec/archive.sh` work through the bridge it ships with. Archiving this repository's own change refused with a true statement:
+
+```
+OpenSpec archive: the CLI reported the change directory
+/workspace/openspec/changes/portable-devcontainer-upgrade,
+not openspec/changes/portable-devcontainer-upgrade
+```
+
+**The wrapper runs on the host and bridges only the CLI call.** That split is deliberate — every git precondition is a question about the host's checkout and its remote, and the container has neither the remote nor its credentials. But it means the CLI answers from inside the container, where the repository is bind-mounted at `/workspace`, so `instructions apply --json` reports `changeDir` as a **container-absolute** path. The post-check resolved the wrapper's own `openspec/changes/<name>` against the host filesystem and compared the two, and `/workspace/…` does not exist on the host, so the fallback compared a container path against a host path and refused. The archive only completed because it was re-run with `OPENSPEC_BRIDGE=""`, which is the run-in-place mode the tests use — the one topology where the bug cannot appear.
+
+**The comparison is now mount-point agnostic, and it is agnostic by computing the right thing rather than by loosening.** The CLI is invoked from the parent of the OpenSpec root, so in the CLI's own view — whatever mount point sits above it — the change resolves under `<root name>/changes/<change>`. That tail is what every filesystem view agrees on, and it is what is compared. It still pins the root and the change the answer is about, which is the whole of what the check was ever for; the only thing given up is the prefix that legitimately differs. A relative answer is accepted as itself, because it is already expressed in those terms.
+
+**Both directions are proved against a real wrapper run.** The fake CLI gained two modes, the first of them observed live rather than invented: `bridge-change-dir` answers with `/workspace/openspec/changes/<name>` and must be accepted, and `foreign-change-dir` answers with the same container-absolute shape for a *different* change and is still refused with exit 7 and a byte-identical tree. Reverting the wrapper turns the first case red, so the case is anchored on the defect rather than on the fix.
+
+**Nothing else about the check moved.** It stays where it is, before the delta assessment and long before the CLI is allowed to move anything; the bridge default is still spelled exactly once; the hooks are still never bypassed.
+
+**Adopting this downstream:** replace the `changeDir` comparison in `scripts/openspec/archive.sh` with the tail comparison. Projects that only ever run the wrapper in place are unaffected; any project whose container mounts the workspace anywhere other than its host path needs it.
+
+---
+
 ## 2026-08-07 — Add: the release gate, and the first tagged template
 
 **Goal:** Make "this template is fit to release" a claim something can fail. This is the closure stage, and it is unlike every predecessor in one decisive way: **its deliverable is deliberately absent from every render.** The gate reads `fixtures/template/*.toml`, `fixtures/golden/*.json` and `release.json`, and all three are omitted from a generated project — so a rendered project would receive a command whose inputs do not exist, which is the "dead command" the capability model forbids. So this surface is neither core nor gated. It is **template-only**, a third category the program has not used before: no capability, no fence, no `capabilitySignatures` entry, no `packageRules` entry, no residue token, no `ownershipRules` `copy` entry, and its workflow step lives inside a `template-only` block. The render probe is therefore the inverse of every previous stage's: it asserts the guard is present in **none** of the three fixtures.

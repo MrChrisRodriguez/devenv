@@ -277,14 +277,34 @@ WORKING_DIRECTORY="$(dirname "$ROOT")"
 # comes from `instructions apply --json` rather than from this script counting
 # checkboxes. Its `changeDir` is checked too: an answer about a different
 # directory is not an answer about this change.
+#
+# The check is deliberately MOUNT-POINT AGNOSTIC. This script runs on the host
+# and only the CLI call crosses the bridge, so the CLI answers from inside the
+# container — where this repository is bind-mounted at /workspace — and reports
+# `/workspace/openspec/changes/<name>`. Comparing that against a host path
+# refuses a statement that is true: it was, and the archive of this repository's
+# own change had to be run with OPENSPEC_BRIDGE="" to get past it.
+#
+# What every filesystem view agrees on is the part BELOW the directory the CLI
+# ran in, and that part is exactly computable here: the CLI is invoked from
+# `$WORKING_DIRECTORY`, which is the parent of the root, so the change resolves
+# under `<root name>/changes/<change>` in the CLI's own view whatever the mount
+# point above it is. Comparing that still pins the root and the change the
+# answer is about, which is the whole of what this check was ever for; only the
+# prefix that legitimately differs is given up. A relative answer is accepted as
+# itself, because it is already expressed in those terms.
+CHANGE_DIR_TAIL="$(basename "$ROOT")/changes/$CHANGE"
 instructions="$(cd "$WORKING_DIRECTORY" && openspec_cli instructions apply --change "$CHANGE" --json 2>/dev/null || true)"
 remaining="$(printf '%s\n' "$instructions" | tr -d ' \t' | sed -n 's/.*"remaining":\([0-9][0-9]*\).*/\1/p' | head -1)"
 reported_dir="$(printf '%s\n' "$instructions" | tr -d ' \t' | sed -n 's/.*"changeDir":"\([^"]*\)".*/\1/p' | head -1)"
+reported_dir="${reported_dir%/}"
 if [ -z "$remaining" ]; then
 	die "\`openspec instructions apply --change $CHANGE --json\` reported no task progress" 7
 fi
-if [ -n "$reported_dir" ] && [ "$(cd "$CHANGE_DIR" && pwd -P)" != "$(cd "$reported_dir" 2>/dev/null && pwd -P || printf '%s' "$reported_dir")" ]; then
-	die "the CLI reported the change directory $reported_dir, not $CHANGE_DIR" 7
+if [ -n "$reported_dir" ] &&
+	[ "$reported_dir" != "$CHANGE_DIR_TAIL" ] &&
+	[ "${reported_dir%"/$CHANGE_DIR_TAIL"}" = "$reported_dir" ]; then
+	die "the CLI reported the change directory $reported_dir, which does not resolve to $CHANGE_DIR_TAIL in the tree the CLI ran in" 7
 fi
 if [ "$remaining" != "0" ]; then
 	die "$CHANGE still has $remaining remaining task(s); finish them before archiving" 7
