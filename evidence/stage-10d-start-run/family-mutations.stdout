@@ -1,0 +1,6 @@
+bun test v1.3.13 (bf2e2cec)
+[stage1-observed] lock: vite must resolve exactly once, found 2 entries (8.1.4, 8.1.5)
+[stage1-observed] lock: build tool 9.0.0 is outside the Cloudflare plugin peer range ^6.1.0 || ^7.0.0 || ^8.0.0
+[stage1-observed] lock: the Cloudflare plugin declares no build tool peer range to reconcile
+[stage1-observed] catalog: apps/web/package.json devDependencies.vite floats "latest"; the build tool and its plugins move with the Cloudflare family or not at all
+[stage1-observed] catalog: apps/web/package.json devDependencies.@vitejs/plugin-react floats "^6.0.0"; the build tool and its plugins move with the Cloudflare family or not at all
