@@ -180,6 +180,62 @@ export function activeContract(
 }
 
 /**
+ * A configuration file matching `activeContract()`, in the shape the renderer
+ * emits.
+ *
+ * It imports NOTHING on purpose: a configuration that names no module needs no
+ * dependency, which is what lets this capability ship without touching the lock
+ * file or the catalog. Every route is object form with `ws` stated explicitly,
+ * and the two tables are identical, because that is what the registry declares
+ * and a hand edit is exactly what the drift leg exists to catch.
+ */
+export const ACTIVE_CONFIG_SOURCE = [
+	"// Generated from proxy-routes.json. Edit the registry, never this file.",
+	"export default {",
+	`\t${NEEDLES.server}: {`,
+	`\t\tport: ${PUBLISHED_CONTAINER_PORT},`,
+	"\t\thost: true,",
+	"\t\tstrictPort: true,",
+	'\t\tallowedHosts: ["localhost", "127.0.0.1", ".localhost", "workspace.project.localhost"],',
+	`\t\t${NEEDLES.proxy}: {`,
+	`\t\t\t"/api": { target: "http://127.0.0.1:${API_UPSTREAM_PORT}", ws: false, changeOrigin: true, secure: true },`,
+	`\t\t\t"/socket": { target: "http://127.0.0.1:${SOCKET_UPSTREAM_PORT}", ws: true, changeOrigin: true, secure: true },`,
+	"\t\t},",
+	"\t},",
+	`\t${NEEDLES.preview}: {`,
+	`\t\tport: ${PUBLISHED_CONTAINER_PORT},`,
+	"\t\thost: true,",
+	"\t\tstrictPort: true,",
+	'\t\tallowedHosts: ["localhost", "127.0.0.1", ".localhost", "workspace.project.localhost"],',
+	`\t\t${NEEDLES.proxy}: {`,
+	`\t\t\t"/api": { target: "http://127.0.0.1:${API_UPSTREAM_PORT}", ws: false, changeOrigin: true, secure: true },`,
+	`\t\t\t"/socket": { target: "http://127.0.0.1:${SOCKET_UPSTREAM_PORT}", ws: true, changeOrigin: true, secure: true },`,
+	"\t\t},",
+	"\t},",
+	"};",
+	"",
+].join("\n");
+
+/** An `active` workspace with a real registry and a real configuration file. */
+export async function activeWorkspace(options?: {
+	contract?: Partial<ProxyRoutes>;
+	config?: string;
+	files?: Record<string, string>;
+	prefix?: string;
+}): Promise<{ root: string; contract: ProxyRoutes }> {
+	const contract = activeContract(options?.contract ?? {});
+	const root = await proxyWorkspace({
+		contract,
+		prefix: options?.prefix ?? "devenv-proxy-active-",
+		files: {
+			[contract.configPath]: options?.config ?? ACTIVE_CONFIG_SOURCE,
+			...options?.files,
+		},
+	});
+	return { root, contract };
+}
+
+/**
  * A synthetic workspace carrying the committed proxy surface plus whatever the
  * caller declares.
  *

@@ -1,5 +1,12 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Parsed JSON is a strict record.
-import { type Dirent, readdirSync, readFileSync, statSync } from "node:fs";
+import {
+	type Dirent,
+	lstatSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	statSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { join, relative, resolve, sep } from "node:path";
 import { validateJsonSchema } from "./json-schema";
@@ -923,6 +930,444 @@ export function declaredServices(root: string): string[] | undefined {
 	return [...match[1].matchAll(/"([^"]+)"/g)].map((entry) => entry[1] ?? "");
 }
 
+// ── Config identity and AST shape ──────────────────────────────────────────
+
+export interface EffectiveConfig {
+	/** The exported configuration object literal, when there is exactly one. */
+	config?: ObjectLiteral | undefined;
+	problems: string[];
+}
+
+/**
+ * The declared configuration file's IDENTITY, before a single byte is parsed.
+ *
+ * A guard that reads a symlink or a hardlinked twin validates a file it does
+ * not own: the bytes it approves and the bytes the tool loads are two different
+ * things the moment somebody repoints the link. So the file must be an ordinary
+ * in-tree file with exactly one hard link, and its canonical path must be the
+ * path this registry named — ported refusal by refusal from the reference
+ * implementation's own routing guard.
+ */
+export function validateConfigIdentity(
+	root: string,
+	contract: ProxyRoutes,
+): string[] {
+	if (contract.mode !== "active") return [];
+	const errors: string[] = [];
+	const full = resolve(root, contract.configPath);
+	let stat: ReturnType<typeof lstatSync>;
+	try {
+		stat = lstatSync(full);
+	} catch {
+		// The missing-file refusal belongs to the wiring leg, which names the
+		// registry that promised it. Two refusals for one fact would send the
+		// reader to two files.
+		return errors;
+	}
+	if (stat.isSymbolicLink() || !stat.isFile() || stat.nlink !== 1) {
+		errors.push(
+			`proxy: ${contract.configPath} must be an independent ordinary in-tree file with exactly one hard link`,
+		);
+		return errors;
+	}
+	let canonicalRoot: string;
+	let canonicalConfig: string;
+	try {
+		canonicalRoot = realpathSync(root);
+		canonicalConfig = realpathSync(full);
+	} catch {
+		return errors;
+	}
+	if (
+		canonicalConfig !== join(canonicalRoot, ...contract.configPath.split("/"))
+	)
+		errors.push(
+			`proxy: ${contract.configPath} canonical path rebinds outside the path the registry declared`,
+		);
+	return errors.sort();
+}
+
+/**
+ * The one effective exported configuration object, off the AST.
+ *
+ * Decoy objects and commented-out exports never count, which is the whole
+ * reason this is a parse rather than a search. Two shapes are accepted — a bare
+ * object literal and `defineConfig(object)` — because a generated configuration
+ * that imports nothing needs no dependency at all, and a project that prefers
+ * the helper may still use it as long as the binding is unambiguous.
+ */
+export function readEffectiveConfig(
+	path: string,
+	source: string,
+): EffectiveConfig {
+	const api = typescript();
+	const file = parseSource(path, source);
+	if (!api || !file)
+		return {
+			problems: [
+				`proxy: the TypeScript compiler API is unavailable; run bun install before ${GUARD_SCRIPT}`,
+			],
+		};
+	const exportEquals: Node[] = [];
+	const defaults: import("typescript").ExportAssignment[] = [];
+	for (const statement of file.statements) {
+		if (!api.isExportAssignment(statement)) continue;
+		if (statement.isExportEquals === true) exportEquals.push(statement);
+		else defaults.push(statement);
+	}
+	if (exportEquals.length > 0)
+		return {
+			problems: [
+				`proxy: ${path} must not contain an export = assignment; found ${exportEquals.length}`,
+			],
+		};
+	if (defaults.length !== 1)
+		return {
+			problems: [
+				`proxy: ${path} must contain exactly one effective default export; found ${defaults.length}`,
+			],
+		};
+	const assignment = defaults[0];
+	if (!assignment)
+		return {
+			problems: [
+				`proxy: ${path} must contain exactly one effective default export; found 0`,
+			],
+		};
+	let exported = unwrap(assignment.expression);
+	if (api.isCallExpression(exported)) {
+		const callee = exported.expression;
+		const helper = HELPER_NAME;
+		if (
+			!api.isIdentifier(callee) ||
+			callee.text !== helper ||
+			exported.arguments.length !== 1
+		)
+			return {
+				problems: [
+					`proxy: ${path} default export must be an object literal or ${helper}(object)`,
+				],
+			};
+		// Only when the helper is actually used. A configuration that imports
+		// nothing has no binding to be ambiguous about, and requiring the import
+		// would force a dependency on every generated project.
+		const bindings = helperBindings(file, helper);
+		if (bindings.imported !== 1 || bindings.conflicting > 0)
+			return {
+				problems: [
+					`proxy: ${path} ${helper} must have exactly one unaliased runtime named import from the build tool and no conflicting local runtime binding`,
+				],
+			};
+		const argument = exported.arguments[0];
+		if (!argument)
+			return {
+				problems: [
+					`proxy: ${path} default export must be an object literal or ${helper}(object)`,
+				],
+			};
+		exported = unwrap(argument);
+	}
+	if (!api.isObjectLiteralExpression(exported))
+		return {
+			problems: [
+				`proxy: ${path} exported configuration must be an object literal`,
+			],
+		};
+	return { config: exported, problems: [] };
+}
+
+const HELPER_NAME = ["define", "Config"].join("");
+const BUILD_TOOL_MODULE = ["vi", "te"].join("");
+
+/** Every runtime binding of the helper name, split into imports and conflicts. */
+function helperBindings(
+	file: SourceFile,
+	helper: string,
+): { imported: number; conflicting: number } {
+	const api = typescript();
+	if (!api) return { imported: 0, conflicting: 0 };
+	let imported = 0;
+	let conflicting = 0;
+	for (const statement of file.statements) {
+		if (api.isImportDeclaration(statement)) {
+			const clause = statement.importClause;
+			const specifier = statement.moduleSpecifier;
+			const named = clause?.namedBindings;
+			if (!clause || !named || !api.isNamedImports(named)) continue;
+			for (const element of named.elements) {
+				if (element.name.text !== helper) continue;
+				const unaliased = element.propertyName === undefined;
+				const runtime =
+					clause.isTypeOnly !== true && element.isTypeOnly !== true;
+				const fromTool =
+					api.isStringLiteralLike(specifier) &&
+					specifier.text === BUILD_TOOL_MODULE;
+				if (unaliased && runtime && fromTool) imported += 1;
+				else conflicting += 1;
+			}
+			continue;
+		}
+		if (api.isVariableStatement(statement)) {
+			for (const declaration of statement.declarationList.declarations) {
+				if (
+					api.isIdentifier(declaration.name) &&
+					declaration.name.text === helper
+				)
+					conflicting += 1;
+			}
+			continue;
+		}
+		if (api.isFunctionDeclaration(statement) && statement.name?.text === helper)
+			conflicting += 1;
+	}
+	return { imported, conflicting };
+}
+
+// ── Route shape ────────────────────────────────────────────────────────────
+
+const LOOPBACK_HOST = ["127", ".0.0.1"].join("");
+const FORWARDING_SCHEMES = new Set(["ws:", "wss:"]);
+const ALL_SCHEMES = new Set(["http:", "https:", "ws:", "wss:"]);
+
+/**
+ * A target's port, or undefined when the target is not a URL at all.
+ *
+ * Parsing is attempted exactly once per question and never assumed to succeed:
+ * a guard that throws on a malformed declaration reports nothing about the
+ * well-formed declarations beside it, which is a worse outcome than the defect
+ * it was trying to name.
+ */
+export function targetPort(target: string): number | undefined {
+	try {
+		const port = new URL(target).port;
+		return port === "" ? undefined : Number(port);
+	} catch {
+		return undefined;
+	}
+}
+
+/** A target's scheme, or undefined when the target is not a URL at all. */
+function targetScheme(target: string): string | undefined {
+	try {
+		return new URL(target).protocol;
+	} catch {
+		return undefined;
+	}
+}
+
+/** Whether a declared target is a loopback origin and nothing else. */
+export function targetProblem(target: string): string | undefined {
+	let url: URL;
+	try {
+		url = new URL(target);
+	} catch {
+		return "is not an absolute origin";
+	}
+	if (!ALL_SCHEMES.has(url.protocol))
+		return "does not use an http or socket scheme";
+	if (url.hostname === "0.0.0.0")
+		return "binds the wildcard address, which is not an address a client connects to";
+	if (url.hostname !== LOOPBACK_HOST)
+		return "is not loopback; a proxy target that names another host is an unintended external call";
+	if (url.port === "") return "declares no port";
+	const normalized = target.endsWith("/") ? target.slice(0, -1) : target;
+	if (url.search !== "" || url.hash !== "" || url.origin !== normalized)
+		return "carries a path, a query or a fragment; a proxy target is an origin";
+	return undefined;
+}
+
+/**
+ * The heart of the stage: what a declared route may and may not be.
+ *
+ * Three of these refusals are the reference implementation's own defects, and
+ * one of them it wrote down itself. A route carrying both a path rewrite and a
+ * forwarded upgrade is structurally valid and nonfunctional — the reference's
+ * socket client says so in as many words and connects directly to its backend
+ * to work around it — which is exactly the failure this stage exists to name.
+ */
+export function validateRouteShape(contract: ProxyRoutes): string[] {
+	const errors: string[] = [];
+	const upstreamPorts = new Set(contract.upstreams.map((entry) => entry.port));
+	for (const route of contract.routes) {
+		const problem = targetProblem(route.target);
+		if (problem !== undefined) {
+			errors.push(
+				`proxy: the route ${route.id} targets ${route.target}, which ${problem}`,
+			);
+			continue;
+		}
+		const port = targetPort(route.target);
+		if (port !== undefined && !upstreamPorts.has(port))
+			errors.push(
+				`proxy: the route ${route.id} targets port ${port}, which no declared upstream binds`,
+			);
+		const scheme = targetScheme(route.target);
+		if (scheme !== undefined && FORWARDING_SCHEMES.has(scheme) && !route.ws)
+			errors.push(
+				`proxy: the route ${route.id} targets a socket scheme and does not forward the upgrade; a route that answers HTTP and drops every upgrade is structurally valid and nonfunctional`,
+			);
+		if (route.rewrite !== null && route.ws)
+			errors.push(
+				`proxy: the route ${route.id} rewrites its path and forwards the upgrade; path rewriting and WebSocket upgrade forwarding do not compose`,
+			);
+		if (!route.secure && scheme === "https:")
+			errors.push(
+				`proxy: the route ${route.id} disables certificate verification against an https target`,
+			);
+	}
+	for (const upstream of contract.upstreams) {
+		if (
+			!contract.routes.some(
+				(route) => targetPort(route.target) === upstream.port,
+			)
+		)
+			errors.push(
+				`proxy: the upstream ${upstream.id} binds port ${upstream.port}, which no declared route targets`,
+			);
+	}
+	return [...new Set(errors)].sort();
+}
+
+/** A boolean property's literal value, or undefined when it is not a literal. */
+function booleanPropertyOf(
+	object: ObjectLiteral,
+	name: string,
+): boolean | undefined {
+	const api = typescript();
+	const property = propertyOf(object, name);
+	if (!api || !property) return undefined;
+	const value = unwrap(property.initializer);
+	if (value.kind === api.SyntaxKind.TrueKeyword) return true;
+	if (value.kind === api.SyntaxKind.FalseKeyword) return false;
+	return undefined;
+}
+
+/** A string property's literal value, or undefined when it is not a literal. */
+function stringPropertyOf(
+	object: ObjectLiteral,
+	name: string,
+): string | undefined {
+	const api = typescript();
+	const property = propertyOf(object, name);
+	if (!api || !property) return undefined;
+	const value = unwrap(property.initializer);
+	return api.isStringLiteralLike(value) ? value.text : undefined;
+}
+
+export interface ConfigRoute {
+	/** The proxy table the entry came from, named as the config spells it. */
+	table: string;
+	path: string;
+	shorthand: boolean;
+	target: string | undefined;
+	ws: boolean | undefined;
+	changeOrigin: boolean | undefined;
+	secure: boolean | undefined;
+	hasRewrite: boolean;
+}
+
+/** Every proxy entry the configuration declares, off the AST and never the text. */
+export function configRoutes(
+	config: ObjectLiteral,
+	table: string,
+): ConfigRoute[] | undefined {
+	const api = typescript();
+	if (!api) return undefined;
+	const server = objectPropertyOf(config, table);
+	if (!server) return undefined;
+	const proxy = objectPropertyOf(server, PROXY_KEY);
+	if (!proxy) return undefined;
+	const found: ConfigRoute[] = [];
+	for (const member of proxy.properties) {
+		const path = propertyName(member);
+		if (path === undefined || !api.isPropertyAssignment(member)) continue;
+		const value = unwrap(member.initializer);
+		if (!api.isObjectLiteralExpression(value)) {
+			found.push({
+				table,
+				path,
+				shorthand: true,
+				target: undefined,
+				ws: undefined,
+				changeOrigin: undefined,
+				secure: undefined,
+				hasRewrite: false,
+			});
+			continue;
+		}
+		found.push({
+			table,
+			path,
+			shorthand: false,
+			target: stringPropertyOf(value, "target"),
+			ws: booleanPropertyOf(value, "ws"),
+			changeOrigin: booleanPropertyOf(value, "changeOrigin"),
+			secure: booleanPropertyOf(value, "secure"),
+			hasRewrite: propertyOf(value, "rewrite") !== undefined,
+		});
+	}
+	return found;
+}
+
+/**
+ * The rendered configuration's own proxy tables, against the same rules.
+ *
+ * The registry cannot express a string shorthand and a hand-edited file can, so
+ * this leg is not a duplicate of the one above it: it is the half that catches
+ * a configuration that drifted away from the declaration that governs it. The
+ * refusal quotes the reference implementation's own sentence, because the
+ * reference wrote the rule down and then shipped three violations of it.
+ */
+export function validateConfigRouteForm(
+	root: string,
+	contract: ProxyRoutes,
+): string[] {
+	if (contract.mode !== "active") return [];
+	const source = textOf(resolve(root, contract.configPath));
+	if (source === "") return [];
+	const { config, problems } = readEffectiveConfig(contract.configPath, source);
+	if (!config) return [...new Set(problems)].sort();
+	const errors: string[] = [...problems];
+	for (const table of [DEV_SERVER_KEY, PREVIEW_SERVER_KEY]) {
+		const routes = configRoutes(config, table);
+		if (routes === undefined) {
+			errors.push(
+				`proxy: ${contract.configPath} declares no ${table} proxy table; the registry declares ${contract.routes.length} routes for it`,
+			);
+			continue;
+		}
+		for (const route of routes) {
+			const where = `${contract.configPath} ${table} route ${route.path}`;
+			if (route.shorthand) {
+				errors.push(
+					`proxy: ${where} is a string shorthand; a string target never proxies a WebSocket upgrade, so the object form is not a style preference`,
+				);
+				continue;
+			}
+			if (route.ws === undefined)
+				errors.push(
+					`proxy: ${where} does not declare ws; a route that never states whether it forwards the upgrade has not decided`,
+				);
+			if (route.changeOrigin === undefined)
+				errors.push(`proxy: ${where} does not declare changeOrigin`);
+			if (route.secure === undefined)
+				errors.push(`proxy: ${where} does not declare secure`);
+			if (route.hasRewrite && route.ws === true)
+				errors.push(
+					`proxy: ${where} rewrites its path and forwards the upgrade; path rewriting and WebSocket upgrade forwarding do not compose`,
+				);
+			if (route.target !== undefined) {
+				const problem = targetProblem(route.target);
+				if (problem !== undefined)
+					errors.push(
+						`proxy: ${where} targets ${route.target}, which ${problem}`,
+					);
+			}
+		}
+	}
+	return [...new Set(errors)].sort();
+}
+
 /**
  * The whole development server and proxy contract, with the notices the caller
  * prints.
@@ -958,6 +1403,9 @@ export async function inspectProxyContract(
 		...(await validateWiring(root, contract)),
 		...(await validateOwnership(root)),
 		...worktree.errors,
+		...validateConfigIdentity(root, contract),
+		...validateRouteShape(contract),
+		...validateConfigRouteForm(root, contract),
 	];
 	return { errors: [...new Set(errors)].sort(), notices };
 }

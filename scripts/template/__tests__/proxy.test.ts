@@ -1,11 +1,12 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: The mutations write
 // runner expressions into a workflow verbatim.
 import { describe, expect, test } from "bun:test";
-import { mkdir, rm } from "node:fs/promises";
+import { link, mkdir, rm, symlink } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import {
 	deriveTreeState,
 	inspectProxyContract,
+	NEEDLES,
 	type ProxyRoutes,
 	REGISTRY_PATH,
 	readProxyRoutes,
@@ -13,7 +14,10 @@ import {
 	validateSoleDeclarations,
 } from "../proxy-contract";
 import {
+	ACTIVE_CONFIG_SOURCE,
+	API_UPSTREAM_PORT,
 	activeContract,
+	activeWorkspace,
 	BARE_SERVER_SOURCE,
 	CONFIG_PATH,
 	declaredRoute,
@@ -23,6 +27,7 @@ import {
 	proxyWorkspace,
 	ROOT,
 	SKELETON,
+	SOCKET_UPSTREAM_PORT,
 	WORKTREE_CONTRACT_PATH,
 	writeRegistry,
 } from "./fixtures/proxy-route-workspaces";
@@ -444,5 +449,304 @@ describe("worktree runtime reconciliation", () => {
 		}
 		// ... and the template's own tree has the contract, so it is silent.
 		expect((await inspectProxyContract(ROOT)).notices).toEqual([]);
+	});
+});
+
+describe("configuration identity and shape", () => {
+	test("accepts an active workspace whose configuration matches its registry", async () => {
+		const { root } = await activeWorkspace({ prefix: "devenv-proxy-shape-" });
+		try {
+			expect(await validateProxyContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("refuses a configuration this repository does not exclusively own", async () => {
+		const { root, contract } = await activeWorkspace({
+			prefix: "devenv-proxy-identity-",
+		});
+		const target = resolve(root, contract.configPath);
+		try {
+			// A hardlinked twin. The bytes the guard approves and the bytes the tool
+			// loads stop being the same thing the moment somebody writes through the
+			// other name, and neither file can tell you that happened.
+			await link(target, resolve(root, "vite.config.twin.ts"));
+			expect(await validateProxyContract(root)).toContain(
+				`proxy: ${contract.configPath} must be an independent ordinary in-tree file with exactly one hard link`,
+			);
+			await rm(resolve(root, "vite.config.twin.ts"));
+			expect(await validateProxyContract(root)).toEqual([]);
+
+			// ... and a symlink, which is the same defect with a visible cause.
+			const source = await Bun.file(target).text();
+			await Bun.write(resolve(root, "config-real.ts"), source);
+			await rm(target);
+			await symlink(resolve(root, "config-real.ts"), target);
+			expect(await validateProxyContract(root)).toContain(
+				`proxy: ${contract.configPath} must be an independent ordinary in-tree file with exactly one hard link`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("refuses every exported shape that is not one effective config object", async () => {
+		const { root, contract } = await activeWorkspace({
+			prefix: "devenv-proxy-export-",
+		});
+		try {
+			await mutate(
+				root,
+				contract.configPath,
+				(source) =>
+					`${source}export = { ${NEEDLES.server}: {} };\n`.replace(
+						"export default",
+						"const config =",
+					),
+				`proxy: ${contract.configPath} must not contain an export = assignment; found 1`,
+			);
+			await mutate(
+				root,
+				contract.configPath,
+				(source) => `${source}export default {};\n`,
+				`proxy: ${contract.configPath} must contain exactly one effective default export; found 2`,
+			);
+			await mutate(
+				root,
+				contract.configPath,
+				(source) =>
+					source
+						.replace("export default {", "export default [{")
+						.replace(/^};$/m, "}];"),
+				`proxy: ${contract.configPath} exported configuration must be an object literal`,
+			);
+			// A commented-out export is not an export, which is the whole reason
+			// this leg is a parse and not a search.
+			await tolerate(
+				root,
+				"decoy.ts",
+				`// export default { ${NEEDLES.server}: {} };\nexport const decoy = 1;\n`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("accepts the helper form only when its binding is unambiguous", async () => {
+		const { root, contract } = await activeWorkspace({
+			prefix: "devenv-proxy-helper-",
+			config: `import { defineConfig } from "vite";\n${ACTIVE_CONFIG_SOURCE.replace(
+				"export default {",
+				"export default defineConfig({",
+			).replace(/^};$/m, "});")}`,
+		});
+		try {
+			// The helper form is legal, and so is the import-free form the renderer
+			// emits. A template that forced the import would force a dependency on
+			// every generated project for no behaviour at all.
+			expect(await validateProxyContract(root)).toEqual([]);
+			await mutate(
+				root,
+				contract.configPath,
+				(source) =>
+					source.replace(
+						'import { defineConfig } from "vite";',
+						'import { defineConfig as build } from "vite";\nconst defineConfig = build;',
+					),
+				`proxy: ${contract.configPath} defineConfig must have exactly one unaliased runtime named import from the build tool and no conflicting local runtime binding`,
+			);
+			await mutate(
+				root,
+				contract.configPath,
+				(source) =>
+					source.replace(
+						'import { defineConfig } from "vite";',
+						"function defineConfig(value: unknown) {\n\treturn value;\n}",
+					),
+				`proxy: ${contract.configPath} defineConfig must have exactly one unaliased runtime named import from the build tool and no conflicting local runtime binding`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("route shape", () => {
+	test("refuses a string shorthand and every undeclared route field", async () => {
+		const { root, contract } = await activeWorkspace({
+			prefix: "devenv-proxy-form-",
+		});
+		try {
+			// The reference implementation wrote this rule down in its own comment
+			// and then shipped three violations of it beside object-form siblings.
+			await mutate(
+				root,
+				contract.configPath,
+				(source) =>
+					source.replaceAll(
+						`"/api": { target: "http://127.0.0.1:${API_UPSTREAM_PORT}", ws: false, changeOrigin: true, secure: true }`,
+						`"/api": "http://127.0.0.1:${API_UPSTREAM_PORT}"`,
+					),
+				`proxy: ${contract.configPath} ${NEEDLES.server} route /api is a string shorthand; a string target never proxies a WebSocket upgrade, so the object form is not a style preference`,
+			);
+			await mutate(
+				root,
+				contract.configPath,
+				(source) =>
+					source.replaceAll(", ws: false", "").replaceAll(", ws: true", ""),
+				`proxy: ${contract.configPath} ${NEEDLES.server} route /api does not declare ws; a route that never states whether it forwards the upgrade has not decided`,
+			);
+			await mutate(
+				root,
+				contract.configPath,
+				(source) => source.replaceAll(", changeOrigin: true", ""),
+				`proxy: ${contract.configPath} ${NEEDLES.server} route /api does not declare changeOrigin`,
+			);
+			await mutate(
+				root,
+				contract.configPath,
+				(source) => source.replaceAll(", secure: true", ""),
+				`proxy: ${contract.configPath} ${NEEDLES.server} route /api does not declare secure`,
+			);
+			// The single best find in the reference: a route carrying both a rewrite
+			// and a forwarded upgrade is structurally valid and nonfunctional, and
+			// the reference's own socket client says so and works around it.
+			await mutate(
+				root,
+				contract.configPath,
+				(source) =>
+					source.replaceAll(
+						", ws: true, changeOrigin: true, secure: true }",
+						', ws: true, changeOrigin: true, secure: true, rewrite: (p: string) => p.replace(/^\\/socket/, "") }',
+					),
+				`proxy: ${contract.configPath} ${NEEDLES.server} route /socket rewrites its path and forwards the upgrade; path rewriting and WebSocket upgrade forwarding do not compose`,
+			);
+			// ... and the toleration that makes the rule a rule rather than a ban on
+			// rewriting. A rewrite beside a route that does NOT forward the upgrade
+			// is exactly what a rewrite is for.
+			const withRewrite = ACTIVE_CONFIG_SOURCE.replaceAll(
+				", ws: false, changeOrigin: true, secure: true }",
+				', ws: false, changeOrigin: true, secure: true, rewrite: (p: string) => p.replace(/^\\/api/, "") }',
+			);
+			await Bun.write(resolve(root, contract.configPath), withRewrite);
+			expect(await validateProxyContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("refuses every declared route target that is not a loopback upstream", async () => {
+		const { root } = await activeWorkspace({ prefix: "devenv-proxy-target-" });
+		try {
+			for (const [target, tail] of [
+				[
+					"http://api.example.invalid:8787",
+					"is not loopback; a proxy target that names another host is an unintended external call",
+				],
+				[
+					"http://0.0.0.0:8787",
+					"binds the wildcard address, which is not an address a client connects to",
+				],
+				["http://127.0.0.1", "declares no port"],
+				[
+					"http://127.0.0.1:8787/api",
+					"carries a path, a query or a fragment; a proxy target is an origin",
+				],
+				["not-a-url", "is not an absolute origin"],
+			] as const) {
+				await mutate(
+					root,
+					REGISTRY_PATH,
+					(source) =>
+						source.replace(
+							`"http://127.0.0.1:${API_UPSTREAM_PORT}"`,
+							`"${target}"`,
+						),
+					`proxy: the route api targets ${target}, which ${tail}`,
+				);
+			}
+			// A loopback target nothing declares as an upstream is a route to a
+			// service this project does not own.
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) =>
+					source.replace(
+						`"http://127.0.0.1:${API_UPSTREAM_PORT}"`,
+						'"http://127.0.0.1:9999"',
+					),
+				"proxy: the route api targets port 9999, which no declared upstream binds",
+			);
+			// ... and the other direction: an upstream nothing routes to is a stale
+			// entry that outlives the route it was written for.
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) =>
+					source.replace(`"port": ${API_UPSTREAM_PORT},`, '"port": 9999,'),
+				"proxy: the upstream api binds port 9999, which no declared route targets",
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("refuses a socket target that drops the upgrade and an insecure https target", async () => {
+		const { root } = await activeWorkspace({ prefix: "devenv-proxy-upgrade-" });
+		try {
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) =>
+					source
+						.replace(
+							`"http://127.0.0.1:${SOCKET_UPSTREAM_PORT}"`,
+							`"ws://127.0.0.1:${SOCKET_UPSTREAM_PORT}"`,
+						)
+						.replace('"ws": true', '"ws": false'),
+				"proxy: the route socket targets a socket scheme and does not forward the upgrade; a route that answers HTTP and drops every upgrade is structurally valid and nonfunctional",
+			);
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) =>
+					source
+						.replace(
+							`"http://127.0.0.1:${API_UPSTREAM_PORT}"`,
+							`"https://127.0.0.1:${API_UPSTREAM_PORT}"`,
+						)
+						.replace('"secure": true', '"secure": false'),
+				"proxy: the route api disables certificate verification against an https target",
+			);
+			// The registry can express the same defect the configuration can, and
+			// the message is the same sentence: the socket route is the one that
+			// forwards the upgrade, so it is the one a rewrite breaks.
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) =>
+					source.replace(
+						'"ws": true,\n\t\t\t"changeOrigin": true,\n\t\t\t"secure": true,\n\t\t\t"rewrite": null',
+						'"ws": true,\n\t\t\t"changeOrigin": true,\n\t\t\t"secure": true,\n\t\t\t"rewrite": "^/socket"',
+					),
+				"proxy: the route socket rewrites its path and forwards the upgrade; path rewriting and WebSocket upgrade forwarding do not compose",
+			);
+			// ... and the toleration: a rewrite beside a route that does NOT forward
+			// the upgrade is exactly what a rewrite is for.
+			const registry = resolve(root, REGISTRY_PATH);
+			const original = await Bun.file(registry).text();
+			await Bun.write(
+				registry,
+				original.replace(
+					'"ws": false,\n\t\t\t"changeOrigin": true,\n\t\t\t"secure": true,\n\t\t\t"rewrite": null',
+					'"ws": false,\n\t\t\t"changeOrigin": true,\n\t\t\t"secure": true,\n\t\t\t"rewrite": "^/api"',
+				),
+			);
+			expect(await validateProxyContract(root)).toEqual([]);
+			await Bun.write(registry, original);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
 	});
 });
