@@ -1,0 +1,88 @@
+{
+  "commandId": "rollback-proof",
+  "predecessorSha": "75343aed70b712e3a6368cd059d13784a8c8e2f3",
+  "implementationSha": "9b15ab355b401e366f8e6a37976f95a0f7e1521e",
+  "syntheticMergeSha": "04c3aad3a051762bf402826c0ec2e1f83ea42176",
+  "syntheticMergeTree": "1882e8ac037436dec252299cfa75141fcca8028b",
+  "syntheticMergeParents": [
+    "75343aed70b712e3a6368cd059d13784a8c8e2f3",
+    "9b15ab355b401e366f8e6a37976f95a0f7e1521e"
+  ],
+  "predecessorTree": "4cd2c115924319d236f873061913ec5781e5a566",
+  "revertedTree": "4cd2c115924319d236f873061913ec5781e5a566",
+  "treeMatchesPredecessor": true,
+  "operations": [
+    [
+      "git",
+      "rev-parse",
+      "75343aed70b712e3a6368cd059d13784a8c8e2f3^{tree}"
+    ],
+    [
+      "git",
+      "rev-parse",
+      "9b15ab355b401e366f8e6a37976f95a0f7e1521e^{tree}"
+    ],
+    [
+      "git",
+      "worktree",
+      "add",
+      "--detach",
+      "/tmp/devenv-stage2-stage7-20260806t235847z-9b15ab35-rollback",
+      "75343aed70b712e3a6368cd059d13784a8c8e2f3"
+    ],
+    [
+      "git",
+      "commit-tree",
+      "1882e8ac037436dec252299cfa75141fcca8028b",
+      "-p",
+      "75343aed70b712e3a6368cd059d13784a8c8e2f3",
+      "-p",
+      "9b15ab355b401e366f8e6a37976f95a0f7e1521e",
+      "-m",
+      "Stage 2 synthetic merge"
+    ],
+    [
+      "git",
+      "rev-parse",
+      "04c3aad3a051762bf402826c0ec2e1f83ea42176^{tree}"
+    ],
+    [
+      "git",
+      "show",
+      "-s",
+      "--format=%P",
+      "04c3aad3a051762bf402826c0ec2e1f83ea42176"
+    ],
+    [
+      "git",
+      "checkout",
+      "--detach",
+      "04c3aad3a051762bf402826c0ec2e1f83ea42176"
+    ],
+    [
+      "git",
+      "revert",
+      "--no-edit",
+      "-m",
+      "1",
+      "04c3aad3a051762bf402826c0ec2e1f83ea42176"
+    ],
+    [
+      "git",
+      "rev-parse",
+      "HEAD^{tree}"
+    ]
+  ],
+  "addedPaths": [
+    ".github/actions/setup-bun/action.yml",
+    "scripts/ci/aggregate-gate.sh",
+    "scripts/ci/bun-install-retry.sh",
+    "scripts/ci/run-tests.sh",
+    "scripts/ci/run-typecheck.sh",
+    "scripts/template/__tests__/ci.test.ts",
+    "scripts/template/ci-contract.ts",
+    "scripts/template/validate-ci.ts",
+    "tsconfig.json"
+  ],
+  "addedPathsRemoved": true
+}

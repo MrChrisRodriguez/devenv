@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "name": "minimal",
+      "workflows": [
+        ".github/workflows/ci.yml"
+      ],
+      "jobs": [
+        "ci",
+        "ci-gate",
+        "image"
+      ],
+      "gateContext": "CI gate",
+      "gateNeeds": [
+        "ci",
+        "image"
+      ],
+      "errors": []
+    },
+    {
+      "name": "cloud",
+      "workflows": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/codex-cloud-smoke.yml"
+      ],
+      "jobs": [
+        "ci",
+        "ci-gate",
+        "image"
+      ],
+      "gateContext": "CI gate",
+      "gateNeeds": [
+        "ci",
+        "image"
+      ],
+      "errors": []
+    },
+    {
+      "name": "full",
+      "workflows": [
+        ".github/workflows/ci.yml",
+        ".github/workflows/codex-cloud-smoke.yml"
+      ],
+      "jobs": [
+        "browser",
+        "ci",
+        "ci-gate",
+        "image"
+      ],
+      "gateContext": "CI gate",
+      "gateNeeds": [
+        "ci",
+        "image",
+        "browser"
+      ],
+      "errors": []
+    }
+  ]
+}
