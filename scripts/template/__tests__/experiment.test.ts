@@ -17,14 +17,20 @@ import {
 } from "../experiment-contract";
 import {
 	APP_DIRECTORY,
+	APP_ID,
+	activeWorkspace,
+	BIOME_PATH,
 	experimentFiles,
 	experimentWorkspace,
+	IGNORE_PATH,
 	MANIFEST_PATH,
+	MOON_WORKSPACE_PATH,
 	OWNERSHIP_PATH,
 	REGISTRY_PATH,
 	ROOT,
 	SKELETON,
 	skeletonWorkspace,
+	TSCONFIG_PATH,
 	UNIVERSE_PATH,
 	WORKFLOW_PATH,
 	writeRegistry,
@@ -604,6 +610,239 @@ describe("the notices channel", () => {
 		});
 		try {
 			expect(await validateExperimentContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("the seven strictness exception surfaces", () => {
+	test("the workspace globs are locked to the declaration", async () => {
+		const root = await skeletonWorkspace();
+		try {
+			await mutate(
+				root,
+				MANIFEST_PATH,
+				(source) => source.replace('"libs/*"', '"libs/shared"'),
+				`experiment: package.json workspaces.packages is ["apps/*","libs/shared"] but ${REGISTRY_PATH} declares ["apps/*","libs/*"]; a drift here is a decision somebody makes in a commit, not a side effect of a directory appearing`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("the moon project globs and the root project are locked", async () => {
+		const root = await skeletonWorkspace();
+		try {
+			await mutate(
+				root,
+				MOON_WORKSPACE_PATH,
+				(source) => source.replace("    - 'libs/*'\n", ""),
+				`experiment: .moon/workspace.yml projects.globs is ["apps/*"] but ${REGISTRY_PATH} declares ["apps/*","libs/*"]; a drift here is a decision somebody makes in a commit, not a side effect of a directory appearing`,
+			);
+			await mutate(
+				root,
+				MOON_WORKSPACE_PATH,
+				(source) => source.replace("    root: '.'", "    tooling: 'scripts'"),
+				"experiment: .moon/workspace.yml must keep the repository itself as the project named root, so the graph is never empty",
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("only the root project may exclude inherited moon tasks", async () => {
+		const { root } = await activeWorkspace();
+		try {
+			await mutate(
+				root,
+				`${APP_DIRECTORY}/moon.yml`,
+				(source) =>
+					`${source}workspace:\n  inheritedTasks:\n    exclude:\n      - 'typecheck'\n`,
+				`experiment: ${APP_DIRECTORY}/moon.yml excludes inherited moon tasks; only the root moon.yml may, because its directory is the whole repository`,
+			);
+			// And the root's own exclusion, which is load-bearing, stays legal.
+			expect(await validateExperimentContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("the typechecker's include and exclude lists are locked", async () => {
+		const { root } = await activeWorkspace();
+		try {
+			await mutate(
+				root,
+				TSCONFIG_PATH,
+				(source) =>
+					source.replace(
+						'"scripts/template", "tmp"]',
+						`"scripts/template", "tmp", "${APP_DIRECTORY}"]`,
+					),
+				`experiment: tsconfig.json excludes ${APP_DIRECTORY}, which removes a workspace directory from the typechecker`,
+			);
+			await mutate(
+				root,
+				TSCONFIG_PATH,
+				(source) => source.replace('"libs/**/*.ts", ', ""),
+				`experiment: tsconfig.json include is ["apps/**/*.ts","scripts/**/*.ts"] but ${REGISTRY_PATH} declares ["apps/**/*.ts","libs/**/*.ts","scripts/**/*.ts"]; a drift here is a decision somebody makes in a commit, not a side effect of a directory appearing`,
+			);
+			// The lock is a DECLARATION lock and not a freeze: a change made in both
+			// places at once is exactly the reviewable act it is supposed to be.
+			const tsconfig = resolve(root, TSCONFIG_PATH);
+			const registryFile = resolve(root, REGISTRY_PATH);
+			const originalTsconfig = await Bun.file(tsconfig).text();
+			const originalRegistry = await Bun.file(registryFile).text();
+			try {
+				await Bun.write(
+					tsconfig,
+					originalTsconfig.replace(
+						'"scripts/**/*.ts"]',
+						'"scripts/**/*.ts", "apps/**/*.tsx"]',
+					),
+				);
+				const declared = JSON.parse(originalRegistry) as ExperimentRegistry;
+				declared.policy.typecheckIncludes.push("apps/**/*.tsx");
+				await Bun.write(
+					registryFile,
+					`${JSON.stringify(declared, null, "\t")}\n`,
+				);
+				expect(await validateExperimentContract(root)).toEqual([]);
+			} finally {
+				await Bun.write(tsconfig, originalTsconfig);
+				await Bun.write(registryFile, originalRegistry);
+			}
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("the formatter's negations and disabling overrides are locked", async () => {
+		const { root } = await activeWorkspace();
+		try {
+			await mutate(
+				root,
+				BIOME_PATH,
+				(source) =>
+					source.replace(
+						'"!graphify-out"',
+						`"!graphify-out", "!${APP_DIRECTORY}"`,
+					),
+				`experiment: biome.jsonc excludes ${APP_DIRECTORY} from the formatter and the linter, and it names a workspace directory`,
+			);
+			// An override that turns the linter off for a path is a negation with
+			// better manners, and it is the one a reader skims past.
+			await mutate(
+				root,
+				BIOME_PATH,
+				(source) =>
+					source.replace(
+						'"includes": ["**/generated/**", "**/openapi/**"],',
+						`"includes": ["**/generated/**", "**/openapi/**", "${APP_DIRECTORY}/**"],`,
+					),
+				`experiment: biome.jsonc excludes ${APP_DIRECTORY}/** from the formatter and the linter, and it names a workspace directory`,
+			);
+			// An override that disables nothing is not an exception at all.
+			await tolerate(
+				root,
+				BIOME_PATH,
+				`${JSON.stringify(
+					{
+						$schema: "https://biomejs.dev/schemas/2.4.16/schema.json",
+						vcs: { enabled: true, clientKind: "git", useIgnoreFile: true },
+						files: {
+							includes: [
+								"**",
+								"!**/worker-configuration.d.ts",
+								"!graphify-out",
+							],
+						},
+						overrides: [
+							{
+								includes: ["**/generated/**", "**/openapi/**"],
+								linter: { enabled: false },
+								formatter: { enabled: false },
+								assist: { enabled: false },
+							},
+							{
+								includes: [`${APP_DIRECTORY}/**`],
+								formatter: { indentStyle: "space" },
+							},
+						],
+					},
+					null,
+					"\t",
+				)}\n`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("an ignored experiment directory is refused and build output is not", async () => {
+		const { root } = await activeWorkspace();
+		try {
+			await mutate(
+				root,
+				IGNORE_PATH,
+				(source) => `${source}${APP_DIRECTORY}/\n`,
+				`experiment: .gitignore ignores ${APP_DIRECTORY}/, which names a workspace directory; an ignored directory is invisible to every guard at once`,
+			);
+			await mutate(
+				root,
+				IGNORE_PATH,
+				(source) => `${source}apps/\n`,
+				"experiment: .gitignore ignores apps/, which names a workspace directory; an ignored directory is invisible to every guard at once",
+			);
+			// The declared build-output patterns match INSIDE an experiment and are
+			// legitimate. They are declared rather than special-cased so the list of
+			// things this rule does not catch is as legible as the list it does.
+			expect(await validateExperimentContract(root)).toEqual([]);
+			const ignore = resolve(root, IGNORE_PATH);
+			const original = await Bun.file(ignore).text();
+			try {
+				await Bun.write(ignore, `${original}**/dist/\n**/coverage/\n`);
+				expect(await validateExperimentContract(root)).toEqual([]);
+			} finally {
+				await Bun.write(ignore, original);
+			}
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("the CI tolerance surface is cross-referenced, not duplicated", async () => {
+		const { root } = await activeWorkspace();
+		try {
+			const { errors, notices } = await inspectExperimentContract(root);
+			expect(errors).toEqual([]);
+			// `ci:check` owns the sentence about a tolerated failing step. Two
+			// refusals for one defect send the reader to two files.
+			expect(notices).toContain(
+				"experiment: a tolerated failing step anywhere under .github/workflows is refused by ci:check, which owns that sentence; this guard adds only the experiment-specific half",
+			);
+			// The half nobody else covers: a declared toleration matching nothing.
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) =>
+					source.replace(
+						'"toleratedWorkflowFailures": []',
+						'"toleratedWorkflowFailures": [{ "workflow": ".github/workflows/ci.yml", "job": "ci", "reason": "a reason long enough to be a reason at all" }]',
+					),
+				"experiment: experiments.json tolerates a failing ci job in .github/workflows/ci.yml, and nothing there tolerates a failure; a stale exemption widens itself",
+			);
+			// ... and a workflow condition that names a declared experiment.
+			await mutate(
+				root,
+				WORKFLOW_PATH,
+				(source) =>
+					source.replace(
+						"      - name: Validate experiment lifecycle contract\n",
+						`      - name: Validate experiment lifecycle contract\n        if: \${{ !contains(github.event.head_commit.message, '${APP_ID}') }}\n`,
+					),
+				`experiment: a workflow condition under .github/workflows names ${APP_ID}; an experiment may not skip a required step by naming itself`,
+			);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}

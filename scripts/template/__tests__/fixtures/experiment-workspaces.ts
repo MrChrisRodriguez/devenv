@@ -1,7 +1,7 @@
 import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import type { ExperimentRegistry } from "../../experiment-contract";
+import type { Experiment, ExperimentRegistry } from "../../experiment-contract";
 
 export const ROOT = resolve(import.meta.dir, "../../../..");
 
@@ -103,6 +103,59 @@ export async function skeletonWorkspace(prefix?: string): Promise<string> {
 	return await experimentWorkspace({
 		prefix: prefix ?? "devenv-experiment-skeleton-",
 	});
+}
+
+/** One declared experiment, in the shape a real one would carry. */
+export function declaredExperiment(
+	overrides: Partial<Experiment> = {},
+): Experiment {
+	return {
+		id: APP_ID,
+		directory: APP_DIRECTORY,
+		status: "disposable",
+		opened: "2026-08-07T00:00:00Z",
+		findings: null,
+		findingsWaiver: null,
+		promotion: null,
+		...overrides,
+	};
+}
+
+/** The committed skeleton with one live experiment declared. */
+export function activeRegistry(
+	overrides: Partial<ExperimentRegistry> = {},
+): ExperimentRegistry {
+	return {
+		...SKELETON,
+		mode: "active",
+		experiments: [declaredExperiment()],
+		...overrides,
+	};
+}
+
+/**
+ * A workspace with one declared experiment and the files that back it.
+ *
+ * The registry and the directory move together on purpose: mode reconciliation
+ * runs before any leg and short-circuits on failure, so a fixture that wrote one
+ * without the other would be testing the reconciliation instead of the leg it
+ * meant to reach.
+ */
+export async function activeWorkspace(options?: {
+	registry?: Partial<ExperimentRegistry>;
+	files?: Record<string, string>;
+	prefix?: string;
+}): Promise<{ root: string; registry: ExperimentRegistry }> {
+	const registry = activeRegistry(options?.registry ?? {});
+	const root = await experimentWorkspace({
+		registry,
+		prefix: options?.prefix ?? "devenv-experiment-active-",
+		files: {
+			...experimentFiles(registry.experiments[0]?.directory ?? APP_DIRECTORY),
+			...options?.files,
+		},
+	});
+	return { root, registry };
 }
 
 /** The files a plausible experiment directory carries, keyed by path. */
