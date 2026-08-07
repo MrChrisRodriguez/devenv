@@ -15,6 +15,7 @@ import {
 	reconcileMode,
 	SURFACE_COUNT,
 	SURFACES,
+	type TreeState,
 	validateContainment,
 	validateExperimentContract,
 	validateRetirementResidue,
@@ -1972,6 +1973,75 @@ describe("the promotion lifecycle, end to end, over a real repository", () => {
 			).toBe(false);
 		} finally {
 			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("the declarations the record seals", () => {
+	/**
+	 * Three refusals the evidence record cites that no earlier case reached.
+	 *
+	 * They are here because a sealed diagnostic is a claim that a committed test
+	 * still asserts it, and the collector self-validates that claim before it
+	 * writes anything. A record may say this surface is guarded only for as long
+	 * as the guard is exercised, so the record demanding coverage is the record
+	 * working.
+	 */
+	test("a skeleton registry may not declare experiments, and an active one must", () => {
+		const state: TreeState = {
+			mode: "skeleton",
+			directories: [],
+			experimentDirectories: [],
+			files: 40,
+			tracked: true,
+			errors: [],
+			notices: [],
+		};
+		expect(
+			reconcileMode(
+				{
+					...SKELETON,
+					mode: "skeleton",
+					experiments: [declaredExperiment()],
+				} as ExperimentRegistry,
+				{
+					...state,
+					directories: [APP_DIRECTORY],
+					experimentDirectories: [APP_DIRECTORY],
+					mode: "active",
+				},
+			),
+		).toContain(
+			`experiment: ${REGISTRY_PATH} declares skeleton mode but declares 1 experiments`,
+		);
+		expect(
+			reconcileMode(
+				{ ...SKELETON, mode: "active", experiments: [] } as ExperimentRegistry,
+				state,
+			),
+		).toContain(
+			`experiment: ${REGISTRY_PATH} declares active mode but declares no experiment`,
+		);
+	});
+
+	test("an enumeration that read nothing is a failure and never a skeleton", async () => {
+		// The vacuous pass in its purest form. A walk that read no files would
+		// report `skeleton` for every tree there will ever be, so the count of
+		// files read is itself an assertion.
+		const empty = await mkdtemp(resolve(tmpdir(), "devenv-experiment-empty-"));
+		try {
+			const state = deriveTreeState(empty);
+			expect(state.files).toBe(0);
+			expect(state.errors).toContain(
+				`experiment: the file enumeration found nothing under ${empty}; a rule with no input has answered nothing`,
+			);
+			// And it propagates: mode reconciliation carries the enumeration's own
+			// errors rather than answering over an empty set.
+			expect(reconcileMode(SKELETON, state)).toContain(
+				`experiment: the file enumeration found nothing under ${empty}; a rule with no input has answered nothing`,
+			);
+		} finally {
+			await rm(empty, { recursive: true, force: true });
 		}
 	});
 });

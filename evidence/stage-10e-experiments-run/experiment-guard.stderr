@@ -1,0 +1,2 @@
+$ bun scripts/template/validate-experiment.ts
+experiment: a tolerated failing step anywhere under .github/workflows is refused by ci:check, which owns that sentence; this guard adds only the experiment-specific half

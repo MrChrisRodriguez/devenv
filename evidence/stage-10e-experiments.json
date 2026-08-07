@@ -1,0 +1,790 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-10e-experiments",
+	"capturedAt": "2026-08-07T16:33:06.643Z",
+	"run": {
+		"id": "stage10e-20260807t163255z-70bef161",
+		"logRoot": "evidence/stage-10e-experiments-run"
+	},
+	"source": {
+		"baseSha": "40f597aa83e44333c6b119b05ebe217fc9ea0b21",
+		"implementationSha": "70bef16124ce00024481a93f23903205a982eb8a",
+		"treeClean": true,
+		"declaredMode": "skeleton",
+		"policy": {
+			"workspaceGlobs": ["apps/*", "libs/*"],
+			"projectGlobs": ["apps/*", "libs/*"],
+			"typecheckProject": "tsconfig.json",
+			"typecheckIncludes": ["apps/**/*.ts", "libs/**/*.ts", "scripts/**/*.ts"],
+			"typecheckExcludes": [
+				"dist",
+				"graphify-out",
+				"node_modules",
+				"scripts/template",
+				"tmp"
+			],
+			"formatterConfig": "biome.jsonc",
+			"formatterNegations": ["**/worker-configuration.d.ts", "graphify-out"],
+			"formatterOverrides": ["**/generated/**", "**/openapi/**"],
+			"ignoreFile": ".gitignore",
+			"toleratedIgnorePatterns": [
+				"**/build/",
+				"**/coverage/",
+				"**/dist/",
+				"**/out/",
+				"**/tmp/"
+			],
+			"universeRegistryPath": "ci-matrix-universes.json",
+			"workflowRoot": ".github/workflows",
+			"toleratedWorkflowFailures": [],
+			"reservedDirectories": [
+				{
+					"directory": "libs/auth",
+					"ownershipPattern": "libs/auth/**"
+				},
+				{
+					"directory": "libs/forms",
+					"ownershipPattern": "libs/forms/**"
+				},
+				{
+					"directory": "libs/observability",
+					"ownershipPattern": "libs/observability/**"
+				}
+			],
+			"findingsRoots": ["CHANGES.md", "docs/", "openspec/changes/archive/"],
+			"retirementAllowList": [
+				"CHANGES.md",
+				"docs/devcontainer-upgrade/",
+				"evidence/",
+				"experiments.json",
+				"graphify-out/",
+				"openspec/",
+				"scripts/template/experiment-contract.ts"
+			]
+		},
+		"reservedDirectories": [
+			{
+				"directory": "libs/auth",
+				"ownershipPattern": "libs/auth/**"
+			},
+			{
+				"directory": "libs/forms",
+				"ownershipPattern": "libs/forms/**"
+			},
+			{
+				"directory": "libs/observability",
+				"ownershipPattern": "libs/observability/**"
+			}
+		],
+		"surfaceCount": 7,
+		"lockfileBytesChanged": 0,
+		"workspaceDirectoriesAdded": 0
+	},
+	"host": {
+		"os": "darwin",
+		"architecture": "arm64",
+		"kernel": "25.5.0",
+		"insideDevcontainer": false,
+		"bunVersion": "1.3.13",
+		"gitVersion": "2.50.1",
+		"ghVersion": "2.59.0"
+	},
+	"repository": {
+		"nameWithOwner": "MrChrisRodriguez/devenv",
+		"workflowFile": ".github/workflows/ci.yml",
+		"gateJobId": "ci-gate",
+		"gateContext": "CI gate",
+		"gateNeeds": [
+			"ci",
+			"image",
+			"affected",
+			"project",
+			"moon-graph",
+			"browser"
+		],
+		"experimentGuardScript": "experiments:check",
+		"ciGuardScript": "ci:check",
+		"registryFile": "experiments.json",
+		"capability": null,
+		"addedJobs": 0,
+		"devcontainerFilesChanged": 0,
+		"huskyFilesChanged": 0
+	},
+	"commands": [
+		{
+			"id": "experiment-guard",
+			"command": ["bun", "run", "experiments:check"],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:32:55.042Z",
+			"completedAt": "2026-08-07T16:32:55.117Z",
+			"durationMs": 75,
+			"stdoutPath": "evidence/stage-10e-experiments-run/experiment-guard.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/experiment-guard.stderr",
+			"stdoutSha256": "24b5cfc6cf8281d7f363b6640dd3f1f903374e8070ef6c5a93e5238432cf03e5",
+			"stderrSha256": "e80a224d065f2939af210f89817395d9d6e26a2a070280c687efb4b9158f10a8",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "ci-guard",
+			"command": ["bun", "run", "ci:check"],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:32:55.120Z",
+			"completedAt": "2026-08-07T16:32:55.185Z",
+			"durationMs": 65,
+			"stdoutPath": "evidence/stage-10e-experiments-run/ci-guard.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/ci-guard.stderr",
+			"stdoutSha256": "9cfe650e97435463f535e1a81f5b30b1ab521cfb458af04688f901be57a294f9",
+			"stderrSha256": "d183538a63c244d8ba196aa5a8eb1eb4cfc636414a9ba546e4cfb9b3537e4088",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "experiment-mutations",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/experiment.test.ts"
+			],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:32:55.185Z",
+			"completedAt": "2026-08-07T16:33:00.043Z",
+			"durationMs": 4858,
+			"stdoutPath": "evidence/stage-10e-experiments-run/experiment-mutations.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/experiment-mutations.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "27d461b2d1a9cf665f0859f2ce463e5eeb3505eebb1c93a01ed3e5bc0c1068e4",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "mode-reconciliation",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/experiment.test.ts",
+				"-t",
+				"reconciles the declared mode with the derived one in both"
+			],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:33:00.043Z",
+			"completedAt": "2026-08-07T16:33:00.065Z",
+			"durationMs": 22,
+			"stdoutPath": "evidence/stage-10e-experiments-run/mode-reconciliation.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/mode-reconciliation.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "c56e2b9b7c62704820a220610929d71435238bca7a11b5422505b431498fc0d8",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "surface-lock",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/experiment.test.ts",
+				"-t",
+				"the seven strictness exception surfaces"
+			],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:33:00.065Z",
+			"completedAt": "2026-08-07T16:33:00.784Z",
+			"durationMs": 719,
+			"stdoutPath": "evidence/stage-10e-experiments-run/surface-lock.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/surface-lock.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "c3f90e50e10dbb4ead848347ddb3342e103f96c47e324f0ba4f89aa069a55783",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "containment",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/experiment.test.ts",
+				"-t",
+				"an experiment outside the workspace globs is refused"
+			],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:33:00.784Z",
+			"completedAt": "2026-08-07T16:33:00.845Z",
+			"durationMs": 61,
+			"stdoutPath": "evidence/stage-10e-experiments-run/containment.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/containment.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "711d22974925c1d245e15695124b63d4a31e8946c9458d1048cd750042e4cca5",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "manifest-registration",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/experiment.test.ts",
+				"-t",
+				"a declared experiment must be a package and a moon project"
+			],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:33:00.846Z",
+			"completedAt": "2026-08-07T16:33:00.940Z",
+			"durationMs": 94,
+			"stdoutPath": "evidence/stage-10e-experiments-run/manifest-registration.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/manifest-registration.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "3efda1639869bb336d26db8a998b5e696d0ec53f6915d01d7c05e01e172b95a3",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "moon-registration",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/experiment.test.ts",
+				"-t",
+				"a hand-written moon.yml with no generated block is refused"
+			],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:33:00.940Z",
+			"completedAt": "2026-08-07T16:33:01.033Z",
+			"durationMs": 93,
+			"stdoutPath": "evidence/stage-10e-experiments-run/moon-registration.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/moon-registration.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "f4e470243f7ff8e2d922a60454cb0add86e844fb81c939ccc2bb44028fea8bf6",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "universe-reconciliation",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/experiment.test.ts",
+				"-t",
+				"universe membership is a notice, and a declared universe id"
+			],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:33:01.033Z",
+			"completedAt": "2026-08-07T16:33:01.153Z",
+			"durationMs": 120,
+			"stdoutPath": "evidence/stage-10e-experiments-run/universe-reconciliation.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/universe-reconciliation.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "afdec3c4b8db0eeb8c299bbd865ef04889c60cedfe8d8e50dbc7a6a9926d94b2",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "promotion-artifacts",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/experiment.test.ts",
+				"-t",
+				"each of the five promotion artefacts is refused when it is"
+			],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:33:01.154Z",
+			"completedAt": "2026-08-07T16:33:01.487Z",
+			"durationMs": 333,
+			"stdoutPath": "evidence/stage-10e-experiments-run/promotion-artifacts.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/promotion-artifacts.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "4d19e71dfb1e390a7fae7fd3b87422ffdc285b4f69de56622a506aa3468f32ca",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "retirement-residue",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/experiment.test.ts",
+				"-t",
+				"the retirement residue scan"
+			],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:33:01.488Z",
+			"completedAt": "2026-08-07T16:33:01.771Z",
+			"durationMs": 283,
+			"stdoutPath": "evidence/stage-10e-experiments-run/retirement-residue.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/retirement-residue.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "6cf0c3b618c511acab19bd07f6afd433d357215cec8f9eba23d5a80e3fa8fecf",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "findings",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/experiment.test.ts",
+				"-t",
+				"a retired experiment must name findings or waive them"
+			],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:33:01.771Z",
+			"completedAt": "2026-08-07T16:33:01.973Z",
+			"durationMs": 202,
+			"stdoutPath": "evidence/stage-10e-experiments-run/findings.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/findings.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "e30fb144948d608f4f97865467d66bda03b4b7206219b3c8deb220bc2fdc90a6",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "removal-fixture",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/experiment.test.ts",
+				"-t",
+				"a spike is created, deleted, and cleaned up one registration"
+			],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:33:01.973Z",
+			"completedAt": "2026-08-07T16:33:02.360Z",
+			"durationMs": 387,
+			"stdoutPath": "evidence/stage-10e-experiments-run/removal-fixture.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/removal-fixture.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "a10e4ab744f9a97230ab9f9e6cb09969d397bf3fb44314e8c716d90d2a1a63bb",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "promotion-fixture",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/experiment.test.ts",
+				"-t",
+				"a spike is created disposable, promoted, and completed one"
+			],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:33:02.360Z",
+			"completedAt": "2026-08-07T16:33:02.742Z",
+			"durationMs": 382,
+			"stdoutPath": "evidence/stage-10e-experiments-run/promotion-fixture.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/promotion-fixture.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "a0e00c194256957d434792b59242f598d2e36be773954fb1594d727397b53bae",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rendered-experiments",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-ten-e-evidence.ts",
+				"probe-render-experiments",
+				"--workspace",
+				"/tmp/devenv-stage10e-20260807t163255z-70bef161-render"
+			],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:33:02.742Z",
+			"completedAt": "2026-08-07T16:33:03.378Z",
+			"durationMs": 636,
+			"stdoutPath": "evidence/stage-10e-experiments-run/rendered-experiments.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/rendered-experiments.stderr",
+			"stdoutSha256": "af121636996c78d8562a4f0f2599803d250845aeea4ef7fa47184dd35f24f717",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-gate",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nrun=\"$(gh run view 31197689568 --repo MrChrisRodriguez/devenv --json conclusion,createdAt,databaseId,event,headBranch,headSha,jobs,status,url,workflowName)\"\nprintf 'runJson=%s\\n' \"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\ngate=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; jobs=[job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]]; print(jobs[0] if jobs else \"\")' \"CI gate\")\"\nprintf 'gateJobId=%s\\n' \"$gate\"\nlog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$gate\" --log)\"\nprintf 'gateLogSha256=%s\\n' \"$(printf '%s' \"$log\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'upstreamResults=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*upstream results: //p' | head -n 1)\"\nprintf 'gateGreenLines=%s\\n' \"$(printf '%s\\n' \"$log\" | grep -c 'Every required job passed or was skipped' || true)\""
+			],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:33:03.378Z",
+			"completedAt": "2026-08-07T16:33:06.003Z",
+			"durationMs": 2625,
+			"stdoutPath": "evidence/stage-10e-experiments-run/live-gate.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/live-gate.stderr",
+			"stdoutSha256": "3466ebf9abc26edf6a2cf97598c6aa711137f4dbbb44f7d966933da9a783ddfb",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rollback-proof",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-ten-e-evidence.ts",
+				"probe-rollback",
+				"--base",
+				"40f597aa83e44333c6b119b05ebe217fc9ea0b21",
+				"--implementation",
+				"70bef16124ce00024481a93f23903205a982eb8a",
+				"--workspace",
+				"/tmp/devenv-stage2-stage10e-20260807t163255z-70bef161-rollback"
+			],
+			"runId": "stage10e-20260807t163255z-70bef161",
+			"startedAt": "2026-08-07T16:33:06.004Z",
+			"completedAt": "2026-08-07T16:33:06.630Z",
+			"durationMs": 626,
+			"stdoutPath": "evidence/stage-10e-experiments-run/rollback-proof.stdout",
+			"stderrPath": "evidence/stage-10e-experiments-run/rollback-proof.stderr",
+			"stdoutSha256": "2e4f16ae91f84e8f34207a08c54ec6b966ca0e3f1f41126857f087d4e883bf39",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		}
+	],
+	"guards": {
+		"experiment": {
+			"commandId": "experiment-guard",
+			"command": "bun run experiments:check",
+			"summary": "Validated the experiment lifecycle registry, its declared mode against the tree in both directions, guard wiring, template ownership, the seven strictness exception surfaces, containment and registration, CI universe membership, the promotion artefacts, the retirement residue scan, and the findings records."
+		},
+		"ci": {
+			"commandId": "ci-guard",
+			"command": "bun run ci:check",
+			"summary": "Validated workflow trigger policy, bootstrap ownership, action pins, job bounds, failure tolerance, aggregate gate membership, shell injection surface, history ownership, compiler coverage, and guard wiring."
+		}
+	},
+	"surfaces": {
+		"commandId": "surface-lock",
+		"scanned": 7,
+		"inspected": [
+			"manifest",
+			"moon",
+			"typecheck",
+			"formatter",
+			"ignore",
+			"ci",
+			"universe"
+		],
+		"paths": [
+			"package.json",
+			".moon/workspace.yml",
+			"tsconfig.json",
+			"biome.jsonc",
+			".gitignore",
+			".github/workflows",
+			"ci-matrix-universes.json"
+		]
+	},
+	"suites": [
+		{
+			"commandId": "experiment-mutations",
+			"testFile": "scripts/template/__tests__/experiment.test.ts",
+			"passCount": 49,
+			"failCount": 0
+		},
+		{
+			"commandId": "mode-reconciliation",
+			"testFile": "scripts/template/__tests__/experiment.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "surface-lock",
+			"testFile": "scripts/template/__tests__/experiment.test.ts",
+			"passCount": 7,
+			"failCount": 0
+		},
+		{
+			"commandId": "containment",
+			"testFile": "scripts/template/__tests__/experiment.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "manifest-registration",
+			"testFile": "scripts/template/__tests__/experiment.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "moon-registration",
+			"testFile": "scripts/template/__tests__/experiment.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "universe-reconciliation",
+			"testFile": "scripts/template/__tests__/experiment.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "promotion-artifacts",
+			"testFile": "scripts/template/__tests__/experiment.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "retirement-residue",
+			"testFile": "scripts/template/__tests__/experiment.test.ts",
+			"passCount": 4,
+			"failCount": 0
+		},
+		{
+			"commandId": "findings",
+			"testFile": "scripts/template/__tests__/experiment.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "removal-fixture",
+			"testFile": "scripts/template/__tests__/experiment.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "promotion-fixture",
+			"testFile": "scripts/template/__tests__/experiment.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		}
+	],
+	"renderFixtures": {
+		"commandId": "rendered-experiments",
+		"fixtures": [
+			{
+				"name": "minimal",
+				"corePaths": [
+					"experiments.json",
+					"experiments.schema.json",
+					"scripts/template/experiment-contract.ts",
+					"scripts/template/validate-experiment.ts"
+				],
+				"guardScriptPresent": true,
+				"guardStepPresent": true,
+				"guardStepFenced": false,
+				"experimentErrors": [],
+				"surfacesScanned": 7,
+				"residueFindings": [],
+				"coreResidueFindings": []
+			},
+			{
+				"name": "cloud",
+				"corePaths": [
+					"experiments.json",
+					"experiments.schema.json",
+					"scripts/template/experiment-contract.ts",
+					"scripts/template/validate-experiment.ts"
+				],
+				"guardScriptPresent": true,
+				"guardStepPresent": true,
+				"guardStepFenced": false,
+				"experimentErrors": [],
+				"surfacesScanned": 7,
+				"residueFindings": [],
+				"coreResidueFindings": []
+			},
+			{
+				"name": "full",
+				"corePaths": [
+					"experiments.json",
+					"experiments.schema.json",
+					"scripts/template/experiment-contract.ts",
+					"scripts/template/validate-experiment.ts"
+				],
+				"guardScriptPresent": true,
+				"guardStepPresent": true,
+				"guardStepFenced": false,
+				"experimentErrors": [],
+				"surfacesScanned": 7,
+				"residueFindings": [],
+				"coreResidueFindings": []
+			}
+		]
+	},
+	"live": {
+		"live-gate": {
+			"commandId": "live-gate",
+			"heavyLaneRan": true,
+			"run": {
+				"runId": 31197689568,
+				"url": "https://github.com/MrChrisRodriguez/devenv/actions/runs/31197689568",
+				"event": "pull_request",
+				"headBranch": "feat/stage-10e-experiment-hygiene",
+				"headSha": "70bef16124ce00024481a93f23903205a982eb8a",
+				"conclusion": "success",
+				"gateJobId": 92930726582,
+				"gateConclusion": "success",
+				"gateLogSha256": "96db7bc9aa052511487f48b27272ed800fafcf608182864f0820509e700fe0c4",
+				"upstreamResults": "success,success,success,success,success,success",
+				"jobs": [
+					{
+						"name": "Verify Moon project graph",
+						"conclusion": "success"
+					},
+					{
+						"name": "Launch baked browser payload",
+						"conclusion": "success"
+					},
+					{
+						"name": "Select affected projects",
+						"conclusion": "success"
+					},
+					{
+						"name": "Contracts & Baseline",
+						"conclusion": "success"
+					},
+					{
+						"name": "Build devcontainer image",
+						"conclusion": "success"
+					},
+					{
+						"name": "Lint, Typecheck & Test (root)",
+						"conclusion": "success"
+					}
+				]
+			}
+		}
+	},
+	"coverage": [
+		{
+			"id": "declared-registry",
+			"task": "17.1 add disposable/promoted experiment metadata",
+			"reason": "The input is a committed declaration validated against its own schema by the same json-schema module the other four registries use, it is the only one in the tree, and every declared thing is declared once: an id twice, a directory claimed twice, or an id that is live and retired at the same time all leave the lifecycle with two states at once.",
+			"commandIds": ["experiment-guard", "experiment-mutations"]
+		},
+		{
+			"id": "exception-surface-lock",
+			"task": "17.1 preserve Moon, dead-code, manifest, typecheck, universe and CI strictness",
+			"reason": "An experiment cannot weaken a guard by existing; it weakens one by adding an exception, and all seven exception surfaces in this repository are short committed lists. They are declared at their measured values and asserted rather than edited, the include half is locked beside the exclude half, and a disabling override counts as a negation because it is one with better manners.",
+			"commandIds": ["surface-lock", "experiment-guard"]
+		},
+		{
+			"id": "derived-scope-floor",
+			"task": "17.1 keep the guard non-vacuous over an empty workspace",
+			"reason": "The anchor is the count of exception surfaces INSPECTED rather than experiments found, because apps/ and libs/ hold a .gitkeep here and in every rendered project; the registry and the tree must also agree in both directions, so a directory nobody declared and a declaration whose directory is gone are two different refusals and a deletion cannot shrink the sweep quietly.",
+			"commandIds": ["mode-reconciliation", "surface-lock"]
+		},
+		{
+			"id": "containment",
+			"task": "17.1 keep experiments inside the workspace globs",
+			"reason": "A quarantine directory is refused precisely because it works: outside the globs the code is invisible to moon, to the workspace manifest and to the typechecker at once, which is dead code by construction. Inside them a directory inherits four tasks automatically, and the three capability-reserved names are refused by the ownership pattern that reserves them.",
+			"commandIds": ["containment", "manifest-registration"]
+		},
+		{
+			"id": "graph-and-universe",
+			"task": "17.1 preserve Moon graph and universe strictness",
+			"reason": "Every declared experiment carries a package manifest and a generated moon dependency block, and the universe registry is read as DATA with a named absence notice because it is gated on a capability that defaults to false and the module that owns it is gated on the same one; a declared universe id nobody declares is this guard's refusal while belonging to no universe stays a notice.",
+			"commandIds": ["moon-registration", "universe-reconciliation"]
+		},
+		{
+			"id": "promotion-artifacts",
+			"task": "17.2 prove promotion adds ownership, graph, universe, tests and documentation",
+			"reason": "Promotion is a checklist of registrations rather than a ceremony, so all five are declared and each is refused by name when it is missing; the test requirement is not redundant with the CI wrapper because that wrapper absorbs an empty match by design, which makes a promoted experiment with no tests green forever in a project that has no other tests.",
+			"commandIds": ["promotion-artifacts", "promotion-fixture"]
+		},
+		{
+			"id": "retirement-residue",
+			"task": "17.2 prove removal removes dependencies and registration",
+			"reason": "A removal is a statement about something that is gone, so the retired record is permanent and turns the deleted id, directory and package name into forbidden tokens across the tracked tree; the scan is the union of declared aliases and never a widened pattern over the id, because a short id turned into a pattern matches half the tree and the rule gets switched off.",
+			"commandIds": ["retirement-residue", "removal-fixture"]
+		},
+		{
+			"id": "findings-outlive-the-code",
+			"task": "17.3 record reusable findings separately",
+			"reason": "The only clause of the scenario describing something that survives is the findings artefact, so it must exist, be under a declared findings root, and NOT be inside the directory that was deleted — a findings file in the spike's own folder dies with the spike, which is what actually happens; a waiver with a reason is the honest alternative and is refused when it lifts nothing.",
+			"commandIds": ["findings", "removal-fixture"]
+		},
+		{
+			"id": "core-not-capability",
+			"task": "17.1 ship the guard wherever the directories it governs ship",
+			"reason": "This is the first guard in the program with no capability fence: the four files are present in all three renders, the package script is in all three manifests, the step is unfenced in all three workflows, the guard returns a real verdict inside each with all seven surfaces inspected, and the anti-residue scan reports nothing about any of it because there is no signature to match.",
+			"commandIds": ["rendered-experiments", "ci-guard", "live-gate"]
+		},
+		{
+			"id": "executed-lifecycles",
+			"task": "17.2 add removal and promotion fixtures",
+			"reason": "Both lifecycles are driven in sequence over real Git-backed trees rather than as isolated mutations, because the retirement scan and the universe leg both ask the index a question and the index abstains when there is no repository; each leftover registration is named one at a time and each refusal disappears as its cleanup lands.",
+			"commandIds": ["removal-fixture", "promotion-fixture"]
+		},
+		{
+			"id": "rollback",
+			"task": "17.3 document rollback and evidence",
+			"reason": "A synthetic merge followed by git revert -m 1 produces a tree identical to the Stage 10D predecessor, that tree carries none of the four paths this stage adds while the implementation tree carries all of them, and nothing about the stage lives outside the tree so the revert is order-independent and costs no container rebuild in either direction.",
+			"commandIds": ["rollback-proof"]
+		}
+	],
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-10e-pr-merge-commit>"],
+		"outsideTheTree": [],
+		"containerRebuildRequired": false,
+		"scope": "Revert the experiment lifecycle registry and its schema, the guard and its entrypoint, the experiments:check package script, the one unfenced step in the required lane, the four ownership copy rules, the validate.ts wiring, the unfenced AGENTS.md section, the documentation, and this record as one Stage 10E bundle. Nothing here is gated, which makes the revert simpler than its four predecessors rather than harder: there is no capability to un-declare, no signature to withdraw, no packageRules entry to remove and no residue token to retire, so the reverted tree differs from the predecessor in nothing at all. Nothing about this stage lives outside the tree either: there is no repository variable, no branch-protection change and no operator step, so the revert is order-independent. Adopting or reverting it costs no container rebuild in either direction: nothing under .devcontainer/ is touched and neither is .husky/, so the definition fingerprint is unchanged. bun.lock, template-parameters.toml, every fixture, the seven exception surfaces themselves and scripts/worktree/** are untouched in both directions, and apps/ and libs/ stay empty either way.",
+		"proof": {
+			"commandId": "rollback-proof",
+			"predecessorSha": "40f597aa83e44333c6b119b05ebe217fc9ea0b21",
+			"implementationSha": "70bef16124ce00024481a93f23903205a982eb8a",
+			"syntheticMergeSha": "63414876302e98b2be8150ec387e525eeb101d48",
+			"syntheticMergeTree": "532c82aded85eeca9807b2dfef12a85cef35bb4a",
+			"syntheticMergeParents": [
+				"40f597aa83e44333c6b119b05ebe217fc9ea0b21",
+				"70bef16124ce00024481a93f23903205a982eb8a"
+			],
+			"predecessorTree": "0ece5f64bbf01f598595a124825dd942114e87aa",
+			"revertedTree": "0ece5f64bbf01f598595a124825dd942114e87aa",
+			"treeMatchesPredecessor": true,
+			"operations": [
+				["git", "rev-parse", "40f597aa83e44333c6b119b05ebe217fc9ea0b21^{tree}"],
+				["git", "rev-parse", "70bef16124ce00024481a93f23903205a982eb8a^{tree}"],
+				[
+					"git",
+					"worktree",
+					"add",
+					"--detach",
+					"/tmp/devenv-stage2-stage10e-20260807t163255z-70bef161-rollback",
+					"40f597aa83e44333c6b119b05ebe217fc9ea0b21"
+				],
+				[
+					"git",
+					"commit-tree",
+					"532c82aded85eeca9807b2dfef12a85cef35bb4a",
+					"-p",
+					"40f597aa83e44333c6b119b05ebe217fc9ea0b21",
+					"-p",
+					"70bef16124ce00024481a93f23903205a982eb8a",
+					"-m",
+					"Stage 2 synthetic merge"
+				],
+				["git", "rev-parse", "63414876302e98b2be8150ec387e525eeb101d48^{tree}"],
+				[
+					"git",
+					"show",
+					"-s",
+					"--format=%P",
+					"63414876302e98b2be8150ec387e525eeb101d48"
+				],
+				[
+					"git",
+					"checkout",
+					"--detach",
+					"63414876302e98b2be8150ec387e525eeb101d48"
+				],
+				[
+					"git",
+					"revert",
+					"--no-edit",
+					"-m",
+					"1",
+					"63414876302e98b2be8150ec387e525eeb101d48"
+				],
+				["git", "rev-parse", "HEAD^{tree}"]
+			],
+			"addedPaths": [
+				"experiments.json",
+				"experiments.schema.json",
+				"scripts/template/experiment-contract.ts",
+				"scripts/template/validate-experiment.ts"
+			],
+			"addedPathsRemoved": true
+		}
+	}
+}
