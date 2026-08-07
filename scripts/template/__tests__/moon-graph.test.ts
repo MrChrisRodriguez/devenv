@@ -15,6 +15,7 @@ import {
 	compareDeclaredEdges,
 	importSpecifiers,
 	MOON_QUERY_ARGV,
+	validateUniverseRegistry,
 } from "../graph-contract";
 
 const ROOT = resolve(import.meta.dir, "../../..");
@@ -418,5 +419,183 @@ describe("moon project config generator", () => {
 		expect(plan.configs).toEqual([]);
 		expect(plan.drift).toEqual([]);
 		expect(compareDeclaredEdges(plan.graph)).toEqual([]);
+	});
+});
+
+describe("ci matrix universe registry", () => {
+	const PATH = "ci-matrix-universes.json";
+
+	async function registryFixture(
+		contents: unknown,
+		options: { projects?: ProjectFixture[]; write?: boolean } = {},
+	): Promise<string> {
+		const root = await workspace({
+			projects: options.projects ?? [
+				{ source: "libs/ui", packageName: "@synthetic/ui" },
+			],
+		});
+		if (options.write !== false)
+			await Bun.write(
+				resolve(root, PATH),
+				`${JSON.stringify(contents, null, "\t")}\n`,
+			);
+		return root;
+	}
+
+	async function verdicts(root: string): Promise<string[]> {
+		return await validateUniverseRegistry(root, await buildProjectGraph(root));
+	}
+
+	test("accepts a total, single-universe registry", async () => {
+		const root = await registryFixture({
+			schemaVersion: 1,
+			universes: [{ id: "ci", projects: ["root", "ui"] }],
+		});
+		try {
+			expect(await verdicts(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("rejects every way the registry can be wrong", async () => {
+		// One matrix, run against the committed validator rather than a
+		// paraphrase of it. Each case is a distinct defect with a distinct
+		// repair, so each gets a distinct verdict.
+		const cases: Array<[string, unknown, string, boolean?]> = [
+			[
+				"absent",
+				undefined,
+				"graph: ci-matrix-universes.json is missing",
+				false,
+			],
+			[
+				"wrong schema version",
+				{
+					schemaVersion: 2,
+					universes: [{ id: "ci", projects: ["root", "ui"] }],
+				},
+				"graph: ci-matrix-universes.json must declare schemaVersion 1",
+			],
+			[
+				"no universe at all",
+				{ schemaVersion: 1, universes: [] },
+				"graph: ci-matrix-universes.json must declare at least one universe",
+			],
+			[
+				"a universe id that is not kebab-case",
+				{
+					schemaVersion: 1,
+					universes: [{ id: "CI Lane", projects: ["root"] }],
+				},
+				'graph: ci-matrix-universes.json universe id "CI Lane" must be kebab-case',
+			],
+			[
+				"a duplicated universe id",
+				{
+					schemaVersion: 1,
+					universes: [
+						{ id: "ci", projects: ["root"] },
+						{ id: "ci", projects: ["ui"] },
+					],
+				},
+				"graph: ci-matrix-universes.json declares the universe id ci more than once",
+			],
+			[
+				"an empty universe",
+				{
+					schemaVersion: 1,
+					universes: [
+						{ id: "ci", projects: ["root", "ui"] },
+						{ id: "extra", projects: [] },
+					],
+				},
+				"graph: ci-matrix-universes.json universe extra must list at least one project",
+			],
+			[
+				"a project that does not exist",
+				{
+					schemaVersion: 1,
+					universes: [{ id: "ci", projects: ["root", "ui", "ghost"] }],
+				},
+				"graph: ci-matrix-universes.json universe ci lists ghost, which is not a project",
+			],
+			[
+				"a project claimed twice",
+				{
+					schemaVersion: 1,
+					universes: [
+						{ id: "ci", projects: ["root", "ui"] },
+						{ id: "extra", projects: ["ui"] },
+					],
+				},
+				"graph: ci-matrix-universes.json lists the project ui more than once",
+			],
+			[
+				"a project no universe claims",
+				{ schemaVersion: 1, universes: [{ id: "ci", projects: ["root"] }] },
+				"graph: the project ui belongs to no universe in ci-matrix-universes.json",
+			],
+		];
+		for (const [label, contents, expected, write] of cases) {
+			const root = await registryFixture(contents, {
+				...(write === false ? { write: false } : {}),
+			});
+			try {
+				expect([label, await verdicts(root)]).toEqual([
+					label,
+					expect.arrayContaining([expected]),
+				]);
+			} finally {
+				await rm(root, { recursive: true, force: true });
+			}
+		}
+	});
+
+	test("rejects a registry that is not JSON", async () => {
+		const root = await registryFixture(undefined, { write: false });
+		try {
+			await Bun.write(resolve(root, PATH), "{ not json\n");
+			expect(await verdicts(root)).toEqual([
+				"graph: ci-matrix-universes.json must parse as JSON",
+			]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("rejects a second tracked registry", async () => {
+		const root = await registryFixture({
+			schemaVersion: 1,
+			universes: [{ id: "ci", projects: ["root", "ui"] }],
+		});
+		try {
+			// The sole-registry rule is answered out of the Git index, so the
+			// fixture has to be a repository for the question to mean anything.
+			for (const args of [
+				["init", "-q", "-b", "main"],
+				["add", "-A"],
+			]) {
+				Bun.spawnSync(["git", "-C", root, ...args], {
+					env: { PATH: process.env["PATH"] ?? "", HOME: root },
+				});
+			}
+			expect(await verdicts(root)).toEqual([]);
+			await Bun.write(resolve(root, "ci-matrix-universes.backup.json"), "{}\n");
+			Bun.spawnSync(["git", "-C", root, "add", "-A"], {
+				env: { PATH: process.env["PATH"] ?? "", HOME: root },
+			});
+			expect(await verdicts(root)).toContain(
+				"graph: ci-matrix-universes.backup.json is a second matrix universe registry; ci-matrix-universes.json is the only one",
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("accepts the committed registry against the committed graph", async () => {
+		expect(
+			await validateUniverseRegistry(ROOT, await buildProjectGraph(ROOT)),
+		).toEqual([]);
 	});
 });

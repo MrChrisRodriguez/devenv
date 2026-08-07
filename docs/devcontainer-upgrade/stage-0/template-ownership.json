@@ -368,6 +368,10 @@
 			"requiresAll": ["codex_cloud"]
 		},
 		{
+			"pattern": "ci-matrix-universes.json",
+			"requiresAll": ["moon_affected_selection"]
+		},
+		{
 			"pattern": "scripts/template/graph-contract.ts",
 			"requiresAll": ["moon_affected_selection"]
 		},

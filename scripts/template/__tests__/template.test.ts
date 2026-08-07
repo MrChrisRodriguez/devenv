@@ -898,6 +898,50 @@ describe("deterministic fixture renderer", () => {
 		}
 	});
 
+	test("known-bad matrix universe residue is detected and named", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const output = resolve(temporary, "minimal");
+			await renderFixture({ root: ROOT, fixtureName: "minimal", output });
+			// A project without moon_affected_selection receives neither the
+			// registry nor the guards that read it, and neither of its package
+			// scripts.
+			for (const path of [
+				"ci-matrix-universes.json",
+				"scripts/template/graph-contract.ts",
+				"scripts/template/generate-graph.ts",
+			])
+				expect(await Bun.file(resolve(output, path)).exists()).toBe(false);
+			const minimalPackage = await Bun.file(
+				resolve(output, "package.json"),
+			).json();
+			expect(minimalPackage.scripts["graph:check"]).toBeUndefined();
+			expect(minimalPackage.scripts["graph:generate"]).toBeUndefined();
+
+			// The registry path was a PRE-DECLARED capability signature before the
+			// file existed, so a leaked copy has to be named by the scan rather
+			// than merely absent from the render.
+			await Bun.write(
+				resolve(output, "ci-matrix-universes.json"),
+				'{\n\t"schemaVersion": 1\n}\n',
+			);
+			const parameters = await loadTemplateParameters(ROOT);
+			const fixture = await loadFixtureDefinition(ROOT, "minimal", parameters);
+			const resolved = resolveFixtureParameters(parameters, fixture);
+			const ownership = await loadTemplateOwnership(ROOT);
+			const report = await scanDisabledResidue(output, resolved, ownership);
+			expect(report.status).toBe("fail");
+			expect(report.findings).toContainEqual({
+				capability: "moon_affected_selection",
+				path: "ci-matrix-universes.json",
+				signature: "ci-matrix-universes.json",
+				kind: "path",
+			});
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	});
+
 	test("known-bad Codex Cloud residue is detected and named", async () => {
 		const temporary = await temporaryDirectory();
 		try {

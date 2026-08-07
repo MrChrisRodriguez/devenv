@@ -609,6 +609,130 @@ export function compareDeclaredEdges(graph: ProjectGraph): string[] {
 	return [...graph.errors, ...errors].sort();
 }
 
+// The sole CI matrix universe registry, and the pattern that proves it is sole.
+//
+// The filename is fixed rather than configurable: it is the path Stage 0 already
+// recorded as this capability's signature, so a project without the capability
+// fails its anti-residue scan the moment a copy of this file appears. A second
+// registry — even a well-meaning `ci-matrix-universes.backup.json` — would give
+// the matrix two authorities that disagree silently, which is why the pattern
+// below is a wildcard and the rule is "exactly one".
+const REGISTRY_PATH = "ci-matrix-universes.json";
+const REGISTRY_PATTERN = "*universes*.json";
+const UNIVERSE_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+export interface MatrixUniverse {
+	id: string;
+	description?: string;
+	projects: string[];
+}
+
+// Tracked files only, read through Git so the scan sees exactly what a clone
+// receives. `undefined` means this tree is not a repository — a rendered fixture
+// before `git init` — and the scan abstains rather than reporting a clean result
+// it never established.
+function trackedFiles(root: string, pattern: string): string[] | undefined {
+	const result = Bun.spawnSync(["git", "-C", root, "ls-files", "-z", pattern], {
+		stdout: "pipe",
+		stderr: "pipe",
+	});
+	if (result.exitCode !== 0) return undefined;
+	return result.stdout.toString().split("\0").filter(Boolean);
+}
+
+/**
+ * Validate the CI matrix universe registry against the project graph.
+ *
+ * The registry answers "which projects does a CI lane run over", and the only
+ * useful answer is a total one: every project belongs to EXACTLY one universe.
+ * A project in none is a project no lane ever builds — the silent hole this file
+ * exists to close — and a project in two is a lane that runs it twice while
+ * reporting one result.
+ *
+ * Absence and a parse failure are hard errors rather than a skipped check. This
+ * function only runs where the capability's surface is present, so "the registry
+ * is missing" means the surface is half-installed, not absent.
+ */
+export async function validateUniverseRegistry(
+	root: string,
+	graph: ProjectGraph,
+): Promise<string[]> {
+	const errors: string[] = [];
+	const path = resolve(root, REGISTRY_PATH);
+	if (!(await exists(path))) return [`graph: ${REGISTRY_PATH} is missing`];
+	let value: unknown;
+	try {
+		value = await Bun.file(path).json();
+	} catch {
+		return [`graph: ${REGISTRY_PATH} must parse as JSON`];
+	}
+	if (!isRecord(value))
+		return [`graph: ${REGISTRY_PATH} must be a JSON object`];
+	if (value["schemaVersion"] !== 1)
+		errors.push(`graph: ${REGISTRY_PATH} must declare schemaVersion 1`);
+	const universes = Array.isArray(value["universes"])
+		? value["universes"].filter(isRecord)
+		: [];
+	if (universes.length === 0)
+		errors.push(`graph: ${REGISTRY_PATH} must declare at least one universe`);
+
+	const known = new Set(graph.projects.map((project) => project.id));
+	const membership = new Map<string, number>();
+	const seenIds = new Set<string>();
+	for (const universe of universes) {
+		const id = universe["id"];
+		if (typeof id !== "string" || !UNIVERSE_ID.test(id)) {
+			errors.push(
+				`graph: ${REGISTRY_PATH} universe id ${JSON.stringify(id)} must be kebab-case`,
+			);
+			continue;
+		}
+		if (seenIds.has(id))
+			errors.push(
+				`graph: ${REGISTRY_PATH} declares the universe id ${id} more than once`,
+			);
+		seenIds.add(id);
+		const projects = Array.isArray(universe["projects"])
+			? universe["projects"].filter(
+					(entry): entry is string => typeof entry === "string",
+				)
+			: [];
+		if (projects.length === 0) {
+			errors.push(
+				`graph: ${REGISTRY_PATH} universe ${id} must list at least one project`,
+			);
+			continue;
+		}
+		for (const project of projects) {
+			if (!known.has(project))
+				errors.push(
+					`graph: ${REGISTRY_PATH} universe ${id} lists ${project}, which is not a project`,
+				);
+			membership.set(project, (membership.get(project) ?? 0) + 1);
+		}
+	}
+	for (const [project, count] of membership) {
+		if (count > 1)
+			errors.push(
+				`graph: ${REGISTRY_PATH} lists the project ${project} more than once`,
+			);
+	}
+	for (const project of known) {
+		if (!membership.has(project))
+			errors.push(
+				`graph: the project ${project} belongs to no universe in ${REGISTRY_PATH}`,
+			);
+	}
+
+	for (const candidate of trackedFiles(root, REGISTRY_PATTERN) ?? []) {
+		if (candidate === REGISTRY_PATH) continue;
+		errors.push(
+			`graph: ${candidate} is a second matrix universe registry; ${REGISTRY_PATH} is the only one`,
+		);
+	}
+	return errors.sort();
+}
+
 // Paths whose change cannot be attributed to one project. Each is here because
 // changing it changes what EVERY project builds or how every project is
 // checked — so the honest answer is "everything", not "nothing".
