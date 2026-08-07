@@ -1,0 +1,454 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-8a-moon-graph",
+	"capturedAt": "2026-08-07T01:26:50.787Z",
+	"run": {
+		"id": "stage8a-20260807t012640z-636eae6b",
+		"logRoot": "evidence/stage-8a-moon-graph-run"
+	},
+	"source": {
+		"baseSha": "149e6f64d08711074c8ef1191a07799677c8719f",
+		"implementationSha": "636eae6bdf89a736df83d15eb8cb4c8e86aac8ec",
+		"treeClean": true,
+		"prototoolsMoon": "2.3.5"
+	},
+	"host": {
+		"os": "linux",
+		"architecture": "aarch64",
+		"kernel": "7.0.11-orbstack-00360-gc9bc4d96ac70",
+		"insideDevcontainer": true,
+		"moonVersion": "2.3.5",
+		"bunVersion": "1.3.13",
+		"ghVersion": "2.97.0"
+	},
+	"repository": {
+		"nameWithOwner": "MrChrisRodriguez/devenv",
+		"workflowFile": ".github/workflows/ci.yml",
+		"gateJobId": "ci-gate",
+		"gateContext": "CI gate",
+		"gateNeeds": ["ci", "image", "moon-graph", "browser"],
+		"graphJobId": "moon-graph",
+		"graphJobName": "Verify Moon project graph",
+		"registryPath": "ci-matrix-universes.json",
+		"capability": "moon_affected_selection"
+	},
+	"commands": [
+		{
+			"id": "graph-guard",
+			"command": ["bun", "run", "graph:check"],
+			"runId": "stage8a-20260807t012640z-636eae6b",
+			"startedAt": "2026-08-07T01:26:40.175Z",
+			"completedAt": "2026-08-07T01:26:40.257Z",
+			"durationMs": 82,
+			"stdoutPath": "evidence/stage-8a-moon-graph-run/graph-guard.stdout",
+			"stderrPath": "evidence/stage-8a-moon-graph-run/graph-guard.stderr",
+			"stdoutSha256": "b426c4b65ff009d3354fdac2ff9a6275acadd90ae56ff55c02ce0223e2952fba",
+			"stderrSha256": "1a1cf5a3c9bfd606c1385aba028f567c5d53dd1e6eb880e437e67e576f523fc4",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "graph-mutations",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/moon-graph.test.ts"
+			],
+			"runId": "stage8a-20260807t012640z-636eae6b",
+			"startedAt": "2026-08-07T01:26:40.258Z",
+			"completedAt": "2026-08-07T01:26:40.691Z",
+			"durationMs": 433,
+			"stdoutPath": "evidence/stage-8a-moon-graph-run/graph-mutations.stdout",
+			"stderrPath": "evidence/stage-8a-moon-graph-run/graph-mutations.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "62a2e415be709aedabcc84c8975889cf415fe17f3958fa886b728cac1240f9ff",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "ci-guard",
+			"command": ["bun", "run", "ci:check"],
+			"runId": "stage8a-20260807t012640z-636eae6b",
+			"startedAt": "2026-08-07T01:26:40.691Z",
+			"completedAt": "2026-08-07T01:26:40.716Z",
+			"durationMs": 25,
+			"stdoutPath": "evidence/stage-8a-moon-graph-run/ci-guard.stdout",
+			"stderrPath": "evidence/stage-8a-moon-graph-run/ci-guard.stderr",
+			"stdoutSha256": "9cfe650e97435463f535e1a81f5b30b1ab521cfb458af04688f901be57a294f9",
+			"stderrSha256": "d183538a63c244d8ba196aa5a8eb1eb4cfc636414a9ba546e4cfb9b3537e4088",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "workflow-policy-mutations",
+			"command": ["bun", "test", "scripts/template/__tests__/ci.test.ts"],
+			"runId": "stage8a-20260807t012640z-636eae6b",
+			"startedAt": "2026-08-07T01:26:40.716Z",
+			"completedAt": "2026-08-07T01:26:44.014Z",
+			"durationMs": 3298,
+			"stdoutPath": "evidence/stage-8a-moon-graph-run/workflow-policy-mutations.stdout",
+			"stderrPath": "evidence/stage-8a-moon-graph-run/workflow-policy-mutations.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "9cc5904735c804612d28fa9d3664c5404d6bd61bd6d2f41c442cdda52f78f517",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "moon-toolchain",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nprintf 'moonVersion=%s\\n' \"$(moon --version | awk '{ print $2 }')\"\nprintf 'prototoolsMoon=%s\\n' \"$(sed -n 's/^moon = \"\\([^\"]*\\)\"[[:space:]]*$/\\1/p' .prototools | head -n 1)\"\nprintf 'bunVersion=%s\\n' \"$(bun --version)\""
+			],
+			"runId": "stage8a-20260807t012640z-636eae6b",
+			"startedAt": "2026-08-07T01:26:44.014Z",
+			"completedAt": "2026-08-07T01:26:44.036Z",
+			"durationMs": 22,
+			"stdoutPath": "evidence/stage-8a-moon-graph-run/moon-toolchain.stdout",
+			"stderrPath": "evidence/stage-8a-moon-graph-run/moon-toolchain.stderr",
+			"stdoutSha256": "b5f427f2513988c532e7d0b7eb115b68cd01240807db2c20932f1a161ffc5591",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "moon-query",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nquery=\"$(moon query projects)\"\nprintf 'queryJson=%s\\n' \"$(printf '%s' \"$query\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\nprintf 'projects=%s\\n' \"$(printf '%s' \"$query\" | jq -r '[.projects[] | \"\\(.id)=\\(.source)\"] | sort | join(\",\")')\"\nprintf 'edges=%s\\n' \"$(printf '%s' \"$query\" | jq -r '[.projects[] as $p | ($p.dependencies // [])[] | \"\\($p.id)->\\(.id)\"] | sort | join(\",\")')\""
+			],
+			"runId": "stage8a-20260807t012640z-636eae6b",
+			"startedAt": "2026-08-07T01:26:44.037Z",
+			"completedAt": "2026-08-07T01:26:44.177Z",
+			"durationMs": 140,
+			"stdoutPath": "evidence/stage-8a-moon-graph-run/moon-query.stdout",
+			"stderrPath": "evidence/stage-8a-moon-graph-run/moon-query.stderr",
+			"stdoutSha256": "f8ada7c62e5165db55cca2f965b4cdd94103b8429aadd433a9eded414f9ee736",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-graph-oracle",
+			"command": ["bun", "run", "graph:check", "--query"],
+			"runId": "stage8a-20260807t012640z-636eae6b",
+			"startedAt": "2026-08-07T01:26:44.177Z",
+			"completedAt": "2026-08-07T01:26:44.453Z",
+			"durationMs": 276,
+			"stdoutPath": "evidence/stage-8a-moon-graph-run/live-graph-oracle.stdout",
+			"stderrPath": "evidence/stage-8a-moon-graph-run/live-graph-oracle.stderr",
+			"stdoutSha256": "5eb0a15c548786bf75e9c3d723e1e5f515a37ec5890c2011164d4e735b7a5c03",
+			"stderrSha256": "e38a70b1e930435657f91d26fd25ce0b6a7a81a84db3df53b86c039ddae4fb39",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rendered-graph",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-eight-a-evidence.ts",
+				"probe-render-graph",
+				"--workspace",
+				"/tmp/devenv-stage8a-20260807t012640z-636eae6b-render"
+			],
+			"runId": "stage8a-20260807t012640z-636eae6b",
+			"startedAt": "2026-08-07T01:26:44.454Z",
+			"completedAt": "2026-08-07T01:26:44.928Z",
+			"durationMs": 474,
+			"stdoutPath": "evidence/stage-8a-moon-graph-run/rendered-graph.stdout",
+			"stderrPath": "evidence/stage-8a-moon-graph-run/rendered-graph.stderr",
+			"stdoutSha256": "f135f97ec089c7439b5515b2a2bf6e491ed6d656391e9ba30b53f3f084770a14",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-gate",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nrun=\"$(gh run view 31137567030 --repo MrChrisRodriguez/devenv --json conclusion,createdAt,databaseId,event,headBranch,headSha,jobs,status,url,workflowName)\"\nprintf 'runJson=%s\\n' \"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\ngate=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print([job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]][0])' \"CI gate\")\"\nprintf 'gateJobId=%s\\n' \"$gate\"\nlog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$gate\" --log)\"\nprintf 'gateLogSha256=%s\\n' \"$(printf '%s' \"$log\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'upstreamResults=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*upstream results: //p' | head -n 1)\"\nprintf 'gateGreenLines=%s\\n' \"$(printf '%s\\n' \"$log\" | grep -c 'Every required job passed or was skipped' || true)\""
+			],
+			"runId": "stage8a-20260807t012640z-636eae6b",
+			"startedAt": "2026-08-07T01:26:44.929Z",
+			"completedAt": "2026-08-07T01:26:50.411Z",
+			"durationMs": 5482,
+			"stdoutPath": "evidence/stage-8a-moon-graph-run/live-gate.stdout",
+			"stderrPath": "evidence/stage-8a-moon-graph-run/live-gate.stderr",
+			"stdoutSha256": "a32f1c911c9e1f2ccae793ac0bb9c01544a515d1c6ed2e4cb13e7829eef66a83",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rollback-proof",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-eight-a-evidence.ts",
+				"probe-rollback",
+				"--base",
+				"149e6f64d08711074c8ef1191a07799677c8719f",
+				"--implementation",
+				"636eae6bdf89a736df83d15eb8cb4c8e86aac8ec",
+				"--workspace",
+				"/tmp/devenv-stage2-stage8a-20260807t012640z-636eae6b-rollback"
+			],
+			"runId": "stage8a-20260807t012640z-636eae6b",
+			"startedAt": "2026-08-07T01:26:50.412Z",
+			"completedAt": "2026-08-07T01:26:50.785Z",
+			"durationMs": 373,
+			"stdoutPath": "evidence/stage-8a-moon-graph-run/rollback-proof.stdout",
+			"stderrPath": "evidence/stage-8a-moon-graph-run/rollback-proof.stderr",
+			"stdoutSha256": "9a0c643dcedbaa26108bc89465b567cefa9d928c4da79fa485193c4149308453",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		}
+	],
+	"guards": {
+		"graph": {
+			"commandId": "graph-guard",
+			"command": "bun run graph:check",
+			"summary": "Validated the project graph, generated project configs, and matrix universe registry."
+		},
+		"graphMutations": {
+			"commandId": "graph-mutations",
+			"testFile": "scripts/template/__tests__/moon-graph.test.ts",
+			"passCount": 26,
+			"failCount": 0
+		},
+		"ci": {
+			"commandId": "ci-guard",
+			"command": "bun run ci:check",
+			"summary": "Validated workflow trigger policy, bootstrap ownership, action pins, job bounds, failure tolerance, aggregate gate membership, shell injection surface, history ownership, compiler coverage, and guard wiring."
+		},
+		"ciMutations": {
+			"commandId": "workflow-policy-mutations",
+			"testFile": "scripts/template/__tests__/ci.test.ts",
+			"passCount": 16,
+			"failCount": 0
+		}
+	},
+	"graph": {
+		"commandId": "moon-query",
+		"queryArgv": ["query", "projects"],
+		"projects": [
+			{
+				"id": "root",
+				"source": "."
+			}
+		],
+		"edges": [],
+		"oracleCommandId": "live-graph-oracle",
+		"oracleSummary": "Validated the project graph, generated project configs, matrix universe registry, and moon's own view of the graph."
+	},
+	"registry": {
+		"path": "ci-matrix-universes.json",
+		"universes": [
+			{
+				"id": "ci",
+				"projects": ["root"]
+			}
+		]
+	},
+	"renderFixtures": {
+		"commandId": "rendered-graph",
+		"fixtures": [
+			{
+				"name": "minimal",
+				"capabilityEnabled": false,
+				"registryPresent": false,
+				"guardPaths": [],
+				"packageScripts": [],
+				"jobs": ["ci", "ci-gate", "image"],
+				"gateNeeds": ["ci", "image"],
+				"gateContext": "CI gate",
+				"workflowErrors": [],
+				"oracleErrors": []
+			},
+			{
+				"name": "cloud",
+				"capabilityEnabled": false,
+				"registryPresent": false,
+				"guardPaths": [],
+				"packageScripts": [],
+				"jobs": ["ci", "ci-gate", "image"],
+				"gateNeeds": ["ci", "image"],
+				"gateContext": "CI gate",
+				"workflowErrors": [],
+				"oracleErrors": []
+			},
+			{
+				"name": "full",
+				"capabilityEnabled": true,
+				"registryPresent": true,
+				"guardPaths": [
+					"scripts/template/graph-contract.ts",
+					"scripts/template/generate-graph.ts",
+					"scripts/template/validate-graph.ts",
+					".github/actions/setup-moon/action.yml"
+				],
+				"packageScripts": ["graph:check", "graph:generate"],
+				"jobs": ["browser", "ci", "ci-gate", "image", "moon-graph"],
+				"gateNeeds": ["ci", "image", "moon-graph", "browser"],
+				"gateContext": "CI gate",
+				"workflowErrors": [],
+				"oracleErrors": []
+			}
+		]
+	},
+	"live": {
+		"gate": {
+			"commandId": "live-gate",
+			"runId": 31137567030,
+			"url": "https://github.com/MrChrisRodriguez/devenv/actions/runs/31137567030",
+			"event": "workflow_dispatch",
+			"headBranch": "feat/stage-8a-moon-graph",
+			"headSha": "636eae6bdf89a736df83d15eb8cb4c8e86aac8ec",
+			"conclusion": "success",
+			"gateJobId": 92740601217,
+			"gateConclusion": "success",
+			"gateLogSha256": "dde2ee19527c03627bfaee56dafc115f778fbba74c1429feeea8f14f33eb6868",
+			"upstreamResults": "success,success,success,success",
+			"jobs": [
+				{
+					"name": "Launch baked browser payload",
+					"conclusion": "success"
+				},
+				{
+					"name": "Verify Moon project graph",
+					"conclusion": "success"
+				},
+				{
+					"name": "Build devcontainer image",
+					"conclusion": "success"
+				},
+				{
+					"name": "Lint, Typecheck & Test",
+					"conclusion": "success"
+				}
+			]
+		}
+	},
+	"coverage": [
+		{
+			"id": "graph-derivation",
+			"task": "10.1 project graph derived from manifests and imports",
+			"reason": "The graph is rebuilt from the workspace declaration, the package manifests and the source imports without running moon, and the fixtures drive a leaf edge, a fan-out, a deepest transitive chain, a path-alias import, deepest-owner attribution, and a commented-out import that must create no edge at all.",
+			"commandIds": ["graph-guard", "graph-mutations"]
+		},
+		{
+			"id": "generated-config-drift",
+			"task": "10.1 generated project configs",
+			"reason": "The generator is dry-run against every committed project config and any difference is a failure, with fixtures covering a hand-edited generated block, a project with no derived dependency, and a hand-written key outside the generated markers that must survive regeneration.",
+			"commandIds": ["graph-guard", "graph-mutations"]
+		},
+		{
+			"id": "universe-registry",
+			"task": "10.2 sole CI matrix universe registry",
+			"reason": "The registry is validated against the sealed graph so every project belongs to exactly one universe, and the corruption matrix covers absence, a parse failure, a wrong schema version, a non-kebab id, a duplicated id, an empty universe, an unknown member, a project claimed twice, a project claimed by nobody, and a second tracked registry file.",
+			"commandIds": ["graph-guard", "graph-mutations"]
+		},
+		{
+			"id": "live-moon-reconciliation",
+			"task": "10.3 live oracle against moon itself",
+			"reason": "The pinned invocation is issued against the real moon inside the devcontainer and reconciled with the independently derived graph, and every abnormal outcome — non-zero exit, silence, non-JSON, an unexpected shape, an extra project, a missing project, an unjustified edge and a missing edge — is driven through a committed stand-in binary.",
+			"commandIds": ["moon-toolchain", "moon-query", "live-graph-oracle"]
+		},
+		{
+			"id": "capability-isolation",
+			"task": "10.2 capability fencing of the whole surface",
+			"reason": "Each fixture is rendered and inspected for the registry, the guard modules, the composite action, the package scripts and the gating job, so a project without moon_affected_selection is shown to receive none of them while a project with it receives all of them and still passes the hermetic oracle.",
+			"commandIds": ["rendered-graph"]
+		},
+		{
+			"id": "required-lane-gating",
+			"task": "10.3 the required lane depends on the oracle",
+			"reason": "The workflow contract rejects an unpinned moon action, a missing version assertion, an input on the moon action, a direct third-party install, and a gate that does not depend on the graph job, and a real run shows the four-job gate reporting green at the reviewed boundary.",
+			"commandIds": ["ci-guard", "workflow-policy-mutations", "live-gate"]
+		},
+		{
+			"id": "rollback",
+			"task": "10.5 rollback",
+			"reason": "A synthetic merge followed by git revert -m 1 produces a tree identical to the predecessor, and that tree is shown to carry none of the six paths this stage adds while the implementation tree carries all of them.",
+			"commandIds": ["rollback-proof"]
+		}
+	],
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-8a-pr-merge-commit>"],
+		"outsideTheTree": [],
+		"containerRebuildRequired": false,
+		"scope": "Revert the workspace and root project configuration, the package.json workspaces edit, the matrix universe registry, the three graph guard modules and their package scripts, the setup-moon composite action, the fenced ci step, the moon-graph job and its gate dependency, the workflow contract rules, the ownership wiring, the documentation, and this record as one Stage 8A bundle. Nothing under .devcontainer/** changed, so adopting or reverting this stage costs no container rebuild. Branch protection needs no operator step: the required context is unchanged, because the graph job reaches the gate through needs instead of becoming a second required check.",
+		"proof": {
+			"commandId": "rollback-proof",
+			"predecessorSha": "149e6f64d08711074c8ef1191a07799677c8719f",
+			"implementationSha": "636eae6bdf89a736df83d15eb8cb4c8e86aac8ec",
+			"syntheticMergeSha": "95383f808581ac36371f17ed3d2c8ae8795bca1b",
+			"syntheticMergeTree": "c1aa2464e326b74ac1723efe84a80d585e4dfe2f",
+			"syntheticMergeParents": [
+				"149e6f64d08711074c8ef1191a07799677c8719f",
+				"636eae6bdf89a736df83d15eb8cb4c8e86aac8ec"
+			],
+			"predecessorTree": "abc7ab53505c63fb1bd5c7d067f36181c94c8121",
+			"revertedTree": "abc7ab53505c63fb1bd5c7d067f36181c94c8121",
+			"treeMatchesPredecessor": true,
+			"operations": [
+				["git", "rev-parse", "149e6f64d08711074c8ef1191a07799677c8719f^{tree}"],
+				["git", "rev-parse", "636eae6bdf89a736df83d15eb8cb4c8e86aac8ec^{tree}"],
+				[
+					"git",
+					"worktree",
+					"add",
+					"--detach",
+					"/tmp/devenv-stage2-stage8a-20260807t012640z-636eae6b-rollback",
+					"149e6f64d08711074c8ef1191a07799677c8719f"
+				],
+				[
+					"git",
+					"commit-tree",
+					"c1aa2464e326b74ac1723efe84a80d585e4dfe2f",
+					"-p",
+					"149e6f64d08711074c8ef1191a07799677c8719f",
+					"-p",
+					"636eae6bdf89a736df83d15eb8cb4c8e86aac8ec",
+					"-m",
+					"Stage 2 synthetic merge"
+				],
+				["git", "rev-parse", "95383f808581ac36371f17ed3d2c8ae8795bca1b^{tree}"],
+				[
+					"git",
+					"show",
+					"-s",
+					"--format=%P",
+					"95383f808581ac36371f17ed3d2c8ae8795bca1b"
+				],
+				[
+					"git",
+					"checkout",
+					"--detach",
+					"95383f808581ac36371f17ed3d2c8ae8795bca1b"
+				],
+				[
+					"git",
+					"revert",
+					"--no-edit",
+					"-m",
+					"1",
+					"95383f808581ac36371f17ed3d2c8ae8795bca1b"
+				],
+				["git", "rev-parse", "HEAD^{tree}"]
+			],
+			"addedPaths": [
+				"moon.yml",
+				"ci-matrix-universes.json",
+				".github/actions/setup-moon/action.yml",
+				"scripts/template/graph-contract.ts",
+				"scripts/template/generate-graph.ts",
+				"scripts/template/validate-graph.ts"
+			],
+			"addedPathsRemoved": true
+		}
+	}
+}

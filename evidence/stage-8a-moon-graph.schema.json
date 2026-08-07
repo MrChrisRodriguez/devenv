@@ -1,0 +1,468 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"stage",
+		"capturedAt",
+		"run",
+		"source",
+		"host",
+		"repository",
+		"commands",
+		"guards",
+		"graph",
+		"registry",
+		"renderFixtures",
+		"live",
+		"coverage",
+		"rollback"
+	],
+	"properties": {
+		"schemaVersion": { "const": 1 },
+		"stage": { "const": "stage-8a-moon-graph" },
+		"capturedAt": { "type": "string", "format": "date-time" },
+		"run": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "logRoot"],
+			"properties": {
+				"id": {
+					"type": "string",
+					"pattern": "^stage8a-[0-9]{8}t[0-9]{6}z-[0-9a-f]{8}$"
+				},
+				"logRoot": { "const": "evidence/stage-8a-moon-graph-run" }
+			}
+		},
+		"source": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"baseSha",
+				"implementationSha",
+				"treeClean",
+				"prototoolsMoon"
+			],
+			"properties": {
+				"baseSha": { "$ref": "#/$defs/gitSha" },
+				"implementationSha": { "$ref": "#/$defs/gitSha" },
+				"treeClean": { "const": true },
+				"prototoolsMoon": { "$ref": "#/$defs/version" }
+			}
+		},
+		"host": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"os",
+				"architecture",
+				"kernel",
+				"insideDevcontainer",
+				"moonVersion",
+				"bunVersion",
+				"ghVersion"
+			],
+			"properties": {
+				"os": { "const": "linux" },
+				"architecture": { "type": "string", "minLength": 3 },
+				"kernel": { "type": "string", "minLength": 1 },
+				"insideDevcontainer": { "const": true },
+				"moonVersion": { "$ref": "#/$defs/version" },
+				"bunVersion": { "$ref": "#/$defs/version" },
+				"ghVersion": { "$ref": "#/$defs/version" }
+			}
+		},
+		"repository": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"nameWithOwner",
+				"workflowFile",
+				"gateJobId",
+				"gateContext",
+				"gateNeeds",
+				"graphJobId",
+				"graphJobName",
+				"registryPath",
+				"capability"
+			],
+			"properties": {
+				"nameWithOwner": { "type": "string", "pattern": "^[^/]+/[^/]+$" },
+				"workflowFile": { "const": ".github/workflows/ci.yml" },
+				"gateJobId": { "const": "ci-gate" },
+				"gateContext": { "type": "string", "minLength": 1 },
+				"gateNeeds": {
+					"type": "array",
+					"minItems": 2,
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"graphJobId": { "const": "moon-graph" },
+				"graphJobName": { "type": "string", "minLength": 1 },
+				"registryPath": { "const": "ci-matrix-universes.json" },
+				"capability": { "const": "moon_affected_selection" }
+			}
+		},
+		"commands": {
+			"type": "array",
+			"minItems": 10,
+			"maxItems": 10,
+			"items": { "$ref": "#/$defs/commandResult" }
+		},
+		"guards": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["graph", "graphMutations", "ci", "ciMutations"],
+			"properties": {
+				"graph": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["commandId", "command", "summary"],
+					"properties": {
+						"commandId": { "const": "graph-guard" },
+						"command": { "const": "bun run graph:check" },
+						"summary": { "type": "string", "minLength": 40 }
+					}
+				},
+				"graphMutations": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["commandId", "testFile", "passCount", "failCount"],
+					"properties": {
+						"commandId": { "const": "graph-mutations" },
+						"testFile": {
+							"const": "scripts/template/__tests__/moon-graph.test.ts"
+						},
+						"passCount": { "type": "integer", "minimum": 20 },
+						"failCount": { "const": 0 }
+					}
+				},
+				"ci": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["commandId", "command", "summary"],
+					"properties": {
+						"commandId": { "const": "ci-guard" },
+						"command": { "const": "bun run ci:check" },
+						"summary": { "type": "string", "minLength": 40 }
+					}
+				},
+				"ciMutations": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["commandId", "testFile", "passCount", "failCount"],
+					"properties": {
+						"commandId": { "const": "workflow-policy-mutations" },
+						"testFile": { "const": "scripts/template/__tests__/ci.test.ts" },
+						"passCount": { "type": "integer", "minimum": 12 },
+						"failCount": { "const": 0 }
+					}
+				}
+			}
+		},
+		"graph": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"commandId",
+				"queryArgv",
+				"projects",
+				"edges",
+				"oracleCommandId",
+				"oracleSummary"
+			],
+			"properties": {
+				"commandId": { "const": "moon-query" },
+				"queryArgv": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"projects": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["id", "source"],
+						"properties": {
+							"id": { "type": "string", "minLength": 1 },
+							"source": { "type": "string", "minLength": 1 }
+						}
+					}
+				},
+				"edges": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["from", "to"],
+						"properties": {
+							"from": { "type": "string", "minLength": 1 },
+							"to": { "type": "string", "minLength": 1 }
+						}
+					}
+				},
+				"oracleCommandId": { "const": "live-graph-oracle" },
+				"oracleSummary": { "type": "string", "minLength": 40 }
+			}
+		},
+		"registry": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["path", "universes"],
+			"properties": {
+				"path": { "const": "ci-matrix-universes.json" },
+				"universes": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["id", "projects"],
+						"properties": {
+							"id": {
+								"type": "string",
+								"pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+							},
+							"projects": {
+								"type": "array",
+								"minItems": 1,
+								"items": { "type": "string", "minLength": 1 }
+							}
+						}
+					}
+				}
+			}
+		},
+		"renderFixtures": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "fixtures"],
+			"properties": {
+				"commandId": { "const": "rendered-graph" },
+				"fixtures": {
+					"type": "array",
+					"minItems": 3,
+					"maxItems": 3,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"name",
+							"capabilityEnabled",
+							"registryPresent",
+							"guardPaths",
+							"packageScripts",
+							"jobs",
+							"gateNeeds",
+							"gateContext",
+							"workflowErrors",
+							"oracleErrors"
+						],
+						"properties": {
+							"name": { "enum": ["minimal", "cloud", "full"] },
+							"capabilityEnabled": { "type": "boolean" },
+							"registryPresent": { "type": "boolean" },
+							"guardPaths": {
+								"type": "array",
+								"items": { "type": "string", "minLength": 1 }
+							},
+							"packageScripts": {
+								"type": "array",
+								"items": { "type": "string", "minLength": 1 }
+							},
+							"jobs": {
+								"type": "array",
+								"minItems": 2,
+								"items": { "type": "string", "minLength": 1 }
+							},
+							"gateNeeds": {
+								"type": "array",
+								"minItems": 2,
+								"items": { "type": "string", "minLength": 1 }
+							},
+							"gateContext": { "type": "string", "minLength": 1 },
+							"workflowErrors": {
+								"type": "array",
+								"maxItems": 0,
+								"items": { "type": "string" }
+							},
+							"oracleErrors": {
+								"type": "array",
+								"maxItems": 0,
+								"items": { "type": "string" }
+							}
+						}
+					}
+				}
+			}
+		},
+		"live": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["gate"],
+			"properties": {
+				"gate": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"commandId",
+						"runId",
+						"url",
+						"event",
+						"headBranch",
+						"headSha",
+						"conclusion",
+						"gateJobId",
+						"gateConclusion",
+						"gateLogSha256",
+						"upstreamResults",
+						"jobs"
+					],
+					"properties": {
+						"commandId": { "const": "live-gate" },
+						"runId": { "type": "integer", "minimum": 1 },
+						"url": { "type": "string", "pattern": "^https://github\\.com/" },
+						"event": {
+							"enum": ["workflow_dispatch", "pull_request", "push"]
+						},
+						"headBranch": { "type": "string", "minLength": 1 },
+						"headSha": { "$ref": "#/$defs/gitSha" },
+						"conclusion": { "const": "success" },
+						"gateJobId": { "type": "integer", "minimum": 1 },
+						"gateConclusion": { "const": "success" },
+						"gateLogSha256": { "$ref": "#/$defs/sha256" },
+						"upstreamResults": { "type": "string", "minLength": 1 },
+						"jobs": {
+							"type": "array",
+							"minItems": 2,
+							"items": {
+								"type": "object",
+								"additionalProperties": false,
+								"required": ["name", "conclusion"],
+								"properties": {
+									"name": { "type": "string", "minLength": 1 },
+									"conclusion": { "const": "success" }
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"coverage": {
+			"type": "array",
+			"minItems": 7,
+			"maxItems": 7,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["id", "task", "reason", "commandIds"],
+				"properties": {
+					"id": { "type": "string", "minLength": 1 },
+					"task": { "type": "string", "minLength": 10 },
+					"reason": { "type": "string", "minLength": 40 },
+					"commandIds": {
+						"type": "array",
+						"minItems": 1,
+						"items": { "type": "string", "minLength": 1 }
+					}
+				}
+			}
+		},
+		"rollback": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"mode",
+				"command",
+				"outsideTheTree",
+				"containerRebuildRequired",
+				"scope",
+				"proof"
+			],
+			"properties": {
+				"mode": { "const": "atomic" },
+				"command": { "$ref": "#/$defs/command" },
+				"outsideTheTree": { "type": "array", "maxItems": 0 },
+				"containerRebuildRequired": { "const": false },
+				"scope": { "type": "string", "minLength": 200 },
+				"proof": {
+					"type": "object",
+					"required": [
+						"commandId",
+						"predecessorSha",
+						"implementationSha",
+						"treeMatchesPredecessor",
+						"addedPaths",
+						"addedPathsRemoved"
+					],
+					"properties": {
+						"commandId": { "const": "rollback-proof" },
+						"predecessorSha": { "$ref": "#/$defs/gitSha" },
+						"implementationSha": { "$ref": "#/$defs/gitSha" },
+						"treeMatchesPredecessor": { "const": true },
+						"addedPaths": {
+							"type": "array",
+							"minItems": 6,
+							"items": { "type": "string", "minLength": 1 }
+						},
+						"addedPathsRemoved": { "const": true }
+					}
+				}
+			}
+		}
+	},
+	"$defs": {
+		"gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+		"sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+		"version": {
+			"type": "string",
+			"pattern": "^[0-9]+\\.[0-9]+(?:\\.[0-9]+)?(?:[-+][0-9A-Za-z.-]+)?$"
+		},
+		"command": {
+			"type": "array",
+			"minItems": 1,
+			"items": { "type": "string", "minLength": 1 }
+		},
+		"commandResult": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"command",
+				"runId",
+				"startedAt",
+				"completedAt",
+				"durationMs",
+				"stdoutPath",
+				"stderrPath",
+				"stdoutSha256",
+				"stderrSha256",
+				"exitCode",
+				"status"
+			],
+			"properties": {
+				"id": { "type": "string", "minLength": 1 },
+				"command": { "$ref": "#/$defs/command" },
+				"runId": { "type": "string", "minLength": 1 },
+				"startedAt": { "type": "string", "format": "date-time" },
+				"completedAt": { "type": "string", "format": "date-time" },
+				"durationMs": { "type": "integer", "minimum": 1 },
+				"stdoutPath": {
+					"type": "string",
+					"pattern": "^evidence/stage-8a-moon-graph-run/[a-z0-9-]+\\.stdout$"
+				},
+				"stderrPath": {
+					"type": "string",
+					"pattern": "^evidence/stage-8a-moon-graph-run/[a-z0-9-]+\\.stderr$"
+				},
+				"stdoutSha256": { "$ref": "#/$defs/sha256" },
+				"stderrSha256": { "$ref": "#/$defs/sha256" },
+				"exitCode": { "const": 0 },
+				"status": { "const": "pass" }
+			}
+		}
+	}
+}

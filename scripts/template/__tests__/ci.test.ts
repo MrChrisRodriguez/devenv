@@ -9,6 +9,7 @@ import { renderFixture } from "../render-fixture";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 const ACTION_PATH = ".github/actions/setup-bun/action.yml";
+const MOON_ACTION_PATH = ".github/actions/setup-moon/action.yml";
 const RETRY_SCRIPT = resolve(ROOT, "scripts/ci/bun-install-retry.sh");
 const CI_WORKFLOW = ".github/workflows/ci.yml";
 const SMOKE_WORKFLOW = ".github/workflows/codex-cloud-smoke.yml";
@@ -31,6 +32,7 @@ const CONTRACT_FILES = [
 	"scripts/ci/run-tests.sh",
 	"scripts/ci/run-typecheck.sh",
 	ACTION_PATH,
+	MOON_ACTION_PATH,
 	CI_WORKFLOW,
 	SMOKE_WORKFLOW,
 	"docs/devcontainer-upgrade/stage-0/template-ownership.json",
@@ -389,6 +391,77 @@ describe("workflow policy contract", () => {
 					),
 				"ci: .github/workflows/ci.yml job ci-gate needs browser, which the file does not declare with every capability disabled",
 			);
+			// --- The moon graph lane ------------------------------------------
+			// A graph that was never verified looks exactly like a graph that was,
+			// so the oracle's absence from `needs` gets its own verdict.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"      # capability:start moon_affected_selection\n      - moon-graph\n      # capability:end moon_affected_selection\n",
+						"",
+					),
+				"ci: the aggregate gate must depend on the moon graph oracle",
+			);
+			// A fenced job and its fenced `needs` entry disappear together, in
+			// this direction too: fencing only the job leaves the gate depending
+			// on something a rendered workflow does not declare.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"      # capability:start moon_affected_selection\n      - moon-graph\n      # capability:end moon_affected_selection\n",
+						"      - moon-graph\n",
+					),
+				"ci: .github/workflows/ci.yml job ci-gate needs moon-graph, which the file does not declare with every capability disabled",
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"      - uses: ./.github/actions/setup-moon\n",
+						"      - uses: moonrepo/setup-toolchain@261c62cb5b0f580c7be7c8cd0f023a2e96756095 # v0.6.4\n",
+					),
+				"ci: .github/workflows/ci.yml must reach moon through the committed action",
+			);
+			await mutate(
+				temporary,
+				MOON_ACTION_PATH,
+				(source) =>
+					source.replace(
+						"moonrepo/setup-toolchain@261c62cb5b0f580c7be7c8cd0f023a2e96756095",
+						"moonrepo/setup-toolchain@v0.6.4",
+					),
+				"ci: .github/actions/setup-moon/action.yml must pin moonrepo/setup-toolchain@v0.6.4 to an immutable commit",
+			);
+			// The installed toolchain is only an intention until the binary agrees
+			// with .prototools.
+			await mutate(
+				temporary,
+				MOON_ACTION_PATH,
+				(source) =>
+					source.replace(
+						"        actual=\"$(moon --version | awk '{ print $2 }')\"\n",
+						'        actual="$pinned"\n',
+					),
+				"ci: .github/actions/setup-moon/action.yml must assert the installed moon against .prototools",
+			);
+			// A version input here would be a second authority outside the
+			// toolchain guard — including a bun-version one.
+			await mutate(
+				temporary,
+				MOON_ACTION_PATH,
+				(source) =>
+					source.replace(
+						"runs:\n",
+						'inputs:\n  bun-version:\n    description: "Bun version"\n    required: true\n\nruns:\n',
+					),
+				"ci: .github/actions/setup-moon/action.yml must not declare the input bun-version; .prototools is the only version authority",
+			);
+
 			// The real file names the non-gating lane only inside comments; naming
 			// it anywhere executable would let a registry outage redden a PR.
 			await mutate(
@@ -518,6 +591,16 @@ describe("workflow policy contract", () => {
 				resolve(temporary, "minimal/.github/workflows/ci.yml"),
 			).text();
 			expect(minimal).not.toContain("browser");
+			// Same for the graph lane: neither the job, nor the gate's dependency
+			// on it, nor the hermetic step in the `ci` job.
+			expect(minimal).not.toContain("moon-graph");
+			expect(minimal).not.toContain("graph:check");
+			expect(minimal).not.toContain("setup-moon");
+			const full = await Bun.file(
+				resolve(temporary, "full/.github/workflows/ci.yml"),
+			).text();
+			expect(full).toContain("moon-graph");
+			expect(full).toContain("bun run graph:check --query");
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}

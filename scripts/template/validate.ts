@@ -12,6 +12,7 @@ import {
 	parseToml,
 	resolveFixtureParameters,
 } from "./parameters";
+import { validateStageEightAEvidence } from "./stage-eight-a-evidence";
 import { validateStageFiveBEvidence } from "./stage-five-b-evidence";
 import { validateStageFiveEvidence } from "./stage-five-evidence";
 import { validateStageFourEvidence } from "./stage-four-evidence";
@@ -20,6 +21,7 @@ import { validateStageSixEvidence } from "./stage-six-evidence";
 import { validateStageThreeEvidence } from "./stage-three-evidence";
 import { validateToolchainContract } from "./toolchain";
 import { validateStageOneEvidence } from "./toolchain-evidence";
+import { validateGraphContract } from "./validate-graph";
 import { validateWorktreeContract } from "./worktree-contract";
 
 export interface ValidationReport {
@@ -45,6 +47,8 @@ export interface ValidationReport {
 	doctorEvidenceSchemaFile: string;
 	ciEvidenceFile: string;
 	ciEvidenceSchemaFile: string;
+	graphEvidenceFile: string;
+	graphEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -75,6 +79,8 @@ export async function validateAll(
 		doctorEvidenceSchemaFile: "evidence/stage-6-doctor.schema.json",
 		ciEvidenceFile: "evidence/stage-7-ci.json",
 		ciEvidenceSchemaFile: "evidence/stage-7-ci.schema.json",
+		graphEvidenceFile: "evidence/stage-8a-moon-graph.json",
+		graphEvidenceSchemaFile: "evidence/stage-8a-moon-graph.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -144,6 +150,14 @@ export async function validateAll(
 			report.status = "fail";
 			report.errors.push(...ciErrors);
 		}
+		// The hermetic leg only: `template:validate` runs on a developer host
+		// that has neither moon nor proto, and a leg that needs a binary would be
+		// skipped there rather than run — which is the same as not having it.
+		const graphErrors = await validateGraphContract(root);
+		if (graphErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...graphErrors);
+		}
 		const toolchainEvidenceErrors = await validateStageOneEvidence(root);
 		if (toolchainEvidenceErrors.length > 0) {
 			report.status = "fail";
@@ -200,6 +214,13 @@ export async function validateAll(
 				...ciEvidenceErrors.map((error) => `stage-7 evidence: ${error}`),
 			);
 		}
+		const graphEvidenceErrors = await validateStageEightAEvidence(root);
+		if (graphEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...graphEvidenceErrors.map((error) => `stage-8a evidence: ${error}`),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -218,7 +239,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, ${report.graphEvidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(

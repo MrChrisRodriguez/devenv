@@ -44,11 +44,13 @@ Prefer Bun-native APIs over third-party equivalents:
 ```
 apps/      # deployable applications (Next.js, Elysia, Cloudflare Workers, etc.)
 libs/      # shared packages imported via @<project>/* path alias
-scripts/   # one-off tooling scripts
+scripts/   # tooling — neither workspace packages nor moon projects
 ```
 
 - Path alias: `@<project>/*` → `${configDir}/../../libs/*/src` from each consuming project config
 - Monorepo tasks (lint, typecheck, test, build) are defined in `.moon/tasks.yml` and run via `moon`
+- The moon project graph is `apps/*`, `libs/*`, and the repository root itself, whose project id is `root`. `scripts/` is deliberately outside both that graph and `package.json#workspaces`: those directories are tooling rather than packages, so a glob over them turned every one into a project inheriting tasks it cannot run.
+- The `root` project exists so the graph is never empty — `apps/` and `libs/` start empty, and a query over an empty graph is trivially true. Its `moon.yml` excludes the inherited tasks, because a project whose directory is the whole repository would otherwise run each of them over everything.
 
 ## Code Quality
 
@@ -150,6 +152,20 @@ scripts/   # one-off tooling scripts
 - Never interpolate `${{ github.event.* }}` into a `run:` body. Pull-request metadata is attacker-influenced text; pass it through `env:` so it is only ever a value.
 - Never bootstrap from the network in the required lane, never add `MOON_REMOTE_*` under `.github/**`, and never make the gate depend on the real-network smoke workflow. `fetch-depth` belongs only to jobs on the guard's declared history-owner list.
 - Run `bun run ci:check` after changing any workflow, composite action, `scripts/ci/*` helper, `tsconfig` include, or package script that CI invokes. Branch protection is not in the tree: applying and removing it are operator steps run with `gh api` against `branches/<default>/protection`.
+
+<!-- capability:start moon_affected_selection -->
+## Moon Graph Ownership
+
+- The moon project graph is `apps/*`, `libs/*`, and the repository root (`sources.root: '.'`, project id `root`). Never glob a directory that is not a package: a glob matches files as readily as directories, and every match becomes a project inheriting tasks it cannot run. Never let the graph become empty — a query over an empty graph is trivially true, so the oracle would pass by having nothing to compare.
+- The root project's `moon.yml` must keep `workspace.inheritedTasks.exclude`. Its directory is the whole repository, so an inherited `lint` would lint everything once for `root` and again for every project inside it.
+- `.moon/workspace.yml#vcs.defaultBranch` and `template-parameters.toml [project] default_branch` are one value; the graph contract asserts it. moon's own default is `master`, so an unstated key is a silently wrong diff base rather than no opinion.
+- `dependsOn` is **derived**, never hand-written. It lives between `# graph:generated:start` and `# graph:generated:end`; everything outside those markers is yours and is preserved. Run `bun run graph:generate` after changing a manifest or an import, and `bun run graph:check` rejects the stale file.
+- `ci-matrix-universes.json` is the sole registry, and every project belongs to exactly one universe. A project in none is a project no lane builds; a project in two is a lane that runs it twice and reports one result. A second tracked `*universes*.json` is rejected outright.
+- `moon query projects` takes **no** `--json` in moon 2.x — the query family emits JSON by definition, and 2.3.5 exits 2 on the flag. The argv lives in one exported constant, `MOON_QUERY_ARGV`; never spell it a second way.
+- Every abnormal query outcome is a failure, never a skip: a non-zero exit, empty output, non-JSON, an unexpected shape, or any project or edge disagreement. A live oracle that tolerates a failed query is a step that always passes.
+- `.github/actions/setup-moon` is the only way a job gets moon, it takes no inputs, and it asserts `moon --version` against `.prototools`. Adding an input there would create a second version authority outside the toolchain guard.
+- Run `bun run graph:check` after changing a workspace manifest, a source import, a project `moon.yml`, or the registry. The `--query` leg needs the real toolchain, so run it inside the devcontainer.
+<!-- capability:end moon_affected_selection -->
 
 ## Commit Policy
 

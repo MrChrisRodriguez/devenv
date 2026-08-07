@@ -434,13 +434,35 @@ export async function validateStageSevenEvidenceValue(
 		.catch(() => "");
 	const context = aggregateGateContext(workflow);
 	const needs = gateNeeds(workflow);
+	// The jobs this record is evidence ABOUT. Every run-shape check below is
+	// anchored on this list rather than on the committed workflow's current one,
+	// because the two answer different questions. What the sealed runs prove is
+	// "every job that existed when they ran reported into the gate", and that
+	// stays true forever. Whether the gate is complete TODAY is a live question,
+	// and it already has an owner: the workflow contract requires the gate to
+	// depend on every job in the file, and fails the build when it does not.
+	//
+	// Re-resolving the shape against the current workflow instead made this
+	// record fail the moment a later stage added a job — a green historical
+	// capture reported as fabrication, with the only repair being to re-run
+	// three live workflows for a claim nothing had falsified. It is the same
+	// mistake the Stage 5A validator made against an absolute host path, fixed
+	// the same way: assert the property that made the capture meaningful.
+	const sealedNeeds = arrayAt(repository, "gateNeeds").filter(
+		(entry): entry is string => typeof entry === "string",
+	);
+	// A sealed need that the gate no longer declares means the record describes
+	// a lane that has been renamed or removed, and its runs are evidence for a
+	// workflow this repository no longer ships. Growth is legal; loss is not.
+	const droppedNeeds = sealedNeeds.filter((need) => !needs.includes(need));
 	if (
 		repository["workflowFile"] !== WORKFLOW_PATH ||
 		repository["gateJobId"] !== DEFAULT_AGGREGATE_GATE_NAME ||
 		context === undefined ||
 		repository["gateContext"] !== context ||
-		!sameValue(repository["gateNeeds"], needs) ||
-		needs.length < 2
+		sealedNeeds.length !== arrayAt(repository, "gateNeeds").length ||
+		droppedNeeds.length > 0 ||
+		sealedNeeds.length < 2
 	)
 		errors.push("semantic: recorded gate identity is not the committed one");
 
@@ -558,8 +580,11 @@ export async function validateStageSevenEvidenceValue(
 					conclusion: job.conclusion,
 				})),
 			) ||
-			// Every real job in the file reported into this run.
-			others.length !== needs.length
+			// Every job the gate depended on WHEN THIS RAN reported into it. The
+			// count comes from the record's own gateNeeds, so the claim stays a
+			// claim about that run; a record whose runs disagree with its own
+			// sealed dependency list is still rejected here.
+			others.length !== sealedNeeds.length
 		)
 			errors.push(`semantic: live ${key} run evidence drifted`);
 	}
@@ -572,7 +597,7 @@ export async function validateStageSevenEvidenceValue(
 		green["gateConclusion"] !== "success" ||
 		greenRun.jobs.some((job) => job.conclusion !== "success") ||
 		green["headSha"] !== source["implementationSha"] ||
-		green["upstreamResults"] !== needs.map(() => "success").join(",") ||
+		green["upstreamResults"] !== sealedNeeds.map(() => "success").join(",") ||
 		green["gateVerdict"] !== "" ||
 		Number(greenValues["gateGreenLines"] ?? 0) < 1
 	)
@@ -595,7 +620,7 @@ export async function validateStageSevenEvidenceValue(
 		red["gateConclusion"] !== "failure" ||
 		redFailures.length !== 1 ||
 		red["failedJob"] !== redFailures[0]?.name ||
-		redSuccesses.length !== needs.length - 1 ||
+		redSuccesses.length !== sealedNeeds.length - 1 ||
 		red["headBranch"] !== repository["negativeBranch"] ||
 		red["branchDeleted"] !== true ||
 		red["headSha"] === source["implementationSha"] ||

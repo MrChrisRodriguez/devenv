@@ -1,7 +1,32 @@
 $schema: 'https://moonrepo.dev/schemas/workspace.json'
 
-# Declare project locations
+# Declare project locations.
+#
+# `globs` names the two directories that hold real packages. `scripts/*` used to
+# be listed here and is deliberately gone: those directories are tooling, not
+# packages, so every one of them became a moon project that inherited lint,
+# typecheck, test and build tasks it has no way to run — and moon warned on each
+# loose file under scripts/ ("Received a file path for a project root") because a
+# glob matches files as readily as directories.
+#
+# `sources.root` adds the repository itself as a project with the fixed id
+# `root`. It is what keeps the graph non-empty in a freshly rendered project,
+# where apps/ and libs/ are still empty skeletons: an empty project graph makes
+# every downstream query trivially true, so a drift oracle over it would pass by
+# having nothing to compare. The root project's own moon.yml excludes the
+# inherited tasks — without that exclusion `moon run :lint` would lint the entire
+# repository once per project.
 projects:
-  - 'apps/*'
-  - 'libs/*'
-  - 'scripts/*'
+  globs:
+    - 'apps/*'
+    - 'libs/*'
+  sources:
+    root: '.'
+
+# moon's own default is `master`. Left unstated, every "what changed" query would
+# silently diff against a branch this repository does not have, so affected
+# selection would be wrong rather than absent. This value is the same authority
+# as template-parameters.toml [project] default_branch, and the graph contract
+# asserts the two agree.
+vcs:
+  defaultBranch: 'main'

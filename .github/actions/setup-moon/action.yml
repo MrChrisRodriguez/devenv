@@ -1,0 +1,67 @@
+name: Setup moon
+description: >
+  Install the pinned proto and moon toolchains for a job that needs the real
+  binary, and verify the installed moon against .prototools. This action is the
+  single owner of "how a CI job gets moon", so no call site can drift from the
+  version this repository pins.
+
+# ---------------------------------------------------------------------------
+# WHY THIS ACTION DECLARES NO INPUTS - please read before adding one.
+#
+# .prototools is the one authority for the moon version, and moonrepo's
+# setup-toolchain already reads it: its `moon-version` input defaults to empty,
+# which means "take the version from the manifest". An input here would be a
+# second authority sitting outside the toolchain guard - the exact drift the
+# Bun action's header argues against at length - and a caller could then ask for
+# a moon this repository does not pin. `auto-install: true` is passed so
+# `proto install` materialises the manifest's tools rather than leaving the
+# binary to be resolved by luck.
+#
+# There is deliberately no bun-version input either. A job that needs both
+# toolchains uses the two committed actions side by side; folding Bun into this
+# one would give the Bun version a second owner.
+#
+# NOTE: never write a runner expression - the dollar-and-double-brace form -
+# anywhere in this file, not even inside prose. The runner parses action.yml as
+# a template and evaluates every expression it finds, including inside a
+# description, BEFORE a single step runs. Composite-action metadata has no env,
+# secrets, vars, needs, or matrix context, so one documentation sentence naming
+# one of those fails the whole action to LOAD, which fails every job that uses
+# it.
+#
+# There is likewise no timeout-minutes on any step below: that key is
+# unsupported on composite-action steps, so writing it would be ignored rather
+# than rejected and the bound would be imaginary. The bound lives on the calling
+# job.
+# ---------------------------------------------------------------------------
+
+runs:
+  using: composite
+  steps:
+    - uses: moonrepo/setup-toolchain@261c62cb5b0f580c7be7c8cd0f023a2e96756095 # v0.6.4
+      with:
+        auto-install: true
+
+    # Close the loop: an installed toolchain is only an intention until the
+    # binary agrees with the authority. Reading .prototools here makes the
+    # action self-verifying rather than trusting the installer, and a missing
+    # manifest is a hard failure - not a skipped check.
+    - name: Assert the installed moon matches the pinned toolchain
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ ! -f .prototools ]; then
+          echo "::error::setup-moon: .prototools is missing; the moon pin has no authority to verify against." >&2
+          exit 1
+        fi
+        pinned="$(sed -n 's/^moon = "\([^"]*\)"[[:space:]]*$/\1/p' .prototools | head -n 1)"
+        if [ -z "$pinned" ]; then
+          echo "::error::setup-moon: .prototools declares no moon version." >&2
+          exit 1
+        fi
+        actual="$(moon --version | awk '{ print $2 }')"
+        if [ "$actual" != "$pinned" ]; then
+          echo "::error::setup-moon: installed moon $actual differs from the .prototools pin $pinned." >&2
+          exit 1
+        fi
+        echo "moon $actual matches the .prototools pin."
