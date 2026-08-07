@@ -536,10 +536,13 @@ export async function validateAffectedContract(
 		}
 	}
 
-	// The parameter that records what the repository variable defaults to. It
-	// cannot be `moon` here — the capability is off by default and two of three
-	// fixtures disable it — so this rule is about the value being STATED, and
-	// the workflow's own fallback is checked against it once the lane exists.
+	// The switch, and the one thing about it that can be checked from inside the
+	// tree. The value itself lives in a repository variable — that is what makes
+	// a rollback a variable change with no deploy — so what is guarded here is
+	// the IN-TREE default it falls back to when the variable is unset. An
+	// override that fails safe to `full` is only safe if `full` is what this
+	// repository actually recorded.
+	let recorded: string | undefined;
 	const parameterPath = resolve(root, PARAMETER_PATH);
 	if (await exists(parameterPath)) {
 		try {
@@ -553,9 +556,35 @@ export async function validateAffectedContract(
 				errors.push(
 					`affected: ${PARAMETER_PATH} must declare [ci] affected_mode_initial`,
 				);
+			else recorded = declared;
 		} catch {
 			errors.push(`affected: ${PARAMETER_PATH} must parse as TOML`);
 		}
+	}
+
+	for (const [path, source] of workflows) {
+		if (!source.includes(`${MODE_VARIABLE}:`)) continue;
+		const assignment = new RegExp(
+			`^\\s*${MODE_VARIABLE}:\\s*(\\S.*?)\\s*$`,
+			"m",
+		).exec(source);
+		const value = assignment?.[1] ?? "";
+		const fallback = /\|\|\s*'([^']*)'\s*\}\}/.exec(value)?.[1];
+		if (fallback === undefined) {
+			errors.push(
+				`affected: ${path} must default ${MODE_VARIABLE} to a quoted literal`,
+			);
+			continue;
+		}
+		// The assertion A3 turns on: the out-of-tree override may be absent, but
+		// what it falls back to is a fact this tree states and this guard checks.
+		if (recorded !== undefined && fallback !== recorded)
+			errors.push(
+				`affected: ${path} defaults ${MODE_VARIABLE} to ${fallback}, which is not the recorded ${recorded}`,
+			);
+		// ... and the selection lane has to actually run the one entrypoint.
+		if (!source.includes(`bash ${MATRIX_SCRIPT}`))
+			errors.push(`affected: ${path} declares the mode but runs no selector`);
 	}
 
 	return errors;

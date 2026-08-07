@@ -48,6 +48,28 @@ const MOON_ACTION_DIRECTORY = `${ACTION_DIRECTORY}/setup-moon`;
 const MOON_ACTION = `${MOON_ACTION_DIRECTORY}/action.yml`;
 const GRAPH_JOB = "moon-graph";
 
+// The job that decides which entries the heavy lane's matrix has, and the job
+// ids that must never read it.
+//
+// Only the ID is named here, never the capability or the mode variable: this
+// file is copied into EVERY rendered project, and the anti-residue scan is a
+// plain substring search for a disabled capability's signature tokens over
+// every file of that render. A job id is not a signature token; the mode
+// variable is, which is why every mode-aware rule lives in the gated
+// affected-contract module instead.
+const SELECTOR_JOB = "affected";
+
+// A selection decides what is CHECKED. A job that ships, tags or promotes
+// something must run against the whole tree, because "this pull request did not
+// touch that project" is a statement about a diff and not about a release. The
+// rule is a negative requirement: no such job exists here today, and it is
+// encoded so that adding one wired to the selector is rejected rather than
+// reviewed.
+const DELIVERY_JOB = /deploy|release|publish|promote/;
+
+const NEEDS_OUTPUT = /needs\.([A-Za-z0-9_-]+)\.outputs\./g;
+const FROM_JSON = /fromJSON\s*\(/g;
+
 // Jobs that are allowed to claim ownership of repository history. `fetch-depth`
 // is cheap to add and expensive to reason about: a second job that deepens its
 // clone means two jobs now depend on ancestry and neither says why. Every entry
@@ -58,6 +80,12 @@ const HISTORY_OWNERS = [
 		job: "ci",
 		reason:
 			"template:validate re-checks sealed ancestry with git merge-base --is-ancestor",
+	},
+	{
+		workflow: ".github/workflows/ci.yml",
+		job: "affected",
+		reason:
+			"the affected diff needs the pull request's true merge base, which a shallow clone cannot resolve",
 	},
 ] as const;
 
@@ -110,6 +138,7 @@ interface Job {
 	needs?: string | string[];
 	if?: string;
 	steps?: Step[];
+	strategy?: unknown;
 	"timeout-minutes"?: unknown;
 }
 
@@ -679,6 +708,46 @@ export async function validateCiContract(
 				errors.push(
 					`ci: ${path} job ${GRAPH_JOB} must reach moon through the committed action`,
 				);
+
+			// --- Outputs, and who may read them ------------------------------
+			// A job that reads another job's outputs but does not declare it in
+			// `needs` reads EMPTY rather than failing: GitHub populates the
+			// context from declared dependencies only. So the lane starts
+			// silently, with a matrix built from nothing, and looks exactly like
+			// a lane that had nothing to do.
+			const consumed = new Set<string>();
+			for (const match of JSON.stringify(job).matchAll(NEEDS_OUTPUT))
+				if (match[1]) consumed.add(match[1]);
+			const declared = new Set(needsOf(job));
+			for (const producer of consumed) {
+				if (!declared.has(producer))
+					errors.push(
+						`ci: ${path} job ${id} reads outputs from ${producer} without declaring it in needs`,
+					);
+			}
+			// A selection decides what is CHECKED, never what is SHIPPED. "This
+			// pull request did not touch that project" is a statement about a
+			// diff, and a delivery lane that believed it would ship a tree
+			// nothing verified.
+			if (
+				consumed.has(SELECTOR_JOB) &&
+				(DELIVERY_JOB.test(id) || Object.hasOwn(job, "environment"))
+			)
+				errors.push(
+					`ci: ${path} job ${id} delivers and must not select what it runs`,
+				);
+			// `fromJSON` turns a string into structure. Anywhere but a matrix
+			// value that is a decision made from data the job did not compute,
+			// and the one place it is legitimate is the place a selection is
+			// consumed.
+			const strategy = isRecord(job["strategy"]) ? job["strategy"] : {};
+			const matrix = isRecord(strategy["matrix"]) ? strategy["matrix"] : {};
+			const calls = (text: string): number =>
+				[...text.matchAll(FROM_JSON)].length;
+			if (calls(JSON.stringify(job)) !== calls(JSON.stringify(matrix)))
+				errors.push(
+					`ci: ${path} job ${id} may only call fromJSON in a matrix value`,
+				);
 		}
 	}
 
@@ -798,6 +867,14 @@ export async function validateCiContract(
 		if (Object.hasOwn(jobs, GRAPH_JOB) && !declared.includes(GRAPH_JOB))
 			errors.push(
 				"ci: the aggregate gate must depend on the moon graph oracle",
+			);
+		// Named separately for the same reason, and it is the sharper case. A
+		// selector that failed makes the lanes below it SKIP, and a skipped lane
+		// reads as a pass to the verdict script — so a selection nothing gates on
+		// is a page that goes green precisely when the selection was wrong.
+		if (Object.hasOwn(jobs, SELECTOR_JOB) && !declared.includes(SELECTOR_JOB))
+			errors.push(
+				"ci: the aggregate gate must depend on the affected selector",
 			);
 		const verdict = stepsOf(gate).at(-1);
 		const environment = isRecord(verdict?.env) ? verdict.env : {};

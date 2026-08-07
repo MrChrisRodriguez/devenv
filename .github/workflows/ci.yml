@@ -42,13 +42,22 @@ permissions:
 # spell a Bun version any other way; the toolchain guard rejects it if one does.
 env:
   BUN_VERSION: "1.3.13"
+  # capability:start moon_affected_selection
+  # The single rollback switch for affected selection, and the only part of this
+  # stage that lives outside the tree. Unset — which is how it ships — this is
+  # `full`, the all-or-nothing behaviour that predates the capability, so a
+  # rollback is a variable change with no deploy. The quoted fallback is asserted
+  # against `[ci] affected_mode_initial` in template-parameters.toml, so the
+  # out-of-tree override cannot drift from what this repository recorded.
+  MOON_AFFECTED_MODE: ${{ vars.MOON_AFFECTED_MODE || 'full' }}
+  # capability:end moon_affected_selection
 
 jobs:
   # Draft pull requests skip the gating jobs; the aggregate gate refuses to go
   # green while a PR is a draft, so a skipped lane can never be mistaken for a
   # validated one.
   ci:
-    name: Lint, Typecheck & Test
+    name: Contracts & Baseline
     runs-on: ubuntu-latest
     timeout-minutes: 20
     if: ${{ !github.event.pull_request.draft }}
@@ -110,19 +119,11 @@ jobs:
       - name: Run hermetic worktree runtime selftest
         run: bash scripts/worktree/selftest.sh
 
-      - name: Lint
-        run: bunx biome check --no-errors-on-unmatched .
-
-      # No continue-on-error anywhere in this job. A step allowed to fail is a
-      # step nobody reads: it reports green while reporting nothing. The two
-      # reasons this file used to need one are gone — the compiler now has a
-      # committed project to check (tsconfig.json), and the "no tests yet" case
-      # is classified inside run-tests.sh instead of being waved through.
-      - name: Typecheck
-        run: bun run typecheck
-
-      - name: Test
-        run: bash scripts/ci/run-tests.sh
+      # Lint, Typecheck and Test are NOT here. They are the three steps whose
+      # cost scales with the project graph, so they live in the `project` job
+      # below and run once per selected project. Everything this job still does
+      # is a contract guard whose cost is fixed, which is why it stays
+      # unconditional and is never selected against.
 
       # template-only:start stage-zero-baseline
       # `template:test` is deliberately absent: the Test step above already runs
@@ -147,6 +148,109 @@ jobs:
         run: |
           target="$(jq -r '.build.target' .devcontainer/devcontainer.json)"
           docker build --progress=plain --target "$target" -f .devcontainer/Dockerfile .
+
+  # ── Selection ───────────────────────────────────────────────────────────
+  # Decide which projects the heavy lane runs over. SELECTION ONLY: the
+  # `project` job below still runs Biome, the compiler and the suite itself;
+  # this job only decides which matrix entries exist.
+  #
+  # The job is CORE while its selector step is fenced, and that split is
+  # deliberate. A project without the affected-selection capability receives no
+  # selector, so this job emits no outputs and the matrix below falls back to a
+  # single entry — which is exactly what the heavy lane did before the
+  # capability existed. Fencing the whole job instead would leave such a project
+  # with no lint, no compiler and no suite at all, which is the failure this
+  # program exists to prevent.
+  #
+  # INVARIANT: this job stays in `ci-gate.needs` and must never be
+  # `continue-on-error`. If it fails, `project` skips on the failed dependency
+  # but the failure propagates to the gate, so a selector outage can never let a
+  # pull request merge untested.
+  affected:
+    name: Select affected projects
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: ${{ !github.event.pull_request.draft }}
+    outputs:
+      ci: ${{ steps.select.outputs.ci }}
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # Full history: the selection diffs from the pull request's true merge
+          # base, and a shallow clone cannot answer what that is. The reason is
+          # recorded in the workflow guard's HISTORY_OWNERS list.
+          fetch-depth: 0
+
+      # capability:start moon_affected_selection
+      # Moon is installed only where it is used. Every event that is not a pull
+      # request short-circuits to the full matrix before the binary is touched,
+      # and so does the unflipped mode. A failure HERE fails the job and
+      # therefore the gate — that is fail-closed and noisy, which is the correct
+      # direction; only a failed QUERY falls open to the full matrix.
+      - uses: ./.github/actions/setup-moon
+        if: ${{ env.MOON_AFFECTED_MODE == 'moon' && github.event_name == 'pull_request' }}
+
+      # `install: "false"` because the selector is a standalone script over
+      # node: and Bun builtins — it imports nothing from node_modules.
+      - uses: ./.github/actions/setup-bun
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          install: "false"
+
+      # Every input arrives through `env:` and never through interpolation into
+      # the body: pull-request metadata is attacker-influenced text, and spliced
+      # into a shell command it becomes part of the script the runner executes.
+      - name: Select affected projects
+        id: select
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: bash scripts/ci/affected-matrices.sh
+      # capability:end moon_affected_selection
+
+  # ── The heavy lane ──────────────────────────────────────────────────────
+  # The three steps whose cost scales with the project graph, run once per
+  # selected project. An EMPTY matrix skips this job, which the aggregate gate
+  # reads as `skipped` and treats as a pass — that is the point of the selection
+  # and the reason the `affected` job above is a hard gate dependency.
+  #
+  # `needs.affected.outputs.ci` is empty in a project whose render carries no
+  # selector, and the `|| ` fallback then produces the single entry this lane
+  # always had. The matrix value is a label rather than a scope: these commands
+  # are repository-wide, so one entry runs them once.
+  project:
+    name: Lint, Typecheck & Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [affected]
+    if: ${{ !github.event.pull_request.draft && needs.affected.outputs.ci != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        project: ${{ fromJSON(needs.affected.outputs.ci || '["repository"]') }}
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: ./.github/actions/setup-bun
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Lint
+        run: bunx biome check --no-errors-on-unmatched .
+
+      # No continue-on-error anywhere in this job. A step allowed to fail is a
+      # step nobody reads: it reports green while reporting nothing. The two
+      # reasons this file used to need one are gone — the compiler now has a
+      # committed project to check (tsconfig.json), and the "no tests yet" case
+      # is classified inside run-tests.sh instead of being waved through.
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Test
+        run: bash scripts/ci/run-tests.sh
 
   # capability:start moon_affected_selection
   # The live leg of the graph oracle. It is a separate job because it is the one
@@ -252,6 +356,8 @@ jobs:
     needs:
       - ci
       - image
+      - affected
+      - project
       # capability:start moon_affected_selection
       - moon-graph
       # capability:end moon_affected_selection

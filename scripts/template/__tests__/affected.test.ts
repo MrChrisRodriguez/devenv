@@ -592,6 +592,78 @@ describe("affected selection contract", () => {
 	test("passes the real tree", async () => {
 		expect(await validateAffectedContract(ROOT)).toEqual([]);
 	});
+
+	test("rejects a workflow whose in-tree default drifts from the parameter", async () => {
+		// The switch itself is a repository variable, so the only part of it this
+		// tree can guard is what the workflow falls back to when the variable is
+		// unset. An override that "fails safe to full" is only safe if `full` is
+		// what this repository actually recorded.
+		const temporary = await mkdtemp(resolve(tmpdir(), "devenv-affected-mode-"));
+		try {
+			for (const path of [
+				"package.json",
+				"template-parameters.toml",
+				"ci-matrix-universes.json",
+				".moon/workspace.yml",
+				"moon.yml",
+				"tsconfig.base.json",
+				".github/workflows/ci.yml",
+				"scripts/ci/affected-matrices.sh",
+				"scripts/template/affected-contract.ts",
+				"scripts/template/validate-affected.ts",
+				"scripts/template/select-affected.ts",
+				"scripts/template/graph-contract.ts",
+				"docs/devcontainer-upgrade/stage-0/template-ownership.json",
+			]) {
+				const target = resolve(temporary, path);
+				await mkdir(resolve(target, ".."), { recursive: true });
+				await Bun.write(target, await Bun.file(resolve(ROOT, path)).text());
+			}
+			expect(await validateAffectedContract(temporary)).toEqual([]);
+
+			const workflow = resolve(temporary, ".github/workflows/ci.yml");
+			const original = await Bun.file(workflow).text();
+			await Bun.write(
+				workflow,
+				original.replace(
+					"MOON_AFFECTED_MODE: ${{ vars.MOON_AFFECTED_MODE || 'full' }}",
+					"MOON_AFFECTED_MODE: ${{ vars.MOON_AFFECTED_MODE || 'moon' }}",
+				),
+			);
+			expect(await validateAffectedContract(temporary)).toContain(
+				"affected: .github/workflows/ci.yml defaults MOON_AFFECTED_MODE to moon, which is not the recorded full",
+			);
+
+			// An unquoted default is not a fact this tree can check at all.
+			await Bun.write(
+				workflow,
+				original.replace(
+					"MOON_AFFECTED_MODE: ${{ vars.MOON_AFFECTED_MODE || 'full' }}",
+					"MOON_AFFECTED_MODE: ${{ vars.MOON_AFFECTED_MODE }}",
+				),
+			);
+			expect(await validateAffectedContract(temporary)).toContain(
+				"affected: .github/workflows/ci.yml must default MOON_AFFECTED_MODE to a quoted literal",
+			);
+
+			// A mode declared but never consumed is a switch wired to nothing.
+			await Bun.write(
+				workflow,
+				original.replace(
+					"        run: bash scripts/ci/affected-matrices.sh",
+					"        run: true",
+				),
+			);
+			expect(await validateAffectedContract(temporary)).toContain(
+				"affected: .github/workflows/ci.yml declares the mode but runs no selector",
+			);
+
+			await Bun.write(workflow, original);
+			expect(await validateAffectedContract(temporary)).toEqual([]);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 60_000);
 });
 
 const FAKE_MOON = resolve(import.meta.dir, "fixtures/fake-moon-affected.ts");
