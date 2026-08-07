@@ -131,6 +131,20 @@ const REMOTE_EXECUTION = /MOON_REMOTE_[A-Z0-9_]*/;
 // hole somebody eventually widens.
 const OUTPUT_VARIABLE = ["GITHUB", "OUTPUT"].join("_");
 
+// The credential context, and the trigger that hands it to a fork.
+//
+// Every rule below is a NEGATIVE requirement today: no workflow in this
+// repository references the secrets context at all, and none declares the fork
+// trigger. That is exactly why they are written now — a rule added alongside
+// the first deployment job is a rule written by the person who wanted the job.
+//
+// Nothing here names a capability, a guard script or a package script. This
+// file is copied into EVERY rendered project and the anti-residue scan is a
+// plain substring search for a disabled capability's signature tokens.
+const SECRETS_CONTEXT = /\bsecrets\./;
+const SECRETS_INTERPOLATION = "${{ secrets.";
+const FORK_WRITABLE_TRIGGER = "pull_request_target";
+
 const IMMUTABLE_REFERENCE = /@[0-9a-f]{40}$/;
 const RUNNER_EXPRESSION = /\$\{\{\s*(?:env|secrets|vars|needs|matrix)\./;
 const BUN_CACHE_PATH = /^\s+~\/\.bun\/install\/cache\s*$/m;
@@ -154,6 +168,7 @@ interface Job {
 	if?: string;
 	steps?: Step[];
 	strategy?: unknown;
+	env?: JsonRecord;
 	"timeout-minutes"?: unknown;
 }
 
@@ -234,6 +249,15 @@ function stepsOf(job: Job): Step[] {
 	return Array.isArray(job.steps)
 		? job.steps.filter((step): step is Step => isRecord(step))
 		: [];
+}
+
+// Whether a parsed fragment reaches for the credential context anywhere inside
+// it. The whole fragment is serialised rather than walked key by key: a
+// credential reaches a step through `env:`, through `with:`, through a nested
+// mapping and through a list, and a rule that only knew the first spelling
+// would be defeated by the second.
+function referencesSecrets(value: unknown): boolean {
+	return value !== undefined && SECRETS_CONTEXT.test(JSON.stringify(value));
 }
 
 function needsOf(job: Job): string[] {
@@ -438,11 +462,32 @@ async function checkStepBodies(
 				errors.push(
 					`ci: ${path} ${label} must not interpolate event metadata into a shell body`,
 				);
+			// The same reasoning, one turn sharper. Attacker-influenced text spliced
+			// into a script is an injection; a CREDENTIAL spliced into one is the
+			// credential written into the command the runner executes, where a
+			// `set -x`, a crash dump or an error message prints it. A credential
+			// reaches a step through `env:`, and only through `env:`.
+			if (body.includes(SECRETS_INTERPOLATION))
+				errors.push(
+					`ci: ${path} ${label} must not interpolate a credential into a shell body`,
+				);
 			if (FOREIGN_RUNTIMES.some((pattern) => pattern.test(body)))
 				errors.push(
 					`ci: ${path} ${label} must not invoke a foreign package runtime`,
 				);
 		}
+
+		// A credential belongs to the step that uses it. A step that receives one
+		// and declares no `if:` runs on every event that reaches the job, which is
+		// the spec sentence made concrete at the one layer a workflow can be
+		// checked at: credential presence alone must not authorize the write.
+		if (
+			(referencesSecrets(step.env) || referencesSecrets(step.with)) &&
+			step.if === undefined
+		)
+			errors.push(
+				`ci: ${path} ${label} passes a credential to an unconditional step; credential presence alone must not authorize a write`,
+			);
 
 		const reference = step.uses;
 		if (reference === undefined) continue;
@@ -665,8 +710,28 @@ export async function validateCiContract(
 			if (!concurrency.includes("cancel-in-progress: true"))
 				errors.push(`ci: ${path} must cancel superseded runs`);
 		}
+		// A fork-writable credential context. `pull_request_target` runs with the
+		// base repository's secrets against a head the fork controls, and it is
+		// read out of the uncommented text rather than out of the parse because
+		// the list form and the mapping form are two different edits that produce
+		// the same tree — while a comment explaining why the trigger is banned is
+		// not an instance of it.
+		if (uncommented.includes(FORK_WRITABLE_TRIGGER))
+			errors.push(
+				`ci: ${path} must not declare a ${FORK_WRITABLE_TRIGGER} trigger; a fork-writable credential context has no legitimate use in a template`,
+			);
 		if (!Object.hasOwn(value, "permissions"))
 			errors.push(`ci: ${path} must declare least-privilege permissions`);
+
+		// A credential belongs to the step that uses it. Declared at the workflow
+		// level it is in the environment of every step of every job — including
+		// the ones that run a third-party action, a build tool's plugin chain and
+		// whatever those load — so the blast radius of one compromised dependency
+		// becomes the whole file rather than one step.
+		if (referencesSecrets(value["env"]))
+			errors.push(
+				`ci: ${path} must not expose a credential in a workflow-level env block`,
+			);
 
 		// Tolerance. The allowlist is consulted rather than assumed empty so that
 		// adding an entry is a deliberate, reviewable act.
@@ -726,6 +791,14 @@ export async function validateCiContract(
 				);
 			if (owner !== undefined && !depths.includes(0))
 				errors.push(`ci: ${path} job ${id} must check out full history`);
+			// The same rule one level down, and the job level is the one people
+			// reach for: it looks scoped and is not. Every step of the job receives
+			// it, and the step that needed it is indistinguishable from the four
+			// that did not.
+			if (referencesSecrets(job.env))
+				errors.push(
+					`ci: ${path} job ${id} must not expose a credential in a job-level env block`,
+				);
 			const steps = stepsOf(job);
 			await checkStepBodies(path, `job ${id}`, steps, errors, root);
 			// The composite action is the sole owner of "how a job gets Bun". A
@@ -776,6 +849,14 @@ export async function validateCiContract(
 			if (consumed.has(SELECTOR_JOB) && delivers)
 				errors.push(
 					`ci: ${path} job ${id} delivers and must not select what it runs`,
+				);
+			// ... and the same reasoning reaches one job further. A lane that holds
+			// a credential is a lane that can change something outside this
+			// repository, whatever its id says, so it may not decide for itself
+			// what it runs either.
+			if (consumed.has(SELECTOR_JOB) && referencesSecrets(job))
+				errors.push(
+					`ci: ${path} job ${id} receives a credential and must not select what it runs`,
 				);
 			// ... and the same job must not ship a tree the contract guards never
 			// saw. A delivery lane is the ONE path on which a broken contract
