@@ -195,6 +195,100 @@ export function deployScriptSource(): string {
 	].join("\n");
 }
 
+// The injection point for the executable half of the truth table, and the two
+// scripts it drives.
+//
+// It lives here rather than in the shipped guard on purpose. `FORMS_GENERATE_BIN`
+// and `MOON_BIN` are exported by their contracts because those guards EXECUTE
+// the declared command; this one never does — its static half is an AST
+// projection — so an injection point in the shipped module would be a hook
+// nothing uses.
+export const UPLOAD_BIN_VARIABLE = "TELEMETRY_UPLOAD_BIN";
+export const UPLOAD_SCRIPT_PATH = "scripts/upload-sourcemaps.ts";
+export const VERIFY_SCRIPT_PATH = "scripts/verify-release.ts";
+export const TARGET_VARIABLE = "TELEMETRY_UPLOAD_TARGET";
+export const ALLOWED_HOSTS_VARIABLE = "TELEMETRY_ALLOWED_HOSTS";
+
+/** The declared command as an argv, with its binary optionally injected. */
+export function uploadArgv(command: string): string[] {
+	const argv = command.trim().split(/\s+/).filter(Boolean);
+	const injected = process.env[UPLOAD_BIN_VARIABLE];
+	if (injected && argv.length > 0) argv[0] = injected;
+	return argv;
+}
+
+/**
+ * The truth table as an executable, so the four states are RUN rather than read.
+ *
+ * Neither half set is silent. One half set warns loudly and writes nothing —
+ * including the case the spec names, a credential mounted into a plain local
+ * build with no release intent. Both halves set is the only state that opens a
+ * socket, and even then only to an origin the declared allowlist carries: a
+ * refused host is refused before any connection, which is what makes the
+ * recorder's count the proof rather than the response.
+ *
+ * The remote being down is a warning and never a build failure. The upload is
+ * observability; a telemetry outage that failed a deploy would be the tail
+ * wagging the dog.
+ */
+export function uploadScriptSource(): string {
+	return [
+		`const release = process.env.${RELEASE_VARIABLE};`,
+		`const authToken = process.env.${TOKEN_VARIABLE};`,
+		`const target = process.env.${TARGET_VARIABLE} ?? "";`,
+		`const allowed = (process.env.${ALLOWED_HOSTS_VARIABLE} ?? "")`,
+		'\t.split(",")',
+		"\t.filter(Boolean);",
+		"",
+		"if (!release && !authToken) process.exit(0);",
+		"if (Boolean(release) !== Boolean(authToken)) {",
+		'\tconsole.warn("[telemetry] upload DISABLED: one half of the gate is set and the other is not");',
+		"\tprocess.exit(0);",
+		"}",
+		"",
+		"const origin = new URL(target).origin;",
+		"if (!allowed.includes(origin)) {",
+		"\tconsole.warn(`[telemetry] refusing ${origin}: not in the declared allowlist`);",
+		"\tprocess.exit(0);",
+		"}",
+		"",
+		"try {",
+		"\tconst response = await fetch(`${target}/releases`, {",
+		'\t\tmethod: "POST",',
+		"\t\tbody: release,",
+		"\t});",
+		"\tif (!response.ok) throw new Error(String(response.status));",
+		"} catch (error) {",
+		"\tconsole.warn(`[telemetry] upload failed: ${String(error)}; the build is unaffected`);",
+		"}",
+		"process.exit(0);",
+		"",
+	].join("\n");
+}
+
+/**
+ * The declared verifier: a separate, read-only query of the final remote state.
+ *
+ * It asserts what the remote HOLDS rather than what the write returned, which
+ * is the whole difference between a verified write and a reported one.
+ */
+export function verifyScriptSource(): string {
+	return [
+		`const target = process.env.${TARGET_VARIABLE} ?? "";`,
+		`const expected = process.env.${RELEASE_VARIABLE} ?? "";`,
+		"const response = await fetch(`${target}/releases/${expected}`);",
+		"const body = await response.text();",
+		"if (!response.ok || body !== expected) {",
+		"\tconsole.error(",
+		"\t\t`[telemetry] UNVERIFIED: the remote holds ${JSON.stringify(body)}, not ${JSON.stringify(expected)}`,",
+		"\t);",
+		"\tprocess.exit(1);",
+		"}",
+		'console.log("[telemetry] VERIFIED");',
+		"",
+	].join("\n");
+}
+
 export function declaredWrite(
 	overrides: Partial<DeclaredWrite> = {},
 ): DeclaredWrite {

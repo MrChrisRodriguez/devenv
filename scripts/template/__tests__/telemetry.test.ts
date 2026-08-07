@@ -1,8 +1,10 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: The mutations write
 // runner expressions into a workflow verbatim.
 import { describe, expect, test } from "bun:test";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
+import { renderFixture } from "../render-fixture";
 import {
 	deriveTreeState,
 	type ExternalWrites,
@@ -15,12 +17,14 @@ import {
 	validateTelemetryContract,
 } from "../telemetry-contract";
 import {
+	ALLOWED_HOSTS_VARIABLE,
 	activeWorkspace,
 	CONFIG_MODULE_PATH,
 	configModuleSource,
 	DEPLOY_SCRIPT_PATH,
 	declaredTelemetry,
 	declaredWrite,
+	GIT_HOST,
 	INSTRUCTION_SCRIPT,
 	RELEASE_VARIABLE,
 	ROOT,
@@ -31,11 +35,18 @@ import {
 	SDK_SCOPE,
 	SDK_SET_USER,
 	SKELETON,
+	TARGET_VARIABLE,
 	TOKEN_VARIABLE,
 	telemetryWorkspace,
+	UPLOAD_SCRIPT_PATH,
+	uploadArgv,
+	uploadScriptSource,
+	VERIFY_SCRIPT_PATH,
+	verifyScriptSource,
 	WRITE_SCRIPT,
 	writeRegistry,
 } from "./fixtures/external-write-workspaces";
+import { type Recorder, startRecorder } from "./fixtures/request-recorder";
 
 async function telemetryFixture(): Promise<string> {
 	return await telemetryWorkspace({ prefix: "devenv-telemetry-contract-" });
@@ -829,4 +840,314 @@ describe("the host allowlist", () => {
 			`telemetry: ${REGISTRY_PATH} declares a write and no allowed host; an empty allowlist is not a narrow one`,
 		);
 	});
+});
+
+/**
+ * The dynamic half of the truth table, and the four proofs that need no
+ * credential and no account.
+ *
+ * The reference's own provisioning script says this in its header: never run
+ * the write path against the real API from an agent session, and the script's
+ * own verification is `bash -n`, a linter, and a dry run that makes zero
+ * network calls including GETs. So nothing below touches the network: an
+ * injected uploader talks to a loopback recorder, and every host that is not
+ * the recorder is `example.invalid`, which the DNS specification reserves and
+ * which can never resolve.
+ */
+describe("the truth table, executed", () => {
+	interface RunResult {
+		exitCode: number;
+		stdout: string;
+		stderr: string;
+	}
+
+	/**
+	 * The injected command, spawned ASYNCHRONOUSLY on purpose.
+	 *
+	 * The recorder is a server in this process, so a synchronous spawn would
+	 * block the event loop that has to answer the request the child is making —
+	 * a deadlock that looks exactly like a hung uploader.
+	 */
+	async function spawnScript(
+		root: string,
+		script: string,
+		environment: Record<string, string>,
+	): Promise<RunResult> {
+		const child = Bun.spawn(uploadArgv(`bun ${script}`), {
+			cwd: root,
+			env: { PATH: process.env["PATH"] ?? "", HOME: root, ...environment },
+			stdout: "pipe",
+			stderr: "pipe",
+		});
+		const [stdout, stderr, exitCode] = await Promise.all([
+			new Response(child.stdout).text(),
+			new Response(child.stderr).text(),
+			child.exited,
+		]);
+		return { exitCode, stdout, stderr };
+	}
+
+	async function withRecorderWorkspace(
+		body: (context: {
+			recorder: Recorder;
+			root: string;
+			run: (environment: Record<string, string>) => Promise<RunResult>;
+			verify: (environment: Record<string, string>) => Promise<RunResult>;
+		}) => Promise<void>,
+	): Promise<void> {
+		const recorder = await startRecorder();
+		const { root } = await activeWorkspace({
+			prefix: "devenv-telemetry-recorder-",
+			contract: { allowedHosts: [GIT_HOST, recorder.origin] },
+			files: {
+				[UPLOAD_SCRIPT_PATH]: uploadScriptSource(),
+				[VERIFY_SCRIPT_PATH]: verifyScriptSource(),
+			},
+		});
+		const base = {
+			[TARGET_VARIABLE]: recorder.origin,
+			[ALLOWED_HOSTS_VARIABLE]: recorder.origin,
+		};
+		try {
+			await body({
+				recorder,
+				root,
+				run: (environment) =>
+					spawnScript(root, UPLOAD_SCRIPT_PATH, { ...base, ...environment }),
+				verify: (environment) =>
+					spawnScript(root, VERIFY_SCRIPT_PATH, { ...base, ...environment }),
+			});
+		} finally {
+			await recorder.stop();
+			await rm(root, { recursive: true, force: true });
+		}
+	}
+
+	test("the recorder itself is not vacuous", async () => {
+		const recorder = await startRecorder({ finalState: "probe" });
+		try {
+			const response = await fetch(`${recorder.origin}/releases/probe`);
+			expect(await response.text()).toBe("probe");
+			// Read before teardown, always.
+			expect(recorder.requests()).toEqual([
+				{
+					method: "GET",
+					host: `127.0.0.1:${recorder.port}`,
+					path: "/releases/probe",
+				},
+			]);
+		} finally {
+			await recorder.stop();
+		}
+		// ... and the teardown is real: nothing answers on that port afterwards.
+		await expect(fetch(`${recorder.origin}/releases/probe`)).rejects.toThrow();
+	});
+
+	test("observes 0, 0, 0 and N requests across the four states", async () => {
+		await withRecorderWorkspace(async ({ recorder, run }) => {
+			// Neither half. The quiet state: no warning, no request, no noise in a
+			// developer's terminal.
+			const neither = await run({});
+			expect(neither.exitCode).toBe(0);
+			expect(neither.stderr).toBe("");
+			expect(recorder.requests()).toHaveLength(0);
+
+			// Intent without the credential. Loud, and still no request.
+			const releaseOnly = await run({ [RELEASE_VARIABLE]: "2026.08.07" });
+			expect(releaseOnly.exitCode).toBe(0);
+			expect(releaseOnly.stderr).toContain("upload DISABLED");
+			expect(recorder.requests()).toHaveLength(0);
+
+			// The credential without the intent — the case the spec names, and the
+			// bug the reference's header records: a local build with a leaked CI
+			// token in the shell minting phantom releases. Zero calls.
+			const tokenOnly = await run({ [TOKEN_VARIABLE]: "opaque-value" });
+			expect(tokenOnly.exitCode).toBe(0);
+			expect(tokenOnly.stderr).toContain("upload DISABLED");
+			expect(recorder.requests()).toHaveLength(0);
+
+			// Both. The only state that opens a socket.
+			const both = await run({
+				[RELEASE_VARIABLE]: "2026.08.07",
+				[TOKEN_VARIABLE]: "opaque-value",
+			});
+			expect(both.exitCode).toBe(0);
+			expect(both.stderr).toBe("");
+			const observed = recorder.requests();
+			expect(observed).toHaveLength(1);
+			expect(observed[0]?.method).toBe("POST");
+			expect(observed[0]?.path).toBe("/releases");
+		});
+	}, 30_000);
+
+	test("refuses a host the allowlist does not carry before any socket opens", async () => {
+		await withRecorderWorkspace(async ({ recorder, run }) => {
+			// The target IS the recorder, so a socket would be observed. The
+			// allowlist is what stops it, and the count is the proof rather than
+			// the response.
+			const refused = await run({
+				[RELEASE_VARIABLE]: "2026.08.07",
+				[TOKEN_VARIABLE]: "opaque-value",
+				[ALLOWED_HOSTS_VARIABLE]: "https://ingest.example.invalid",
+			});
+			expect(refused.exitCode).toBe(0);
+			expect(refused.stderr).toContain("not in the declared allowlist");
+			expect(recorder.requests()).toHaveLength(0);
+
+			// ... and the same write with the host listed reaches it.
+			const allowed = await run({
+				[RELEASE_VARIABLE]: "2026.08.07",
+				[TOKEN_VARIABLE]: "opaque-value",
+			});
+			expect(allowed.exitCode).toBe(0);
+			expect(recorder.requests()).toHaveLength(1);
+		});
+	}, 30_000);
+
+	test("treats the remote being down as a warning and never a failure", async () => {
+		const recorder = await startRecorder();
+		const origin = recorder.origin;
+		// Stopped before the run: the port is closed, which is what an outage
+		// looks like from the caller's side.
+		await recorder.stop();
+		const { root } = await activeWorkspace({
+			prefix: "devenv-telemetry-outage-",
+			contract: { allowedHosts: [GIT_HOST, origin] },
+			files: { [UPLOAD_SCRIPT_PATH]: uploadScriptSource() },
+		});
+		try {
+			const result = await spawnScript(root, UPLOAD_SCRIPT_PATH, {
+				[TARGET_VARIABLE]: origin,
+				[ALLOWED_HOSTS_VARIABLE]: origin,
+				[RELEASE_VARIABLE]: "2026.08.07",
+				[TOKEN_VARIABLE]: "opaque-value",
+			});
+			expect(result.exitCode).toBe(0);
+			expect(result.stderr).toContain("upload failed");
+			expect(result.stderr).toContain("the build is unaffected");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 30_000);
+
+	test("asserts the final remote state and fails when it is wrong", async () => {
+		await withRecorderWorkspace(async ({ recorder, run, verify }) => {
+			await run({
+				[RELEASE_VARIABLE]: "2026.08.07",
+				[TOKEN_VARIABLE]: "opaque-value",
+			});
+			// The remote holds what the write intended.
+			recorder.finalState("2026.08.07");
+			const verified = await verify({ [RELEASE_VARIABLE]: "2026.08.07" });
+			expect(verified.exitCode).toBe(0);
+			expect(verified.stdout).toContain("VERIFIED");
+
+			// ... and a remote that holds something else is UNVERIFIED, which is an
+			// explicit outcome rather than a silent one. A write that returned 200
+			// and left the resource wrong is exactly the case a readback exists for.
+			recorder.finalState("2026.08.06");
+			const unverified = await verify({ [RELEASE_VARIABLE]: "2026.08.07" });
+			expect(unverified.exitCode).toBe(1);
+			expect(unverified.stderr).toContain("UNVERIFIED");
+
+			// A resource that is not there at all is the same outcome, named the
+			// same way — "absent" and "wrong" are both "not what was intended".
+			recorder.finalState("");
+			expect(
+				(await verify({ [RELEASE_VARIABLE]: "2026.08.07" })).exitCode,
+			).toBe(1);
+			expect(recorder.requests().length).toBeGreaterThan(3);
+		});
+	}, 30_000);
+});
+
+describe("rendered fixtures carry the telemetry guard only where it is enabled", () => {
+	test("runs for real in the full render and is absent from the others", async () => {
+		const temporary = await mkdtemp(
+			resolve(tmpdir(), "devenv-telemetry-render-"),
+		);
+		try {
+			const outputs: Record<string, string> = {};
+			for (const fixtureName of ["minimal", "cloud", "full"]) {
+				const output = resolve(temporary, fixtureName);
+				await renderFixture({ root: ROOT, fixtureName, output });
+				outputs[fixtureName] = output;
+			}
+			for (const fixtureName of ["minimal", "cloud"]) {
+				const output = outputs[fixtureName] ?? "";
+				for (const path of [
+					"external-writes.json",
+					"external-writes.schema.json",
+					"scripts/template/telemetry-contract.ts",
+					"scripts/template/validate-telemetry.ts",
+				])
+					expect(await Bun.file(resolve(output, path)).exists()).toBe(false);
+				const manifest = await Bun.file(resolve(output, "package.json")).json();
+				expect(manifest.scripts["telemetry:check"]).toBeUndefined();
+				expect(
+					await Bun.file(resolve(output, ".github/workflows/ci.yml")).text(),
+				).not.toContain("telemetry:check");
+			}
+
+			const full = outputs["full"] ?? "";
+			for (const path of [
+				"external-writes.json",
+				"external-writes.schema.json",
+				"scripts/template/telemetry-contract.ts",
+				"scripts/template/validate-telemetry.ts",
+				"scripts/template/json-schema.ts",
+			])
+				expect(await Bun.file(resolve(full, path)).exists()).toBe(true);
+			const fullPackage = await Bun.file(resolve(full, "package.json")).json();
+			expect(fullPackage.scripts["telemetry:check"]).toBe(
+				"bun scripts/template/validate-telemetry.ts",
+			);
+			expect(
+				await Bun.file(resolve(full, ".github/workflows/ci.yml")).text(),
+			).toContain("bun run telemetry:check");
+
+			// A real verdict from a real run inside the render, through the package
+			// script a generated project's CI actually invokes. The dependency tree
+			// is borrowed rather than installed — the compiler API has to resolve
+			// from somewhere, and `node_modules` is pruned from every walk this
+			// guard makes, so it cannot become an input to the answer.
+			await symlink(
+				resolve(ROOT, "node_modules"),
+				resolve(full, "node_modules"),
+				"dir",
+			);
+			const run = Bun.spawnSync(["bun", "run", "telemetry:check"], {
+				cwd: full,
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+			expect(run.stderr.toString().trim()).toBe(
+				"$ bun scripts/template/validate-telemetry.ts",
+			);
+			expect(run.stdout.toString()).toContain(
+				"Validated the external write registry",
+			);
+			expect(run.exitCode).toBe(0);
+
+			// ... and it is a verdict rather than a greeting: a project that grows
+			// a telemetry surface without declaring it is refused inside the render
+			// too.
+			await mkdir(resolve(full, "libs/observability/src"), { recursive: true });
+			await Bun.write(
+				resolve(full, "libs/observability/src/index.ts"),
+				"export const placeholder = 1;\n",
+			);
+			const refused = Bun.spawnSync(["bun", "run", "telemetry:check"], {
+				cwd: full,
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+			expect(refused.exitCode).toBe(1);
+			expect(refused.stderr.toString()).toContain(
+				"declares skeleton mode but libs/observability/src/index.ts lives under the reserved telemetry configuration root",
+			);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 180_000);
 });
