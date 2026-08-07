@@ -462,6 +462,9 @@ async function withWrapper(
 	}
 }
 
+/** The change this program is implementing, named once for the assertion below. */
+const CHANGE_NAME = "portable-devcontainer-upgrade";
+
 describe("openspec lifecycle contract", () => {
 	test("this repository passes both legs against the pinned CLI", async () => {
 		const result = await validateOpenspec(ROOT);
@@ -469,11 +472,26 @@ describe("openspec lifecycle contract", () => {
 		expect(result.inspection.roots).toHaveLength(1);
 		expect(result.inspection.roots[0]?.directory).toBe("openspec");
 		expect(result.inspection.roots[0]?.tracked).toBe(true);
-		// The one active change stays active through Stage 11. A guard run must
-		// never be the thing that archives it.
-		expect(
-			result.inspection.roots[0]?.changes.map((change) => change.name),
-		).toEqual(["portable-devcontainer-upgrade"]);
+		// The one change appears EXACTLY ONCE across active and archived, and the
+		// assertion has that shape for a reason worth writing down. Asserting it
+		// is active fails on `main` the moment the post-merge archive lands;
+		// asserting it is archived fails inside the pull request that has not
+		// merged yet. Neither form survives its own lifecycle. Counting it once
+		// across both lists is green before the archive and after it, and it is
+		// strictly stronger than either: it also catches the both-active-and-
+		// archived state, which `inspectOpenspec` already refuses, so the test
+		// and the guard now agree instead of overlapping.
+		//
+		// What it still protects is the property Stage 9 wrote the original for:
+		// a guard run must never be the thing that archives the change, and a
+		// change that vanished from both lists is a deletion rather than an
+		// archive.
+		const root = result.inspection.roots[0];
+		const appearances = [
+			...(root?.changes ?? []).map((change) => change.name),
+			...(root?.archived ?? []).map((change) => change.name),
+		].filter((name) => name === CHANGE_NAME);
+		expect(appearances).toEqual([CHANGE_NAME]);
 	}, 60_000);
 
 	test("the hermetic leg alone is enough for template:validate", async () => {

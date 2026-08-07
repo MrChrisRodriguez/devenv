@@ -1059,3 +1059,113 @@ describe("the ownership metadata this stage finally reconciles", () => {
 		expect(await validateVersionAuthorities(ROOT)).toEqual([]);
 	});
 });
+
+describe("every refusal and every toleration", () => {
+	// The half a suite of known-bad cases cannot see: a guard can pass every
+	// mutation test in this file by refusing everything. These cases are built to
+	// LOOK like refusals and to be legal anyway, and they are what proves the
+	// guard discriminates rather than objects.
+	test("tolerates the committed tree in every leg it has", async () => {
+		expect(await validateWiring(ROOT)).toEqual([]);
+		expect(await validateOwnership(ROOT)).toEqual([]);
+		expect(reconcileDecision(ROOT, COMMITTED)).toEqual([]);
+		expect(
+			validateSoleDeclarations(["release.json", "release.schema.json"]),
+		).toEqual([]);
+		expect((await validateAcceptance(ROOT, COMMITTED)).errors).toEqual([]);
+		expect((await validateBudgets(ROOT, COMMITTED)).errors).toEqual([]);
+		expect(validateSignals(ROOT, COMMITTED).errors).toEqual([]);
+		expect((await validateDeferrals(ROOT, COMMITTED)).errors).toEqual([]);
+		expect((await validateSyncBoundary(ROOT, COMMITTED)).errors).toEqual([]);
+		expect(await validateCapabilityInventory(ROOT)).toEqual([]);
+		expect(await validateVersionAuthorities(ROOT)).toEqual([]);
+	});
+
+	test("returns a real verdict rather than an empty one", async () => {
+		// A guard that answered `[]` because it never ran is indistinguishable
+		// from one that answered `[]` because it found nothing. The notices are
+		// what tell them apart, and there are a lot of them.
+		const report = await inspectReleaseContract(ROOT);
+		expect(report.errors).toEqual([]);
+		expect(report.notices.length).toBeGreaterThan(20);
+		// Every sentence is distinct: a duplicate is a leg reporting the same
+		// finding twice, which is how a reader learns to skim the output.
+		expect(new Set(report.notices).size).toBe(report.notices.length);
+		// And sorted, because a refusal list whose order depends on which leg ran
+		// first is a diff nobody can review.
+		expect([...report.notices].sort()).toEqual(report.notices);
+	}, 120_000);
+
+	test("sorts and deduplicates its refusals", async () => {
+		const registry: ReleaseRegistry = {
+			...COMMITTED,
+			acceptance: [],
+			budgets: [],
+			signals: [],
+		};
+		const errors = [
+			...(await validateAcceptance(ROOT, registry)).errors,
+			...(await validateBudgets(ROOT, registry)).errors,
+			...validateSignals(ROOT, registry).errors,
+		];
+		expect(errors.length).toBeGreaterThan(10);
+		for (const message of errors)
+			expect(message.startsWith("release: ")).toBe(true);
+		expect(new Set(errors).size).toBe(errors.length);
+	});
+
+	test("counts the anti-vacuity anchors and refuses zero on each", async () => {
+		// One anchor per new leg, each a number that is meaningful on the tree as
+		// it ships. Zero on any of them is a hard failure with its own sentence,
+		// because a lock over nothing is a pass nobody earned.
+		expect(COMMITTED.goldens.fixtures.length).toBe(3);
+		expect(COMMITTED.goldens.totalFileCount).toBeGreaterThan(0);
+		expect(COMMITTED.scans.length).toBe(SCAN_IDS.length);
+		expect(COMMITTED.acceptance.length).toBe(ACCEPTANCE_ITEMS.length);
+		expect(
+			new Set(COMMITTED.budgets.map((entry) => entry.specFamily)).size,
+		).toBe(BUDGET_FAMILIES.length);
+		expect(COMMITTED.deferrals.length).toBeGreaterThan(0);
+		expect(COMMITTED.signals.length).toBe(2);
+
+		// And each of those zeros has its own refusal rather than a shared one.
+		const empty: ReleaseRegistry = {
+			...COMMITTED,
+			goldens: { ...COMMITTED.goldens, fixtures: [] },
+		};
+		expect(
+			(await validateGoldens(ROOT, empty, { render: false })).errors,
+		).toContain(
+			"release: no fixture declares a golden manifest; an expectation over nothing is a pass nobody earned",
+		);
+		expect(
+			(await validateScans(ROOT, { ...COMMITTED, scans: [] }, [], [])).errors
+				.length,
+		).toBe(SCAN_IDS.length + 2);
+		expect(
+			(await validateBudgets(ROOT, { ...COMMITTED, budgets: [] })).errors,
+		).toContain(
+			"release: the budget table is empty; a comparison over nothing is a pass nobody earned",
+		);
+		expect(
+			(await validateDeferrals(ROOT, { ...COMMITTED, deferrals: [] })).errors,
+		).toContain(
+			"release: release.json records no deferral at all; the program carries a ledger and an empty one is a claim nobody checked",
+		);
+	}, 60_000);
+
+	test("abstains out loud when it cannot reach the index", async () => {
+		// An abstention is not a pass. Outside a repository the enumeration falls
+		// back to a walk, and the guard says so rather than reporting a clean
+		// result it never established.
+		const root = await releaseWorkspace({ prefix: "devenv-release-nogit-" });
+		try {
+			const report = await inspectReleaseContract(root);
+			expect(report.notices.join("\n")).toContain(
+				"is not a Git repository, so the enumeration fell back to a directory walk",
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
+});

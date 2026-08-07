@@ -16,6 +16,7 @@ import {
 	validateFixtureDefinition,
 	validateTemplateParameters,
 } from "../parameters";
+import { TEMPLATE_ONLY_PATHS } from "../release-contract";
 import {
 	buildRenderPlan,
 	filterCapabilityBlocks,
@@ -328,6 +329,11 @@ describe("stage zero evidence", () => {
 		).toEqual([".devcontainer/Dockerfile", ".prototools"]);
 	});
 });
+
+// The five paths Stage 11 adds and keeps out of every render, imported from the
+// module that owns the list so a sixth one cannot be added without this probe
+// seeing it.
+const RELEASE_TEMPLATE_ONLY_PATHS = TEMPLATE_ONLY_PATHS;
 
 describe("deterministic fixture renderer", () => {
 	test("renders minimal twice with identical manifests and no disabled residue", async () => {
@@ -870,6 +876,56 @@ describe("deterministic fixture renderer", () => {
 				expect(rendered).not.toContain("template-only:start");
 				expect(rendered).not.toContain("{{PROJECT_NAME}}");
 				expect(rendered).toContain(resolved.project.display_name);
+			}
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("no render carries the template-only release gate", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const parameters = await loadTemplateParameters(ROOT);
+			for (const fixtureName of parameters.generation.fixture_names) {
+				const output = resolve(temporary, fixtureName);
+				const { manifest } = await renderFixture({
+					root: ROOT,
+					fixtureName,
+					output,
+				});
+				// The inverse of every previous stage's render probe. Ten stages
+				// proved a guard was PRESENT in the renders that enabled it; this
+				// one proves a guard is present in NONE of them, because its three
+				// inputs — the fixture definitions, the golden manifests and the
+				// release declaration — are all omitted, and a command whose inputs
+				// are absent is the dead command the capability model forbids.
+				for (const path of RELEASE_TEMPLATE_ONLY_PATHS) {
+					expect(manifest.files.some((file) => file.path === path)).toBe(false);
+					expect(await Bun.file(resolve(output, path)).exists()).toBe(false);
+				}
+				expect(
+					await Bun.file(resolve(output, "fixtures/golden")).exists(),
+				).toBe(false);
+				expect(
+					await Bun.file(
+						resolve(output, `fixtures/template/${fixtureName}.toml`),
+					).exists(),
+				).toBe(false);
+				const generated = (await Bun.file(
+					resolve(output, "package.json"),
+				).json()) as { scripts: Record<string, string> };
+				// The `template:` prefix is the mechanism, so the assertion is on
+				// the prefix rather than on the two names: a third template-only
+				// script added later inherits the same proof.
+				for (const script of Object.keys(generated.scripts)) {
+					expect(script.startsWith("template:")).toBe(false);
+					expect(script).not.toContain("release");
+				}
+				const workflow = await Bun.file(
+					resolve(output, ".github/workflows/ci.yml"),
+				).text();
+				expect(workflow).not.toContain("template-only");
+				expect(workflow).not.toContain("release-check");
 			}
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
