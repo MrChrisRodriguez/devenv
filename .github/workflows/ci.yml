@@ -113,6 +113,17 @@ jobs:
         run: bash .codex/cloud/selftest.sh
       # capability:end codex_cloud
 
+      # capability:start openspec
+      # Unconditional on purpose, and in THIS job on purpose. `openspec/**`
+      # classifies as documentation in the affected-selection oracle, so a
+      # lifecycle guard placed in a lane a selection can narrow would be skipped
+      # by exactly the pull requests that change a change. The step is a fixed
+      # cost that does not scale with the project graph, which is what makes the
+      # `ci` job its correct home.
+      - name: Validate OpenSpec lifecycle contract
+        run: bun run openspec:check
+      # capability:end openspec
+
       - name: Validate worktree runtime contract
         run: bun run worktree:check
 

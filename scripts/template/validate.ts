@@ -6,6 +6,7 @@ import { validateCloudContract } from "./cloud-contract";
 import { validateStageZeroEvidence } from "./evidence";
 import { validateStageTwoEvidence } from "./image-evidence";
 import { validateJsonSchema } from "./json-schema";
+import { validateOpenspecContract } from "./openspec-contract";
 import {
 	loadFixtureDefinition,
 	loadTemplateParameters,
@@ -169,6 +170,15 @@ export async function validateAll(
 		if (affectedErrors.length > 0) {
 			report.status = "fail";
 			report.errors.push(...affectedErrors);
+		}
+		// The hermetic leg only, for the same reason as the graph oracle above:
+		// the live leg drives the pinned CLI, and a host running
+		// `template:validate` before `bun install` would skip it rather than run
+		// it — which is the same as not having it.
+		const openspecErrors = await validateOpenspecContract(root);
+		if (openspecErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...openspecErrors);
 		}
 		const toolchainEvidenceErrors = await validateStageOneEvidence(root);
 		if (toolchainEvidenceErrors.length > 0) {

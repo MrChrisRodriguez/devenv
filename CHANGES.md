@@ -4,6 +4,30 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-08-07 — Add: OpenSpec lifecycle validation
+
+**Goal:** Make "the specs are fine" a claim something can fail. The OpenSpec CLI is helpful right up to the moment it is not: `validate --all` exits 0 over zero items, `list --specs` prints prose instead of JSON when there are none, and every command resolves against `'.'` because the CLI has no notion of where a project's roots are. A guard built on those answers reports green for a tree somebody emptied.
+
+**How to implement:**
+
+**Enumerate first, ask second.** `scripts/template/openspec-contract.ts` walks the tree for `**/openspec/config.yaml` — skipping `.git`, `node_modules`, `dist`, `graphify-out` and `tmp`, because `template:fixtures` renders into `tmp/` and a rendered fixture carries its own config — and cross-checks every root it finds against `git ls-files`. That enumeration is the authority. `scripts/template/validate-openspec.ts` then drives the CLI once per root with that root's directory as `cwd`, and the two answers must agree EXACTLY in both directions: an item the CLI reports that the tree does not contain is a failure, and so is an item the tree contains that the CLI does not report.
+
+**Anti-vacuity is the whole point.** A root that declares no change and no spec fails rather than passing, because a validator with nothing to validate has told you nothing. The reported `summary.totals.items` is compared against **our** count rather than against the item array the same command printed — otherwise the CLI would only be agreeing with itself. Every abnormal outcome is a failure: a non-zero exit, empty output, non-JSON output, an unexpected shape, or a version that is not the catalog pin.
+
+**The binary has to be the pinned one.** "Whatever `openspec` is on `PATH`" is not a pin — a globally installed CLI of another version validates a different schema and prints the same green summary while doing it. The guard requires a binary inside this repository's own `node_modules` and requires `--version` to equal the `@fission-ai/openspec` catalog entry. `OPENSPEC_BIN` injects a fake for the tests, exactly as `MOON_BIN` does for the graph oracle, so every refusal above is a path the suite has actually executed.
+
+**Telemetry off on every invocation.** The CLI posts to PostHog unless told not to, so `OPENSPEC_TELEMETRY=0`, `DO_NOT_TRACK=1` and `CI=true` are set on every spawn. A required lane must not depend on the network to answer, and a guard must not phone anywhere.
+
+**Archive hygiene is checked from the tree, not from the CLI.** `validate --all` never looks at an archive at all, so the contract does: entries must be named `<YYYY-MM-DD>-<change>`, the date must parse as a real calendar day and must not be in the future **in UTC** (the CLI stamps `new Date().toISOString()`, and a local comparison calls an ordinary archive "in the future" for several hours a day), no name may be both active and archived, `archive/archive` is rejected, an empty entry is rejected, and an archived change's `ADDED` requirements must actually have reached `openspec/specs/`.
+
+**A finished change is a notice, not a failure.** Zero remaining tasks is the correct state between the last implementation commit and the archive commit. Failing on it would make the guard red for the one window in which everything is right, so it prints a notice naming the archive wrapper and exits 0.
+
+**Where the step lives is a constraint.** `openspec/**` classifies as documentation in the affected-selection oracle, so a lifecycle guard in a lane a selection can narrow would be skipped by exactly the pull requests that change a change. The fenced `bun run openspec:check` step is in the `ci` job, unconditional, and the contract asserts both facts.
+
+**Why downstream cares:** If a tool's success path is compatible with "there was nothing to check", its exit code is not a result. Enumerate the inputs yourself, make the tool agree with your enumeration, and treat every ambiguous answer as a failure.
+
+---
+
 ## 2026-08-06 — Fix: give the heavy CI lane the history its suite asserts
 
 **Goal:** Stop the sealed-evidence tests from going red the moment the suite moved into a job with a shallow checkout.
