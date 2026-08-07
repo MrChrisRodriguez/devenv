@@ -361,8 +361,8 @@ describe("shared schema and API contract registry", () => {
 				ownership,
 				(source) =>
 					source.replace(
-						'"absent": ["playwright", "better_auth", "vite_websocket_proxy"]',
-						'"absent": ["playwright", "better_auth", "rhf_zod", "vite_websocket_proxy"]',
+						'"absent": ["playwright", "better_auth"]',
+						'"absent": ["playwright", "better_auth", "rhf_zod"]',
 					),
 				"forms: rhf_zod ships a guard surface and must leave the absent inventory",
 			);

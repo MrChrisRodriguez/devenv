@@ -138,6 +138,26 @@ scripts/   # tooling — neither workspace packages nor moon projects
 - Run `bun run telemetry:check` after changing the registry, either guard module, a declared configuration module, a declared write, or the archive wrapper.
 
 <!-- capability:end sentry -->
+
+<!-- capability:start vite_websocket_proxy -->
+## Development Server and Proxy Ownership
+
+- This section is the one place the build tool is permitted, and the tension with the Bun-first rule above is deliberate: that rule governs what this template *ships*, and this capability governs what a generated project may *configure*. Nothing here changes the default — `[capabilities.defaults].vite_websocket_proxy` is `false`, and a project without it receives none of these files.
+- `proxy-routes.json` is the single declaration of this project's development and preview proxy surface. It is validated against `proxy-routes.schema.json`, and a second registry anywhere in the tree is a named refusal. Never answer a question about proxy routes by scanning the tree; ask this file and reconcile.
+- `mode` is the load-bearing field. `skeleton` asserts positively that no build-tool configuration, no direct build-tool dependency and no proxy table exists anywhere; `active` asserts the declared `configPath` exists and runs every rule over it. A tree that grows one while the registry still says `skeleton` fails by name, and so does the reverse.
+- **A string target never proxies a WebSocket upgrade.** Every proxy entry is object form, and every route states `ws`, `changeOrigin` and `secure` explicitly. A route that never says whether it forwards the upgrade has not decided, and the defect is invisible either way because the HTTP path stays green.
+- **A path rewrite and a forwarded upgrade do not compose.** A route carrying both is structurally valid and nonfunctional; declare the socket route without a rewrite, or connect directly.
+- Every target is a loopback origin whose port a declared `upstreams[]` entry binds, in both directions. A target naming another host is an unintended external call; an upstream no route reaches is a stale entry.
+- The development and preview route tables are the same table. A route present in one and absent from the other is a surface that works in development and disappears in preview.
+- `allowedHosts` is a Cross-Site WebSocket Hijacking defense and never a convenience. A socket handshake is not subject to CORS, so the server must check the host itself. `true`, a wildcard, an empty entry and `all` are all refused; list the loopback family and the friendly domain suffix.
+- `strictPort` is pinned `true` and the bind is wide. Without `strictPort` the server silently takes the next free port and the published port maps to nothing; without the wide bind a server on the container's loopback is unreachable. Exactly one process binds `publishedContainerPort` — this server, or a `frontedBy` service the worktree runtime contract declares.
+- **Leave `hmr` and `server.origin` null.** Two origins are browser-visible at once — the direct one and the friendly one — so a pinned client port is a single number that can match at most one of them and silently breaks the other. The advice to pin `hmr.clientPort` is the advice everybody gives and it is wrong here.
+- The configuration is **generated** by `renderViteConfig()` from the registry and drift-gated byte for byte. Edit the registry and re-render; never hand-edit the generated file. It emits no import on purpose, so a generated configuration needs no dependency.
+- Declare `runtime`. A proxy built on Node compatibility can accept the upgrade and never flush a byte back, which presents as a hang and not as an error, so a runtime whose forwarding is unproven beside a `ws` route is refused unless `wsRuntimeWaiver` carries the reason.
+- Add no port. Exactly one port crosses the container boundary; `forwardPorts` is an editor convenience the runtime does not use, and `.devcontainer` is a definition fingerprint input, so a new port costs every developer a container rebuild for a port nothing can reach.
+- Run `bun run proxy:check` after changing the registry, either guard module, or the declared configuration file.
+
+<!-- capability:end vite_websocket_proxy -->
 ## Worktree Runtime Ownership
 
 - Every checkout — the main clone and each linked worktree — owns exactly one development container. `scripts/worktree/contract.toml` is the generated authority for its identity, ports, paths, and commands; regenerate it from `template-parameters.toml` and never hand-edit it.

@@ -1,0 +1,13 @@
+{
+	"schemaVersion": 1,
+	"mode": "skeleton",
+	"configPath": "vite.config.ts",
+	"runtime": "bun",
+	"wsRuntimeWaiver": null,
+	"publishedContainerPort": 8080,
+	"friendlyDomainPattern": "{workspace}.{project}.localhost",
+	"server": null,
+	"preview": null,
+	"routes": [],
+	"upstreams": []
+}

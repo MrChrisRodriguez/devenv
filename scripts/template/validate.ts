@@ -16,6 +16,7 @@ import {
 	parseToml,
 	resolveFixtureParameters,
 } from "./parameters";
+import { validateProxyContract } from "./proxy-contract";
 import { validateStageEightAEvidence } from "./stage-eight-a-evidence";
 import { validateStageEightBEvidence } from "./stage-eight-b-evidence";
 import { validateStageFiveBEvidence } from "./stage-five-b-evidence";
@@ -26,6 +27,7 @@ import { validateStageSevenEvidence } from "./stage-seven-evidence";
 import { validateStageSixEvidence } from "./stage-six-evidence";
 import { validateStageTenAEvidence } from "./stage-ten-a-evidence";
 import { validateStageTenBEvidence } from "./stage-ten-b-evidence";
+import { validateStageTenCEvidence } from "./stage-ten-c-evidence";
 import { validateStageThreeEvidence } from "./stage-three-evidence";
 import { validateTelemetryContract } from "./telemetry-contract";
 import { validateToolchainContract } from "./toolchain";
@@ -66,6 +68,10 @@ export interface ValidationReport {
 	contractEvidenceSchemaFile: string;
 	telemetryEvidenceFile: string;
 	telemetryEvidenceSchemaFile: string;
+	proxyRegistryFile: string;
+	proxyRegistrySchemaFile: string;
+	proxyEvidenceFile: string;
+	proxyEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -107,6 +113,10 @@ export async function validateAll(
 		contractEvidenceSchemaFile: "evidence/stage-10a-api-contract.schema.json",
 		telemetryEvidenceFile: "evidence/stage-10b-telemetry.json",
 		telemetryEvidenceSchemaFile: "evidence/stage-10b-telemetry.schema.json",
+		proxyRegistryFile: "proxy-routes.json",
+		proxyRegistrySchemaFile: "proxy-routes.schema.json",
+		proxyEvidenceFile: "evidence/stage-10c-proxy.json",
+		proxyEvidenceSchemaFile: "evidence/stage-10c-proxy.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -215,6 +225,15 @@ export async function validateAll(
 			report.status = "fail";
 			report.errors.push(...telemetryErrors);
 		}
+		// The development server and proxy contract. Hermetic for the third time
+		// and for the third reason: it reads a committed declaration and the
+		// TypeScript AST of whatever configuration that declaration names, so it
+		// needs no development server, no browser and no socket to answer.
+		const proxyErrors = await validateProxyContract(root);
+		if (proxyErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...proxyErrors);
+		}
 		// Hermetic again: the vendor-artifact leg spawns the pinned CLI, which
 		// `rules:check` owns.
 		const agentRulesErrors = await validateAgentRulesContract(root, {
@@ -319,6 +338,13 @@ export async function validateAll(
 				),
 			);
 		}
+		const proxyEvidenceErrors = await validateStageTenCEvidence(root);
+		if (proxyEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...proxyEvidenceErrors.map((error) => `stage-10c evidence: ${error}`),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -337,7 +363,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, ${report.graphEvidenceFile}, ${report.affectedEvidenceFile}, ${report.openspecEvidenceFile}, ${report.contractEvidenceFile}, ${report.telemetryEvidenceFile}, and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, ${report.graphEvidenceFile}, ${report.affectedEvidenceFile}, ${report.openspecEvidenceFile}, ${report.contractEvidenceFile}, ${report.telemetryEvidenceFile}, ${report.proxyEvidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(

@@ -64,6 +64,7 @@
 		"cloud:check": "bun scripts/template/validate-cloud.ts",
 		"forms:check": "bun scripts/template/validate-forms.ts",
 		"openspec:check": "bun scripts/template/validate-openspec.ts",
+		"proxy:check": "bun scripts/template/validate-proxy.ts",
 		"telemetry:check": "bun scripts/template/validate-telemetry.ts",
 		"rules:check": "bun scripts/template/validate-agent-rules.ts",
 		"rules:sync": "bun scripts/template/sync-agent-rules.ts",

@@ -1,0 +1,1 @@
+Validated the proxy route registry, its declared mode against the tree, guard wiring, template ownership, and the published port and friendly domain against the worktree runtime contract.
