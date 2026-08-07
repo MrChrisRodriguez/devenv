@@ -1,10 +1,11 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import {
 	type ApiContract,
 	deriveTreeState,
+	describeArtifact,
 	GENERATE_BIN_VARIABLE,
 	MERGE_BASE_VARIABLE,
 	REGISTRY_PATH,
@@ -67,6 +68,25 @@ async function withFile(
 	expect(await validateFormsContract(root)).toContain(expected);
 	await rm(target);
 	expect(await validateFormsContract(root)).toEqual([]);
+}
+
+/**
+ * The other half of `mutate`: a case built to look exactly like a refusal and
+ * to be legal anyway.
+ *
+ * Without it a guard can pass its whole suite by refusing everything, which is
+ * the failure mode a suite of known-bad cases cannot see.
+ */
+async function tolerate(
+	root: string,
+	path: string,
+	content: string,
+): Promise<void> {
+	const target = resolve(root, path);
+	await mkdir(dirname(target), { recursive: true });
+	await Bun.write(target, content);
+	expect(await validateFormsContract(root)).toEqual([]);
+	await rm(target);
 }
 
 function declareActive(source: string): string {
@@ -700,8 +720,10 @@ describe("shared schema and API contract registry", () => {
 			// Legal by construction, and deliberately similar to every refusal
 			// below: an uncovered route, an opaque annotation, a generic type
 			// parameter, and the right contract type for the right operation.
-			await writeFiles(root, {
-				"apps/web/src/legal.ts": [
+			await tolerate(
+				root,
+				"apps/web/src/legal.ts",
+				[
 					`import type { CreateOrder } from "${CLIENT}";`,
 					"declare function fetchJson(path: string): Promise<unknown>;",
 					'const uncovered = (await fetchJson("/health")) as { ok: boolean };',
@@ -713,8 +735,7 @@ describe("shared schema and API contract registry", () => {
 					"export const surface = [uncovered, opaque, right];",
 					"",
 				].join("\n"),
-			});
-			expect(await validateFormsContract(root)).toEqual([]);
+			);
 
 			for (const [category, body, text] of [
 				[
@@ -1081,48 +1102,345 @@ describe("shared schema and API contract registry", () => {
 		}
 	}, 60_000);
 
+	test("parses the same schema in the browser and on the server", async () => {
+		// One schema, two consumers. The browser half may reach nothing but the
+		// schema library; the server half must reach the schema itself rather than
+		// re-state its shape. A tree that got either wrong would still compile.
+		const { root, contract } = await activeWorkspace();
+		const parserPath = "apps/api/src/validate.ts";
+		const mappingPath = "apps/web/src/apply-server-error.ts";
+		try {
+			await writeFiles(root, {
+				"libs/forms/src/index.ts": [
+					SCHEMA_IMPORT.trimEnd(),
+					"export const OrderForm = z.object({ total: z.number() });",
+					"",
+				].join("\n"),
+				"apps/web/src/browser.ts": [
+					'import { OrderForm } from "../../../libs/forms/src/index";',
+					"export const check = (value: unknown) => OrderForm.safeParse(value);",
+					"",
+				].join("\n"),
+				[parserPath]: [
+					'import { OrderForm } from "../../../libs/forms/src/index";',
+					"export function validateBody(body: unknown, requestId: string) {",
+					'\tif (body === undefined) return { error: { code: "BAD_REQUEST", message: "Invalid JSON body" }, requestId };',
+					"\tconst parsed = OrderForm.safeParse(body);",
+					"\tif (parsed.success) return { data: parsed.data, requestId };",
+					'\treturn { error: { code: "VALIDATION_ERROR", message: "Validation failed", details: { issues: parsed.error.issues } }, requestId };',
+					"}",
+					"",
+				].join("\n"),
+				[mappingPath]: [
+					"export function applyServerError(",
+					"\tissues: Array<{ path: string; message: string }>,",
+					"\tsetError: (name: string, error: { message: string }) => void,",
+					"\tfields: string[],",
+					") {",
+					"\tfor (const issue of issues)",
+					'\t\tsetError(fields.includes(issue.path) ? issue.path : "root.server", issue);',
+					"}",
+					"",
+				].join("\n"),
+			});
+			await writeRegistry(root, {
+				...contract,
+				serverParsers: [
+					{
+						path: parserPath,
+						surface: "POST /orders",
+						envelope: "VALIDATION_ERROR",
+						clientMapping: mappingPath,
+					},
+				],
+			});
+			expect(await validateFormsContract(root)).toEqual([]);
+
+			// The browser half reaching a server-only module is the one case a
+			// denylist over "known server packages" never sees coming.
+			await tolerate(
+				root,
+				"libs/forms/src/util.ts",
+				'export { OrderForm as Alias } from "./index";\n',
+			);
+			await writeFiles(root, {
+				"libs/forms/src/util.ts":
+					'export { readFileSync } from "node:fs";\nexport const use = readFileSync;\n',
+			});
+			expect(await validateFormsContract(root)).toContain(
+				"forms: libs/forms/src/util.ts imports node:fs, which the schema package forms does not allow",
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("lets an old client keep reading a newer contract", async () => {
+		// The deployment-skew fixture. There is no wire-level skew protocol here
+		// and the reference has none either; what holds a deploy window together
+		// is that evolution stays additive and nothing strict-parses a live
+		// response. So the proof is two versions: the artifact the old client was
+		// generated from, and the one the server is now publishing.
+		const root = await mkdtemp(resolve(tmpdir(), "devenv-forms-skew-"));
+		const git = (...args: string[]): void => {
+			const result = Bun.spawnSync(["git", "-C", root, ...args], {
+				stdout: "pipe",
+				stderr: "pipe",
+				env: {
+					...process.env,
+					GIT_AUTHOR_NAME: "t",
+					GIT_AUTHOR_EMAIL: "t@t",
+					GIT_COMMITTER_NAME: "t",
+					GIT_COMMITTER_EMAIL: "t@t",
+				},
+			});
+			if (result.exitCode !== 0)
+				throw new Error(`git ${args.join(" ")}: ${result.stderr.toString()}`);
+		};
+		try {
+			git("init", "--quiet", "--initial-branch", "main");
+			const old = artifactDocument();
+			await writeFiles(root, { [ARTIFACT_PATH]: old });
+			git("add", "-A");
+			git("commit", "--quiet", "--no-verify", "-m", "v1");
+			process.env[MERGE_BASE_VARIABLE] = Bun.spawnSync(
+				["git", "-C", root, "rev-parse", "HEAD"],
+				{ stdout: "pipe" },
+			)
+				.stdout.toString()
+				.trim();
+			const contract: ApiContract = {
+				...SKELETON,
+				mode: "active",
+				openapi: {
+					artifact: ARTIFACT_PATH,
+					generate: GENERATE_COMMAND,
+					clients: [],
+				},
+			};
+
+			// The new server publishes a purely additive contract: one more optional
+			// field and one more operation.
+			const next = JSON.parse(old) as {
+				paths: Record<string, Record<string, unknown>>;
+			};
+			const post = next.paths["/orders"]?.["post"] as {
+				responses: Record<
+					string,
+					{
+						content: Record<
+							string,
+							{ schema: { properties: Record<string, unknown> } }
+						>;
+					}
+				>;
+			};
+			const created =
+				post.responses["201"]?.content["application/json"]?.schema;
+			if (created) created.properties["createdAt"] = { type: "string" };
+			next.paths["/audits"] = {
+				get: { operationId: "readAudit", responses: {} },
+			};
+			const published = `${JSON.stringify(next, null, "\t")}\n`;
+			await writeFiles(root, { [ARTIFACT_PATH]: published });
+			expect(validateEvolution(root, contract).errors).toEqual([]);
+
+			// The old client reads exactly the fields it was generated with, and
+			// every one of them is still there. That is the whole skew guarantee,
+			// stated as a fact about the two documents rather than as a header.
+			const before = describeArtifact(old);
+			const after = describeArtifact(published);
+			expect(before).toBeDefined();
+			expect(after).toBeDefined();
+			for (const [key, type] of before?.properties ?? [])
+				expect(after?.properties.get(key)).toBe(type);
+			// ... and the published document must not ask the old client to be
+			// strict about the field it has never heard of.
+			expect(after?.strictResponses).toEqual([]);
+
+			// The same additive document with ONE field removed breaks that client,
+			// and the gate says so.
+			await writeFiles(root, {
+				[ARTIFACT_PATH]: artifactDocument({ dropField: true }),
+			});
+			expect(validateEvolution(root, contract).errors.join("\n")).toContain(
+				"removes the field POST /orders#201.note",
+			);
+		} finally {
+			delete process.env[MERGE_BASE_VARIABLE];
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("fails distinctly wherever a leg could have nothing to look at", async () => {
+		// The classic hole, gathered in one place: five legs that could each be
+		// reached with no input and return the empty list a passing run returns.
+		// Every one of them has to say something instead.
+		expect(
+			validateBrowserSafety(ROOT, SKELETON, {
+				mode: "skeleton",
+				signals: [],
+				scanned: 0,
+				errors: [],
+			}),
+		).toEqual([
+			"forms: the browser-safety scan read no file at all; a rule with no input has answered nothing",
+		]);
+
+		const { root, contract } = await activeWorkspace();
+		try {
+			// A declared package with no files.
+			await writeRegistry(root, {
+				...contract,
+				schemaPackages: [
+					...contract.schemaPackages,
+					schemaPackage({
+						id: "empty",
+						root: "libs/empty",
+						entry: "libs/empty/src/index.ts",
+					}),
+				],
+			});
+			expect(await validateFormsContract(root)).toContain(
+				"forms: the schema package empty at libs/empty contains no file to scan",
+			);
+			await writeRegistry(root, contract);
+
+			// An artifact that covers no operation.
+			const empty = `${JSON.stringify({ openapi: "3.1.0", info: { title: "api", version: "1" }, paths: {} }, null, "\t")}\n`;
+			const document = await Bun.file(resolve(root, ARTIFACT_PATH)).text();
+			await writeFiles(root, {
+				[ARTIFACT_PATH]: empty,
+				"scripts/generate.ts": generatorScript(empty, clientTypes()),
+			});
+			expect(await validateFormsContract(root)).toContain(
+				`forms: ${ARTIFACT_PATH} declares no operation; the parallel-type ban would cover nothing`,
+			);
+			await writeFiles(root, {
+				[ARTIFACT_PATH]: document,
+				"scripts/generate.ts": generatorScript(document, clientTypes()),
+			});
+
+			// A seam whose denial module names nothing.
+			await writeFiles(root, {
+				"libs/authz/src/model.ts":
+					"export const denialEnvelope = () => null;\n",
+			});
+			await writeRegistry(root, {
+				...contract,
+				policySeam: {
+					root: "libs/authz",
+					denialModule: "libs/authz/src/model.ts",
+				},
+			});
+			expect(await validateFormsContract(root)).toContain(
+				"forms: libs/authz/src/model.ts declares no denial message; the inline-authorization ban would derive an empty set",
+			);
+			await writeRegistry(root, contract);
+
+			// A registry that says `active` and declares nothing.
+			await writeRegistry(root, { ...SKELETON, mode: "active" });
+			expect(await validateFormsContract(root)).toContain(
+				`forms: ${REGISTRY_PATH} declares active mode but declares no schema package, contract artifact, form module or server parser`,
+			);
+
+			// ... and a registry that says `skeleton` while declaring one.
+			await writeRegistry(root, { ...contract, mode: "skeleton" });
+			expect(await validateFormsContract(root)).toContain(
+				`forms: ${REGISTRY_PATH} declares skeleton mode but declares a contract surface`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
 	test("renders the contract surface only for the selected capability", async () => {
 		const temporary = await mkdtemp(resolve(tmpdir(), "devenv-forms-render-"));
 		try {
-			const minimal = resolve(temporary, "minimal");
-			const full = resolve(temporary, "full");
-			await renderFixture({
-				root: ROOT,
-				fixtureName: "minimal",
-				output: minimal,
-			});
-			await renderFixture({ root: ROOT, fixtureName: "full", output: full });
+			const outputs: Record<string, string> = {};
+			for (const fixtureName of ["minimal", "cloud", "full"]) {
+				const output = resolve(temporary, fixtureName);
+				await renderFixture({ root: ROOT, fixtureName, output });
+				outputs[fixtureName] = output;
+			}
+			for (const fixtureName of ["minimal", "cloud"]) {
+				const output = outputs[fixtureName] ?? "";
+				for (const path of [
+					"api-contract.json",
+					"api-contract.schema.json",
+					"scripts/template/forms-contract.ts",
+					"scripts/template/validate-forms.ts",
+				])
+					expect(await Bun.file(resolve(output, path)).exists()).toBe(false);
+				const manifest = await Bun.file(resolve(output, "package.json")).json();
+				expect(manifest.scripts["forms:check"]).toBeUndefined();
+				const workflow = await Bun.file(
+					resolve(output, ".github/workflows/ci.yml"),
+				).text();
+				expect(workflow).not.toContain("forms:check");
+			}
+
+			const full = outputs["full"] ?? "";
 			for (const path of [
 				"api-contract.json",
 				"api-contract.schema.json",
 				"scripts/template/forms-contract.ts",
 				"scripts/template/validate-forms.ts",
-			]) {
-				expect(await Bun.file(resolve(minimal, path)).exists()).toBe(false);
+				"scripts/template/json-schema.ts",
+			])
 				expect(await Bun.file(resolve(full, path)).exists()).toBe(true);
-			}
-			const minimalPackage = await Bun.file(
-				resolve(minimal, "package.json"),
-			).json();
-			expect(minimalPackage.scripts["forms:check"]).toBeUndefined();
 			const fullPackage = await Bun.file(resolve(full, "package.json")).json();
 			expect(fullPackage.scripts["forms:check"]).toBe(
 				"bun scripts/template/validate-forms.ts",
 			);
-			const minimalWorkflow = await Bun.file(
-				resolve(minimal, ".github/workflows/ci.yml"),
-			).text();
-			expect(minimalWorkflow).not.toContain("forms:check");
-			const fullWorkflow = await Bun.file(
-				resolve(full, ".github/workflows/ci.yml"),
-			).text();
-			expect(fullWorkflow).toContain("bun run forms:check");
-			// A real verdict over a real render. The generated project carries no
-			// fences and no ownership registry, so the legs that are questions about
-			// the template stand down there instead of failing.
-			expect(await validateFormsContract(full)).toEqual([]);
+			expect(
+				await Bun.file(resolve(full, ".github/workflows/ci.yml")).text(),
+			).toContain("bun run forms:check");
+
+			// A real verdict from a real run inside the render, through the package
+			// script a generated project's CI actually invokes. The dependency tree
+			// is borrowed rather than installed — the compiler API has to resolve
+			// from somewhere, and `node_modules` is pruned from every walk this
+			// guard makes, so it cannot become an input to the answer.
+			await symlink(
+				resolve(ROOT, "node_modules"),
+				resolve(full, "node_modules"),
+				"dir",
+			);
+			const run = Bun.spawnSync(["bun", "run", "forms:check"], {
+				cwd: full,
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+			// Bun's script runner echoes the command it is about to run; nothing
+			// else may reach stderr on a passing run.
+			expect(run.stderr.toString().trim()).toBe(
+				"$ bun scripts/template/validate-forms.ts",
+			);
+			expect(run.stdout.toString()).toContain(
+				"Validated the api contract registry",
+			);
+			expect(run.exitCode).toBe(0);
+
+			// ... and it is a verdict rather than a greeting: a project that grows
+			// a schema surface without declaring it is refused inside the render
+			// too.
+			await mkdir(resolve(full, "libs/forms/src"), { recursive: true });
+			await Bun.write(
+				resolve(full, "libs/forms/src/index.ts"),
+				"export const placeholder = 1;\n",
+			);
+			const refused = Bun.spawnSync(["bun", "run", "forms:check"], {
+				cwd: full,
+				stdout: "pipe",
+				stderr: "pipe",
+			});
+			expect(refused.exitCode).toBe(1);
+			expect(refused.stderr.toString()).toContain(
+				"declares skeleton mode but libs/forms/src/index.ts lives under the reserved schema package root",
+			);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
-	}, 120_000);
+	}, 180_000);
 });
