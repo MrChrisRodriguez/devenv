@@ -124,6 +124,18 @@ jobs:
         run: bun run openspec:check
       # capability:end openspec
 
+      # capability:start rhf_zod
+      # Unconditional, and in THIS job for the same reason the lifecycle guard
+      # above is. The shared schema and API contract guard is a fixed cost that
+      # does not scale with the project graph, and a contract gate living in a
+      # lane a selection can narrow would be skipped by exactly the pull
+      # requests that change a contract. There is deliberately NO new job: every
+      # sealed evidence record's run-shape assertions are anchored on the gate's
+      # own `needs`, and a stage that adds no lane cannot re-open that wound.
+      - name: Validate shared schema and API contract
+        run: bun run forms:check
+      # capability:end rhf_zod
+
       # Ungated. Every project has agent rule files and a canonical AGENTS.md,
       # whatever else it disables, and the guard checks the mirrors only for
       # blocks the canonical file still declares — so a project that fenced a

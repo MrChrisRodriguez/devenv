@@ -1,0 +1,151 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "Shared schema and API contract registry",
+	"description": "The enumerated declaration `scripts/template/forms-contract.ts` validates. A query over an empty tree is trivially true, so the guard never asks the tree what exists — it asks this file what SHOULD exist and then reconciles the two in both directions. `mode` is the load-bearing field: `skeleton` asserts, positively, that none of the declared-surface shapes exist anywhere in the tracked tree; `active` asserts every declared path exists and runs every rule over it.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"mode",
+		"schemaPackages",
+		"openapi",
+		"policySeam",
+		"formModules",
+		"serverParsers",
+		"evolution"
+	],
+	"properties": {
+		"schemaVersion": {
+			"type": "integer",
+			"const": 1
+		},
+		"mode": {
+			"description": "The declared tree state. It is compared with the derived state before any other rule runs, and a disagreement in either direction is the first error.",
+			"type": "string",
+			"enum": ["skeleton", "active"]
+		},
+		"schemaPackages": {
+			"description": "Browser-safe shared request/response schema packages. Each one is scanned with an ALLOWLIST: a specifier is legal only if it is listed here or resolves inside the package root.",
+			"type": "array",
+			"uniqueItems": true,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["id", "root", "entry", "allowedSpecifiers"],
+				"properties": {
+					"id": { "type": "string", "minLength": 1 },
+					"root": { "$ref": "#/$defs/relativePath" },
+					"entry": { "$ref": "#/$defs/relativePath" },
+					"allowedSpecifiers": {
+						"type": "array",
+						"uniqueItems": true,
+						"items": { "type": "string", "minLength": 1 }
+					}
+				}
+			}
+		},
+		"openapi": {
+			"description": "The one authoritative contract artifact, the command that regenerates it, and every generated client the guard byte-compares. Null when this project publishes no contract.",
+			"type": ["object", "null"],
+			"additionalProperties": false,
+			"required": ["artifact", "generate", "clients"],
+			"properties": {
+				"artifact": { "$ref": "#/$defs/relativePath" },
+				"generate": { "type": "string", "minLength": 1 },
+				"clients": {
+					"type": "array",
+					"uniqueItems": true,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["path", "banner"],
+						"properties": {
+							"path": { "$ref": "#/$defs/relativePath" },
+							"banner": { "type": "string", "minLength": 1 }
+						}
+					}
+				}
+			}
+		},
+		"policySeam": {
+			"description": "The one directory allowed to decide authorization, and the module whose denial-reason union is the DERIVED set of banned envelope messages. Null when this project has no seam, in which case no tracked file may answer a caller-role branch with a 403.",
+			"type": ["object", "null"],
+			"additionalProperties": false,
+			"required": ["root", "denialModule"],
+			"properties": {
+				"root": { "$ref": "#/$defs/relativePath" },
+				"denialModule": { "$ref": "#/$defs/relativePath" },
+				"exemptMessages": {
+					"description": "Denial messages generic enough to collide with an unrelated refusal, which therefore cannot be banned by text alone.",
+					"type": "array",
+					"uniqueItems": true,
+					"items": { "type": "string", "minLength": 1 }
+				}
+			}
+		},
+		"formModules": {
+			"description": "Every module that binds a form resolver, and the schemas it binds. The bound field names must be a subset of the declared schemas' top-level keys, and a module that binds a resolver without appearing here is a refusal.",
+			"type": "array",
+			"uniqueItems": true,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["path", "schemas"],
+				"properties": {
+					"path": { "$ref": "#/$defs/relativePath" },
+					"schemas": {
+						"type": "array",
+						"minItems": 1,
+						"uniqueItems": true,
+						"items": { "type": "string", "minLength": 1 }
+					}
+				}
+			}
+		},
+		"serverParsers": {
+			"description": "The sole validator for each declared surface. A second module parsing the same surface is a named refusal, which is how `remove superseded validators atomically` is enforced going forward.",
+			"type": "array",
+			"uniqueItems": true,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["path", "surface", "envelope"],
+				"properties": {
+					"path": { "$ref": "#/$defs/relativePath" },
+					"surface": { "type": "string", "minLength": 1 },
+					"envelope": { "type": "string", "minLength": 1 },
+					"clientMapping": {
+						"description": "The module that turns a server rejection into a VISIBLE field or root error. Without it a valid client state followed by a server refusal fails silently.",
+						"$ref": "#/$defs/relativePath"
+					}
+				}
+			}
+		},
+		"evolution": {
+			"description": "Named exceptions to additive-only evolution. A removed field, a removed operation, a widened `required` or a narrowed type is refused unless the operation appears here with a staged `add`, `migrate` or `remove`.",
+			"type": "array",
+			"uniqueItems": true,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["operation", "stage", "note"],
+				"properties": {
+					"operation": { "type": "string", "minLength": 1 },
+					"stage": {
+						"type": "string",
+						"enum": ["add", "migrate", "remove"]
+					},
+					"note": { "type": "string", "minLength": 1 }
+				}
+			}
+		}
+	},
+	"$defs": {
+		"relativePath": {
+			"description": "A repository-relative POSIX path. Absolute paths and parent traversal are rejected so a declaration cannot name a file outside the tree the guard scans.",
+			"type": "string",
+			"minLength": 1,
+			"pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+		}
+	}
+}

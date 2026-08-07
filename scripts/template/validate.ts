@@ -5,6 +5,7 @@ import { validateBrowserContract } from "./browser-contract";
 import { validateCiContract } from "./ci-contract";
 import { validateCloudContract } from "./cloud-contract";
 import { validateStageZeroEvidence } from "./evidence";
+import { validateFormsContract } from "./forms-contract";
 import { validateStageTwoEvidence } from "./image-evidence";
 import { validateJsonSchema } from "./json-schema";
 import { validateOpenspecContract } from "./openspec-contract";
@@ -185,6 +186,14 @@ export async function validateAll(
 		if (openspecErrors.length > 0) {
 			report.status = "fail";
 			report.errors.push(...openspecErrors);
+		}
+		// The shared schema and API contract. Hermetic by construction: it reads
+		// a committed declaration and reconciles it with the tracked tree, so it
+		// needs no schema library, no generator and no server of its own.
+		const formsErrors = await validateFormsContract(root);
+		if (formsErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...formsErrors);
 		}
 		// Hermetic again: the vendor-artifact leg spawns the pinned CLI, which
 		// `rules:check` owns.

@@ -1015,6 +1015,88 @@ describe("deterministic fixture renderer", () => {
 		}
 	});
 
+	test("known-bad shared schema contract residue is detected and named", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const output = resolve(temporary, "minimal");
+			await renderFixture({ root: ROOT, fixtureName: "minimal", output });
+			// A project without the capability receives neither the declaration,
+			// nor its schema, nor either guard module, nor the package script, nor
+			// the workflow step that runs it.
+			for (const path of [
+				"api-contract.json",
+				"api-contract.schema.json",
+				"scripts/template/forms-contract.ts",
+				"scripts/template/validate-forms.ts",
+			])
+				expect(await Bun.file(resolve(output, path)).exists()).toBe(false);
+			const minimalPackage = await Bun.file(
+				resolve(output, "package.json"),
+			).json();
+			expect(minimalPackage.scripts["forms:check"]).toBeUndefined();
+			const minimalCi = await Bun.file(
+				resolve(output, ".github/workflows/ci.yml"),
+			).text();
+			expect(minimalCi).not.toContain("forms:check");
+
+			const parameters = await loadTemplateParameters(ROOT);
+			const fixture = await loadFixtureDefinition(ROOT, "minimal", parameters);
+			const resolved = resolveFixtureParameters(parameters, fixture);
+			const ownership = await loadTemplateOwnership(ROOT);
+			// Each declared path is a signature, so a leak has to be REPORTED
+			// rather than merely absent — "the render did not write it" and
+			// "nothing would notice if it did" are different claims. `libs/forms/**`
+			// was pre-reserved by Stage 0 before anything existed to put in it.
+			for (const path of [
+				"api-contract.json",
+				"api-contract.schema.json",
+				"scripts/template/forms-contract.ts",
+				"scripts/template/validate-forms.ts",
+			]) {
+				await Bun.write(resolve(output, path), "export const leaked = 1;\n");
+				const leaked = await scanDisabledResidue(output, resolved, ownership);
+				expect(leaked.status).toBe("fail");
+				expect(leaked.findings).toContainEqual({
+					capability: "rhf_zod",
+					path,
+					signature: path,
+					kind: "path",
+				});
+				await rm(resolve(output, path));
+			}
+			await Bun.write(
+				resolve(output, "libs/forms/index.ts"),
+				"export const leaked = 1;\n",
+			);
+			const reserved = await scanDisabledResidue(output, resolved, ownership);
+			expect(reserved.findings).toContainEqual({
+				capability: "rhf_zod",
+				path: "libs/forms/index.ts",
+				signature: "libs/forms/**",
+				kind: "path",
+			});
+			await rm(resolve(output, "libs/forms/index.ts"));
+
+			// The package script is a pre-declared signature TOKEN, and a token is
+			// a plain substring search: a leaked script name is caught wherever it
+			// lands, not only in the manifest it belongs to.
+			await Bun.write(
+				resolve(output, "scripts/ci/leaked.sh"),
+				"#!/usr/bin/env bash\nbun run forms:check\n",
+			);
+			const token = await scanDisabledResidue(output, resolved, ownership);
+			expect(token.status).toBe("fail");
+			expect(token.findings).toContainEqual({
+				capability: "rhf_zod",
+				path: "scripts/ci/leaked.sh",
+				signature: "forms:check",
+				kind: "token",
+			});
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	});
+
 	test("full fixture still rejects global source identity residue", async () => {
 		const temporary = await temporaryDirectory();
 		try {

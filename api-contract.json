@@ -1,0 +1,10 @@
+{
+	"schemaVersion": 1,
+	"mode": "skeleton",
+	"schemaPackages": [],
+	"openapi": null,
+	"policySeam": null,
+	"formModules": [],
+	"serverParsers": [],
+	"evolution": []
+}
