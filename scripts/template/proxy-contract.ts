@@ -1368,6 +1368,259 @@ export function validateConfigRouteForm(
 	return [...new Set(errors)].sort();
 }
 
+// ── Alignment, host validation and reachability ────────────────────────────
+
+/**
+ * The development route table against the preview one, entry by entry.
+ *
+ * The registry declares ONE table so that alignment is a property of the
+ * declaration; this leg is the half that catches a configuration which drifted
+ * away from it. The reference implementation is the worked example: three
+ * development routes, two preview routes, disjoint keys — so a surface that
+ * worked in development simply was not there in preview, and nothing said so.
+ */
+export function validateAlignment(
+	root: string,
+	contract: ProxyRoutes,
+): string[] {
+	if (contract.mode !== "active") return [];
+	const source = textOf(resolve(root, contract.configPath));
+	if (source === "") return [];
+	const { config } = readEffectiveConfig(contract.configPath, source);
+	if (!config) return [];
+	const development = configRoutes(config, DEV_SERVER_KEY);
+	const preview = configRoutes(config, PREVIEW_SERVER_KEY);
+	if (development === undefined || preview === undefined) return [];
+	const errors: string[] = [];
+	const byPath = (routes: ConfigRoute[]): Map<string, ConfigRoute> =>
+		new Map(routes.map((route) => [route.path, route]));
+	const developmentByPath = byPath(development);
+	const previewByPath = byPath(preview);
+	for (const [path, route] of developmentByPath) {
+		const twin = previewByPath.get(path);
+		if (!twin) {
+			errors.push(
+				`proxy: ${contract.configPath} declares the route ${path} for ${DEV_SERVER_KEY} and not for ${PREVIEW_SERVER_KEY}; a surface that disappears in preview is a surface nobody tested`,
+			);
+			continue;
+		}
+		if (route.target !== twin.target)
+			errors.push(
+				`proxy: ${contract.configPath} route ${path} targets ${route.target} for ${DEV_SERVER_KEY} and ${twin.target} for ${PREVIEW_SERVER_KEY}`,
+			);
+		if (route.ws !== twin.ws)
+			errors.push(
+				`proxy: ${contract.configPath} route ${path} forwards the upgrade for one server and not the other`,
+			);
+	}
+	for (const path of previewByPath.keys()) {
+		if (!developmentByPath.has(path))
+			errors.push(
+				`proxy: ${contract.configPath} declares the route ${path} for ${PREVIEW_SERVER_KEY} and not for ${DEV_SERVER_KEY}`,
+			);
+	}
+	return [...new Set(errors)].sort();
+}
+
+/**
+ * The host allowlist, which is a Cross-Site WebSocket Hijacking defense and not
+ * a convenience.
+ *
+ * A WebSocket handshake is NOT subject to CORS: the browser sends the request
+ * and attaches the user's ambient cookies whatever any `Access-Control-*`
+ * header says, so a cross-site page can open an authenticated socket unless the
+ * server checks the host itself. That is why a wildcard entry is refused rather
+ * than warned about, and why this list is paired with the wide bind the
+ * reachability leg requires — neither half is optional.
+ */
+export function validateHostAllowlist(contract: ProxyRoutes): string[] {
+	if (contract.mode !== "active") return [];
+	const errors: string[] = [];
+	const suffix = friendlyHostSuffix(contract.friendlyDomainPattern);
+	for (const [name, server] of [
+		[DEV_SERVER_KEY, contract.server],
+		[PREVIEW_SERVER_KEY, contract.preview],
+	] as const) {
+		if (!server) continue;
+		for (const entry of server.allowedHosts) {
+			if (entry.includes("*"))
+				errors.push(
+					`proxy: the ${name} allowed host ${entry} is a wildcard; an allowlist that can match a host nobody enumerated is a disabled defense wearing an allowlist's name`,
+				);
+			if (entry.trim() === "" || entry.toLowerCase() === "all")
+				errors.push(
+					`proxy: the ${name} allowed host ${JSON.stringify(entry)} disables the host check entirely`,
+				);
+		}
+		for (const required of [...LOOPBACK_FAMILY, suffix]) {
+			if (!server.allowedHosts.includes(required))
+				errors.push(
+					`proxy: the ${name} host allowlist omits ${required}; the loopback family and the friendly domain are both browser-visible and both must be listed`,
+				);
+		}
+	}
+	return [...new Set(errors)].sort();
+}
+
+const LOOPBACK_FAMILY = ["localhost", LOOPBACK_HOST] as const;
+
+/**
+ * The literal tail of the friendly domain pattern, which is the whole family.
+ *
+ * The pattern carries placeholders this template cannot resolve — the workspace
+ * and the project are a downstream fact — so the allowlist names the suffix the
+ * family shares. A leading dot is a domain-and-subdomains entry rather than a
+ * glob, which is exactly the distinction the wildcard refusal above draws.
+ */
+export function friendlyHostSuffix(pattern: string): string {
+	const last = pattern.lastIndexOf("}");
+	const tail = last < 0 ? pattern : pattern.slice(last + 1);
+	return tail.startsWith(".") ? tail : pattern;
+}
+
+/**
+ * Whether a client can actually reach the server, which is the half a purely
+ * structural guard never asks.
+ *
+ * `strictPort` is a rule and not a preference: without it the server silently
+ * takes the next free port and the container publish maps to nothing, which is
+ * why the reference had to add port-ownership preflights to two boot scripts to
+ * compensate — a stale listener would otherwise let a health gate pass against
+ * the WRONG server. `host` must be wide because a server bound to the
+ * container's loopback is unreachable through a published port. And exactly one
+ * process binds the published port: either this server, or a declared service
+ * in front of it.
+ */
+export function validateReachability(
+	root: string,
+	contract: ProxyRoutes,
+): ProxyReport {
+	if (contract.mode !== "active") return { errors: [], notices: [] };
+	const errors: string[] = [];
+	const notices: string[] = [];
+	const services = declaredServices(root);
+	for (const [name, server] of [
+		[DEV_SERVER_KEY, contract.server],
+		[PREVIEW_SERVER_KEY, contract.preview],
+	] as const) {
+		if (!server) continue;
+		if (server.strictPort !== true)
+			errors.push(
+				`proxy: the ${name} does not pin strictPort; a server that silently takes the next free port maps the published port to nothing`,
+			);
+		if (server.host !== true && server.host !== "0.0.0.0")
+			errors.push(
+				`proxy: the ${name} binds ${JSON.stringify(server.host)}; a server bound to the container's loopback is unreachable through the published port`,
+			);
+		if (server.frontedBy === null) {
+			if (server.port !== contract.publishedContainerPort)
+				errors.push(
+					`proxy: the ${name} binds port ${server.port} and declares no fronting service; nothing binds the published container port ${contract.publishedContainerPort}`,
+				);
+		} else {
+			if (server.port === contract.publishedContainerPort)
+				errors.push(
+					`proxy: the ${name} binds the published container port ${contract.publishedContainerPort} and also declares the fronting service ${server.frontedBy}; exactly one process binds that port`,
+				);
+			if (services === undefined)
+				notices.push(
+					`proxy: ${WORKTREE_CONTRACT_PATH} is absent, so the fronting service ${server.frontedBy} was declared and not reconciled`,
+				);
+			else if (!services.includes(server.frontedBy))
+				errors.push(
+					`proxy: the ${name} declares the fronting service ${server.frontedBy}, which ${WORKTREE_CONTRACT_PATH} does not declare`,
+				);
+		}
+	}
+	return { errors: [...new Set(errors)].sort(), notices };
+}
+
+/**
+ * The HMR and asset-origin policy, which is the INVERSE of the advice everybody
+ * gives.
+ *
+ * This runtime publishes TWO browser-visible origins at once: a direct one on
+ * the published port and a friendly one on port 80. A pinned client port is a
+ * single number. It can match at most one of them, and it silently breaks the
+ * other — the page loads, the app renders, and the reload socket dials a port
+ * nothing is listening on. With the override left null the client derives the
+ * socket URL from `location`, which is correct for both. `origin` carries the
+ * same defect one layer over, for asset URLs.
+ *
+ * The reference gives exactly the pinning advice in its own documentation, and
+ * it is stale: no application there has a server block at all and the proxy
+ * answers the documented path with a 503. Advice nobody executes is advice
+ * nobody found wrong.
+ */
+export function validateHmrPolicy(contract: ProxyRoutes): string[] {
+	if (contract.mode !== "active") return [];
+	const errors: string[] = [];
+	for (const [name, server] of [
+		[DEV_SERVER_KEY, contract.server],
+		[PREVIEW_SERVER_KEY, contract.preview],
+	] as const) {
+		if (!server) continue;
+		if (server.origin !== null)
+			errors.push(
+				`proxy: the ${name} pins the asset origin ${server.origin}; two origins are browser-visible at once and a single absolute origin is wrong for whichever one it is not`,
+			);
+		const hmr = server.hmr;
+		if (hmr === null) continue;
+		if (hmr.clientPort !== null) {
+			errors.push(
+				`proxy: the ${name} pins the reload client port ${hmr.clientPort}; two origins are browser-visible at once and one number can match at most one of them`,
+			);
+			if (hmr.clientPort === contract.publishedContainerPort)
+				errors.push(
+					`proxy: the ${name} pins the reload client port to the published container port ${contract.publishedContainerPort}, which is an internal port no browser ever dials`,
+				);
+		}
+	}
+	return [...new Set(errors)].sort();
+}
+
+/**
+ * The two shapes the registry cannot express and a hand-edited configuration
+ * can.
+ *
+ * `allowedHosts: true` is the one-word version of deleting the CSWSH defense,
+ * and `hmr: false` turns hot replacement off entirely while the capability that
+ * exists to make it work is switched on.
+ */
+export function validateConfigServerForm(
+	root: string,
+	contract: ProxyRoutes,
+): string[] {
+	if (contract.mode !== "active") return [];
+	const api = typescript();
+	const source = textOf(resolve(root, contract.configPath));
+	if (source === "" || !api) return [];
+	const { config } = readEffectiveConfig(contract.configPath, source);
+	if (!config) return [];
+	const errors: string[] = [];
+	for (const table of [DEV_SERVER_KEY, PREVIEW_SERVER_KEY]) {
+		const server = objectPropertyOf(config, table);
+		if (!server) continue;
+		const allowed = propertyOf(server, "allowedHosts");
+		if (allowed) {
+			const value = unwrap(allowed.initializer);
+			if (value.kind === api.SyntaxKind.TrueKeyword)
+				errors.push(
+					`proxy: ${contract.configPath} ${table} sets allowedHosts to true; that is a disabled Cross-Site WebSocket Hijacking defense, not a convenience`,
+				);
+		}
+		if (booleanPropertyOf(server, "hmr") === false)
+			errors.push(
+				`proxy: ${contract.configPath} ${table} disables hot module replacement while the capability that exists to make it work is enabled`,
+			);
+		if (booleanPropertyOf(server, "strictPort") === false)
+			errors.push(
+				`proxy: ${contract.configPath} ${table} sets strictPort to false; a server that silently takes the next free port maps the published port to nothing`,
+			);
+	}
+	return [...new Set(errors)].sort();
+}
+
 /**
  * The whole development server and proxy contract, with the notices the caller
  * prints.
@@ -1396,6 +1649,8 @@ export async function inspectProxyContract(
 
 	const worktree = reconcileWorktreeContract(root, contract);
 	notices.push(...worktree.notices);
+	const reachability = validateReachability(root, contract);
+	notices.push(...reachability.notices);
 
 	const errors = [
 		...registryErrors,
@@ -1406,6 +1661,11 @@ export async function inspectProxyContract(
 		...validateConfigIdentity(root, contract),
 		...validateRouteShape(contract),
 		...validateConfigRouteForm(root, contract),
+		...validateAlignment(root, contract),
+		...validateHostAllowlist(contract),
+		...reachability.errors,
+		...validateHmrPolicy(contract),
+		...validateConfigServerForm(root, contract),
 	];
 	return { errors: [...new Set(errors)].sort(), notices };
 }

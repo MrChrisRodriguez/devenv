@@ -21,6 +21,7 @@ import {
 	BARE_SERVER_SOURCE,
 	CONFIG_PATH,
 	declaredRoute,
+	declaredServer,
 	PROSE_SOURCE,
 	PROXY_TABLE_SOURCE,
 	PUBLISHED_CONTAINER_PORT,
@@ -745,6 +746,278 @@ describe("route shape", () => {
 			);
 			expect(await validateProxyContract(root)).toEqual([]);
 			await Bun.write(registry, original);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("dev and preview alignment", () => {
+	test("refuses a route that exists for one server and not the other", async () => {
+		const marker = `\t\t\t"/socket": { target: "http://127.0.0.1:${SOCKET_UPSTREAM_PORT}", ws: true, changeOrigin: true, secure: true },\n`;
+		const first = ACTIVE_CONFIG_SOURCE.indexOf(marker);
+		const last = ACTIVE_CONFIG_SOURCE.lastIndexOf(marker);
+		// The reference implementation is the worked example: three development
+		// routes, two preview routes, disjoint keys — so a surface that worked in
+		// development simply was not there in preview, and nothing said so.
+		const { root, contract } = await activeWorkspace({
+			prefix: "devenv-proxy-align-",
+			config:
+				ACTIVE_CONFIG_SOURCE.slice(0, last) +
+				ACTIVE_CONFIG_SOURCE.slice(last + marker.length),
+		});
+		try {
+			expect(await validateProxyContract(root)).toContain(
+				`proxy: ${contract.configPath} declares the route /socket for ${NEEDLES.server} and not for ${NEEDLES.preview}; a surface that disappears in preview is a surface nobody tested`,
+			);
+			// ... and the reverse, which is the direction nobody thinks to check.
+			await Bun.write(
+				resolve(root, contract.configPath),
+				ACTIVE_CONFIG_SOURCE.slice(0, first) +
+					ACTIVE_CONFIG_SOURCE.slice(first + marker.length),
+			);
+			expect(await validateProxyContract(root)).toContain(
+				`proxy: ${contract.configPath} declares the route /socket for ${NEEDLES.preview} and not for ${NEEDLES.server}`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("refuses a route whose target or upgrade differs between the servers", async () => {
+		const { root, contract } = await activeWorkspace({
+			prefix: "devenv-proxy-align-drift-",
+		});
+		try {
+			await mutate(
+				root,
+				contract.configPath,
+				(source) => {
+					const marker = `"/api": { target: "http://127.0.0.1:${API_UPSTREAM_PORT}"`;
+					const last = source.lastIndexOf(marker);
+					return `${source.slice(0, last)}"/api": { target: "http://127.0.0.1:${SOCKET_UPSTREAM_PORT}"${source.slice(last + marker.length)}`;
+				},
+				`proxy: ${contract.configPath} route /api targets http://127.0.0.1:${API_UPSTREAM_PORT} for ${NEEDLES.server} and http://127.0.0.1:${SOCKET_UPSTREAM_PORT} for ${NEEDLES.preview}`,
+			);
+			await mutate(
+				root,
+				contract.configPath,
+				(source) => {
+					const marker = `"/socket": { target: "http://127.0.0.1:${SOCKET_UPSTREAM_PORT}", ws: true`;
+					const last = source.lastIndexOf(marker);
+					return `${source.slice(0, last)}"/socket": { target: "http://127.0.0.1:${SOCKET_UPSTREAM_PORT}", ws: false${source.slice(last + marker.length)}`;
+				},
+				`proxy: ${contract.configPath} route /socket forwards the upgrade for one server and not the other`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("host validation", () => {
+	test("refuses every allowlist that stops being an allowlist", async () => {
+		for (const [hosts, expected] of [
+			[
+				["localhost", "127.0.0.1", "*.localhost"],
+				`proxy: the ${NEEDLES.server} allowed host *.localhost is a wildcard; an allowlist that can match a host nobody enumerated is a disabled defense wearing an allowlist's name`,
+			],
+			[
+				["localhost", "127.0.0.1", ".localhost", "all"],
+				`proxy: the ${NEEDLES.server} allowed host "all" disables the host check entirely`,
+			],
+			[
+				["localhost", "127.0.0.1"],
+				`proxy: the ${NEEDLES.server} host allowlist omits .localhost; the loopback family and the friendly domain are both browser-visible and both must be listed`,
+			],
+			[
+				[".localhost"],
+				`proxy: the ${NEEDLES.server} host allowlist omits localhost; the loopback family and the friendly domain are both browser-visible and both must be listed`,
+			],
+			[
+				[],
+				`proxy: the ${NEEDLES.server} host allowlist omits 127.0.0.1; the loopback family and the friendly domain are both browser-visible and both must be listed`,
+			],
+		] as const) {
+			const { root } = await activeWorkspace({
+				prefix: "devenv-proxy-hosts-",
+				contract: { server: declaredServer({ allowedHosts: [...hosts] }) },
+			});
+			try {
+				expect(await validateProxyContract(root)).toContain(expected);
+			} finally {
+				await rm(root, { recursive: true, force: true });
+			}
+		}
+	});
+
+	test("refuses a configuration that turns the host check off in one word", async () => {
+		const { root, contract } = await activeWorkspace({
+			prefix: "devenv-proxy-hosts-true-",
+		});
+		try {
+			await mutate(
+				root,
+				contract.configPath,
+				(source) =>
+					source.replaceAll(
+						'allowedHosts: ["localhost", "127.0.0.1", ".localhost", "workspace.project.localhost"],',
+						"allowedHosts: true,",
+					),
+				`proxy: ${contract.configPath} ${NEEDLES.server} sets allowedHosts to true; that is a disabled Cross-Site WebSocket Hijacking defense, not a convenience`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("reachability", () => {
+	test("refuses a server nothing outside the container can reach", async () => {
+		for (const [overrides, expected] of [
+			[
+				{ strictPort: false },
+				`proxy: the ${NEEDLES.server} does not pin strictPort; a server that silently takes the next free port maps the published port to nothing`,
+			],
+			[
+				{ host: "127.0.0.1" },
+				`proxy: the ${NEEDLES.server} binds "127.0.0.1"; a server bound to the container's loopback is unreachable through the published port`,
+			],
+			[
+				{ host: false },
+				`proxy: the ${NEEDLES.server} binds false; a server bound to the container's loopback is unreachable through the published port`,
+			],
+			[
+				{ port: 5173 },
+				`proxy: the ${NEEDLES.server} binds port 5173 and declares no fronting service; nothing binds the published container port ${PUBLISHED_CONTAINER_PORT}`,
+			],
+			[
+				{ port: 5173, frontedBy: "caddy" },
+				`proxy: the ${NEEDLES.server} declares the fronting service caddy, which ${WORKTREE_CONTRACT_PATH} does not declare`,
+			],
+			[
+				{ frontedBy: "caddy" },
+				`proxy: the ${NEEDLES.server} binds the published container port ${PUBLISHED_CONTAINER_PORT} and also declares the fronting service caddy; exactly one process binds that port`,
+			],
+		] as const) {
+			const { root } = await activeWorkspace({
+				prefix: "devenv-proxy-reach-",
+				contract: { server: declaredServer(overrides) },
+			});
+			try {
+				expect(await validateProxyContract(root)).toContain(expected);
+			} finally {
+				await rm(root, { recursive: true, force: true });
+			}
+		}
+	});
+
+	test("a wide bind is accepted only in its literal spelling", async () => {
+		const { root } = await activeWorkspace({
+			prefix: "devenv-proxy-reach-wide-",
+			contract: { server: declaredServer({ host: "0.0.0.0" }) },
+		});
+		try {
+			// The pairing is the whole safety argument: a wide bind is safe because
+			// the host allowlist is strict, and a strict allowlist is useful because
+			// the bind is wide. Neither half is optional.
+			expect(await validateProxyContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("hot reload and asset origin policy", () => {
+	test("refuses every pinned client port and every pinned asset origin", async () => {
+		for (const [overrides, expected] of [
+			[
+				{
+					hmr: {
+						protocol: null,
+						host: null,
+						clientPort: 5173,
+						reason: "A downstream project pinned it and wrote down why.",
+					},
+				},
+				`proxy: the ${NEEDLES.server} pins the reload client port 5173; two origins are browser-visible at once and one number can match at most one of them`,
+			],
+			[
+				{
+					hmr: {
+						protocol: null,
+						host: null,
+						clientPort: PUBLISHED_CONTAINER_PORT,
+						reason: "A downstream project pinned it and wrote down why.",
+					},
+				},
+				`proxy: the ${NEEDLES.server} pins the reload client port to the published container port ${PUBLISHED_CONTAINER_PORT}, which is an internal port no browser ever dials`,
+			],
+			[
+				{ origin: "http://127.0.0.1:8080" },
+				`proxy: the ${NEEDLES.server} pins the asset origin http://127.0.0.1:8080; two origins are browser-visible at once and a single absolute origin is wrong for whichever one it is not`,
+			],
+		] as const) {
+			const { root } = await activeWorkspace({
+				prefix: "devenv-proxy-hmr-",
+				contract: { server: declaredServer(overrides) },
+			});
+			try {
+				expect(await validateProxyContract(root)).toContain(expected);
+			} finally {
+				await rm(root, { recursive: true, force: true });
+			}
+		}
+	});
+
+	test("tolerates an override that carries its reason and pins no port", async () => {
+		// The rule is not "never override". It is "never pin a number that can
+		// only be right for one of two published origins" — so an override that
+		// states its protocol and carries the reason it was needed is a decision
+		// rather than a mistake.
+		const { root } = await activeWorkspace({
+			prefix: "devenv-proxy-hmr-ok-",
+			contract: {
+				server: declaredServer({
+					hmr: {
+						protocol: "ws",
+						host: null,
+						clientPort: null,
+						reason:
+							"The friendly host terminates plain HTTP, so the client must not infer wss.",
+					},
+				}),
+			},
+		});
+		try {
+			expect(await validateProxyContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("refuses a configuration that disables hot reload outright", async () => {
+		const { root, contract } = await activeWorkspace({
+			prefix: "devenv-proxy-hmr-off-",
+		});
+		try {
+			await mutate(
+				root,
+				contract.configPath,
+				(source) =>
+					source.replaceAll(
+						"\t\thost: true,",
+						"\t\thost: true,\n\t\thmr: false,",
+					),
+				`proxy: ${contract.configPath} ${NEEDLES.server} disables hot module replacement while the capability that exists to make it work is enabled`,
+			);
+			await mutate(
+				root,
+				contract.configPath,
+				(source) =>
+					source.replaceAll("strictPort: true,", "strictPort: false,"),
+				`proxy: ${contract.configPath} ${NEEDLES.server} sets strictPort to false; a server that silently takes the next free port maps the published port to nothing`,
+			);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}
