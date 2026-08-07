@@ -1,5 +1,7 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Evidence mutation keys intentionally match JSON.
 import { describe, expect, test } from "bun:test";
+import { cp, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import {
 	expectedStageSevenCommands,
@@ -8,10 +10,89 @@ import {
 } from "../stage-seven-evidence";
 
 const ROOT = resolve(import.meta.dir, "../../..");
+const CI_WORKFLOW = ".github/workflows/ci.yml";
+
+// The gate's dependency list, read the way the validator reads it. Duplicated
+// here rather than exported, because a test that imported the function under
+// test would agree with it by construction.
+function gateNeedsOf(source: string): string[] {
+	const value = Bun.YAML.parse(source) as Record<string, unknown>;
+	const jobs = value["jobs"] as Record<string, Record<string, unknown>>;
+	const needs = jobs["ci-gate"]?.["needs"];
+	return Array.isArray(needs)
+		? needs.filter((entry): entry is string => typeof entry === "string")
+		: [];
+}
 
 describe("Stage 7 CI bootstrap evidence", () => {
 	test("validates the committed exact-command and raw-log record", async () => {
 		expect(await validateStageSevenEvidence(ROOT)).toEqual([]);
+	});
+
+	// A later stage may add a gating job; this record is still a true statement
+	// about the three lanes that existed when it was captured. Re-resolving its
+	// run shape against the current workflow reported a green historical capture
+	// as fabrication the moment Stage 8A added `moon-graph`, with the only repair
+	// being to re-run three live workflows for a claim nothing had falsified.
+	test("accepts a gate that grew a lane after the capture", async () => {
+		const evidence = (await Bun.file(
+			resolve(ROOT, "evidence/stage-7-ci.json"),
+		).json()) as { repository: { gateNeeds: string[] } };
+		const workflow = await Bun.file(resolve(ROOT, CI_WORKFLOW)).text();
+		const current = gateNeedsOf(workflow);
+		// The premise of this test, asserted rather than assumed: the committed
+		// gate is a STRICT superset of the sealed one.
+		for (const need of evidence.repository.gateNeeds)
+			expect(current).toContain(need);
+		expect(current.length).toBeGreaterThan(
+			evidence.repository.gateNeeds.length,
+		);
+		expect(await validateStageSevenEvidence(ROOT)).toEqual([]);
+	});
+
+	// The other direction is not growth. A sealed lane the gate no longer
+	// declares means this record's runs are evidence for a workflow the
+	// repository stopped shipping.
+	test("rejects a gate that dropped a sealed lane", async () => {
+		const temporary = await mkdtemp(resolve(tmpdir(), "devenv-stage7-"));
+		try {
+			// Only what the validator reads out of the tree: the sealed logs and
+			// the committed workflow. Everything else is absent on purpose, so the
+			// control below is what proves the verdict came from the mutation.
+			await cp(
+				resolve(ROOT, "evidence/stage-7-ci-run"),
+				resolve(temporary, "evidence/stage-7-ci-run"),
+				{ recursive: true },
+			);
+			await mkdir(resolve(temporary, ".github/workflows"), { recursive: true });
+			const original = await Bun.file(resolve(ROOT, CI_WORKFLOW)).text();
+			const value = (await Bun.file(
+				resolve(ROOT, "evidence/stage-7-ci.json"),
+			).json()) as Record<string, unknown>;
+			const schema = (await Bun.file(
+				resolve(ROOT, "evidence/stage-7-ci.schema.json"),
+			).json()) as Record<string, unknown>;
+			const identity =
+				"semantic: recorded gate identity is not the committed one";
+
+			await Bun.write(resolve(temporary, CI_WORKFLOW), original);
+			expect(
+				await validateStageSevenEvidenceValue(value, schema, temporary),
+			).not.toContain(identity);
+
+			await Bun.write(
+				resolve(temporary, CI_WORKFLOW),
+				original.replace(
+					"      # capability:start playwright\n      - browser\n      # capability:end playwright\n",
+					"",
+				),
+			);
+			expect(
+				await validateStageSevenEvidenceValue(value, schema, temporary),
+			).toContain(identity);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
 	});
 
 	test("rejects command, gate, live-run, protection, and coverage fabrication", async () => {
@@ -99,14 +180,28 @@ describe("Stage 7 CI bootstrap evidence", () => {
 			}),
 		).toContain("semantic: Stage 7 coverage map drifted");
 
-		// The live runs are only evidence for the file this repository ships if the
-		// gate in that file depends on exactly the jobs those runs reported.
+		// The run shape is anchored on the record's OWN gateNeeds, so the record
+		// still has to agree with itself: three sealed runs that each reported
+		// three upstream jobs cannot belong to a gate the same record says had
+		// two.
 		expect(
 			await validateMutation((value) => {
 				const repository = value["repository"] as Record<string, unknown>;
 				repository["gateNeeds"] = (repository["gateNeeds"] as string[]).slice(
 					1,
 				);
+			}),
+		).toContain("semantic: live green run evidence drifted");
+
+		// And a sealed lane the committed gate never declares is a record about
+		// some other workflow, whichever direction the disagreement runs in.
+		expect(
+			await validateMutation((value) => {
+				const repository = value["repository"] as Record<string, unknown>;
+				repository["gateNeeds"] = [
+					...(repository["gateNeeds"] as string[]),
+					"ghost",
+				];
 			}),
 		).toContain("semantic: recorded gate identity is not the committed one");
 

@@ -4,6 +4,20 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-08-06 — Fix: anchor Stage 7 evidence checks on the sealed gate
+
+**Goal:** Stop a sealed, green historical capture from being reported as fabrication the first time a later stage adds a CI job.
+
+**How to implement:** `scripts/template/stage-seven-evidence.ts` re-resolved the gate's dependency list out of the *current* `.github/workflows/ci.yml` and then required the sealed record to match it exactly — and required each sealed live run to have reported exactly that many jobs. That holds only until the workflow grows. Stage 8A adds a `moon-graph` job, and the record instantly failed with `recorded gate identity is not the committed one` plus green, red and draft run drift, for a capture nothing had falsified. The only "repair" the old shape allowed was re-running three live workflows — including a deliberately red one and a draft one — to restate a fact that was still true.
+
+The run-shape assertions are now anchored on the record's **own** `repository.gateNeeds`: the sealed runs claim "every job the gate depended on when this ran reported into it", which stays true forever, and a record whose runs disagree with its own dependency list is still rejected. The identity check became a **subset** test: every sealed need must still be declared by the committed gate, so a renamed or removed lane still fails, while an added one does not. Whether the gate is complete *today* is a live question that already has an owner — `scripts/template/ci-contract.ts` requires the aggregate gate to depend on every job in its file and fails the build when it does not — so nothing is lost by not asking it twice.
+
+This is the same mistake the Stage 5A validator made against an absolute host path, fixed the same way: assert the property that made the capture meaningful rather than re-deriving an environment-specific value. Three tests pin the new shape — a record whose sealed runs disagree with its own `gateNeeds` fails, a sealed lane the committed gate no longer declares fails (with the unmutated workflow as the control), and a gate that grew a lane passes while the committed gate is asserted to be a strict superset of the sealed one.
+
+**Why downstream cares:** Nothing in a rendered project changes; this is template evidence tooling. The transferable rule is the one the fix encodes: a sealed record must be validated against itself and against properties that survive legitimate evolution, never against a value the current tree happens to hold.
+
+---
+
 ## 2026-08-06 — Add: Moon project graph and its drift oracle
 
 **Goal:** Give this repository a project graph that is small, correct, and *checked*, so the affected-selection work that follows has something trustworthy to select against. Before this stage `.moon/workspace.yml` globbed `apps/*`, `libs/*` and `scripts/*`; `apps/` and `libs/` are empty skeletons, so the entire graph was the three tooling directories under `scripts/` — none of which is a package — plus a warning per loose file there ("Received a file path for a project root, must be a directory"). Meanwhile `vcs.defaultBranch` was unstated, which means moon's own default `master`: every "what changed" query would have silently diffed against a branch this repository does not have.
