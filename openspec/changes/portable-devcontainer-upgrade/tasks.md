@@ -1,4 +1,4 @@
-**Current status (2026-08-07):** 68 of 82 tasks are complete. Stages 0 through 10B have merged; Stage 10C is next.
+**Current status (2026-08-07):** 71 of 82 tasks are complete. Stages 0 through 10C have merged; Stage 10D is next.
 
 ## 1. Stage 0 PR — Inventory, Parameters, and Baseline
 
@@ -142,9 +142,9 @@ This stage adds capability-gated Sentry configuration and explicit safeguards ar
 
 This stage generates correct HTTP and WebSocket proxy configuration and proves real WebSocket and HMR behavior, preventing structurally valid but nonfunctional proxy setups.
 
-- [ ] 15.1 Generate enabled development and preview proxy routes in aligned object form with `ws: true`
-- [ ] 15.2 Add non-vacuous structural proxy policy tests and real HTTP/WebSocket/HMR handshake tests with string-shorthand and missing-`ws` mutations
-- [ ] 15.3 Validate generated enabled/disabled fixtures, record rollback/evidence, and update rules/docs/`CHANGES.md`
+- [x] 15.1 Generate enabled development and preview proxy routes in aligned object form with `ws: true`
+- [x] 15.2 Add non-vacuous structural proxy policy tests and real HTTP/WebSocket/HMR handshake tests with string-shorthand and missing-`ws` mutations
+- [x] 15.3 Validate generated enabled/disabled fixtures, record rollback/evidence, and update rules/docs/`CHANGES.md`
 
 ## 16. Stage 10D PR — TanStack Start Safety
 
