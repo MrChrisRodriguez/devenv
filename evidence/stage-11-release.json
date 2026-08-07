@@ -1,0 +1,505 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-11-release",
+	"capturedAt": "2026-08-07T20:06:27Z",
+	"run": {
+		"id": "stage11-20260807t193030z-decc5016",
+		"logRoot": "evidence/stage-11-release-run",
+		"collector": "scripts/template/collect-stage-eleven-evidence.ts"
+	},
+	"source": {
+		"baseSha": "28f69975f133fb04b203e61709fa543614ede89d",
+		"implementationSha": "0ed8066a309af92caaebc820b9f074e26b66b969",
+		"treeClean": true
+	},
+	"host": {
+		"os": "darwin",
+		"architecture": "arm64",
+		"kernel": "25.5.0",
+		"insideDevcontainer": false,
+		"bunVersion": "1.3.13",
+		"gitVersion": "2.50.1 (Apple Git-155)",
+		"dockerVersion": "29.4.0"
+	},
+	"repository": {
+		"nameWithOwner": "MrChrisRodriguez/devenv",
+		"workflowFile": ".github/workflows/ci.yml",
+		"gateJobId": "ci-gate",
+		"gateContext": "CI gate",
+		"gateNeeds": [
+			"ci",
+			"image",
+			"affected",
+			"project",
+			"moon-graph",
+			"browser"
+		],
+		"releaseGuardScript": "template:release-check",
+		"releaseSyncScript": "template:release-sync",
+		"registryFile": "release.json",
+		"capability": null,
+		"imageTarget": "development",
+		"addedJobs": 0,
+		"devcontainerFilesChanged": 0,
+		"lockfileBytesChanged": 0
+	},
+	"release": {
+		"decision": "candidate",
+		"plannedTag": "v1.0.0",
+		"changeName": "portable-devcontainer-upgrade",
+		"scanFamilies": 6,
+		"acceptanceItems": 10,
+		"acceptanceLive": 7,
+		"acceptanceInherited": 3,
+		"budgetFamilies": 4,
+		"goldenFixtures": 3,
+		"goldenTotalFileCount": 413,
+		"goldenDigests": [
+			{
+				"path": "fixtures/golden/cloud.json",
+				"sha256": "ca1dead73498e256a362af5a5e13dee7c40f0392f849f1dc6e82447eb0af60ef",
+				"fileCount": 122
+			},
+			{
+				"path": "fixtures/golden/full.json",
+				"sha256": "9a0aee88c76707e545e98612605fd794b67aa62631bfc82a888c07f63d9dfe21",
+				"fileCount": 171
+			},
+			{
+				"path": "fixtures/golden/minimal.json",
+				"sha256": "3766a9e111e0a178ab2ad5b137bfe362bbed5f0e10a87a39c1e02b9a2317b71f",
+				"fileCount": 120
+			}
+		],
+		"postMergeSteps": [
+			"pr-merges",
+			"default-branch-full-run-green",
+			"tag-merge-commit",
+			"push-tag",
+			"archive-change"
+		]
+	},
+	"commands": [
+		{
+			"id": "release-guard",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": ["bun", "run", "template:release-check"],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 1295,
+			"stdoutPath": "evidence/stage-11-release-run/release-guard.stdout",
+			"stdoutSha256": "41ad3f7e5135d9098e9435a6a78978baa8a98928bb392ab9a1523cfb5a66e6d4",
+			"stderrPath": "evidence/stage-11-release-run/release-guard.stderr",
+			"stderrSha256": "32d1867eb94cd78da8ad62a947ec5b23b62e13e7ed338424d76302fe831ae2ca"
+		},
+		{
+			"id": "goldens",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": ["bun", "run", "template:release-sync"],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 788,
+			"stdoutPath": "evidence/stage-11-release-run/goldens.stdout",
+			"stdoutSha256": "711a80b9d77aa5d5735e20ab26da98ae936c3d4072c330c0d4929e90e12b316d",
+			"stderrPath": "evidence/stage-11-release-run/goldens.stderr",
+			"stderrSha256": "ff80384a03c1bbdb56ef371bfda88183bc9d047a920959cd267b701c56334512"
+		},
+		{
+			"id": "golden-mutation",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": [
+				"bash",
+				"scripts/template/capture-stage-eleven.sh",
+				"golden-mutation"
+			],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 5340,
+			"stdoutPath": "evidence/stage-11-release-run/golden-mutation.stdout",
+			"stdoutSha256": "9473fe53d8950f1b6061bad4bec1560dd8ed1fc30e0641f2bcc85ed36985a028",
+			"stderrPath": "evidence/stage-11-release-run/golden-mutation.stderr",
+			"stderrSha256": "7292d602787769c76e932e4c168588381efb55a910a6ecb0c0ab4826dce72df9"
+		},
+		{
+			"id": "scans",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": ["bash", "scripts/template/capture-stage-eleven.sh", "scans"],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 50,
+			"stdoutPath": "evidence/stage-11-release-run/scans.stdout",
+			"stdoutSha256": "a3d57d9a6e4935155703b2c0c0368ef1b2f5f7f4b61b044017fcef16773deb0c",
+			"stderrPath": "evidence/stage-11-release-run/scans.stderr",
+			"stderrSha256": "99b5a1e30ace2cca09c07843769bdea64fd893eb3d7baeee122165f7af43a514"
+		},
+		{
+			"id": "acceptance-inheritance",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": [
+				"bash",
+				"scripts/template/capture-stage-eleven.sh",
+				"acceptance-inheritance"
+			],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 985,
+			"stdoutPath": "evidence/stage-11-release-run/acceptance-inheritance.stdout",
+			"stdoutSha256": "cd9c1117d9fb3090611408f5031a38a2d5427f4b3cbecea3ff6fde402ad0ad77",
+			"stderrPath": "evidence/stage-11-release-run/acceptance-inheritance.stderr",
+			"stderrSha256": "bac4f1a1845a458699df3725385631f007af00bf607d9fa1113635f7acb83992"
+		},
+		{
+			"id": "budgets",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": [
+				"bash",
+				"scripts/template/capture-stage-eleven.sh",
+				"budgets"
+			],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 36,
+			"stdoutPath": "evidence/stage-11-release-run/budgets.stdout",
+			"stdoutSha256": "d0229bea88e800b627f4e67c07260400f5abd3a7717ce993a0449ce5ac53d6c3",
+			"stderrPath": "evidence/stage-11-release-run/budgets.stderr",
+			"stderrSha256": "85afbd5faf08104e1c63021f614c5d8833fb61ca42e889e38b2de4c7a0c81daa"
+		},
+		{
+			"id": "signals",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": [
+				"bash",
+				"scripts/template/capture-stage-eleven.sh",
+				"signals"
+			],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 75,
+			"stdoutPath": "evidence/stage-11-release-run/signals.stdout",
+			"stdoutSha256": "40cd96db25ff8c0082d4241d868efad36c9c1769ac0696065f7cc2f230074894",
+			"stderrPath": "evidence/stage-11-release-run/signals.stderr",
+			"stderrSha256": "30dd42030612edff057d3b223780a608070a3b560cd0bf3a115ad6bcbb742d68"
+		},
+		{
+			"id": "render-fixtures",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": [
+				"bash",
+				"scripts/template/capture-stage-eleven.sh",
+				"render-fixtures"
+			],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 593,
+			"stdoutPath": "evidence/stage-11-release-run/render-fixtures.stdout",
+			"stdoutSha256": "b19f311407cb47923e9a7547a6444f72a597f16b06c831932e5cb3650fe42470",
+			"stderrPath": "evidence/stage-11-release-run/render-fixtures.stderr",
+			"stderrSha256": "546dd51f941fa0b4b8157eaf286e72ecf261f70b619c56f8da28432b777284e7"
+		},
+		{
+			"id": "release-mutations",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": [
+				"bash",
+				"scripts/template/capture-stage-eleven.sh",
+				"release-mutations"
+			],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 11783,
+			"stdoutPath": "evidence/stage-11-release-run/release-mutations.stdout",
+			"stdoutSha256": "a988004fe889489ae99d7c18543ce0f714da9aab661e90caa46e19a2a411535d",
+			"stderrPath": "evidence/stage-11-release-run/release-mutations.stderr",
+			"stderrSha256": "e8958696002cbfbb1782b714f4455618e01a8f45204467e477becd9518289fb5"
+		},
+		{
+			"id": "clean-image-build",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": [
+				"docker",
+				"build",
+				"--progress=plain",
+				"--no-cache",
+				"--target",
+				"development",
+				"-f",
+				".devcontainer/Dockerfile",
+				"-t",
+				"devenv-stage11:clean",
+				"."
+			],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 118603,
+			"stdoutPath": "evidence/stage-11-release-run/clean-image-build.stdout",
+			"stdoutSha256": "f05c4fcf2e27a9a1004702da294ee36b38f22235dd58591840cb11dffec7a7ed",
+			"stderrPath": "evidence/stage-11-release-run/clean-image-build.stderr",
+			"stderrSha256": "ddd9dc2e96c3383b1fbd841cab8c140b38eeaaa5021ba0d90513ac1e55faffc1"
+		},
+		{
+			"id": "warm-image-build",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": [
+				"docker",
+				"build",
+				"--progress=plain",
+				"--target",
+				"development",
+				"-f",
+				".devcontainer/Dockerfile",
+				"-t",
+				"devenv-stage11:clean",
+				"."
+			],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 6392,
+			"stdoutPath": "evidence/stage-11-release-run/warm-image-build.stdout",
+			"stdoutSha256": "410853872801d88fc0c7c0ae8cf3d89018431fb58447fe3995d5a41d51cb0bbf",
+			"stderrPath": "evidence/stage-11-release-run/warm-image-build.stderr",
+			"stderrSha256": "9f373bb9616dc1c59e77091a5eb2f264f9a2989ff28cc0867d303328b3cdd0c6"
+		},
+		{
+			"id": "fresh-startup",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": [
+				"bash",
+				"scripts/template/capture-stage-eleven.sh",
+				"fresh-startup"
+			],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 124097,
+			"stdoutPath": "evidence/stage-11-release-run/fresh-startup.stdout",
+			"stdoutSha256": "3715863535070a3a2989554b751bbb83ce7d01cd667f97213ba922c23a4999fd",
+			"stderrPath": "evidence/stage-11-release-run/fresh-startup.stderr",
+			"stderrSha256": "f3f2bd55cf44d044355c44b81e687b46ee82c9bb731365f38f232bd8bd1b5aeb"
+		},
+		{
+			"id": "two-worktree-isolation",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": [
+				"bash",
+				"scripts/template/capture-stage-eleven.sh",
+				"two-worktree-isolation"
+			],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 44677,
+			"stdoutPath": "evidence/stage-11-release-run/two-worktree-isolation.stdout",
+			"stdoutSha256": "80eb16731118a300a696f333a8d29bc7bae7955b74bd1ab17c9ea473a2356db6",
+			"stderrPath": "evidence/stage-11-release-run/two-worktree-isolation.stderr",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+		},
+		{
+			"id": "browser-image-build",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": [
+				"docker",
+				"build",
+				"--progress=plain",
+				"--target",
+				"development_browser",
+				"-f",
+				".devcontainer/Dockerfile",
+				"-t",
+				"devenv-stage11:browser",
+				"."
+			],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 36405,
+			"stdoutPath": "evidence/stage-11-release-run/browser-image-build.stdout",
+			"stdoutSha256": "3e620b0b5e4dd60b6d6679e823b35f7ae06a708f9274ed5e67476b74803ef654",
+			"stderrPath": "evidence/stage-11-release-run/browser-image-build.stderr",
+			"stderrSha256": "21b258069152be5e4e33c5c66dd8b1132158da13c371c2c4a82d4198f20618c6"
+		},
+		{
+			"id": "browser-preflight",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": [
+				"bash",
+				"scripts/template/capture-stage-eleven.sh",
+				"browser-preflight"
+			],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 7762,
+			"stdoutPath": "evidence/stage-11-release-run/browser-preflight.stdout",
+			"stdoutSha256": "b898f92edfaed5e4d8e4aa6978947577e292dbd239904057e8758bc14a45b585",
+			"stderrPath": "evidence/stage-11-release-run/browser-preflight.stderr",
+			"stderrSha256": "ad36c27c7a0b8d3fe0754fcbbd0879eec89f1730d81cb8c25861ecc40d7347b2"
+		},
+		{
+			"id": "openspec-lifecycle",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": ["bun", "run", "openspec:check"],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 793,
+			"stdoutPath": "evidence/stage-11-release-run/openspec-lifecycle.stdout",
+			"stdoutSha256": "ca2689bc0a3fa5a1130985302344e6d6beca7d81c6413f7530fe907995ea5485",
+			"stderrPath": "evidence/stage-11-release-run/openspec-lifecycle.stderr",
+			"stderrSha256": "dc2c9a83def8b7f64a38d1f5b1ea3cf5e0f4f2695a054e1a20d972ea5d4dd827"
+		},
+		{
+			"id": "dependency-guards",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": [
+				"bash",
+				"scripts/template/capture-stage-eleven.sh",
+				"dependency-guards"
+			],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 732,
+			"stdoutPath": "evidence/stage-11-release-run/dependency-guards.stdout",
+			"stdoutSha256": "dc509b4152c763581b570810fbc92ead47fdaf1c5049796debac60978ae6842b",
+			"stderrPath": "evidence/stage-11-release-run/dependency-guards.stderr",
+			"stderrSha256": "79baa4f0f7dcfb0e840fb225e996324550e6f47a62d016b359bf335f0d5d6b1c"
+		},
+		{
+			"id": "rollback-proof",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": [
+				"bash",
+				"scripts/template/capture-stage-eleven.sh",
+				"rollback-proof"
+			],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 769,
+			"stdoutPath": "evidence/stage-11-release-run/rollback-proof.stdout",
+			"stdoutSha256": "e99ae00aa02fadb1e2dcb0e17deca6469b1df454f1db10449e10cbe62a21fabb",
+			"stderrPath": "evidence/stage-11-release-run/rollback-proof.stderr",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+		},
+		{
+			"id": "live-gate",
+			"runId": "stage11-20260807t193030z-decc5016",
+			"command": [
+				"gh",
+				"run",
+				"view",
+				"31213516546",
+				"--json",
+				"status,conclusion,jobs"
+			],
+			"cwd": ".",
+			"exitCode": 0,
+			"status": "pass",
+			"durationMs": 1235,
+			"stdoutPath": "evidence/stage-11-release-run/live-gate.stdout",
+			"stdoutSha256": "5d4a3bb36e997aebb543f4db3785c8b266a3d8942b6763208bdfe5cbfdc873d0",
+			"stderrPath": "evidence/stage-11-release-run/live-gate.stderr",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+		}
+	],
+	"live": {
+		"provider": "github-actions",
+		"runId": "31213516546",
+		"headSha": "decc5016c7d28304c4cabc12d90f398f19798bd4",
+		"conclusion": "success",
+		"jobs": ["ci", "image", "affected", "project", "moon-graph", "browser"],
+		"url": "https://github.com/MrChrisRodriguez/devenv/actions/runs/31213516546"
+	},
+	"coverage": [
+		{
+			"id": "golden-generation",
+			"task": "18.1 deterministic generation golden tests for minimal, cloud and full",
+			"reason": "Three committed manifests pin the path, mode and sha256 of every file each profile emits, and the comparison is proved by flipping one hex digit, dropping one entry, inventing one and changing one mode — four causes, four sentences. A pinned hash nothing compares is decoration, which is the hole the reference implementation had to close after the fact.",
+			"commandIds": ["goldens", "golden-mutation", "render-fixtures"]
+		},
+		{
+			"id": "release-scans",
+			"task": "18.1 disabled-residue, source-identifier, mutable-pin, duplicate-rule, fixed-port and obsolete-command scans",
+			"reason": "Six families rather than the four the task list names, because the spec names six and the spec is normative. Every family runs over the three renders as well as the template surface a render receives, every needle is read or imported from the definition that already owns it, and every tolerated hit carries a reason plus a mechanism the guard re-asserts.",
+			"commandIds": ["release-guard", "scans", "release-mutations"]
+		},
+		{
+			"id": "live-acceptance",
+			"task": "18.2 clean/incremental image builds, simultaneous worktrees, doctor security, CI modes, cloud profiles, browser preflight, OpenSpec lifecycle, dependency guards and stack tests",
+			"reason": "Ten items, split into live and inherited by a path diff rather than by choice: an inherited claim is legal only while the paths that produced it are byte-unchanged, and the guard computes the mode instead of reading it. The seven live ones were re-measured at this head; the three inherited ones name the record and the boundary they inherit from, and the guard prints them on success so a green gate is never read as a full re-run.",
+			"commandIds": [
+				"clean-image-build",
+				"warm-image-build",
+				"fresh-startup",
+				"two-worktree-isolation",
+				"browser-image-build",
+				"browser-preflight",
+				"openspec-lifecycle",
+				"dependency-guards",
+				"acceptance-inheritance",
+				"live-gate"
+			]
+		},
+		{
+			"id": "budget-comparison",
+			"task": "18.3 compare final performance/storage/reliability with Stage 0 and resolve every regression",
+			"reason": "Four families, both sides of every measured comparison pinned by a pointer into the record that carries them, and two families with no Stage 0 baseline at all — Stage 0 recorded them unavailable because no isolated worktree completed its lifecycle. Those two carry no-baseline verdicts whose reasons quote Stage 0's own words, which the guard reads and checks, and this stage's first successful lifecycle becomes the baseline rather than a comparison.",
+			"commandIds": [
+				"budgets",
+				"fresh-startup",
+				"clean-image-build",
+				"warm-image-build"
+			]
+		},
+		{
+			"id": "onboarding-and-rules",
+			"task": "18.4 finalize onboarding, troubleshooting, generated README, canonical agent rules and rollback documentation",
+			"reason": "AGENTS.md gains no section, because template-only blocks do not work in markdown and one would ship into every render describing a guard that is not there. What ships is a declared mapping from every check script to the section that documents it, asserted per render, plus a troubleshooting document that does ship and the two README sections the template never had.",
+			"commandIds": ["release-guard", "release-mutations"]
+		},
+		{
+			"id": "release-criteria",
+			"task": "18.5 exact-head green PR CI, full default-branch evidence, clean tree, CHANGES.md and tag",
+			"reason": "The decision is a declaration checked against local Git objects and never a query, because a fine-grained token cannot read the Checks API. Both signals ship pending: the exact-head run cannot be sealed by the commit it runs against, and the default-branch run cannot exist until a merge commit does. The rollback proof is a synthetic merge and its revert, compared as tree object ids.",
+			"commandIds": ["signals", "live-gate", "rollback-proof"]
+		}
+	],
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-11-pr-merge-commit>"],
+		"addedPaths": [
+			"release.json",
+			"release.schema.json",
+			"fixtures/golden/cloud.json",
+			"fixtures/golden/full.json",
+			"fixtures/golden/minimal.json",
+			"scripts/template/release-contract.ts",
+			"scripts/template/validate-release.ts",
+			"scripts/template/sync-release-goldens.ts",
+			"scripts/template/capture-stage-eleven.sh",
+			"scripts/template/stage-eleven-evidence.ts",
+			"scripts/template/collect-stage-eleven-evidence.ts",
+			"scripts/template/__tests__/release.test.ts",
+			"scripts/template/__tests__/fixtures/release-workspaces.ts",
+			"scripts/template/__tests__/stage-eleven-evidence.test.ts",
+			"evidence/stage-11-release.json",
+			"evidence/stage-11-release.schema.json",
+			"docs/troubleshooting.md"
+		],
+		"outsideTheTree": [],
+		"containerRebuildRequired": false,
+		"scope": "Revert the release declaration and its schema, the three golden render manifests, the guard, its entrypoint, the golden generator, the capture harness, the evidence module, its collector, the two test files, the two template: package scripts, the one step inside the new template-only block, the three omit ownership rules and the one copy rule for the troubleshooting document, the capabilityInventory and versionAuthorities reconciliation, the wrangler.jsonc signature path, the validate.ts wiring, the README and README.template.md sections, the troubleshooting document, and this record as one Stage 11 bundle. Nothing here is gated and nothing here is core: five of the six added surfaces are template-only by construction, so the reverted tree differs from the predecessor in nothing at all — which the proof shows as two equal tree object ids rather than as a claim. Nothing about this stage lives outside the tree: no repository variable, no branch-protection change, no tag and no archive, because all four of those are post-merge steps the runbook owns rather than commits this pull request makes.",
+		"proofCommandId": "rollback-proof"
+	}
+}

@@ -1,0 +1,22 @@
+bun test v1.3.13 (bf2e2cec)
+[stage11-observed] renders different bytes for a file the golden carries
+[stage11-observed] renders a file the golden does not carry
+[stage11-observed] no longer renders a file the golden carries
+[stage11-observed] renders a different mode for a file the golden carries
+[stage11-observed] a half-updated golden is a refusal rather than a smaller diff
+[stage11-observed] the exemption dies with the mechanism that earned it
+[stage11-observed] an inherited claim is legal only while the paths that produced it are byte-unchanged
+[stage11-observed] the mode is a consequence of the diff rather than a choice
+[stage11-observed] a pin nothing compares is decoration
+[stage11-observed] release is blocked until the regression is corrected or an exception is approved
+[stage11-observed] an exemption with nothing to exempt widens itself
+[stage11-observed] budget's exception does not quote the Stage 0 record
+[stage11-observed] a pending signal records nothing
+[stage11-observed] a green run for a different commit is not an exact-head signal
+[stage11-observed] this surface is template-only and appears in no render
+[stage11-observed] a capability is in one bucket or the inventory means nothing
+[stage11-observed] still carries currentRisk
+# command-id: release-mutations
+# run: stage11-20260807t193030z-decc5016
+# exitCode: 0
+# durationMs: 11783

@@ -220,6 +220,19 @@ jobs:
           bun run template:fixtures "${RUNNER_TEMP}/template-fixtures"
       # template-only:end stage-zero-baseline
 
+      # template-only:start stage-eleven-release
+      # The release gate reads fixture definitions, golden render manifests and
+      # a release declaration, and all three are omitted from every render — so
+      # a rendered project would receive a step whose command has no inputs.
+      # This is the second template-only block in the tree and the first one
+      # that wraps a guard rather than the baseline harness. It runs no network
+      # call by design: a release decision is a declaration checked against
+      # local Git objects, never a question asked of a Checks API that a
+      # fine-grained token cannot read.
+      - name: Validate template release gate
+        run: bun run template:release-check
+      # template-only:end stage-eleven-release
+
   image:
     name: Build devcontainer image
     runs-on: ubuntu-latest

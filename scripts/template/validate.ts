@@ -18,8 +18,13 @@ import {
 	resolveFixtureParameters,
 } from "./parameters";
 import { validateProxyContract } from "./proxy-contract";
+import {
+	readReleaseRegistry,
+	validateReleaseContract,
+} from "./release-contract";
 import { validateStageEightAEvidence } from "./stage-eight-a-evidence";
 import { validateStageEightBEvidence } from "./stage-eight-b-evidence";
+import { validateStageElevenEvidence } from "./stage-eleven-evidence";
 import { validateStageFiveBEvidence } from "./stage-five-b-evidence";
 import { validateStageFiveEvidence } from "./stage-five-evidence";
 import { validateStageFourEvidence } from "./stage-four-evidence";
@@ -84,6 +89,12 @@ export interface ValidationReport {
 	experimentRegistrySchemaFile: string;
 	experimentEvidenceFile: string;
 	experimentEvidenceSchemaFile: string;
+	releaseRegistryFile: string;
+	releaseRegistrySchemaFile: string;
+	goldenRoot: string;
+	releaseDecision: string;
+	releaseEvidenceFile: string;
+	releaseEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -137,6 +148,12 @@ export async function validateAll(
 		experimentRegistrySchemaFile: "experiments.schema.json",
 		experimentEvidenceFile: "evidence/stage-10e-experiments.json",
 		experimentEvidenceSchemaFile: "evidence/stage-10e-experiments.schema.json",
+		releaseRegistryFile: "release.json",
+		releaseRegistrySchemaFile: "release.schema.json",
+		goldenRoot: "fixtures/golden",
+		releaseDecision: "candidate",
+		releaseEvidenceFile: "evidence/stage-11-release.json",
+		releaseEvidenceSchemaFile: "evidence/stage-11-release.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -275,6 +292,24 @@ export async function validateAll(
 			report.status = "fail";
 			report.errors.push(...experimentErrors);
 		}
+		// The final release gate, and the first surface in the program that is
+		// TEMPLATE-ONLY rather than core or gated: its declaration, its golden
+		// manifests and its fixture definitions are all omitted from every
+		// render, so the guard asserts its own ABSENCE from all three fixtures.
+		// The render comparison is deliberately skipped here — `template:validate`
+		// already renders through `template:fixtures`, and rendering three
+		// fixtures twice in one command buys nothing. `template:release-check`
+		// is the leg that compares.
+		const releaseRegistry = await readReleaseRegistry(root);
+		if (releaseRegistry.registry)
+			report.releaseDecision = releaseRegistry.registry.decision;
+		const releaseErrors = await validateReleaseContract(root, {
+			renders: false,
+		});
+		if (releaseErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...releaseErrors);
+		}
 		// Hermetic again: the vendor-artifact leg spawns the pinned CLI, which
 		// `rules:check` owns.
 		const agentRulesErrors = await validateAgentRulesContract(root, {
@@ -391,6 +426,13 @@ export async function validateAll(
 			report.status = "fail";
 			report.errors.push(
 				...startEvidenceErrors.map((error) => `stage-10d evidence: ${error}`),
+			);
+		}
+		const releaseEvidenceErrors = await validateStageElevenEvidence(root);
+		if (releaseEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...releaseEvidenceErrors.map((error) => `stage-11 evidence: ${error}`),
 			);
 		}
 		const experimentEvidenceErrors = await validateStageTenEEvidence(root);

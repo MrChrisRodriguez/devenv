@@ -555,6 +555,34 @@
 			"sourceOfTruth": "experiments.schema.json"
 		},
 		{
+			"pattern": "docs/troubleshooting.md",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "template repository"
+		},
+		{
+			"pattern": "release.json",
+			"classification": "template-tooling",
+			"syncPolicy": "merge",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "release.json"
+		},
+		{
+			"pattern": "release.schema.json",
+			"classification": "template-tooling",
+			"syncPolicy": "merge",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "release.schema.json"
+		},
+		{
+			"pattern": "fixtures/golden/**",
+			"classification": "template-test",
+			"syncPolicy": "merge",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "bun run template:release-sync"
+		},
+		{
 			"pattern": "*",
 			"classification": "template-owned",
 			"syncPolicy": "merge",
@@ -846,7 +874,7 @@
 	"capabilitySignatures": {
 		"better_auth": { "paths": ["libs/auth/**"], "tokens": ["better-auth"] },
 		"cloudflare_workers": {
-			"paths": ["tsconfig.worker.base.json", "wrangler.toml"],
+			"paths": ["tsconfig.worker.base.json", "wrangler.jsonc", "wrangler.toml"],
 			"tokens": [
 				"cloudflare.vscode-cloudflare-workers",
 				"@cloudflare/",
@@ -1178,38 +1206,49 @@
 		{
 			"domain": "Proto tools",
 			"authority": ".prototools",
-			"currentRisk": "seven plugin locators use mutable main branches"
+			"historicalRisk": "seven plugin locators use mutable main branches",
+			"resolvedBy": "stage-1",
+			"authorityRule": "Every .prototools plugin locator is a raw.githubusercontent.com URL pinned to a 40-character commit, and toolchain:check refuses anything else."
 		},
 		{
 			"domain": "project packages",
 			"authority": "package.json and bun.lock",
-			"currentRisk": "latest, ranges, and catalog bypasses coexist"
+			"historicalRisk": "latest, ranges, and catalog bypasses coexist",
+			"resolvedBy": "stage-1",
+			"authorityRule": "Every shared dependency resolves through package.json#workspaces.catalog at an exact version, root consumers declare catalog:, and bun.lock is committed and installed frozen."
 		},
 		{
 			"domain": "devcontainer features",
 			"authority": ".devcontainer/devcontainer.json",
-			"currentRisk": "floating major tags and Node lts; lock absent"
+			"historicalRisk": "floating major tags and Node lts; lock absent",
+			"resolvedBy": "stage-2",
+			"authorityRule": "Every devcontainer feature is pinned by resolved reference and integrity in .devcontainer/devcontainer-lock.json, and image:check refuses a drift between the two."
 		},
 		{
 			"domain": "Docker downloads",
 			"authority": ".devcontainer/Dockerfile",
-			"currentRisk": "mutable base/latest downloads and missing checksums"
+			"historicalRisk": "mutable base/latest downloads and missing checksums",
+			"resolvedBy": "stage-2",
+			"authorityRule": "Every Dockerfile download is checksum-verified per architecture from .devcontainer/proto-checksums.txt, and the base image is digest-pinned."
 		},
 		{
 			"domain": "CI Bun",
 			"authority": ".github/workflows/ci.yml",
-			"currentRisk": "duplicates the .prototools Bun literal"
+			"historicalRisk": "duplicates the .prototools Bun literal",
+			"resolvedBy": "stage-7",
+			"authorityRule": "The workflow reads its Bun version from a single top-level BUN_VERSION pin that ci:check reconciles with .prototools, so the literal exists once."
 		},
 		{
 			"domain": "agent and shell runtime installers",
 			"authority": ".devcontainer/on-create/setup-*.sh and .devcontainer/Dockerfile",
-			"currentRisk": "Claude, ccstatusline, Octopus, Warp, Graphify, and zinit use floating or duplicated installer inputs"
+			"historicalRisk": "Claude, ccstatusline, Octopus, Warp, Graphify, and zinit use floating or duplicated installer inputs",
+			"resolvedBy": "stage-3",
+			"authorityRule": "Every agent payload is installed from a Dockerfile-declared version or commit, and agent-payload-contract.ts refuses an installer whose input is not declared there."
 		}
 	],
 	"capabilityInventory": {
 		"alwaysEmittedPartial": [
 			"devcontainer",
-			"moon",
 			"openspec",
 			"codex",
 			"gemini",
@@ -1218,7 +1257,13 @@
 			"context7",
 			"ccstatusline",
 			"claude_octopus",
-			"claude_warp"
+			"claude_warp",
+			"codex_cloud",
+			"moon_affected_selection",
+			"rhf_zod",
+			"sentry",
+			"tanstack_start",
+			"vite_websocket_proxy"
 		],
 		"advertisedOnly": ["cloudflare_workers"],
 		"absent": ["playwright", "better_auth"]

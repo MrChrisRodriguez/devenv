@@ -1,0 +1,502 @@
+{
+	"schemaVersion": 1,
+	"decision": "candidate",
+	"auditedSource": {
+		"commit": "28f69975f133fb04b203e61709fa543614ede89d",
+		"tree": "255660d874f8502e18711c0230c830c2a0c61944",
+		"capturedAt": "2026-08-07T17:25:26Z"
+	},
+	"release": {
+		"plannedTag": "v1.0.0",
+		"changelogHeading": "## 2026-08-07 — Add: the release gate, and the first tagged template",
+		"changeName": "portable-devcontainer-upgrade",
+		"templateRefMechanism": ".template-ref"
+	},
+	"goldens": {
+		"directory": "fixtures/golden",
+		"regenerateWith": "bun run template:release-sync",
+		"totalFileCount": 413,
+		"fixtures": [
+			{
+				"fixture": "cloud",
+				"manifest": "fixtures/golden/cloud.json",
+				"fileCount": 122,
+				"omittedCount": 929,
+				"enabledCount": 11,
+				"disabledCount": 8
+			},
+			{
+				"fixture": "full",
+				"manifest": "fixtures/golden/full.json",
+				"fileCount": 171,
+				"omittedCount": 880,
+				"enabledCount": 19,
+				"disabledCount": 0
+			},
+			{
+				"fixture": "minimal",
+				"manifest": "fixtures/golden/minimal.json",
+				"fileCount": 120,
+				"omittedCount": 931,
+				"enabledCount": 6,
+				"disabledCount": 13
+			}
+		]
+	},
+	"scans": [
+		{
+			"id": "source-identifier",
+			"authority": "scripts/template/render-fixture.ts#GLOBAL_FORBIDDEN_TOKENS, read out of the renderer at run time rather than retyped",
+			"ownedBy": null,
+			"allow": [
+				{
+					"path": "tsconfig.base.json",
+					"token": "@confiador/",
+					"reason": "the renderer's substitution SOURCE. render-fixture.ts deletes the alias from every rendered tsconfig and rewrites the prefix to the fixture's own slug, and template.test.ts asserts the original key is undefined in a render — so the identifier is impossible in an output and renaming it here would cost five interlocking files for a cosmetic gain.",
+					"mechanism": [
+						{
+							"path": "scripts/template/render-fixture.ts",
+							"needle": "delete paths[\"@confiador/*\"];"
+						},
+						{
+							"path": "scripts/template/render-fixture.ts",
+							"needle": ".replaceAll(\"@confiador/\", `@${parameters.project.slug}/`)"
+						},
+						{
+							"path": "scripts/template/__tests__/template.test.ts",
+							"needle": "paths[\"@confiador/*\"]).toBeUndefined()"
+						}
+					]
+				},
+				{
+					"path": "package.json",
+					"token": "\"name\": \"devenv-template\"",
+					"reason": "the private root manifest name, which the renderer replaces with the fixture's slug before any file is written. This repository is not a package and has no version field; the name is the thing a render overwrites, not a thing it inherits.",
+					"mechanism": [
+						{
+							"path": "scripts/template/render-fixture.ts",
+							"needle": "value[\"name\"] = parameters.project.slug;"
+						},
+						{
+							"path": "scripts/template/__tests__/template.test.ts",
+							"needle": "expect(packageJson.name).toBe(\"fixture-minimal\");"
+						}
+					]
+				},
+				{
+					"path": "scripts/template/graph-contract.ts",
+					"token": "@confiador/",
+					"reason": "a COMMENT explaining why the guard reads the library alias out of tsconfig.base.json instead of hardcoding it — the literal appears in the sentence that forbids the literal. A matcher clever enough to skip comments is a matcher that silently stops matching, so this is an entry rather than a smarter scan.",
+					"mechanism": [
+						{
+							"path": "scripts/template/graph-contract.ts",
+							"needle": "libraryAliasPrefix"
+						}
+					]
+				}
+			],
+			"knownExemptions": []
+		},
+		{
+			"id": "fixed-source-port",
+			"authority": "template-parameters.toml#[[advertised_ports]].port and [routing].published_container_port, imported through parameters.ts",
+			"ownedBy": null,
+			"allow": [],
+			"knownExemptions": [
+				{
+					"path": ".devcontainer/devcontainer.json",
+					"reason": "the ports AUTHORITY. renderDevcontainer rewrites forwardPorts and portsAttributes for every fixture from [[advertised_ports]], filtered by profile and by capability, so the literals here are the parameter file's own projection rather than a hardcoded target."
+				},
+				{
+					"path": "scripts/worktree/contract.toml",
+					"reason": "regenerated in full by renderWorktreeContract from [routing].published_container_port. The runtime scripts read it with sed before Bun exists on the host, which is why the value is a literal rather than an indirection."
+				},
+				{
+					"path": "proxy-routes.json",
+					"reason": "its publishedContainerPort mirrors the worktree runtime contract, and proxy:check owns the sentence that refuses a disagreement between the two. A second refusal here would send the reader to two files for one defect."
+				},
+				{
+					"path": "**/skills/graphify/SKILL.md",
+					"reason": "`--budget 3000` is a graph search budget in vendored documentation and not a port. This is the false positive the doctrine expects: a guard biases toward flagging a number that looks like a port and resolves it with an entry, rather than with a matcher that understands context and quietly stops matching."
+				}
+			]
+		},
+		{
+			"id": "mutable-pin",
+			"authority": "scripts/template/ci-contract.ts#IMMUTABLE_REFERENCE and scripts/template/toolchain.ts#IMMUTABLE_PLUGIN, imported rather than re-implemented",
+			"ownedBy": "ci:check and toolchain:check",
+			"allow": [],
+			"knownExemptions": []
+		},
+		{
+			"id": "obsolete-command",
+			"authority": "scripts/template/worktree-contract.ts#LEGACY_LAUNCHER, imported rather than retyped",
+			"ownedBy": "worktree:check",
+			"allow": [],
+			"knownExemptions": [
+				{
+					"path": "scripts/template/worktree-contract.ts",
+					"reason": "the authority. It carries the superseded launcher's literal in order to look for it, exactly as its own allow-list already records for the template tree."
+				},
+				{
+					"path": "scripts/template/cloud-contract.ts",
+					"reason": "forbids the launcher by name inside the cloud environment, so the mention is the prohibition."
+				},
+				{
+					"path": ".codex/cloud/contract.toml",
+					"reason": "forbidden_cloud_commands lists the launcher as a command the cloud environment must refuse. A declaration that names what it forbids is not a route to it."
+				}
+			]
+		},
+		{
+			"id": "duplicate-rule-skill",
+			"authority": "the skill and command directories under every agent surface in the tracked tree and in every render",
+			"ownedBy": "rules:check",
+			"allow": [],
+			"knownExemptions": [
+				{
+					"path": "graphify",
+					"reason": "intended in all three agent surfaces. Claude, Codex and Gemini each read skills from their own directory, so one skill available to three agents is three directories by construction — and until this scan existed nothing said so. A FOURTH copy, or any other name appearing twice, is a real finding."
+				}
+			]
+		},
+		{
+			"id": "disabled-residue",
+			"authority": "docs/devcontainer-upgrade/stage-0/template-ownership.json#capabilitySignatures, through scanDisabledResidue",
+			"ownedBy": null,
+			"allow": [],
+			"knownExemptions": [
+				{
+					"path": "fixture-manifest.json",
+					"reason": "the render's own manifest names every disabled capability as part of each omission reason, so it would report itself. scanDisabledResidue skips it by name and four stage READMEs have recorded that this is deliberate; this entry is where the fifth reader finds it without reading four documents. Do NOT 'fix' it by removing the skip."
+				},
+				{
+					"path": "scripts/template/ci-contract.ts",
+					"reason": "the shipped text of this guard contains `moon-graph` as a substring in every render. The ownership signature deliberately excluded that string for exactly this reason, and the finding was recorded in Stage 8A as a known benign substring rather than a leak."
+				}
+			]
+		}
+	],
+	"topLevelWorkspaces": {
+		"allowed": ["apps", "libs"],
+		"exceptions": []
+	},
+	"syncBoundary": {
+		"script": "scripts/sync-devcontainer.sh",
+		"risk": "knownBoundaryRisks[0] in docs/devcontainer-upgrade/stage-0/template-ownership.json",
+		"mergeDeclaredButExcluded": 35,
+		"reason": "Every scripts/template guard module is declared syncPolicy merge and is excluded by the script's `scripts/*` case arm, so for those thirty-five files the declared merge policy does not describe what the sync script does. Stage 0 recorded the risk in writing and every stage since has added to the set without closing it. Rewriting the exclusion table belongs to a stage that owns the sync script; asserting the count belongs here, because a thirty-sixth file joining the silent set is the failure the risk actually predicts."
+	},
+	"deferrals": [
+		{
+			"id": "graphify",
+			"recordedBy": "Stage 9 deviation 12, re-recorded by Stage 10E",
+			"blockingFacts": [
+				"Two of the three surfaces cannot carry a capability fence: a fence in this repository is a line comment, and tsconfig.json's exclude array and .claude/settings.json's hook command are both strict JSON with no comment syntax and no way to fence one array element.",
+				"The .claude/settings.json graphify hook invokes no script file, and the renderer's hook filter prunes hooks only by matching a script filename against its owner table, so a graphify=false render emits the hook today and would keep emitting it.",
+				"biome.jsonc could carry a comment but its own header forbids naming a capability there, because the file is copied into every render and the residue scan is a plain substring search.",
+				"A signature added today would sit INERT: scanDisabledResidue selects default-FALSE capabilities that have a signature, and graphify defaults to true, so the obvious one-line fix is a green diff that changes nothing."
+			],
+			"unblockedWhen": [
+				"graphify's default in template-parameters.toml becomes false, which is what makes a signature do anything at all.",
+				"scanDisabledResidue's selection predicate stops requiring a default of false.",
+				"The two strict-JSON surfaces gain a fencing mechanism, or the renderer learns to prune the graphify hook by something other than a script filename."
+			]
+		}
+	],
+	"agentRuleSections": [
+		{
+			"script": "ci:check",
+			"section": "## Continuous Integration Ownership"
+		},
+		{
+			"script": "image:check",
+			"section": "## Devcontainer Image Ownership"
+		},
+		{
+			"script": "browser:check",
+			"section": "## Browser Runtime Ownership"
+		},
+		{
+			"script": "cloud:check",
+			"section": "## Codex Cloud Ownership"
+		},
+		{
+			"script": "forms:check",
+			"section": "## Shared Schema and API Contract Ownership"
+		},
+		{
+			"script": "openspec:check",
+			"section": "## OpenSpec Lifecycle Ownership"
+		},
+		{
+			"script": "proxy:check",
+			"section": "## Development Server and Proxy Ownership"
+		},
+		{
+			"script": "telemetry:check",
+			"section": "## Telemetry and External-write Ownership"
+		},
+		{
+			"script": "start:check",
+			"section": "## TanStack Start and SSR Ownership"
+		},
+		{
+			"script": "experiments:check",
+			"section": "## Experiment Lifecycle Ownership"
+		},
+		{
+			"script": "rules:check",
+			"section": "## Canonical Agent Rules"
+		},
+		{
+			"script": "worktree:check",
+			"section": "## Worktree Runtime Ownership"
+		},
+		{
+			"script": "toolchain:check",
+			"section": "## Toolchain Ownership"
+		},
+		{
+			"script": "affected:check",
+			"section": "## Affected Selection Ownership"
+		},
+		{
+			"script": "graph:check",
+			"section": "## Moon Graph Ownership"
+		}
+	],
+	"acceptance": [
+		{
+			"id": "exact-head-ci",
+			"item": "exact-head PR CI over the final capability set",
+			"evidenceRecord": "evidence/stage-7-ci.json",
+			"boundarySha": "9b15ab355b401e366f8e6a37976f95a0f7e1521e",
+			"ownedPaths": [".github/workflows/ci.yml", ".github/actions"],
+			"mode": "live",
+			"liveCommand": "the pull request's own ci-gate run at the reviewed head, in affected mode because MOON_AFFECTED_MODE selects affected for pull requests",
+			"knownNonDefects": []
+		},
+		{
+			"id": "full-default-branch-ci",
+			"item": "full default-branch or nightly CI over the same capability set",
+			"evidenceRecord": "evidence/stage-7-ci.json",
+			"boundarySha": "9b15ab355b401e366f8e6a37976f95a0f7e1521e",
+			"ownedPaths": [".github/workflows/ci.yml", ".github/actions"],
+			"mode": "live",
+			"liveCommand": "the push-to-main run on the merge commit, in full mode because the same selection rule chooses full for default-branch pushes; it cannot exist before the merge and the runbook is what captures it",
+			"knownNonDefects": []
+		},
+		{
+			"id": "image-build",
+			"item": "clean and incremental devcontainer image builds",
+			"evidenceRecord": "evidence/stage-2-image.json",
+			"boundarySha": "69a97d84e2591242265887a7c062bbb0853b5ca9",
+			"ownedPaths": [".devcontainer"],
+			"mode": "live",
+			"liveCommand": "devcontainer build --workspace-folder <worktree> --no-cache, then the same command without --no-cache",
+			"knownNonDefects": []
+		},
+		{
+			"id": "two-worktree-isolation",
+			"item": "two simultaneous isolated worktrees",
+			"evidenceRecord": "evidence/stage-5-worktree.json",
+			"boundarySha": "21af7c9ac74f90debb4df8e4231ede9628485cd7",
+			"ownedPaths": ["scripts/worktree"],
+			"mode": "live",
+			"liveCommand": "bash scripts/worktree/up.sh in two checkouts of the same repository, then bash scripts/worktree/doctor.sh --json in each",
+			"knownNonDefects": []
+		},
+		{
+			"id": "doctor-security",
+			"item": "doctor security posture",
+			"evidenceRecord": "evidence/stage-6-doctor.json",
+			"boundarySha": "4a8894c2fb05c75bf2959ecedf9ca72ceb4f675b",
+			"ownedPaths": ["scripts/worktree/doctor.sh"],
+			"mode": "inherited",
+			"liveCommand": null,
+			"knownNonDefects": []
+		},
+		{
+			"id": "cloud-profiles",
+			"item": "Codex Cloud profiles",
+			"evidenceRecord": "evidence/stage-4-cloud.json",
+			"boundarySha": "fe433334f63a2c01e45b6a55c97dca057e00ea57",
+			"ownedPaths": [".codex/cloud"],
+			"mode": "inherited",
+			"liveCommand": null,
+			"knownNonDefects": [
+				"a rendered fixture to report `cloud: fingerprint input bun.lock is missing`, which is correct by design: bun.lock is renderPolicy omit and a generated project installs its own. Do NOT 'fix' it by dropping bun.lock from fingerprint_inputs"
+			]
+		},
+		{
+			"id": "browser-preflight",
+			"item": "optional browser launch preflight",
+			"evidenceRecord": "evidence/stage-3-runtimes.json",
+			"boundarySha": "af2ac5b288c226e8ee5c86e30325ecb2ae46b45c",
+			"ownedPaths": [
+				"scripts/browser-preflight.ts",
+				"scripts/template/browser-contract.ts"
+			],
+			"mode": "live",
+			"liveCommand": "bun run browser:preflight inside a full-fixture container built on the development_browser target",
+			"knownNonDefects": []
+		},
+		{
+			"id": "openspec-lifecycle",
+			"item": "OpenSpec lifecycle",
+			"evidenceRecord": "evidence/stage-9-openspec.json",
+			"boundarySha": "69e4995f305de997f761f8b57011acfa95c5fb6b",
+			"ownedPaths": ["scripts/openspec"],
+			"mode": "live",
+			"liveCommand": "bun run openspec:check, and the post-merge bash scripts/openspec/archive.sh --change portable-devcontainer-upgrade the runbook names",
+			"knownNonDefects": [
+				"bun run openspec:check to print a NOTICE once every task is checked, saying the change has no remaining tasks and naming the archive wrapper. It is Stage 9's designed handoff and not a failure"
+			]
+		},
+		{
+			"id": "dependency-guards",
+			"item": "enabled dependency guards",
+			"evidenceRecord": "evidence/stage-1-toolchain.json",
+			"boundarySha": "85c549990268bbda576fc510e03a6a93800425e8",
+			"ownedPaths": [".prototools", "scripts/template/toolchain.ts"],
+			"mode": "live",
+			"liveCommand": "bun run toolchain:check and bun install --frozen-lockfile",
+			"knownNonDefects": []
+		},
+		{
+			"id": "enabled-stack-tests",
+			"item": "enabled application-stack guards and their tests",
+			"evidenceRecord": "evidence/stage-10d-start.json",
+			"boundarySha": "1427f9063d6a502b81f3f98b69b6820b735f3ada",
+			"ownedPaths": [
+				"api-contract.json",
+				"external-writes.json",
+				"proxy-routes.json",
+				"start-surface.json",
+				"scripts/template/forms-contract.ts",
+				"scripts/template/proxy-contract.ts",
+				"scripts/template/start-contract.ts",
+				"scripts/template/telemetry-contract.ts"
+			],
+			"mode": "inherited",
+			"liveCommand": null,
+			"knownNonDefects": []
+		}
+	],
+	"budgets": [
+		{
+			"id": "cleanImageBuild",
+			"specFamily": "clean and incremental rebuild behavior",
+			"baselineStatus": "measured",
+			"baselineMeasurement": "cleanImageBuild",
+			"baseline": {
+				"record": "evidence/stage-0-baseline.json",
+				"pointer": "measurements.cleanImageBuild.value",
+				"value": 312.33,
+				"unit": "seconds",
+				"normalized": 312.33
+			},
+			"final": {
+				"record": "evidence/stage-2-image.json",
+				"pointer": "builds.clean.durationMs",
+				"value": 86666,
+				"unit": "milliseconds",
+				"normalized": 86.666
+			},
+			"delta": -225.664,
+			"verdict": "improved",
+			"exception": null
+		},
+		{
+			"id": "incrementalImageBuild",
+			"specFamily": "clean and incremental rebuild behavior",
+			"baselineStatus": "measured",
+			"baselineMeasurement": "warmImageBuild",
+			"baseline": {
+				"record": "evidence/stage-0-baseline.json",
+				"pointer": "measurements.warmImageBuild.value",
+				"value": 17.08,
+				"unit": "seconds",
+				"normalized": 17.08
+			},
+			"final": {
+				"record": "evidence/stage-2-image.json",
+				"pointer": "builds.warm.durationMs",
+				"value": 3469,
+				"unit": "milliseconds",
+				"normalized": 3.469
+			},
+			"delta": -13.611,
+			"verdict": "improved",
+			"exception": null
+		},
+		{
+			"id": "secondWorktreeGrowth",
+			"specFamily": "second-worktree disk growth",
+			"baselineStatus": "measured",
+			"baselineMeasurement": "secondWorktreeGrowth",
+			"baseline": {
+				"record": "evidence/stage-0-baseline.json",
+				"pointer": "measurements.secondWorktreeGrowth.value.totalBytesRounded",
+				"value": 96111608,
+				"unit": "bytes",
+				"normalized": 96111608
+			},
+			"final": {
+				"record": "evidence/stage-2-image.json",
+				"pointer": "secondWorktreeStorage.observedBytes",
+				"value": 4472832,
+				"unit": "bytes",
+				"normalized": 4472832
+			},
+			"delta": -91638776,
+			"verdict": "improved",
+			"exception": null
+		},
+		{
+			"id": "warmCommandLatency",
+			"specFamily": "warm command latency",
+			"baselineStatus": "unavailable",
+			"baselineMeasurement": "warmCommandLatency",
+			"baseline": null,
+			"final": null,
+			"delta": null,
+			"verdict": "no-baseline",
+			"exception": {
+				"reason": "There is nothing to compare against. Stage 0 records this family as unavailable and says why: No container reached lifecycle readiness, so a valid warm-command baseline could not be measured. The only other number in that record is failedLifecycleExecLatency, which Stage 0 itself labels as belonging to a container that FAILED its lifecycle — comparing against it would produce a spectacular apparent improvement and mean nothing. The first measurement taken on a ready container becomes the baseline rather than a comparison."
+			}
+		},
+		{
+			"id": "startupReadiness",
+			"specFamily": "startup/readiness",
+			"baselineStatus": "unavailable",
+			"baselineMeasurement": "readiness",
+			"baseline": null,
+			"final": null,
+			"delta": null,
+			"verdict": "no-baseline",
+			"exception": {
+				"reason": "There is nothing to compare against. Stage 0 records this family as unavailable and says why: Neither isolated worktree completed the lifecycle, so there is no successful readiness time. Both fresh-startup slots and the ready-restart measurement are unavailable for the same cause, so the whole family is unbaselined rather than partially so. The first readiness time measured on a container that completes its lifecycle becomes the baseline."
+			}
+		}
+	],
+	"signals": [
+		{
+			"id": "pr-exact-head",
+			"kind": "pr-exact-head",
+			"status": "pending",
+			"sha": null,
+			"runId": null,
+			"capturedAt": null
+		},
+		{
+			"id": "default-branch-full",
+			"kind": "default-branch-full",
+			"status": "pending",
+			"sha": null,
+			"runId": null,
+			"capturedAt": null
+		}
+	]
+}

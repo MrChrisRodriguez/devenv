@@ -1,0 +1,46 @@
+primaryCheckout=/Users/mrcr/Code/templates/devenv
+slotOneUpExit=0
+slotOneDirectUrl=http://127.0.0.1:8080
+slotOneManifest=/Users/mrcr/.config/devcontainer/worktrees/devenv-main.json
+secondCheckout=/tmp/devenv-stage11-second
+secondCheckoutBytes=16621568
+slotTwoUpExit=0
+slotTwoUpMs=29659
+slotTwoLog: Worktree environment: devenv-tmp-devenv-stage11-second uses offset 431 (preferred); published host port 8511
+slotTwoLog: Worktree environment: devenv-tmp-devenv-stage11-second uses offset 431 (preferred); published host port 8511
+slotTwoLog: Worktree ensure: starting the container for /tmp/devenv-stage11-second
+slotTwoLog: Worktree up: container 685c0a21f8002f80e016c7c0a2844277b3c0d295a18c6a5d46ab0b62ed438a63
+slotTwoLog: Worktree manifest: direct URL http://127.0.0.1:8511
+slotTwoLog: Worktree manifest: friendly URL http://tmp-devenv-stage11-second.devenv.localhost
+slotTwoLog: Worktree up: no services are declared
+slotTwoLog: Worktree up: devenv-tmp-devenv-stage11-second is up
+slotTwoLog: Worktree up: direct URL http://127.0.0.1:8511
+slotTwoLog: Worktree up: friendly URL http://tmp-devenv-stage11-second.devenv.localhost
+slotTwoDirectUrl=http://127.0.0.1:8511
+slotTwoManifest=/Users/mrcr/.config/devcontainer/worktrees/devenv-tmp-devenv-stage11-second.json
+portsDisjoint=true
+manifestsDistinct=true
+doctorOneExit=1
+doctorTwoExit=1
+doctorOneParsed=true
+doctorOneChecks=36
+doctorOneNonPass=route.direct,route.friendly
+doctorOneOnlyRouteProbesFailed=true
+doctorTwoParsed=true
+doctorTwoChecks=36
+doctorTwoNonPass=route.direct,route.friendly
+doctorTwoOnlyRouteProbesFailed=true
+slotOneContainerId=29dcbb8d8120
+slotTwoContainerId=685c0a21f800
+primaryContainerWritableBytes=3293184
+secondContainerWritableBytes=507629568
+primaryImageId=sha256:a5f1280d286aec1a8394826938c78f02bcb8966d5c2da2586cbe6ea5115014d4
+secondImageId=sha256:678019fec4c6fb6aa4f65310fdc6aa1c00f0b7e6b75954b6a6e5b6dfddda58ba
+imageShared=false
+observedBytes=524251136
+stageZeroBaselineBytes=96111608
+bothWorktreesReady=true
+# command-id: two-worktree-isolation
+# run: stage11-20260807t193030z-decc5016
+# exitCode: 0
+# durationMs: 44677

@@ -1,0 +1,15 @@
+baseSha=28f69975f133fb04b203e61709fa543614ede89d
+headSha=decc5016c7d28304c4cabc12d90f398f19798bd4
+baseTree=255660d874f8502e18711c0230c830c2a0c61944
+mergeSha=00bd3bbb391a91bd7e178fe0280666d973f1f159
+mergedTree=11deed25ab853c18938a3058cc21fb3a4de4dbbb
+missingAfterMerge=0
+revertedTree=255660d874f8502e18711c0230c830c2a0c61944
+remainingAfterRevert=0
+fingerprintInputsChanged=0
+lockfileChanged=0
+rollbackProven=true
+# command-id: rollback-proof
+# run: stage11-20260807t193030z-decc5016
+# exitCode: 0
+# durationMs: 769

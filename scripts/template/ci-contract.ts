@@ -145,7 +145,10 @@ const SECRETS_CONTEXT = /\bsecrets\./;
 const SECRETS_INTERPOLATION = "${{ secrets.";
 const FORK_WRITABLE_TRIGGER = "pull_request_target";
 
-const IMMUTABLE_REFERENCE = /@[0-9a-f]{40}$/;
+// Exported for the same reason the toolchain pattern is: the release gate scans
+// every RENDER for a mutable action reference, and a retyped regex is a second
+// answer to a question this file already answers.
+export const IMMUTABLE_REFERENCE = /@[0-9a-f]{40}$/;
 const RUNNER_EXPRESSION = /\$\{\{\s*(?:env|secrets|vars|needs|matrix)\./;
 const BUN_CACHE_PATH = /^\s+~\/\.bun\/install\/cache\s*$/m;
 const FIXED_SLEEP = /(?:^|[;&|(\s])sleep\s+[0-9]/;

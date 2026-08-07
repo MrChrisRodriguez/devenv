@@ -1,0 +1,460 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "Template release gate registry",
+	"description": "The committed release decision `scripts/template/release-contract.ts` validates. This surface is TEMPLATE-ONLY and it is the only one in the program that is: it carries no capability, no fence, no `capabilitySignatures` entry, no `packageRules` entry, no residue token and no `ownershipRules` `copy` entry, and its workflow step lives inside a `template-only` block. The reason is measured rather than preferred — the gate reads `fixtures/template/*.toml`, `fixtures/golden/*.json` and this file, and all three are omitted from every render, so a rendered project would receive a command whose inputs are absent. That is the `dead command` `specs/template-capability-model/spec.md` forbids. The guard therefore asserts its own ABSENCE from all three fixtures rather than its presence. Nothing here is ever a query: a release decision is a DECLARATION checked against local Git objects and the tracked tree, never against a network the guard cannot reach and a Checks API a fine-grained token cannot read. And a record never upgrades a gate: this file may record an operator checkpoint, but that record grants no authority beyond the exact named scope.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"decision",
+		"auditedSource",
+		"release",
+		"goldens",
+		"scans",
+		"topLevelWorkspaces",
+		"syncBoundary",
+		"deferrals",
+		"agentRuleSections",
+		"acceptance",
+		"budgets",
+		"signals"
+	],
+	"properties": {
+		"schemaVersion": {
+			"type": "integer",
+			"const": 1
+		},
+		"decision": {
+			"description": "`candidate` while the tree is under review; `released` only after the runbook's post-merge steps have all happened. The pull request that introduces this file must ship `candidate`: a guard that read `released` from a tree whose tag does not exist would be a record upgrading its own gate.",
+			"type": "string",
+			"enum": ["candidate", "released"]
+		},
+		"auditedSource": {
+			"description": "The commit this declaration describes, pinned by both its own id and its tree id so a rewritten history cannot keep the pin. The guard resolves both through local Git objects and refuses a commit that is not an ancestor of HEAD.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commit", "tree", "capturedAt"],
+			"properties": {
+				"commit": { "$ref": "#/$defs/sha" },
+				"tree": { "$ref": "#/$defs/sha" },
+				"capturedAt": { "type": "string", "format": "date-time" }
+			}
+		},
+		"release": {
+			"description": "The release artefact, which is one annotated Git tag on the merge commit and nothing else. There is no `version` field in `package.json` on purpose: that file renders into every downstream project, which would inherit a version from a template it did not write. `.template-ref` is already the mechanism a project uses to say which template it is on, and a tag is what it should point at.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"plannedTag",
+				"changelogHeading",
+				"changeName",
+				"templateRefMechanism"
+			],
+			"properties": {
+				"plannedTag": {
+					"description": "The annotated tag the runbook creates on the merge commit. Declared rather than created here: the tag cannot exist until the merge commit does.",
+					"type": "string",
+					"pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+				},
+				"changelogHeading": {
+					"description": "The `CHANGES.md` heading that carries this release. The guard asserts the heading exists, so the tag and the changelog cannot disagree.",
+					"type": "string",
+					"minLength": 1
+				},
+				"changeName": {
+					"description": "The OpenSpec change this release closes. It must still be ACTIVE while the pull request is open; archiving is a post-merge step.",
+					"type": "string",
+					"minLength": 1
+				},
+				"templateRefMechanism": {
+					"description": "The existing `which template am I on` mechanism the tag is for.",
+					"type": "string",
+					"minLength": 1
+				}
+			}
+		},
+		"goldens": {
+			"description": "The committed render expectations. A golden is a FULL manifest — path, mode and sha256 for every file of a render — because a structure-only expectation catches an added or a dropped file and nothing else, and the failure class that matters most is a renderer substitution that stops substituting: identical file list, different bytes. The counts cross-check themselves so a half-updated golden is a refusal rather than a smaller diff.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["directory", "regenerateWith", "totalFileCount", "fixtures"],
+			"properties": {
+				"directory": {
+					"description": "Where the committed manifests live. Omitted from every render.",
+					"$ref": "#/$defs/relativePath"
+				},
+				"regenerateWith": {
+					"description": "The named command that rewrites the goldens. It is a command and never an environment variable: a golden regenerated as a side effect of the run that compares it is not an expectation.",
+					"type": "string",
+					"minLength": 1
+				},
+				"totalFileCount": {
+					"description": "The sum of every fixture's `fileCount`. Declared separately so half-updating one golden fails instead of passing quietly.",
+					"type": "integer",
+					"minimum": 1
+				},
+				"fixtures": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "$ref": "#/$defs/golden" }
+				}
+			}
+		},
+		"scans": {
+			"description": "The six scan families `spec.md` names, in its own order. `tasks.md` names four; the spec is the normative artefact, and the two it omits are also the two cheapest — one reads a TOML table that already exists and one imports a constant that already exists. Every family runs over the three renders, which is the new thing: the requirement says `scan outputs`, and every existing scan in this repository runs over the template tree. Four also run over the template surface a render receives, narrowed by render policy so `evidence/`, `docs/`, `CHANGES.md` and `openspec/` are out of scope by construction rather than by allow-list. A guard biases toward FALSE POSITIVES: a canonical token that appears only in a comment gets flagged and is resolved with an entry here, never with a cleverer matcher — a string-literal-aware stripper is the thing that silently stops matching, and a scan that stops matching is worse than no scan.",
+			"type": "array",
+			"minItems": 6,
+			"items": { "$ref": "#/$defs/scan" }
+		},
+		"topLevelWorkspaces": {
+			"description": "The top-level layout rule. A tracked top-level directory carrying a `package.json` that is neither `apps/` nor `libs/` nor a declared exception is a second workspace hiding outside the workspace globs — a tree the release gate renders and no guard reads. Anti-vacuity is anchored on the number of directories INSPECTED and never on the number of violations found, because this rule would have caught nothing in either repository today and is expected to catch nothing until it matters.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["allowed", "exceptions"],
+			"properties": {
+				"allowed": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"exceptions": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["directory", "reason"],
+						"properties": {
+							"directory": { "type": "string", "minLength": 1 },
+							"reason": { "type": "string", "minLength": 1 }
+						}
+					}
+				}
+			}
+		},
+		"syncBoundary": {
+			"description": "The declared-merge-but-sync-excluded count, held as a RATCHET. `template-ownership.json` declares every `scripts/template/*.ts` guard module `syncPolicy: merge`, and `scripts/sync-devcontainer.sh` excludes all of them through its `scripts/*` case arm — which `knownBoundaryRisks[0]` already states in writing. Closing that means rewriting the sync script's exclusion table in the stage that closes the program, which is the wrong stage for it. Asserting the count is the half worth having: one more file joining the silent set is a refusal naming it.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["script", "risk", "mergeDeclaredButExcluded", "reason"],
+			"properties": {
+				"script": { "$ref": "#/$defs/relativePath" },
+				"risk": { "type": "string", "minLength": 1 },
+				"mergeDeclaredButExcluded": { "type": "integer", "minimum": 0 },
+				"reason": { "type": "string", "minLength": 1 }
+			}
+		},
+		"deferrals": {
+			"description": "The ledger items this stage records rather than closes, each with the facts that keep it open and the conditions under which it becomes possible. A deferral here is not a note: the guard asserts every blocking fact it names, so the moment one stops being true the refusal fires and the deferral has to be decided rather than inherited.",
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["id", "recordedBy", "blockingFacts", "unblockedWhen"],
+				"properties": {
+					"id": { "type": "string", "minLength": 1 },
+					"recordedBy": { "type": "string", "minLength": 1 },
+					"blockingFacts": {
+						"type": "array",
+						"minItems": 1,
+						"items": { "type": "string", "minLength": 1 }
+					},
+					"unblockedWhen": {
+						"type": "array",
+						"minItems": 1,
+						"items": { "type": "string", "minLength": 1 }
+					}
+				}
+			}
+		},
+		"agentRuleSections": {
+			"description": "Which `## …` section of `AGENTS.md` describes each `*:check` guard. It is declared rather than derived because the mapping is not derivable from the names: fifteen guards map to fourteen `## … Ownership` sections plus `## Canonical Agent Rules`, and `worktree:check` is named in no line of the file at all. The guard asserts the mapping covers every script a render keeps and that each named section survived into the same render — so a capability whose guard ships without its documentation, or whose documentation ships without its guard, is a refusal. `AGENTS.md` gains NO new section for the release gate: `stripTemplateOnlyBlocks` matches a `#`-comment form and `# template-only:start release` is an H1 in markdown, so a section describing this stage would ship into every render describing a guard that is not there. The release gate's own scripts are refused from this mapping for that reason, which proves the template-only decision from the other side.",
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["script", "section"],
+				"properties": {
+					"script": { "type": "string", "minLength": 1 },
+					"section": { "type": "string", "pattern": "^## " }
+				}
+			}
+		},
+		"acceptance": {
+			"description": "The ten signals the full-fixture scenario names, each split into `live` or `inherited` by a path diff rather than by choice. All ten already have a sealed record: re-running all ten is days of live capture that would re-prove Stages 1 through 10 at a head where most of their surfaces have not moved, and NOT re-running them while saying an earlier stage proved it is a claim about a commit rather than about HEAD. So each item declares the paths that produced its record and the commit that sealed it, and the guard runs `git diff <boundarySha>..HEAD -- <ownedPaths>`: an inherited claim is legal only while the paths that produced it are byte-unchanged, and a live claim is required the moment one of them moves. `mode` is a CONSEQUENCE and the guard is what computes it. The inherited list prints on success, so a green release gate can never be read as `everything was re-measured`.",
+			"type": "array",
+			"minItems": 10,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"item",
+					"evidenceRecord",
+					"boundarySha",
+					"ownedPaths",
+					"mode",
+					"liveCommand",
+					"knownNonDefects"
+				],
+				"properties": {
+					"id": {
+						"type": "string",
+						"enum": [
+							"exact-head-ci",
+							"full-default-branch-ci",
+							"image-build",
+							"two-worktree-isolation",
+							"doctor-security",
+							"cloud-profiles",
+							"browser-preflight",
+							"openspec-lifecycle",
+							"dependency-guards",
+							"enabled-stack-tests"
+						]
+					},
+					"item": { "type": "string", "minLength": 1 },
+					"evidenceRecord": { "$ref": "#/$defs/relativePath" },
+					"boundarySha": { "$ref": "#/$defs/sha" },
+					"ownedPaths": {
+						"description": "The paths whose contents produced the sealed result. Empty is a refusal: an inherited claim nothing can falsify is a promise in prose.",
+						"type": "array",
+						"minItems": 1,
+						"items": { "$ref": "#/$defs/relativePath" }
+					},
+					"mode": { "type": "string", "enum": ["live", "inherited"] },
+					"liveCommand": { "type": ["string", "null"] },
+					"knownNonDefects": {
+						"description": "Outputs this item is EXPECTED to produce that look like failures and are not. A release gate that meets one of these and stops blocks the release for a documented non-defect.",
+						"type": "array",
+						"items": { "type": "string", "minLength": 1 }
+					}
+				}
+			}
+		},
+		"budgets": {
+			"description": "The four budget families the requirement names, with a verdict each. Five of Stage 0's ten measurements were never taken — no isolated worktree completed its lifecycle — and two of the four families are among them. The requirement's own escape hatch is `unless an explicit reviewed budget exception explains the trade-off`, so those two carry `no-baseline` and an exception whose reason must QUOTE the Stage 0 record's own words, which the guard reads and checks. Both sides of a measured comparison are pinned by a pointer into the record that carries them, so a number nobody can trace back is a refusal rather than a table entry.",
+			"type": "array",
+			"minItems": 4,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"specFamily",
+					"baselineStatus",
+					"baselineMeasurement",
+					"baseline",
+					"final",
+					"delta",
+					"verdict",
+					"exception"
+				],
+				"properties": {
+					"id": { "type": "string", "minLength": 1 },
+					"specFamily": {
+						"type": "string",
+						"enum": [
+							"warm command latency",
+							"startup/readiness",
+							"clean and incremental rebuild behavior",
+							"second-worktree disk growth"
+						]
+					},
+					"baselineStatus": {
+						"type": "string",
+						"enum": ["measured", "unavailable"]
+					},
+					"baselineMeasurement": {
+						"description": "The key under `evidence/stage-0-baseline.json#measurements` this family compares against. For an unavailable baseline it is also where the guard finds the reason the exception has to quote.",
+						"type": "string",
+						"minLength": 1
+					},
+					"baseline": {
+						"oneOf": [{ "type": "null" }, { "$ref": "#/$defs/budgetSide" }]
+					},
+					"final": {
+						"oneOf": [{ "type": "null" }, { "$ref": "#/$defs/budgetSide" }]
+					},
+					"delta": { "type": ["number", "null"] },
+					"verdict": {
+						"type": "string",
+						"enum": ["improved", "unchanged", "regressed", "no-baseline"]
+					},
+					"exception": {
+						"oneOf": [
+							{ "type": "null" },
+							{
+								"type": "object",
+								"additionalProperties": false,
+								"required": ["reason"],
+								"properties": {
+									"reason": { "type": "string", "minLength": 1 }
+								}
+							}
+						]
+					}
+				}
+			}
+		},
+		"signals": {
+			"description": "The two required CI signals, DECLARED and never queried. A fine-grained token cannot read `commits/{sha}/check-runs` — it answers 403 and there is no grantable toggle — so a guard that asked GitHub whether a commit was green would abstain in exactly the environment it was written for. The run ids come from the human who watched them go green; the shas are checked against local Git objects; and a signal that does not exist yet says `pending` rather than pretending. The full default-branch signal cannot exist before the merge commit does, which is the honesty gap this stage states rather than hides.",
+			"type": "array",
+			"minItems": 2,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["id", "kind", "status", "sha", "runId", "capturedAt"],
+				"properties": {
+					"id": { "type": "string", "minLength": 1 },
+					"kind": {
+						"type": "string",
+						"enum": ["pr-exact-head", "default-branch-full"]
+					},
+					"status": { "type": "string", "enum": ["pending", "captured"] },
+					"sha": {
+						"oneOf": [{ "type": "null" }, { "$ref": "#/$defs/sha" }]
+					},
+					"runId": { "type": ["string", "null"] },
+					"capturedAt": { "type": ["string", "null"] }
+				}
+			}
+		}
+	},
+	"$defs": {
+		"budgetSide": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["record", "pointer", "value", "unit", "normalized"],
+			"properties": {
+				"record": { "$ref": "#/$defs/relativePath" },
+				"pointer": {
+					"description": "A dotted path into that record. The guard resolves it and refuses a declared value the record does not carry, because a pin nothing compares is decoration.",
+					"type": "string",
+					"minLength": 1
+				},
+				"value": { "type": "number" },
+				"unit": {
+					"type": "string",
+					"enum": ["seconds", "milliseconds", "bytes"]
+				},
+				"normalized": {
+					"description": "The same value in the family's canonical unit, so the two sides of a comparison can be subtracted. The guard recomputes it.",
+					"type": "number"
+				}
+			}
+		},
+		"scan": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "authority", "ownedBy", "allow", "knownExemptions"],
+			"properties": {
+				"id": {
+					"type": "string",
+					"enum": [
+						"source-identifier",
+						"fixed-source-port",
+						"mutable-pin",
+						"obsolete-command",
+						"duplicate-rule-skill",
+						"disabled-residue"
+					]
+				},
+				"authority": {
+					"description": "Where the needles come from. Every one of them is READ or IMPORTED rather than retyped, so the scan and the definition can never drift.",
+					"type": "string",
+					"minLength": 1
+				},
+				"ownedBy": {
+					"description": "The guard that already owns this sentence for the template tree, or null when nobody does. When it is set the release gate emits a NOTICE naming it rather than a second refusal: two refusals for one defect send the reader to two files.",
+					"type": ["string", "null"]
+				},
+				"allow": {
+					"description": "A specific token tolerated at a specific path, with the mechanism that makes it safe named mechanically. Every needle in `mechanism` must still be present in the file it names, so the exemption dies with the code that earned it.",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["path", "token", "reason", "mechanism"],
+						"properties": {
+							"path": { "type": "string", "minLength": 1 },
+							"token": { "type": "string", "minLength": 1 },
+							"reason": { "type": "string", "minLength": 1 },
+							"mechanism": {
+								"type": "array",
+								"minItems": 1,
+								"items": {
+									"type": "object",
+									"additionalProperties": false,
+									"required": ["path", "needle"],
+									"properties": {
+										"path": { "$ref": "#/$defs/relativePath" },
+										"needle": { "type": "string", "minLength": 1 }
+									}
+								}
+							}
+						}
+					}
+				},
+				"knownExemptions": {
+					"description": "A whole path this family does not ask about, with the reason inline. This is where four findings that four separate stage READMEs called folklore stop being folklore: a fifth reader no longer has to find four documents to learn that the finding is known and benign.",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["path", "reason"],
+						"properties": {
+							"path": { "type": "string", "minLength": 1 },
+							"reason": { "type": "string", "minLength": 1 }
+						}
+					}
+				}
+			}
+		},
+		"sha": {
+			"type": "string",
+			"pattern": "^[0-9a-f]{40}$"
+		},
+		"relativePath": {
+			"type": "string",
+			"minLength": 1,
+			"pattern": "^[^/][^\\u0000]*$"
+		},
+		"golden": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"fixture",
+				"manifest",
+				"fileCount",
+				"omittedCount",
+				"enabledCount",
+				"disabledCount"
+			],
+			"properties": {
+				"fixture": {
+					"description": "The fixture definition under `fixtures/template/`.",
+					"type": "string",
+					"minLength": 1
+				},
+				"manifest": {
+					"description": "The committed golden manifest for that fixture.",
+					"$ref": "#/$defs/relativePath"
+				},
+				"fileCount": {
+					"description": "How many files the render emits. Zero is a hard failure: a golden over nothing is an expectation nobody earned.",
+					"type": "integer",
+					"minimum": 1
+				},
+				"omittedCount": {
+					"description": "How many tracked template paths the render leaves out. It rises whenever a template-only artefact is added, which is exactly what this stage does.",
+					"type": "integer",
+					"minimum": 1
+				},
+				"enabledCount": { "type": "integer", "minimum": 1 },
+				"disabledCount": { "type": "integer", "minimum": 0 }
+			}
+		}
+	}
+}

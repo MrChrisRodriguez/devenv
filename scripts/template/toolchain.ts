@@ -3,7 +3,10 @@
 import { resolve } from "node:path";
 
 const EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
-const IMMUTABLE_PLUGIN =
+// Exported so the release gate can re-use the definition rather than retype it.
+// A second copy of an immutability pattern is a second answer to the same
+// question, and the two drift the first time one of them is tightened.
+export const IMMUTABLE_PLUGIN =
 	/^https:\/\/raw\.githubusercontent\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/[0-9a-f]{40}\/.+\/plugin\.toml$/;
 const SHA256 = /^(?:sha256:)?[0-9a-f]{64}$/;
 
