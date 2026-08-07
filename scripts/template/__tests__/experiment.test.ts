@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import {
 	CORE_PATHS,
@@ -19,6 +20,7 @@ import {
 	validateRetirementResidue,
 	validateSoleDeclarations,
 } from "../experiment-contract";
+import { renderFixture } from "../render-fixture";
 import {
 	APP_DIRECTORY,
 	APP_ID,
@@ -1387,6 +1389,302 @@ describe("promotion and findings", () => {
 			expect(await validateExperimentContract(root)).toEqual([]);
 		} finally {
 			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+/** One named defect: how to introduce it, and what it must be refused with. */
+interface Defect {
+	label: string;
+	path: string;
+	transform: (source: string) => string;
+}
+
+/**
+ * Every structural defect this guard knows about, driven over one workspace.
+ *
+ * The battery exists for the property a per-case test cannot see: that the
+ * sentences are DISTINCT. A guard whose refusals collapse into one message is
+ * green on its whole known-bad suite and useless to the person reading the
+ * failure, because every defect sends them to the same place.
+ */
+function structuralDefects(): Defect[] {
+	return [
+		{
+			label: "workspace glob narrowed",
+			path: MANIFEST_PATH,
+			transform: (source) => source.replace('"libs/*"', '"libs/shared"'),
+		},
+		{
+			label: "package script rewired",
+			path: MANIFEST_PATH,
+			transform: (source) =>
+				source.replace(
+					`"${GUARD_SCRIPT}": "bun scripts/template/validate-experiment.ts"`,
+					`"${GUARD_SCRIPT}": "echo skipped"`,
+				),
+		},
+		{
+			label: "moon glob narrowed",
+			path: MOON_WORKSPACE_PATH,
+			transform: (source) => source.replace("    - 'libs/*'\n", ""),
+		},
+		{
+			label: "moon root project removed",
+			path: MOON_WORKSPACE_PATH,
+			transform: (source) =>
+				source.replace("    root: '.'", "    tooling: 'scripts'"),
+		},
+		{
+			label: "typecheck exclude widened",
+			path: TSCONFIG_PATH,
+			transform: (source) =>
+				source.replace(
+					'"scripts/template", "tmp"]',
+					`"scripts/template", "tmp", "${APP_DIRECTORY}"]`,
+				),
+		},
+		{
+			label: "typecheck include narrowed",
+			path: TSCONFIG_PATH,
+			transform: (source) => source.replace('"libs/**/*.ts", ', ""),
+		},
+		{
+			label: "formatter negation added",
+			path: BIOME_PATH,
+			transform: (source) =>
+				source.replace(
+					'"!graphify-out"',
+					`"!graphify-out", "!${APP_DIRECTORY}"`,
+				),
+		},
+		{
+			label: "formatter override widened",
+			path: BIOME_PATH,
+			transform: (source) =>
+				source.replace(
+					'"includes": ["**/generated/**", "**/openapi/**"],',
+					`"includes": ["**/generated/**", "**/openapi/**", "${APP_DIRECTORY}/**"],`,
+				),
+		},
+		{
+			label: "experiment directory ignored",
+			path: IGNORE_PATH,
+			transform: (source) => `${source}${APP_DIRECTORY}/\n`,
+		},
+		{
+			label: "workflow step removed",
+			path: WORKFLOW_PATH,
+			transform: (source) =>
+				source.replace(
+					"        run: bun run experiments:check\n",
+					"        run: bun run rules:check\n",
+				),
+		},
+		{
+			label: "workflow step fenced",
+			path: WORKFLOW_PATH,
+			transform: (source) =>
+				source.replace(
+					"      - name: Validate experiment lifecycle contract\n        run: bun run experiments:check\n",
+					"      # capability:start openspec\n      - name: Validate experiment lifecycle contract\n        run: bun run experiments:check\n      # capability:end openspec\n",
+				),
+		},
+		{
+			label: "workflow step made conditional",
+			path: WORKFLOW_PATH,
+			transform: (source) =>
+				source.replace(
+					"      - name: Validate experiment lifecycle contract\n",
+					"      - name: Validate experiment lifecycle contract\n        if: github.event_name == 'push'\n",
+				),
+		},
+		{
+			label: "core file gated as an artifact",
+			path: OWNERSHIP_PATH,
+			transform: (source) =>
+				source.replace(
+					'"artifactRules": [',
+					'"artifactRules": [\n\t\t{ "pattern": "experiments.json", "requiresAll": ["openspec"] },',
+				),
+		},
+		{
+			label: "guard script stripped by a package rule",
+			path: OWNERSHIP_PATH,
+			transform: (source) =>
+				source.replace(
+					'"packageRules": [',
+					`"packageRules": [\n\t\t{ "capability": "openspec", "scripts": ["${GUARD_SCRIPT}"] },`,
+				),
+		},
+		{
+			label: "core file claimed as a capability signature",
+			path: OWNERSHIP_PATH,
+			transform: (source) =>
+				source.replace(
+					'"capabilitySignatures": {',
+					'"capabilitySignatures": {\n\t\t"graphify": { "paths": ["experiments.json"], "tokens": [] },',
+				),
+		},
+		{
+			label: "experiment moon project excludes inherited tasks",
+			path: `${APP_DIRECTORY}/moon.yml`,
+			transform: (source) =>
+				`${source}workspace:\n  inheritedTasks:\n    exclude:\n      - 'typecheck'\n`,
+		},
+		{
+			label: "generated dependency block removed",
+			path: `${APP_DIRECTORY}/moon.yml`,
+			transform: () => "$schema: 'https://moonrepo.dev/schemas/project.json'\n",
+		},
+		{
+			label: "stale workflow toleration declared",
+			path: REGISTRY_PATH,
+			transform: (source) =>
+				source.replace(
+					'"toleratedWorkflowFailures": []',
+					'"toleratedWorkflowFailures": [{ "workflow": ".github/workflows/ci.yml", "job": "ci", "reason": "a reason long enough to be a reason at all" }]',
+				),
+		},
+		{
+			label: "reserved ownership pattern invented",
+			path: REGISTRY_PATH,
+			transform: (source) =>
+				source.replace(
+					'"ownershipPattern": "libs/forms/**"',
+					'"ownershipPattern": "libs/invented/**"',
+				),
+		},
+	];
+}
+
+describe("the structural refusal census", () => {
+	test("every defect is refused, and no two defects share a sentence", async () => {
+		const { root } = await activeWorkspace({
+			prefix: "devenv-experiment-census-",
+		});
+		try {
+			// The whole battery runs over one workspace that starts and ends green,
+			// so a defect left behind by an earlier case cannot make a later one
+			// pass or fail for a reason it is not about.
+			expect(await validateExperimentContract(root)).toEqual([]);
+			const byLabel = new Map<string, string[]>();
+			for (const defect of structuralDefects()) {
+				const target = resolve(root, defect.path);
+				const original = await Bun.file(target).text();
+				const changed = defect.transform(original);
+				if (changed === original)
+					throw new Error(`${defect.label} did not change ${defect.path}`);
+				await Bun.write(target, changed);
+				try {
+					const errors = await validateExperimentContract(root);
+					expect(errors.length).toBeGreaterThan(0);
+					// Sorted, and every sentence in this guard's own voice: a refusal
+					// nobody can attribute is a refusal nobody acts on.
+					expect(errors).toEqual([...errors].sort());
+					for (const error of errors)
+						expect(error.startsWith("experiment: ")).toBe(true);
+					byLabel.set(defect.label, errors);
+				} finally {
+					await Bun.write(target, original);
+				}
+				expect(await validateExperimentContract(root)).toEqual([]);
+			}
+			expect(byLabel.size).toBe(structuralDefects().length);
+			// Distinctness, which is the property this battery exists for. Two
+			// defects that produce the same sentence send the reader to the same
+			// file for two different problems.
+			const owner = new Map<string, string>();
+			for (const [label, errors] of byLabel) {
+				for (const error of errors) {
+					const previous = owner.get(error);
+					if (previous !== undefined && previous !== label)
+						throw new Error(
+							`"${error}" is produced by both ${previous} and ${label}`,
+						);
+					owner.set(error, label);
+				}
+			}
+			expect(owner.size).toBeGreaterThanOrEqual(byLabel.size);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("a workspace that is entirely correct is tolerated in every state", async () => {
+		// The other half of the census. Without it a guard passes its whole
+		// known-bad suite by refusing everything, which is the one failure mode a
+		// battery of known-bad cases cannot see.
+		const disposable = await activeWorkspace({
+			prefix: "devenv-experiment-tolerate-",
+		});
+		try {
+			expect(await validateExperimentContract(disposable.root)).toEqual([]);
+			const report = await inspectExperimentContract(disposable.root);
+			expect(report.errors).toEqual([]);
+			// A real verdict rather than silence: the guard says what it could not
+			// compare and which rules live somewhere else.
+			expect(report.notices.length).toBeGreaterThan(0);
+			expect(report.notices).toEqual([...report.notices].sort());
+		} finally {
+			await rm(disposable.root, { recursive: true, force: true });
+		}
+		// ... and the same for a retired record whose removal really did finish.
+		const retired = await skeletonWorkspace("devenv-experiment-retired-");
+		try {
+			const registryFile = resolve(retired, REGISTRY_PATH);
+			const declared = JSON.parse(
+				await Bun.file(registryFile).text(),
+			) as ExperimentRegistry;
+			declared.retired = [retiredExperiment()];
+			await Bun.write(
+				registryFile,
+				`${JSON.stringify(declared, null, "\t")}\n`,
+			);
+			expect(await validateExperimentContract(retired)).toEqual([]);
+			const { notices } = await inspectExperimentContract(retired);
+			expect(
+				notices.some((notice) =>
+					notice.includes("the retirement scan covered"),
+				),
+			).toBe(true);
+		} finally {
+			await rm(retired, { recursive: true, force: true });
+		}
+	});
+
+	test("the surface count is seven in the source tree and in every render", async () => {
+		const { registry } = await readExperimentRegistry(ROOT);
+		if (!registry) throw new Error("the committed registry must be readable");
+		expect((await inspectSurfaces(ROOT, registry)).scanned).toBe(SURFACE_COUNT);
+		const temporary = await mkdtemp(
+			resolve(tmpdir(), "devenv-experiment-render-"),
+		);
+		try {
+			for (const fixtureName of ["minimal", "cloud", "full"]) {
+				const output = resolve(temporary, fixtureName);
+				await renderFixture({ root: ROOT, fixtureName, output });
+				const rendered = await readExperimentRegistry(output);
+				expect(rendered.errors).toEqual([]);
+				if (!rendered.registry)
+					throw new Error(`${fixtureName} lost its registry`);
+				const surfaces = await inspectSurfaces(output, rendered.registry);
+				// Seven surfaces inspected, zero refusals, and — in the profiles
+				// whose universe registry is gated away — a NAMED absence rather
+				// than a silently skipped leg.
+				expect(surfaces.scanned).toBe(SURFACE_COUNT);
+				expect(surfaces.errors).toEqual([]);
+				const universe = surfaces.inspections.find(
+					(entry) => entry.surface === "universe",
+				);
+				if (universe?.present === false)
+					expect(universe.notices).toEqual([
+						`experiment: ${UNIVERSE_PATH} is absent, so no declared experiment was reconciled against a CI universe`,
+					]);
+				expect(await validateExperimentContract(output)).toEqual([]);
+			}
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
 		}
 	});
 });
