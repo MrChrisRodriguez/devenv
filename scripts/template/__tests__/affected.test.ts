@@ -11,6 +11,7 @@ import {
 	validateAffectedContract,
 } from "../affected-contract";
 import { buildProjectGraph, dependentsOf } from "../graph-contract";
+import { renderFixture } from "../render-fixture";
 import { reconcileWithMoon } from "../select-affected";
 
 const ROOT = resolve(import.meta.dir, "../../..");
@@ -588,82 +589,269 @@ describe("affected selection", () => {
 	}, 60_000);
 });
 
-describe("affected selection contract", () => {
-	test("passes the real tree", async () => {
-		expect(await validateAffectedContract(ROOT)).toEqual([]);
-	});
+// Everything validateAffectedContract reads, in the shape a rendered project
+// receives it. The house mutate()/tolerate() pair runs over this copy so each
+// rule is proved by breaking exactly one thing and repairing it again.
+const CONTRACT_FILES = [
+	"package.json",
+	"template-parameters.toml",
+	"ci-matrix-universes.json",
+	".moon/workspace.yml",
+	"moon.yml",
+	"tsconfig.base.json",
+	".github/workflows/ci.yml",
+	"scripts/ci/affected-matrices.sh",
+	"scripts/template/affected-contract.ts",
+	"scripts/template/validate-affected.ts",
+	"scripts/template/select-affected.ts",
+	"scripts/template/graph-contract.ts",
+	"docs/devcontainer-upgrade/stage-0/template-ownership.json",
+] as const;
 
-	test("rejects a workflow whose in-tree default drifts from the parameter", async () => {
-		// The switch itself is a repository variable, so the only part of it this
-		// tree can guard is what the workflow falls back to when the variable is
-		// unset. An override that "fails safe to full" is only safe if `full` is
-		// what this repository actually recorded.
-		const temporary = await mkdtemp(resolve(tmpdir(), "devenv-affected-mode-"));
+async function contractFixture(): Promise<string> {
+	const temporary = await mkdtemp(
+		resolve(tmpdir(), "devenv-affected-contract-"),
+	);
+	for (const path of CONTRACT_FILES) {
+		const target = resolve(temporary, path);
+		await mkdir(resolve(target, ".."), { recursive: true });
+		await Bun.write(target, await Bun.file(resolve(ROOT, path)).text());
+	}
+	return temporary;
+}
+
+async function mutate(
+	root: string,
+	path: string,
+	transform: (source: string) => string,
+	expected: string,
+): Promise<void> {
+	const target = resolve(root, path);
+	const original = await Bun.file(target).text();
+	const changed = transform(original);
+	if (changed === original) throw new Error(`Mutation did not change ${path}`);
+	await Bun.write(target, changed);
+	expect(await validateAffectedContract(root)).toContain(expected);
+	await Bun.write(target, original);
+	expect(await validateAffectedContract(root)).toEqual([]);
+}
+
+// The other half of a non-vacuous scan: an edit that merely looks like the
+// forbidden one has to be accepted, or the rule is a substring search wearing a
+// contract's clothes.
+async function tolerate(
+	root: string,
+	path: string,
+	transform: (source: string) => string,
+): Promise<void> {
+	const target = resolve(root, path);
+	const original = await Bun.file(target).text();
+	const changed = transform(original);
+	if (changed === original) throw new Error(`Mutation did not change ${path}`);
+	await Bun.write(target, changed);
+	expect(await validateAffectedContract(root)).toEqual([]);
+	await Bun.write(target, original);
+}
+
+const MODE_ASSIGNMENT =
+	"MOON_AFFECTED_MODE: ${{ vars.MOON_AFFECTED_MODE || 'full' }}";
+
+describe("affected selection contract", () => {
+	test("passes the real tree and rejects known-bad mutations", async () => {
+		expect(await validateAffectedContract(ROOT)).toEqual([]);
+		const temporary = await contractFixture();
 		try {
-			for (const path of [
-				"package.json",
-				"template-parameters.toml",
-				"ci-matrix-universes.json",
-				".moon/workspace.yml",
-				"moon.yml",
-				"tsconfig.base.json",
-				".github/workflows/ci.yml",
-				"scripts/ci/affected-matrices.sh",
-				"scripts/template/affected-contract.ts",
-				"scripts/template/validate-affected.ts",
-				"scripts/template/select-affected.ts",
-				"scripts/template/graph-contract.ts",
-				"docs/devcontainer-upgrade/stage-0/template-ownership.json",
-			]) {
-				const target = resolve(temporary, path);
-				await mkdir(resolve(target, ".."), { recursive: true });
-				await Bun.write(target, await Bun.file(resolve(ROOT, path)).text());
-			}
 			expect(await validateAffectedContract(temporary)).toEqual([]);
 
-			const workflow = resolve(temporary, ".github/workflows/ci.yml");
-			const original = await Bun.file(workflow).text();
-			await Bun.write(
-				workflow,
-				original.replace(
-					"MOON_AFFECTED_MODE: ${{ vars.MOON_AFFECTED_MODE || 'full' }}",
-					"MOON_AFFECTED_MODE: ${{ vars.MOON_AFFECTED_MODE || 'moon' }}",
-				),
-			);
-			expect(await validateAffectedContract(temporary)).toContain(
+			// --- The switch --------------------------------------------------
+			// The value lives in a repository variable, so the only part of it
+			// this tree can guard is what the workflow falls back to when the
+			// variable is unset. An override that "fails safe to full" is only
+			// safe if `full` is what this repository actually recorded.
+			await mutate(
+				temporary,
+				".github/workflows/ci.yml",
+				(source) =>
+					source.replace(
+						MODE_ASSIGNMENT,
+						MODE_ASSIGNMENT.replace("full", "moon"),
+					),
 				"affected: .github/workflows/ci.yml defaults MOON_AFFECTED_MODE to moon, which is not the recorded full",
 			);
-
-			// An unquoted default is not a fact this tree can check at all.
-			await Bun.write(
-				workflow,
-				original.replace(
-					"MOON_AFFECTED_MODE: ${{ vars.MOON_AFFECTED_MODE || 'full' }}",
-					"MOON_AFFECTED_MODE: ${{ vars.MOON_AFFECTED_MODE }}",
-				),
+			await mutate(
+				temporary,
+				"template-parameters.toml",
+				(source) =>
+					source.replace(
+						'affected_mode_initial = "full"',
+						'affected_mode_initial = "moon"',
+					),
+				"affected: .github/workflows/ci.yml defaults MOON_AFFECTED_MODE to full, which is not the recorded moon",
 			);
-			expect(await validateAffectedContract(temporary)).toContain(
+			await mutate(
+				temporary,
+				"template-parameters.toml",
+				(source) => source.replace('affected_mode_initial = "full"\n', ""),
+				"affected: template-parameters.toml must declare [ci] affected_mode_initial",
+			);
+			// An unquoted default is not a fact this tree can check at all.
+			await mutate(
+				temporary,
+				".github/workflows/ci.yml",
+				(source) =>
+					source.replace(
+						MODE_ASSIGNMENT,
+						"MOON_AFFECTED_MODE: ${{ vars.MOON_AFFECTED_MODE }}",
+					),
 				"affected: .github/workflows/ci.yml must default MOON_AFFECTED_MODE to a quoted literal",
 			);
-
 			// A mode declared but never consumed is a switch wired to nothing.
-			await Bun.write(
-				workflow,
-				original.replace(
-					"        run: bash scripts/ci/affected-matrices.sh",
-					"        run: true",
-				),
-			);
-			expect(await validateAffectedContract(temporary)).toContain(
+			await mutate(
+				temporary,
+				".github/workflows/ci.yml",
+				(source) =>
+					source.replace(
+						"        run: bash scripts/ci/affected-matrices.sh",
+						"        run: true",
+					),
 				"affected: .github/workflows/ci.yml declares the mode but runs no selector",
 			);
+			// ... and a workflow that never mentions the mode is simply a project
+			// without the capability, not a violation.
+			await tolerate(temporary, ".github/workflows/ci.yml", (source) =>
+				source
+					.replace(`  ${MODE_ASSIGNMENT}\n`, "")
+					.replace(
+						"        run: bash scripts/ci/affected-matrices.sh",
+						"        run: true",
+					),
+			);
 
-			await Bun.write(workflow, original);
-			expect(await validateAffectedContract(temporary)).toEqual([]);
+			// --- Wiring --------------------------------------------------------
+			for (const [script, entrypoint] of [
+				["affected:check", "scripts/template/validate-affected.ts"],
+				["affected:select", "scripts/template/select-affected.ts"],
+			] as const) {
+				await mutate(
+					temporary,
+					"package.json",
+					(source) =>
+						source.replace(
+							`"${script}": "bun ${entrypoint}"`,
+							`"${script}": "true"`,
+						),
+					script === "affected:check"
+						? "affected: package script affected:check must expose the dedicated selection guard"
+						: "affected: package script affected:select must expose the committed selector",
+				);
+			}
+			await mutate(
+				temporary,
+				".github/workflows/ci.yml",
+				(source) => source.replace("        run: bun run affected:check\n", ""),
+				"affected: a workflow must run affected:check",
+			);
+
+			// --- Ownership -----------------------------------------------------
+			// A gated module the render omits while the package script still
+			// calls it is a downstream project whose guard fails to load.
+			await mutate(
+				temporary,
+				"docs/devcontainer-upgrade/stage-0/template-ownership.json",
+				(source) =>
+					source.replace(
+						`\t\t\t"pattern": "scripts/template/select-affected.ts",\n\t\t\t"classification": "template-owned",\n\t\t\t"syncPolicy": "merge",\n\t\t\t"renderPolicy": "copy"`,
+						`\t\t\t"pattern": "scripts/template/select-affected.ts",\n\t\t\t"classification": "template-owned",\n\t\t\t"syncPolicy": "merge",\n\t\t\t"renderPolicy": "omit"`,
+					),
+				"affected: template ownership must cover scripts/template/select-affected.ts",
+			);
+			await mutate(
+				temporary,
+				"docs/devcontainer-upgrade/stage-0/template-ownership.json",
+				(source) =>
+					source.replace(
+						`\t\t{\n\t\t\t"pattern": "scripts/ci/affected-matrices.sh",\n\t\t\t"requiresAll": ["moon_affected_selection"]\n\t\t},\n`,
+						"",
+					),
+				"affected: scripts/ci/affected-matrices.sh must be gated by the capability",
+			);
+
+			// --- The registry ---------------------------------------------------
+			// The one fail-closed input, surfaced where it is cheap to see rather
+			// than discovered from a CI job.
+			await mutate(
+				temporary,
+				"ci-matrix-universes.json",
+				(source) => source.replace('"schemaVersion": 1', '"schemaVersion": 2'),
+				"affected: ci-matrix-universes.json must declare schemaVersion 1",
+			);
+			await mutate(
+				temporary,
+				"ci-matrix-universes.json",
+				(source) =>
+					source.replace('"projects": ["root"]', '"projects": ["ghost"]'),
+				"affected: ci-matrix-universes.json universe ci lists ghost, which is not a project",
+			);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
-	}, 60_000);
+	}, 120_000);
+
+	test("selects for real inside a rendered project", async () => {
+		// The guard ships downstream, so the selector has to work over a RENDER
+		// rather than only over the tree it was written in: a different slug, no
+		// template-parameters.toml, and a package manifest the renderer rewrote.
+		const temporary = await mkdtemp(
+			resolve(tmpdir(), "devenv-affected-render-"),
+		);
+		try {
+			const output = resolve(temporary, "full");
+			await renderFixture({ root: ROOT, fixtureName: "full", output });
+			expect(await validateAffectedContract(output)).toEqual([]);
+
+			git(output, "init", "-q", "-b", "main");
+			git(output, "config", "user.email", "render@example.test");
+			git(output, "config", "user.name", "render");
+			git(output, "add", "-A");
+			git(output, "commit", "-qm", "rendered");
+			const base = git(output, "rev-parse", "HEAD");
+
+			// A documentation-only change: the one outcome that proves the
+			// capability does anything at all.
+			await Bun.write(resolve(output, "docs/note.md"), "# note\n");
+			git(output, "add", "-A");
+			git(output, "commit", "-qm", "docs");
+			const docs = await selectAffected({
+				root: output,
+				mode: "moon",
+				eventName: "pull_request",
+				baseSha: base,
+				headSha: git(output, "rev-parse", "HEAD"),
+			});
+			expect([docs.mode, docs.universes["ci"]]).toEqual(["narrow", []]);
+
+			// ... and a code change in the same tree is FULL, because a rendered
+			// project's only project is the repository itself.
+			const before = git(output, "rev-parse", "HEAD");
+			await Bun.write(resolve(output, "tsconfig.json"), '{ "files": [] }\n');
+			git(output, "add", "-A");
+			git(output, "commit", "-qm", "code");
+			const code = await selectAffected({
+				root: output,
+				mode: "moon",
+				eventName: "pull_request",
+				baseSha: before,
+				headSha: git(output, "rev-parse", "HEAD"),
+			});
+			expect([code.mode, code.reason, code.universes["ci"]]).toEqual([
+				"full",
+				"global-input",
+				["root"],
+			]);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 180_000);
 });
 
 const FAKE_MOON = resolve(import.meta.dir, "fixtures/fake-moon-affected.ts");
@@ -833,6 +1021,69 @@ describe("moon reconciliation", () => {
 				expect(result.mode).toBe("narrow");
 				expect(result.universes["ci"]).toEqual([]);
 				expect(result.annotations.at(-1)).toContain("not consulted");
+			} finally {
+				if (previous === undefined) delete process.env["MOON_BIN"];
+				else process.env["MOON_BIN"] = previous;
+			}
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("hands moon the stacked pull request's own merge base", async () => {
+		// The two halves of a stacked pull request, together. The diff must use
+		// the event's base rather than the base branch's tip, and MOON_BASE must
+		// carry that same merge base — moon honours GITHUB_BASE_REF over the
+		// workspace's pinned vcs.defaultBranch, so without it the binary could be
+		// answering about a comparison this selection never made.
+		const root = await chain();
+		try {
+			const branchPoint = git(root, "rev-parse", "HEAD");
+			// The base branch moves on, touching a global input. A two-dot diff
+			// against its tip would see that file and widen to FULL.
+			await commitChange(
+				root,
+				{ "AGENTS.md": "# moved on\n" },
+				"base branch moves on",
+			);
+			const baseTip = git(root, "rev-parse", "HEAD");
+			git(root, "checkout", "-q", "-b", "feature", branchPoint);
+			await commitChange(
+				root,
+				{
+					"libs/ui/src/index.ts":
+						"import '@synthetic/base';\nexport const ui = 3;\n",
+				},
+				"feature work",
+			);
+			const head = git(root, "rev-parse", "HEAD");
+
+			const record = resolve(root, ".moon-invocation");
+			const previous = process.env["MOON_BIN"];
+			try {
+				process.env["MOON_BIN"] = await fakeMoonBinary(root, "agree", record);
+				const result = await reconcileWithMoon(
+					root,
+					await selectAffected({
+						root,
+						mode: "moon",
+						eventName: "pull_request",
+						baseSha: baseTip,
+						headSha: head,
+					}),
+					head,
+				);
+				expect(result.mode).toBe("narrow");
+				expect(result.universes["ci"]).toEqual(["ui", "web"]);
+				const invocation = JSON.parse(await Bun.file(record).text()) as {
+					files: string[];
+					base: string | null;
+					head: string | null;
+				};
+				expect(invocation.base).toBe(branchPoint);
+				expect(invocation.base).not.toBe(baseTip);
+				expect(invocation.head).toBe(head);
+				expect(invocation.files).toEqual(["libs/ui/src/index.ts"]);
 			} finally {
 				if (previous === undefined) delete process.env["MOON_BIN"];
 				else process.env["MOON_BIN"] = previous;
