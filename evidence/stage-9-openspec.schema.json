@@ -1,0 +1,740 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"stage",
+		"capturedAt",
+		"run",
+		"source",
+		"host",
+		"repository",
+		"commands",
+		"guards",
+		"lifecycle",
+		"vendorArtifacts",
+		"renderFixtures",
+		"live",
+		"coverage",
+		"rollback"
+	],
+	"properties": {
+		"schemaVersion": {
+			"const": 1
+		},
+		"stage": {
+			"const": "stage-9-openspec"
+		},
+		"capturedAt": {
+			"type": "string",
+			"format": "date-time"
+		},
+		"run": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "logRoot"],
+			"properties": {
+				"id": {
+					"type": "string",
+					"minLength": 1
+				},
+				"logRoot": {
+					"type": "string",
+					"const": "evidence/stage-9-openspec-run"
+				}
+			}
+		},
+		"source": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"baseSha",
+				"implementationSha",
+				"treeClean",
+				"openspecCatalogPin"
+			],
+			"properties": {
+				"baseSha": {
+					"$ref": "#/$defs/gitSha"
+				},
+				"implementationSha": {
+					"$ref": "#/$defs/gitSha"
+				},
+				"treeClean": {
+					"type": "boolean",
+					"const": true
+				},
+				"openspecCatalogPin": {
+					"$ref": "#/$defs/version"
+				}
+			}
+		},
+		"host": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"os",
+				"architecture",
+				"kernel",
+				"insideDevcontainer",
+				"bunVersion",
+				"openspecVersion",
+				"ghVersion"
+			],
+			"properties": {
+				"os": {
+					"type": "string",
+					"minLength": 1
+				},
+				"architecture": {
+					"type": "string",
+					"minLength": 1
+				},
+				"kernel": {
+					"type": "string",
+					"minLength": 1
+				},
+				"insideDevcontainer": {
+					"type": "boolean",
+					"const": true
+				},
+				"bunVersion": {
+					"$ref": "#/$defs/version"
+				},
+				"openspecVersion": {
+					"$ref": "#/$defs/version"
+				},
+				"ghVersion": {
+					"$ref": "#/$defs/version"
+				}
+			}
+		},
+		"repository": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"nameWithOwner",
+				"workflowFile",
+				"gateJobId",
+				"gateContext",
+				"gateNeeds",
+				"openspecGuardScript",
+				"rulesGuardScript",
+				"archiveWrapper",
+				"capability"
+			],
+			"properties": {
+				"nameWithOwner": {
+					"type": "string",
+					"minLength": 1
+				},
+				"workflowFile": {
+					"type": "string",
+					"const": ".github/workflows/ci.yml"
+				},
+				"gateJobId": {
+					"type": "string",
+					"const": "ci-gate"
+				},
+				"gateContext": {
+					"type": "string",
+					"minLength": 1
+				},
+				"gateNeeds": {
+					"type": "array",
+					"minItems": 2,
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"openspecGuardScript": {
+					"type": "string",
+					"const": "openspec:check"
+				},
+				"rulesGuardScript": {
+					"type": "string",
+					"const": "rules:check"
+				},
+				"archiveWrapper": {
+					"type": "string",
+					"const": "scripts/openspec/archive.sh"
+				},
+				"capability": {
+					"type": "string",
+					"const": "openspec"
+				}
+			}
+		},
+		"commands": {
+			"type": "array",
+			"minItems": 8,
+			"maxItems": 8,
+			"items": {
+				"$ref": "#/$defs/commandResult"
+			}
+		},
+		"guards": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["openspec", "rules", "archiveRefusals", "agentRules"],
+			"properties": {
+				"openspec": {
+					"$ref": "#/$defs/guardSummary"
+				},
+				"rules": {
+					"$ref": "#/$defs/guardSummary"
+				},
+				"archiveRefusals": {
+					"$ref": "#/$defs/suiteCounts"
+				},
+				"agentRules": {
+					"$ref": "#/$defs/suiteCounts"
+				}
+			}
+		},
+		"lifecycle": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "result"],
+			"properties": {
+				"commandId": {
+					"type": "string",
+					"const": "disposable-lifecycle"
+				},
+				"result": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"change",
+						"archiveExitCode",
+						"destination",
+						"activeDirectoryRemoved",
+						"archiveEntryPresent",
+						"mainSpecRequirementApplied",
+						"secondChangeUntouched",
+						"commitSubject",
+						"stagedOutsideRoot",
+						"committedPathCount",
+						"originAdvanced",
+						"secondRunExitCode",
+						"secondRunTouchedTree",
+						"templateChangeStillActive"
+					],
+					"properties": {
+						"change": {
+							"type": "string",
+							"minLength": 1
+						},
+						"archiveExitCode": {
+							"type": "number",
+							"const": 0
+						},
+						"destination": {
+							"type": "string",
+							"minLength": 1
+						},
+						"activeDirectoryRemoved": {
+							"type": "boolean",
+							"const": true
+						},
+						"archiveEntryPresent": {
+							"type": "boolean",
+							"const": true
+						},
+						"mainSpecRequirementApplied": {
+							"type": "boolean",
+							"const": true
+						},
+						"secondChangeUntouched": {
+							"type": "boolean",
+							"const": true
+						},
+						"commitSubject": {
+							"type": "string",
+							"minLength": 1
+						},
+						"stagedOutsideRoot": {
+							"type": "number",
+							"const": 0
+						},
+						"committedPathCount": {
+							"type": "number",
+							"minimum": 1
+						},
+						"originAdvanced": {
+							"type": "boolean",
+							"const": true
+						},
+						"secondRunExitCode": {
+							"type": "number",
+							"const": 8
+						},
+						"secondRunTouchedTree": {
+							"type": "boolean",
+							"const": false
+						},
+						"templateChangeStillActive": {
+							"type": "boolean",
+							"const": true
+						}
+					}
+				}
+			}
+		},
+		"vendorArtifacts": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "artifacts", "replaced", "expectedCount"],
+			"properties": {
+				"commandId": {
+					"type": "string",
+					"const": "vendor-artifact-regeneration"
+				},
+				"artifacts": {
+					"type": "array",
+					"minItems": 14,
+					"maxItems": 14,
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"replaced": {
+					"type": "array",
+					"minItems": 2,
+					"maxItems": 2,
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"expectedCount": {
+					"type": "number",
+					"const": 14
+				}
+			}
+		},
+		"renderFixtures": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "fixtures"],
+			"properties": {
+				"commandId": {
+					"type": "string",
+					"const": "rendered-fixture-artifacts"
+				},
+				"fixtures": {
+					"type": "array",
+					"minItems": 3,
+					"maxItems": 3,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"name",
+							"capabilityEnabled",
+							"gatedPaths",
+							"packageScripts",
+							"openspecStepPresent",
+							"rulesStepPresent",
+							"generatedArtifactCount",
+							"lifecycleProsePresent",
+							"ruleSurfaces",
+							"ruleErrors",
+							"residueFindings"
+						],
+						"properties": {
+							"name": {
+								"type": "string",
+								"minLength": 1
+							},
+							"capabilityEnabled": {
+								"type": "boolean"
+							},
+							"gatedPaths": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"minLength": 1
+								}
+							},
+							"packageScripts": {
+								"type": "array",
+								"items": {
+									"type": "string",
+									"minLength": 1
+								}
+							},
+							"openspecStepPresent": {
+								"type": "boolean"
+							},
+							"rulesStepPresent": {
+								"type": "boolean",
+								"const": true
+							},
+							"generatedArtifactCount": {
+								"type": "number",
+								"minimum": 0
+							},
+							"lifecycleProsePresent": {
+								"type": "boolean"
+							},
+							"ruleSurfaces": {
+								"type": "number",
+								"minimum": 1
+							},
+							"ruleErrors": {
+								"type": "array",
+								"maxItems": 0
+							},
+							"residueFindings": {
+								"type": "array",
+								"maxItems": 0
+							}
+						}
+					}
+				}
+			}
+		},
+		"live": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["live-gate"],
+			"properties": {
+				"live-gate": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["commandId", "heavyLaneRan", "run"],
+					"properties": {
+						"commandId": {
+							"type": "string",
+							"const": "live-gate"
+						},
+						"heavyLaneRan": {
+							"type": "boolean",
+							"const": true
+						},
+						"run": {
+							"type": "object",
+							"additionalProperties": false,
+							"required": [
+								"runId",
+								"url",
+								"event",
+								"headBranch",
+								"headSha",
+								"conclusion",
+								"gateJobId",
+								"gateConclusion",
+								"gateLogSha256",
+								"upstreamResults",
+								"jobs"
+							],
+							"properties": {
+								"runId": {
+									"type": "number",
+									"minimum": 1
+								},
+								"url": {
+									"type": "string",
+									"minLength": 1
+								},
+								"event": {
+									"type": "string",
+									"const": "pull_request"
+								},
+								"headBranch": {
+									"type": "string",
+									"minLength": 1
+								},
+								"headSha": {
+									"$ref": "#/$defs/gitSha"
+								},
+								"conclusion": {
+									"type": "string",
+									"const": "success"
+								},
+								"gateJobId": {
+									"type": "number",
+									"minimum": 1
+								},
+								"gateConclusion": {
+									"type": "string",
+									"const": "success"
+								},
+								"gateLogSha256": {
+									"$ref": "#/$defs/sha256"
+								},
+								"upstreamResults": {
+									"type": "string",
+									"minLength": 1
+								},
+								"jobs": {
+									"type": "array",
+									"minItems": 1,
+									"items": {
+										"$ref": "#/$defs/jobResult"
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"coverage": {
+			"type": "array",
+			"minItems": 8,
+			"maxItems": 8,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["id", "task", "reason", "commandIds"],
+				"properties": {
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"task": {
+						"type": "string",
+						"minLength": 1
+					},
+					"reason": {
+						"type": "string",
+						"minLength": 40
+					},
+					"commandIds": {
+						"type": "array",
+						"minItems": 1,
+						"items": {
+							"type": "string",
+							"minLength": 1
+						}
+					}
+				}
+			}
+		},
+		"rollback": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"mode",
+				"command",
+				"outsideTheTree",
+				"containerRebuildRequired",
+				"scope",
+				"proof"
+			],
+			"properties": {
+				"mode": {
+					"type": "string",
+					"const": "atomic"
+				},
+				"command": {
+					"$ref": "#/$defs/command"
+				},
+				"outsideTheTree": {
+					"type": "array",
+					"maxItems": 0,
+					"items": {
+						"type": "string"
+					}
+				},
+				"containerRebuildRequired": {
+					"type": "boolean",
+					"const": false
+				},
+				"scope": {
+					"type": "string",
+					"minLength": 80
+				},
+				"proof": {
+					"type": "object",
+					"additionalProperties": true,
+					"required": [
+						"commandId",
+						"predecessorSha",
+						"implementationSha",
+						"treeMatchesPredecessor",
+						"addedPaths",
+						"addedPathsRemoved"
+					],
+					"properties": {
+						"commandId": {
+							"type": "string",
+							"const": "rollback-proof"
+						},
+						"predecessorSha": {
+							"$ref": "#/$defs/gitSha"
+						},
+						"implementationSha": {
+							"$ref": "#/$defs/gitSha"
+						},
+						"treeMatchesPredecessor": {
+							"type": "boolean",
+							"const": true
+						},
+						"addedPaths": {
+							"type": "array",
+							"minItems": 7,
+							"maxItems": 7,
+							"items": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"addedPathsRemoved": {
+							"type": "boolean",
+							"const": true
+						}
+					}
+				}
+			}
+		}
+	},
+	"$defs": {
+		"gitSha": {
+			"type": "string",
+			"pattern": "^[0-9a-f]{40}$"
+		},
+		"sha256": {
+			"type": "string",
+			"pattern": "^[0-9a-f]{64}$"
+		},
+		"version": {
+			"type": "string",
+			"minLength": 1
+		},
+		"command": {
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"type": "string"
+			}
+		},
+		"commandResult": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"command",
+				"runId",
+				"startedAt",
+				"completedAt",
+				"durationMs",
+				"stdoutPath",
+				"stderrPath",
+				"stdoutSha256",
+				"stderrSha256",
+				"exitCode",
+				"status"
+			],
+			"properties": {
+				"id": {
+					"type": "string",
+					"minLength": 1
+				},
+				"command": {
+					"$ref": "#/$defs/command"
+				},
+				"runId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"startedAt": {
+					"type": "string",
+					"format": "date-time"
+				},
+				"completedAt": {
+					"type": "string",
+					"format": "date-time"
+				},
+				"durationMs": {
+					"type": "number",
+					"minimum": 1
+				},
+				"stdoutPath": {
+					"type": "string",
+					"minLength": 1
+				},
+				"stderrPath": {
+					"type": "string",
+					"minLength": 1
+				},
+				"stdoutSha256": {
+					"$ref": "#/$defs/sha256"
+				},
+				"stderrSha256": {
+					"$ref": "#/$defs/sha256"
+				},
+				"exitCode": {
+					"type": "number",
+					"const": 0
+				},
+				"status": {
+					"type": "string",
+					"const": "pass"
+				}
+			}
+		},
+		"guardSummary": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "command", "summary"],
+			"properties": {
+				"commandId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"command": {
+					"type": "string",
+					"minLength": 1
+				},
+				"summary": {
+					"type": "string",
+					"minLength": 20
+				}
+			}
+		},
+		"suiteCounts": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "testFile", "passCount", "failCount"],
+			"properties": {
+				"commandId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"testFile": {
+					"type": "string",
+					"minLength": 1
+				},
+				"passCount": {
+					"type": "number",
+					"minimum": 1
+				},
+				"failCount": {
+					"type": "number",
+					"const": 0
+				}
+			}
+		},
+		"jobResult": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["name", "conclusion"],
+			"properties": {
+				"name": {
+					"type": "string",
+					"minLength": 1
+				},
+				"conclusion": {
+					"type": "string",
+					"minLength": 1
+				}
+			}
+		}
+	}
+}

@@ -20,6 +20,7 @@ import { validateStageEightBEvidence } from "./stage-eight-b-evidence";
 import { validateStageFiveBEvidence } from "./stage-five-b-evidence";
 import { validateStageFiveEvidence } from "./stage-five-evidence";
 import { validateStageFourEvidence } from "./stage-four-evidence";
+import { validateStageNineEvidence } from "./stage-nine-evidence";
 import { validateStageSevenEvidence } from "./stage-seven-evidence";
 import { validateStageSixEvidence } from "./stage-six-evidence";
 import { validateStageThreeEvidence } from "./stage-three-evidence";
@@ -55,6 +56,8 @@ export interface ValidationReport {
 	graphEvidenceSchemaFile: string;
 	affectedEvidenceFile: string;
 	affectedEvidenceSchemaFile: string;
+	openspecEvidenceFile: string;
+	openspecEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -90,6 +93,8 @@ export async function validateAll(
 		affectedEvidenceFile: "evidence/stage-8b-affected-selection.json",
 		affectedEvidenceSchemaFile:
 			"evidence/stage-8b-affected-selection.schema.json",
+		openspecEvidenceFile: "evidence/stage-9-openspec.json",
+		openspecEvidenceSchemaFile: "evidence/stage-9-openspec.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -260,6 +265,13 @@ export async function validateAll(
 				...affectedEvidenceErrors.map((error) => `stage-8b evidence: ${error}`),
 			);
 		}
+		const openspecEvidenceErrors = await validateStageNineEvidence(root);
+		if (openspecEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...openspecEvidenceErrors.map((error) => `stage-9 evidence: ${error}`),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -278,7 +290,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, ${report.graphEvidenceFile}, ${report.affectedEvidenceFile}, and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, ${report.graphEvidenceFile}, ${report.affectedEvidenceFile}, ${report.openspecEvidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(
