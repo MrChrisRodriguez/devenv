@@ -67,6 +67,15 @@ const SELECTOR_JOB = "affected";
 // reviewed.
 const DELIVERY_JOB = /deploy|release|publish|promote/;
 
+// The job that carries the contract guards — the checks whose cost is fixed
+// rather than scaling with the project graph. Only the ID is named here, never
+// any guard's script name: this file is copied into EVERY rendered project, and
+// a capability's script name is a signature token that a project which disabled
+// the capability would fail on. Which guards the job runs is each capability's
+// own business; that it runs them, and that nothing ships without it, is this
+// file's.
+const CONTRACT_JOB = "ci";
+
 const NEEDS_OUTPUT = /needs\.([A-Za-z0-9_-]+)\.outputs\./g;
 const FROM_JSON = /fromJSON\s*\(/g;
 
@@ -232,6 +241,32 @@ function needsOf(job: Job): string[] {
 	return Array.isArray(job.needs)
 		? job.needs.filter((entry): entry is string => typeof entry === "string")
 		: [];
+}
+
+/**
+ * Whether `from` waits for `target`, through any chain of `needs`.
+ *
+ * Transitive rather than direct on purpose: funnelling a lane through an
+ * aggregate gate is the correct shape here, and a rule that demanded a direct
+ * edge would push people to add a second, wrong one beside it. Visited nodes
+ * are tracked so a cycle — which the runner rejects anyway — cannot hang the
+ * guard that would have reported it.
+ */
+function dependsOn(
+	jobs: Record<string, Job>,
+	from: string,
+	target: string,
+): boolean {
+	const seen = new Set<string>();
+	const queue = [...needsOf(jobs[from] ?? {})];
+	while (queue.length > 0) {
+		const next = queue.shift();
+		if (next === undefined || seen.has(next)) continue;
+		seen.add(next);
+		if (next === target) return true;
+		queue.push(...needsOf(jobs[next] ?? {}));
+	}
+	return false;
 }
 
 // The `pull_request` `branches:` filter matches the pull request's BASE branch,
@@ -670,7 +705,8 @@ export async function validateCiContract(
 				errors.push(`ci: ${path} must declare a top-level BUN_VERSION`);
 		}
 
-		for (const [id, job] of Object.entries(jobsOf(value))) {
+		const workflowJobs = jobsOf(value);
+		for (const [id, job] of Object.entries(workflowJobs)) {
 			// An unbounded job cannot fail; it can only hang until the platform
 			// cancels it, and a cancellation reaches the gate as a failure with no
 			// diagnosis attached.
@@ -735,13 +771,31 @@ export async function validateCiContract(
 			// pull request did not touch that project" is a statement about a
 			// diff, and a delivery lane that believed it would ship a tree
 			// nothing verified.
-			if (
-				consumed.has(SELECTOR_JOB) &&
-				(DELIVERY_JOB.test(id) || Object.hasOwn(job, "environment"))
-			)
+			const delivers =
+				DELIVERY_JOB.test(id) || Object.hasOwn(job, "environment");
+			if (consumed.has(SELECTOR_JOB) && delivers)
 				errors.push(
 					`ci: ${path} job ${id} delivers and must not select what it runs`,
 				);
+			// ... and the same job must not ship a tree the contract guards never
+			// saw. A delivery lane is the ONE path on which a broken contract
+			// reaches users, so the dependency is required — transitively, because
+			// funnelling through an aggregate gate is the correct shape and a rule
+			// that demanded a direct edge would push people to add a wrong one.
+			//
+			// No such job exists in this repository today, which is exactly why the
+			// rule is written now: a rule added alongside the first delivery job is
+			// a rule written by the person who wanted the job.
+			if (delivers && id !== CONTRACT_JOB) {
+				if (!Object.hasOwn(workflowJobs, CONTRACT_JOB))
+					errors.push(
+						`ci: ${path} job ${id} delivers from a workflow that declares no ${CONTRACT_JOB} job to gate it`,
+					);
+				else if (!dependsOn(workflowJobs, id, CONTRACT_JOB))
+					errors.push(
+						`ci: ${path} job ${id} delivers and must depend on ${CONTRACT_JOB}`,
+					);
+			}
 			// `fromJSON` turns a string into structure. Anywhere but a matrix
 			// value that is a decision made from data the job did not compute,
 			// and the one place it is legitimate is the place a selection is

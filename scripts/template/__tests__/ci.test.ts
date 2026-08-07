@@ -624,6 +624,63 @@ describe("workflow policy contract", () => {
 					`ci: .github/workflows/ci.yml job ${id} delivers and must not select what it runs`,
 				);
 			}
+			// ... and the same job must not ship a tree the contract guards never
+			// saw. A delivery lane is the ONE path on which a broken contract
+			// reaches users, so the dependency is required in both spellings — and
+			// it is required TRANSITIVELY, because funnelling through the aggregate
+			// gate is the correct shape and a rule demanding a direct edge would
+			// push people to add a second, wrong one beside it.
+			for (const [id, extra] of [
+				["deploy", ""],
+				["ship", "    environment: production\n"],
+			] as const) {
+				const job = (needs: string): string =>
+					[
+						`  ${id}:`,
+						"    name: Ship it",
+						"    runs-on: ubuntu-latest",
+						"    timeout-minutes: 5",
+						needs,
+						extra.trimEnd(),
+						"    if: ${{ !github.event.pull_request.draft }}",
+						"    steps:",
+						"      - name: Ship",
+						'        run: echo "shipping"',
+						"",
+						"  # ── The heavy lane ",
+					]
+						.filter((line) => line !== "")
+						.join("\n");
+				await mutate(
+					temporary,
+					CI_WORKFLOW,
+					(source) =>
+						source.replace("  # ── The heavy lane ", job("    needs: [image]")),
+					`ci: .github/workflows/ci.yml job ${id} delivers and must depend on ci`,
+				);
+				// The same job reaching the contract guards through a chain is legal;
+				// the only complaint left is the aggregate gate noticing a job it
+				// does not yet depend on.
+				const original = await Bun.file(resolve(temporary, CI_WORKFLOW)).text();
+				await Bun.write(
+					resolve(temporary, CI_WORKFLOW),
+					original.replace("  # ── The heavy lane ", job("    needs: [ci]")),
+				);
+				expect(await validateCiContract(temporary)).toEqual([
+					"ci: the aggregate gate must depend on every job in .github/workflows/ci.yml",
+				]);
+				await Bun.write(resolve(temporary, CI_WORKFLOW), original);
+				expect(await validateCiContract(temporary)).toEqual([]);
+			}
+			// A delivery workflow with no contract guard job at all cannot satisfy
+			// the dependency, and that is the hole rather than an excuse for one.
+			await mutate(
+				temporary,
+				SMOKE_WORKFLOW,
+				(source) =>
+					`${source}\n  release:\n    name: Release\n    runs-on: ubuntu-latest\n    timeout-minutes: 5\n    steps:\n      - name: Ship\n        run: echo "shipping"\n`,
+				"ci: .github/workflows/codex-cloud-smoke.yml job release delivers from a workflow that declares no ci job to gate it",
+			);
 			// A job outside the history-owner list may not deepen its clone, and
 			// the two that are on it must actually do so.
 			await mutate(
@@ -731,6 +788,25 @@ describe("workflow policy contract", () => {
 			expect(full).toContain("bun run graph:check --query");
 			expect(full).toContain("bash scripts/ci/affected-matrices.sh");
 			expect(full).toContain("MOON_AFFECTED_MODE");
+			// The contract guard is one FENCED STEP in the existing `ci` job and
+			// never a job of its own: its cost is fixed rather than scaling with
+			// the graph, every sealed record's run-shape assertions are anchored on
+			// the gate's own `needs`, and the renderer has no inverse fence — so a
+			// step that leaked into a project without the capability would be an
+			// invocation of a script that project's manifest does not declare.
+			expect(minimal).not.toContain("forms:check");
+			expect(full).toContain("bun run forms:check");
+			const contractJob = (
+				Bun.YAML.parse(full) as {
+					jobs: Record<string, { steps?: Array<{ run?: string }> }>;
+				}
+			).jobs;
+			expect(Object.keys(contractJob)).not.toContain("forms");
+			expect(
+				(contractJob["ci"]?.steps ?? []).some((step) =>
+					(step.run ?? "").includes("bun run forms:check"),
+				),
+			).toBe(true);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
