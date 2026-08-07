@@ -1,0 +1,46 @@
+{
+	"schemaVersion": 1,
+	"decision": "candidate",
+	"auditedSource": {
+		"commit": "28f69975f133fb04b203e61709fa543614ede89d",
+		"tree": "255660d874f8502e18711c0230c830c2a0c61944",
+		"capturedAt": "2026-08-07T17:25:26Z"
+	},
+	"release": {
+		"plannedTag": "v1.0.0",
+		"changelogHeading": "## 2026-08-07 — Add: the release gate, and the first tagged template",
+		"changeName": "portable-devcontainer-upgrade",
+		"templateRefMechanism": ".template-ref"
+	},
+	"goldens": {
+		"directory": "fixtures/golden",
+		"regenerateWith": "bun run template:release-sync",
+		"totalFileCount": 410,
+		"fixtures": [
+			{
+				"fixture": "cloud",
+				"manifest": "fixtures/golden/cloud.json",
+				"fileCount": 121,
+				"omittedCount": 884,
+				"enabledCount": 11,
+				"disabledCount": 8
+			},
+			{
+				"fixture": "full",
+				"manifest": "fixtures/golden/full.json",
+				"fileCount": 170,
+				"omittedCount": 835,
+				"enabledCount": 19,
+				"disabledCount": 0
+			},
+			{
+				"fixture": "minimal",
+				"manifest": "fixtures/golden/minimal.json",
+				"fileCount": 119,
+				"omittedCount": 886,
+				"enabledCount": 6,
+				"disabledCount": 13
+			}
+		]
+	}
+}

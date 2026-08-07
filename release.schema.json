@@ -1,0 +1,142 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "Template release gate registry",
+	"description": "The committed release decision `scripts/template/release-contract.ts` validates. This surface is TEMPLATE-ONLY and it is the only one in the program that is: it carries no capability, no fence, no `capabilitySignatures` entry, no `packageRules` entry, no residue token and no `ownershipRules` `copy` entry, and its workflow step lives inside a `template-only` block. The reason is measured rather than preferred — the gate reads `fixtures/template/*.toml`, `fixtures/golden/*.json` and this file, and all three are omitted from every render, so a rendered project would receive a command whose inputs are absent. That is the `dead command` `specs/template-capability-model/spec.md` forbids. The guard therefore asserts its own ABSENCE from all three fixtures rather than its presence. Nothing here is ever a query: a release decision is a DECLARATION checked against local Git objects and the tracked tree, never against a network the guard cannot reach and a Checks API a fine-grained token cannot read. And a record never upgrades a gate: this file may record an operator checkpoint, but that record grants no authority beyond the exact named scope.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"decision",
+		"auditedSource",
+		"release",
+		"goldens"
+	],
+	"properties": {
+		"schemaVersion": {
+			"type": "integer",
+			"const": 1
+		},
+		"decision": {
+			"description": "`candidate` while the tree is under review; `released` only after the runbook's post-merge steps have all happened. The pull request that introduces this file must ship `candidate`: a guard that read `released` from a tree whose tag does not exist would be a record upgrading its own gate.",
+			"type": "string",
+			"enum": ["candidate", "released"]
+		},
+		"auditedSource": {
+			"description": "The commit this declaration describes, pinned by both its own id and its tree id so a rewritten history cannot keep the pin. The guard resolves both through local Git objects and refuses a commit that is not an ancestor of HEAD.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commit", "tree", "capturedAt"],
+			"properties": {
+				"commit": { "$ref": "#/$defs/sha" },
+				"tree": { "$ref": "#/$defs/sha" },
+				"capturedAt": { "type": "string", "format": "date-time" }
+			}
+		},
+		"release": {
+			"description": "The release artefact, which is one annotated Git tag on the merge commit and nothing else. There is no `version` field in `package.json` on purpose: that file renders into every downstream project, which would inherit a version from a template it did not write. `.template-ref` is already the mechanism a project uses to say which template it is on, and a tag is what it should point at.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"plannedTag",
+				"changelogHeading",
+				"changeName",
+				"templateRefMechanism"
+			],
+			"properties": {
+				"plannedTag": {
+					"description": "The annotated tag the runbook creates on the merge commit. Declared rather than created here: the tag cannot exist until the merge commit does.",
+					"type": "string",
+					"pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+				},
+				"changelogHeading": {
+					"description": "The `CHANGES.md` heading that carries this release. The guard asserts the heading exists, so the tag and the changelog cannot disagree.",
+					"type": "string",
+					"minLength": 1
+				},
+				"changeName": {
+					"description": "The OpenSpec change this release closes. It must still be ACTIVE while the pull request is open; archiving is a post-merge step.",
+					"type": "string",
+					"minLength": 1
+				},
+				"templateRefMechanism": {
+					"description": "The existing `which template am I on` mechanism the tag is for.",
+					"type": "string",
+					"minLength": 1
+				}
+			}
+		},
+		"goldens": {
+			"description": "The committed render expectations. A golden is a FULL manifest — path, mode and sha256 for every file of a render — because a structure-only expectation catches an added or a dropped file and nothing else, and the failure class that matters most is a renderer substitution that stops substituting: identical file list, different bytes. The counts cross-check themselves so a half-updated golden is a refusal rather than a smaller diff.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["directory", "regenerateWith", "totalFileCount", "fixtures"],
+			"properties": {
+				"directory": {
+					"description": "Where the committed manifests live. Omitted from every render.",
+					"$ref": "#/$defs/relativePath"
+				},
+				"regenerateWith": {
+					"description": "The named command that rewrites the goldens. It is a command and never an environment variable: a golden regenerated as a side effect of the run that compares it is not an expectation.",
+					"type": "string",
+					"minLength": 1
+				},
+				"totalFileCount": {
+					"description": "The sum of every fixture's `fileCount`. Declared separately so half-updating one golden fails instead of passing quietly.",
+					"type": "integer",
+					"minimum": 1
+				},
+				"fixtures": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "$ref": "#/$defs/golden" }
+				}
+			}
+		}
+	},
+	"$defs": {
+		"sha": {
+			"type": "string",
+			"pattern": "^[0-9a-f]{40}$"
+		},
+		"relativePath": {
+			"type": "string",
+			"minLength": 1,
+			"pattern": "^[^/][^\\u0000]*$"
+		},
+		"golden": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"fixture",
+				"manifest",
+				"fileCount",
+				"omittedCount",
+				"enabledCount",
+				"disabledCount"
+			],
+			"properties": {
+				"fixture": {
+					"description": "The fixture definition under `fixtures/template/`.",
+					"type": "string",
+					"minLength": 1
+				},
+				"manifest": {
+					"description": "The committed golden manifest for that fixture.",
+					"$ref": "#/$defs/relativePath"
+				},
+				"fileCount": {
+					"description": "How many files the render emits. Zero is a hard failure: a golden over nothing is an expectation nobody earned.",
+					"type": "integer",
+					"minimum": 1
+				},
+				"omittedCount": {
+					"description": "How many tracked template paths the render leaves out. It rises whenever a template-only artefact is added, which is exactly what this stage does.",
+					"type": "integer",
+					"minimum": 1
+				},
+				"enabledCount": { "type": "integer", "minimum": 1 },
+				"disabledCount": { "type": "integer", "minimum": 0 }
+			}
+		}
+	}
+}

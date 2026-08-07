@@ -555,6 +555,27 @@
 			"sourceOfTruth": "experiments.schema.json"
 		},
 		{
+			"pattern": "release.json",
+			"classification": "template-tooling",
+			"syncPolicy": "merge",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "release.json"
+		},
+		{
+			"pattern": "release.schema.json",
+			"classification": "template-tooling",
+			"syncPolicy": "merge",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "release.schema.json"
+		},
+		{
+			"pattern": "fixtures/golden/**",
+			"classification": "template-test",
+			"syncPolicy": "merge",
+			"renderPolicy": "omit",
+			"sourceOfTruth": "bun run template:release-sync"
+		},
+		{
 			"pattern": "*",
 			"classification": "template-owned",
 			"syncPolicy": "merge",

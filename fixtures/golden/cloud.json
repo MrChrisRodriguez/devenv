@@ -1,0 +1,652 @@
+{
+	"schemaVersion": 1,
+	"regenerateWith": "bun run template:release-sync",
+	"volatileFieldsExcluded": [
+		"the capture time: a manifest records what a render contains, never when it was taken",
+		"the output directory: every render writes to a fresh temporary path and the manifest is relative to it",
+		"fixture-manifest.json: the render writes it from this manifest, so it cannot appear inside it",
+		"the omitted-path LIST: only its count is pinned, because the list is the template's own tracked set and belongs to the ownership rules",
+		"file ordering: entries follow the renderer's own target sort, so a reordering is not representable here"
+	],
+	"manifest": {
+		"schemaVersion": 1,
+		"fixture": "cloud",
+		"project": {
+			"slug": "fixture-cloud",
+			"displayName": "Fixture Cloud",
+			"environmentPrefix": "FIXTURE_CLOUD",
+			"containerWorkspace": "/workspace"
+		},
+		"enabledCapabilities": [
+			"ccstatusline",
+			"claude",
+			"claude_octopus",
+			"claude_warp",
+			"cloudflare_workers",
+			"codex",
+			"codex_cloud",
+			"context7",
+			"devcontainer",
+			"gemini",
+			"graphify"
+		],
+		"disabledCapabilities": [
+			"better_auth",
+			"moon_affected_selection",
+			"openspec",
+			"playwright",
+			"rhf_zod",
+			"sentry",
+			"tanstack_start",
+			"vite_websocket_proxy"
+		],
+		"files": [
+			{
+				"path": ".claude/CLAUDE.md",
+				"mode": "0644",
+				"sha256": "935cac58d4436683d1b0e331953d276d5a48e4a603e03342f6770496ea6391c6"
+			},
+			{
+				"path": ".claude/settings.json",
+				"mode": "0644",
+				"sha256": "97a949cb1a6914cdcade5ec842dad1fc77518cf9ee0b8d072cb61bc16c3f6d35"
+			},
+			{
+				"path": ".claude/skills/graphify/.graphify_version",
+				"mode": "0644",
+				"sha256": "4cd66860c0439d680d7dfcae0be5636111d78d3774152bb2f550b8018fdca408"
+			},
+			{
+				"path": ".claude/skills/graphify/SKILL.md",
+				"mode": "0644",
+				"sha256": "f98911f007a567007484f71f4a5754f9158360b55fe15a97431f2cf403af7095"
+			},
+			{
+				"path": ".codex/cloud/bootstrap.sh",
+				"mode": "0755",
+				"sha256": "1bfde71f51c7b83a74a09d183061267e340f72718c6db6d9f7789ee942697664"
+			},
+			{
+				"path": ".codex/cloud/contract.toml",
+				"mode": "0644",
+				"sha256": "0ba90821420d2e9ab5ef13de592b4793fbe32eeb12a03e579adc358de148968c"
+			},
+			{
+				"path": ".codex/cloud/doctor.sh",
+				"mode": "0755",
+				"sha256": "c9bcb00b7ac6a25eb49b5423ec956df9bf38aca4c9c3e5315973365161e10709"
+			},
+			{
+				"path": ".codex/cloud/exec.sh",
+				"mode": "0755",
+				"sha256": "94c0dee9b654496929b3397a184d511be551ce9637bb60ae3752afe5b55743a1"
+			},
+			{
+				"path": ".codex/cloud/lib.sh",
+				"mode": "0755",
+				"sha256": "0c34abd73029fc661377546d28fa80fae28d77dec4c0f283cbe0de16fff045c1"
+			},
+			{
+				"path": ".codex/cloud/selftest.sh",
+				"mode": "0755",
+				"sha256": "74e0e3245bfb10a58fe9ca9814f45935b93825049736181d8b0b22a843c92941"
+			},
+			{
+				"path": ".codex/hooks.json",
+				"mode": "0644",
+				"sha256": "341c18bafa9c662a1c4657e94bb59ddfa50cabf9d860ab36ecf7d1198fb0a469"
+			},
+			{
+				"path": ".codex/skills/graphify/.graphify_version",
+				"mode": "0644",
+				"sha256": "4cd66860c0439d680d7dfcae0be5636111d78d3774152bb2f550b8018fdca408"
+			},
+			{
+				"path": ".codex/skills/graphify/SKILL.md",
+				"mode": "0644",
+				"sha256": "f98911f007a567007484f71f4a5754f9158360b55fe15a97431f2cf403af7095"
+			},
+			{
+				"path": ".devcontainer/AUTH-PERSISTENCE.md",
+				"mode": "0644",
+				"sha256": "ca9c33aa1845a1c0583fa0b6dadd0883cee02a60dffc2a46ce59cad612b1d225"
+			},
+			{
+				"path": ".devcontainer/ccstatusline-settings.json",
+				"mode": "0644",
+				"sha256": "cf941ca496c127f7d1649874f56a4d4c1ec398082c7da0f233da2b9066d1de7e"
+			},
+			{
+				"path": ".devcontainer/configs/.bashrc",
+				"mode": "0644",
+				"sha256": "44b17b28e51184582dc1c3561958c6771027f93919023faca4d8a6d956e1305f"
+			},
+			{
+				"path": ".devcontainer/configs/.p10k.zsh",
+				"mode": "0644",
+				"sha256": "fa3f4666ff0ecf88f6ba259ac81e1285ef0accc9663f2f8d893b9f1103d4f66c"
+			},
+			{
+				"path": ".devcontainer/configs/.shell_common",
+				"mode": "0644",
+				"sha256": "9828b1e71a208a16c8bd5a30e0ad4d1bf6bfe7322e9a82e2ce7ea7111e717940"
+			},
+			{
+				"path": ".devcontainer/configs/.zshrc",
+				"mode": "0644",
+				"sha256": "bb5dabeb84983229ec72acb33d763f56addb5c93237650b10289ba8ca090dee9"
+			},
+			{
+				"path": ".devcontainer/configs/gemini-watchdog",
+				"mode": "0755",
+				"sha256": "b4913569e09c3f6227792b1b0035e15962afce2958209974f57c217208ac782b"
+			},
+			{
+				"path": ".devcontainer/devcontainer-fingerprint.sh",
+				"mode": "0644",
+				"sha256": "2cf68b8c5f7b390b5da5f16d698bc41a895608c6938c9515599e05362e0b1d79"
+			},
+			{
+				"path": ".devcontainer/devcontainer-lock.json",
+				"mode": "0644",
+				"sha256": "2ebe68ab7cfe9cd4793e042028578c6ddf50990c1ba392f3a4f1636e9f0d87de"
+			},
+			{
+				"path": ".devcontainer/devcontainer.json",
+				"mode": "0644",
+				"sha256": "5492f4c3cb67a47a8595e6ddc221278f5491a809a8df53d3c33887b97313491a"
+			},
+			{
+				"path": ".devcontainer/Dockerfile",
+				"mode": "0644",
+				"sha256": "f9b88505a8b11799758531b6ac341319756cdbd7127b30d1517dcb5c477865f6"
+			},
+			{
+				"path": ".devcontainer/environment.sh",
+				"mode": "0644",
+				"sha256": "600205f7a31bcc44af8ac13a01af223cd0a1cf90e5b6a2218dbc5fa214867091"
+			},
+			{
+				"path": ".devcontainer/host/capture-warp-env.sh",
+				"mode": "0755",
+				"sha256": "886bb89484960d8c6662a8a16236e44b7ff9ef8fa5f406b1a409851c739df83a"
+			},
+			{
+				"path": ".devcontainer/host/cleanup-legacy-proto-volume.sh",
+				"mode": "0755",
+				"sha256": "930614734b8054a0b01f2c133c52a2a86a2f896a863a99c32343e82e84cc7fcd"
+			},
+			{
+				"path": ".devcontainer/host/prepare-container-env.sh",
+				"mode": "0755",
+				"sha256": "d36c92e16eeb0c7bf3fadb7ae239811b28d9b981be9743e19bb4bb235ec522f3"
+			},
+			{
+				"path": ".devcontainer/install-proto.sh",
+				"mode": "0755",
+				"sha256": "0f9da262ca6fb8ba126b6aa12f7ab1d49c2deb2686188032856856088052b85d"
+			},
+			{
+				"path": ".devcontainer/lib/env-file.sh",
+				"mode": "0644",
+				"sha256": "8c0202ed093ec56dfd369b5f701bdef560644d65ac5c96cf9188a92d4b1fa97a"
+			},
+			{
+				"path": ".devcontainer/on-create.sh",
+				"mode": "0755",
+				"sha256": "5e47e062effdae87eff585c34fe02b1ba5c76e45a8632a8d7c3e6b9a7bf25ae8"
+			},
+			{
+				"path": ".devcontainer/on-create/codex-auth-snapshot.sh",
+				"mode": "0755",
+				"sha256": "4e4c8a1a48de8944f3cf4c0dd3d4697fbd0ff13491cddd1b088ea2a6805eef35"
+			},
+			{
+				"path": ".devcontainer/on-create/sanitize-octo-hooks.sh",
+				"mode": "0755",
+				"sha256": "d69dc4f02bc9ca8c8f0f7e4b7306be9fad38661131bcb5669ad7e65a3829983b"
+			},
+			{
+				"path": ".devcontainer/on-create/setup-biome.sh",
+				"mode": "0644",
+				"sha256": "09d0e40ba9eb3a2346f72f9ef8c243ad7fff89500631daacce307a058f56f890"
+			},
+			{
+				"path": ".devcontainer/on-create/setup-ccstatusline.sh",
+				"mode": "0755",
+				"sha256": "e4a72f023cb4ea8dcd4ffa0e2eddfd8466f70c5d7dcefe92c937b3d576bf0fb0"
+			},
+			{
+				"path": ".devcontainer/on-create/setup-claude-octopus.sh",
+				"mode": "0644",
+				"sha256": "12a4e8dda45d8ffa36f0c441e914e9783abbf1f7e8558a1672351b2ba270decc"
+			},
+			{
+				"path": ".devcontainer/on-create/setup-claude-warp.sh",
+				"mode": "0755",
+				"sha256": "ab2a6f98fa096328e61564471ed6d5dcc826e01b4fd71a88eaeeabb4ca2dfd4b"
+			},
+			{
+				"path": ".devcontainer/on-create/setup-claude.sh",
+				"mode": "0755",
+				"sha256": "20d572247eb6c155910a0a7a790d9fde57ea5cebfe485ad61c02ffe87babaac7"
+			},
+			{
+				"path": ".devcontainer/on-create/setup-codex.sh",
+				"mode": "0755",
+				"sha256": "7fa6da7743377a0e53c43714172fc096166433f27cdfb3570b36a84fa2afc9b5"
+			},
+			{
+				"path": ".devcontainer/on-create/setup-common.sh",
+				"mode": "0644",
+				"sha256": "38ae0cb6c969dea692ed342d7aaa82179ad8e5eaea3a6d1284852baf71bd0791"
+			},
+			{
+				"path": ".devcontainer/on-create/setup-context7.sh",
+				"mode": "0755",
+				"sha256": "4fc8dc50cd84ceaf76af86f834933f1be1857ac85da4c0ffb3f7ffafa3edfd8e"
+			},
+			{
+				"path": ".devcontainer/on-create/setup-gemini.sh",
+				"mode": "0755",
+				"sha256": "3def51e24dfb6e56d8b432154fb658cbc5b76762f2f8b5536bad4676bb010a4a"
+			},
+			{
+				"path": ".devcontainer/on-create/setup-git-credentials.sh",
+				"mode": "0644",
+				"sha256": "283648a52ff57ad24f9a3f9055d0c157eaf9bc303b8680cd0d2dfe1e845722d1"
+			},
+			{
+				"path": ".devcontainer/on-create/setup-graphify.sh",
+				"mode": "0755",
+				"sha256": "a7edc9a51528259664f2bf5612c62d2d29d4106c2e38ae75ea84c4c684c70242"
+			},
+			{
+				"path": ".devcontainer/on-create/setup-proto.sh",
+				"mode": "0755",
+				"sha256": "a3a2d0cf7db2bd81210ccf3f2e9b6a6f87cf5b5027d5588cbc0df632ddcfdf01"
+			},
+			{
+				"path": ".devcontainer/on-create/setup-shell.sh",
+				"mode": "0755",
+				"sha256": "d34ec707d7706fe20227a232925c0e13e6b5fce34fcb68a3fe6a006245923685"
+			},
+			{
+				"path": ".devcontainer/on-create/setup-vscode-extensions.sh",
+				"mode": "0755",
+				"sha256": "f798e97f09570251208b9695497d7cec8e2c1b5da555cb8a0876d44e46b9230f"
+			},
+			{
+				"path": ".devcontainer/proto-checksums.txt",
+				"mode": "0644",
+				"sha256": "8682a658cc63efbb1dd3c428ec5dcbad662f18e659656a6febcdd413836cd051"
+			},
+			{
+				"path": ".devcontainer/prototools.auxiliary",
+				"mode": "0644",
+				"sha256": "5b15c4960abd8cdcd6316e6a8fc7b48fc42a39cfb51ccae5a1185fa342d7648a"
+			},
+			{
+				"path": ".devcontainer/prototools.foundation",
+				"mode": "0644",
+				"sha256": "58858a2fc35865c9d0b8796b4b8dd075ae45544ee14aa7a46d78230b10fe92dc"
+			},
+			{
+				"path": ".devcontainer/scripts/git-credential-org-router.sh",
+				"mode": "0755",
+				"sha256": "9ca4d1687d9910654af6918c131977f9e17589ff560084d38ea1dc3025a33043"
+			},
+			{
+				"path": ".devcontainer/scripts/sync-extensions-json.sh",
+				"mode": "0755",
+				"sha256": "b09783d2b107d16278dd3c96842f43f2bde155a88aee4869b1e4b844837ed275"
+			},
+			{
+				"path": ".devcontainer/secrets.example",
+				"mode": "0644",
+				"sha256": "3160c9ac003e2e4e0ef22590650168ef5468fb0c30c255f2a2c74e7fa0de3783"
+			},
+			{
+				"path": ".dockerignore",
+				"mode": "0644",
+				"sha256": "15e1ccb53fc672fefaf29250e7c58609bf0c2b683d603431ec34f7389e1618df"
+			},
+			{
+				"path": ".gemini/settings.json",
+				"mode": "0644",
+				"sha256": "fe15ca565268e4bcadaea1ea11dd5699fdcbd07123b0e910ff016752381bcba7"
+			},
+			{
+				"path": ".gemini/skills/graphify/.graphify_version",
+				"mode": "0644",
+				"sha256": "4cd66860c0439d680d7dfcae0be5636111d78d3774152bb2f550b8018fdca408"
+			},
+			{
+				"path": ".gemini/skills/graphify/SKILL.md",
+				"mode": "0644",
+				"sha256": "f98911f007a567007484f71f4a5754f9158360b55fe15a97431f2cf403af7095"
+			},
+			{
+				"path": ".gitattributes",
+				"mode": "0644",
+				"sha256": "15c35fff997d05ec8e42c3296a05e5f585ba6c470befcffe449ab89952ddddc0"
+			},
+			{
+				"path": ".github/actions/setup-bun/action.yml",
+				"mode": "0644",
+				"sha256": "b17192f49a6c1564a06ac62fe545762ef2d6c80ee75e3117d0acc13c73a8a6ac"
+			},
+			{
+				"path": ".github/workflows/ci.yml",
+				"mode": "0644",
+				"sha256": "ebe82860cb003bcc2fa84a04e3d7f823535b5b5927dcada155a50990d38b340e"
+			},
+			{
+				"path": ".github/workflows/codex-cloud-smoke.yml",
+				"mode": "0644",
+				"sha256": "2a69e50fc462de9e272339f315b73531b4ba0fec04471f88eaf3fbd1dd0bd0b7"
+			},
+			{
+				"path": ".gitignore",
+				"mode": "0644",
+				"sha256": "30faf6de1cc2d947201a586752f473f7d8d5b0749b4d5e0d372bef1b7a98fa51"
+			},
+			{
+				"path": ".husky/commit-msg",
+				"mode": "0755",
+				"sha256": "e639f754440ccb73b3ae302d4ff576f10f6ef9ee9ec61d6b82a08f0bf3c42735"
+			},
+			{
+				"path": ".husky/pre-commit",
+				"mode": "0755",
+				"sha256": "8f4cc5012461481b8e8502f77eaef193e4c52d003756be5bf7c61e953c0938e4"
+			},
+			{
+				"path": ".moon/tasks.yml",
+				"mode": "0644",
+				"sha256": "525725ae7c3499a6f0af7c25845a1a8fbbdde5ef6befa074d84148d6d7d55c34"
+			},
+			{
+				"path": ".moon/toolchains.yml",
+				"mode": "0644",
+				"sha256": "ceb39061279cee32ecb45d631e09b06cd679c6dbc48c914458cf774bdc6ca844"
+			},
+			{
+				"path": ".moon/workspace.yml",
+				"mode": "0644",
+				"sha256": "df42e79cc437430ac4718194d2a8431f7efa2269d9d3b16d52416a5cc20afe4b"
+			},
+			{
+				"path": ".prototools",
+				"mode": "0644",
+				"sha256": "fb62fbd3f49ad2af7db85219826f371e7b0dc7734414ee2f4e91114c0af9b41f"
+			},
+			{
+				"path": ".vscode/extensions.json",
+				"mode": "0644",
+				"sha256": "d9bc3212befd0961fabdd77e25c4b0de556006310fe129db32bdd2434cf2442a"
+			},
+			{
+				"path": ".vscode/settings.json",
+				"mode": "0644",
+				"sha256": "f96cfa0be7c03ef6eb33713fda34c0e69c61000d58a41c2bf211be6e747885df"
+			},
+			{
+				"path": "AGENTS.md",
+				"mode": "0644",
+				"sha256": "5a99de9a0220e8b77716f34b5fb7362559432ac9fffdcceb963157cfcab77917"
+			},
+			{
+				"path": "apps/.gitkeep",
+				"mode": "0644",
+				"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+			},
+			{
+				"path": "biome.jsonc",
+				"mode": "0644",
+				"sha256": "5c7ff56e15ab22710b4fe3d93e58550d4996ed9610ea5958605ef219d18e0119"
+			},
+			{
+				"path": "CLAUDE.md",
+				"mode": "0644",
+				"sha256": "a4c3d8df51d1da9523ead0f7f97d8474d378a9a273202630dd6a295cc79b8d52"
+			},
+			{
+				"path": "experiments.json",
+				"mode": "0644",
+				"sha256": "7ef0a7351412bfa1f9f73fbcf1f6803d0708ff2f8151a83344a29930b6d6f2e1"
+			},
+			{
+				"path": "experiments.schema.json",
+				"mode": "0644",
+				"sha256": "946de00e8e2e0bb2c834604f90d5b91c4f70685a7f9a864a653999a6f3ee7ebe"
+			},
+			{
+				"path": "GEMINI.md",
+				"mode": "0644",
+				"sha256": "fa15241c1723190aa77a2188db3ca7a8d600f51ba366c81955c68b52dba244dc"
+			},
+			{
+				"path": "libs/.gitkeep",
+				"mode": "0644",
+				"sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+			},
+			{
+				"path": "moon.yml",
+				"mode": "0644",
+				"sha256": "a44acebf3493abd274a6260721fd642bbd0057c3cae76102e3ed33751cc85b78"
+			},
+			{
+				"path": "package.json",
+				"mode": "0644",
+				"sha256": "71734b6bc0b3c8496b64a35ceb9c61ccf8c2914a89efbddb3163fd05d5963aef"
+			},
+			{
+				"path": "README.md",
+				"mode": "0644",
+				"sha256": "be71368c6188f9acf51932071b623707705aed9f78e09871eedfd21bea71d77d"
+			},
+			{
+				"path": "renovate.json",
+				"mode": "0644",
+				"sha256": "0f0f63b7bdbde8a0ab1bf01024a34f00d08a7abf6b542c83ee1e157b0b7349b9"
+			},
+			{
+				"path": "scripts/ci/aggregate-gate.sh",
+				"mode": "0755",
+				"sha256": "c44a7746f7d1a852e053eb6db9ba405c32f712e51f5557c8f46c414b4e3324c8"
+			},
+			{
+				"path": "scripts/ci/bun-install-retry.sh",
+				"mode": "0755",
+				"sha256": "19dd5eb9911ded0907670827c1dbabd1c9c01d06d71bb09e08ce20b224de1f97"
+			},
+			{
+				"path": "scripts/ci/run-tests.sh",
+				"mode": "0755",
+				"sha256": "e3c9d4c71b3406c8abf96fa1dbeb8604cf87e8314e3829f6309287156940e5d7"
+			},
+			{
+				"path": "scripts/ci/run-typecheck.sh",
+				"mode": "0755",
+				"sha256": "68e665dd3085d9c17c8887e280c4c06065dd1c39cecb200c0db273e3ac0f3ece"
+			},
+			{
+				"path": "scripts/sync-devcontainer.sh",
+				"mode": "0755",
+				"sha256": "5fb598a5c880a5d12d4ee4b0c8288aaf8b0334ca9fad5bf2285a2612ebf7db34"
+			},
+			{
+				"path": "scripts/template/agent-payload-contract.ts",
+				"mode": "0644",
+				"sha256": "2380cc100fc4890d6893ac037a6c25404e4eb6297854ca2f3581a1b9aadd5a3d"
+			},
+			{
+				"path": "scripts/template/agent-rules-contract.ts",
+				"mode": "0644",
+				"sha256": "6ff584d82a77c221b3edbcf5a76c24d7fbb9467eb507e6a4ccfeb77dc65f3bd5"
+			},
+			{
+				"path": "scripts/template/ci-contract.ts",
+				"mode": "0644",
+				"sha256": "ba9ac0aabfd0d1aa52121e9a484cfda38bcc9c4f72d05642e13a9bb7c97ddcf0"
+			},
+			{
+				"path": "scripts/template/cloud-contract.ts",
+				"mode": "0644",
+				"sha256": "1995485246c1a0018b7e5119151058ff1e1c39cec50a4504b83fe3826f790fc2"
+			},
+			{
+				"path": "scripts/template/experiment-contract.ts",
+				"mode": "0644",
+				"sha256": "fbac58f038d773a37166f2bda7ca4852ae5ba1b7eb53cc638e141710465ab65e"
+			},
+			{
+				"path": "scripts/template/image-contract.ts",
+				"mode": "0644",
+				"sha256": "9eb614ef3e7b877dd25635d6bd29012b56520a9040efab2a4f54c206892bed74"
+			},
+			{
+				"path": "scripts/template/json-schema.ts",
+				"mode": "0644",
+				"sha256": "73839141b3e3d515e24ab41f4f39d4093554505c3a80019122a2b10bbe5240d8"
+			},
+			{
+				"path": "scripts/template/sync-agent-rules.ts",
+				"mode": "0644",
+				"sha256": "010a6c043fcd4138ca85b8e7a96027591627030ac4d0812f58f3b0b3b7b54af5"
+			},
+			{
+				"path": "scripts/template/toolchain.ts",
+				"mode": "0644",
+				"sha256": "ef1f2d393ac5c17cb30e5d3d2761666a11f2c8ed59ea1cb273e22b1b304a359d"
+			},
+			{
+				"path": "scripts/template/validate-agent-rules.ts",
+				"mode": "0644",
+				"sha256": "77c7335f617d7954b0985ff5c48bc42d3ef4e1c34f0f9d6bb664317107687cb4"
+			},
+			{
+				"path": "scripts/template/validate-ci.ts",
+				"mode": "0644",
+				"sha256": "deb7263bb30a3aa7359dee485030c696668d2b480b55e49a218f74e806145c52"
+			},
+			{
+				"path": "scripts/template/validate-cloud.ts",
+				"mode": "0644",
+				"sha256": "26379f9c4deff233c6572f2bde02c6868ff1a7e31f739db4a81b65a997b2ba4a"
+			},
+			{
+				"path": "scripts/template/validate-experiment.ts",
+				"mode": "0644",
+				"sha256": "7d9f4a684d1b7af7deffb8c33fb0a4a84255b76e5573cc65a4b9dd290706a77e"
+			},
+			{
+				"path": "scripts/template/validate-image.ts",
+				"mode": "0644",
+				"sha256": "ce5f7ccadb1733852b6cd2f81f4494b9d5bd4b31645ea88c71042a5387e39e6a"
+			},
+			{
+				"path": "scripts/template/validate-toolchain.ts",
+				"mode": "0644",
+				"sha256": "a20d38f22bff210e64c297e9c0aa79d31e0ba419b0d6324eb0d77de76ac32385"
+			},
+			{
+				"path": "scripts/template/validate-worktree.ts",
+				"mode": "0644",
+				"sha256": "cd085e81a3b777e5bb0e14e830ba0868f6853bece3a4a4dddb1f0efcc98aef1d"
+			},
+			{
+				"path": "scripts/template/worktree-contract.ts",
+				"mode": "0644",
+				"sha256": "cadb09b2dbac13b5453732dafac345abf51df4830bd7c42a71740feb2689ea60"
+			},
+			{
+				"path": "scripts/worktree/cleanup.sh",
+				"mode": "0755",
+				"sha256": "8085b4a1113a70de92ae0f352c874ad53bd70e6c2c6c6cf38982e146d5d028bd"
+			},
+			{
+				"path": "scripts/worktree/contract.toml",
+				"mode": "0644",
+				"sha256": "cbe3cd3c4333aa07690ec74be86288c67e387b8e3a49bf4273a371e79ea79a22"
+			},
+			{
+				"path": "scripts/worktree/doctor.sh",
+				"mode": "0755",
+				"sha256": "dc1a52f0127526a73d8ffd8baa6432d6c6c7db577d30f7f4b44b25778348471b"
+			},
+			{
+				"path": "scripts/worktree/down.sh",
+				"mode": "0755",
+				"sha256": "df276c64618bab7c6baa9352195deb13264bd6d4741c16a12bd8404d0dddd755"
+			},
+			{
+				"path": "scripts/worktree/ensure.sh",
+				"mode": "0755",
+				"sha256": "fca542be3006adefdef49766752b47c60d8285c7b973879812abeace5b8b5e54"
+			},
+			{
+				"path": "scripts/worktree/env.sh",
+				"mode": "0755",
+				"sha256": "5247243bf40920a56dbc0b13b48213062fe3bc25a515cda37cb8fdbc28ca8219"
+			},
+			{
+				"path": "scripts/worktree/exec.sh",
+				"mode": "0755",
+				"sha256": "e9d48773f6f2e05764a1b10199be4bb7fdc3a0ad8ceedd398b0976e6ad8500c2"
+			},
+			{
+				"path": "scripts/worktree/lib.sh",
+				"mode": "0755",
+				"sha256": "560e7e3a7ce28ca06a35519c566f11d5703df42db8598f884ea308c6d07837e9"
+			},
+			{
+				"path": "scripts/worktree/lock.sh",
+				"mode": "0755",
+				"sha256": "8d0ff2c778ed6fdcce516e343feefa4c553f25168fdda8010d62c8470f8919f0"
+			},
+			{
+				"path": "scripts/worktree/manifest.sh",
+				"mode": "0755",
+				"sha256": "4b5968d2869886c9e02fddd844c964714f7c3f4b8531201e31414f0dcbb2edc8"
+			},
+			{
+				"path": "scripts/worktree/selftest.sh",
+				"mode": "0755",
+				"sha256": "d324642878ff890cecf52ce7abe93ca58ebf9667559b5831aa94dafc99a36161"
+			},
+			{
+				"path": "scripts/worktree/services.sh",
+				"mode": "0755",
+				"sha256": "5258f4c8ae6e024493c16bfa2b99e7eddae41ed44dc48c813560304c9f91676f"
+			},
+			{
+				"path": "scripts/worktree/up.sh",
+				"mode": "0755",
+				"sha256": "5c4731815525bdc08d3fded7988d9cbe6c6f6f58344ced2304843034ebe62cd6"
+			},
+			{
+				"path": "tsconfig.base.json",
+				"mode": "0644",
+				"sha256": "c8b3bc1a2376bb90924e74dd0e4387d858228c3896674f299e63cc1214cef44d"
+			},
+			{
+				"path": "tsconfig.json",
+				"mode": "0644",
+				"sha256": "066903c1ee4a7983158523915c7ba3961a0ad36d10e88bfba315932a73bea3ff"
+			},
+			{
+				"path": "tsconfig.lib.base.json",
+				"mode": "0644",
+				"sha256": "f921fef8c422a097965b0fc5d4df86954ca34df07145191fd4331714b55b7cb3"
+			},
+			{
+				"path": "tsconfig.worker.base.json",
+				"mode": "0644",
+				"sha256": "c961f687f6b21b96ac3424f8e2150f3f072213804fac0eef55adc1662834f2d2"
+			}
+		],
+		"omittedCount": 884
+	}
+}
