@@ -264,13 +264,21 @@ function gitOrThrow(root: string, ...args: string[]): string {
  * bridged call would have been made.
  */
 async function wrapperHarness(
-	changes: ChangeFixture[] = [{ name: "probe-one", complete: 2, remaining: 0 }],
+	options: {
+		changes?: ChangeFixture[];
+		/** Which CLI the wrapper finds. `"real"` is the pinned repository binary. */
+		cli?: FakeOpenspecMode | "real";
+	} = {},
 ): Promise<WrapperHarness> {
+	const changes = options.changes ?? [
+		{ name: "probe-one", complete: 2, remaining: 0 },
+	];
 	const base = await mkdtemp(resolve(tmpdir(), "devenv-archive-"));
 	const root = resolve(base, "clone");
 	const origin = resolve(base, "origin.git");
 	await mkdir(root, { recursive: true });
 	await mkdir(resolve(root, "scripts/openspec"), { recursive: true });
+	await mkdir(resolve(root, "scripts/template"), { recursive: true });
 	await mkdir(resolve(root, ".moon"), { recursive: true });
 	await Bun.write(
 		resolve(root, ".moon/workspace.yml"),
@@ -283,12 +291,49 @@ async function wrapperHarness(
 			"",
 		].join("\n"),
 	);
+	await Bun.write(resolve(root, ".gitignore"), "node_modules/\n");
 	await Bun.write(
 		resolve(root, "scripts/openspec/archive.sh"),
 		Bun.file(resolve(ROOT, "scripts/openspec/archive.sh")),
 	);
 	await chmod(resolve(root, "scripts/openspec/archive.sh"), 0o755);
+	// The real guard, not a stand-in: the wrapper re-runs `openspec:check` on the
+	// archived tree before it commits, and a fixture that faked that step would
+	// prove nothing about the one validation that gates the commit.
+	for (const name of ["openspec-contract.ts", "validate-openspec.ts"]) {
+		await Bun.write(
+			resolve(root, "scripts/template", name),
+			Bun.file(resolve(ROOT, "scripts/template", name)),
+		);
+	}
+	await Bun.write(
+		resolve(root, "package.json"),
+		`${JSON.stringify(
+			{
+				name: "synthetic",
+				workspaces: { catalog: { "@fission-ai/openspec": "0.19.0" } },
+				scripts: {
+					"openspec:check": "bun scripts/template/validate-openspec.ts",
+				},
+			},
+			null,
+			"\t",
+		)}\n`,
+	);
 	await writeRoot(root, { changes });
+	if (options.cli === "real") {
+		// A shim rather than a copied binary: it has to live inside this fixture's
+		// own node_modules, because the guard refuses a CLI anywhere else.
+		const shim = resolve(root, "node_modules/.bin/openspec");
+		await mkdir(resolve(root, "node_modules/.bin"), { recursive: true });
+		await Bun.write(
+			shim,
+			`#!/usr/bin/env bash\nexec node ${resolve(ROOT, "node_modules/@fission-ai/openspec/bin/openspec.js")} "$@"\n`,
+		);
+		await chmod(shim, 0o755);
+	} else if (options.cli) {
+		await fakeOpenspecCli(root, options.cli);
+	}
 	Bun.spawnSync(
 		["git", "init", "--quiet", "--bare", "--initial-branch=main", origin],
 		{
@@ -300,6 +345,8 @@ async function wrapperHarness(
 	gitOrThrow(root, "init", "--quiet", "--initial-branch=main");
 	gitOrThrow(root, "add", "-A");
 	gitOrThrow(root, "commit", "--quiet", "--no-verify", "-m", "chore: fixture");
+	gitOrThrow(root, "config", "user.email", "archive@example.invalid");
+	gitOrThrow(root, "config", "user.name", "Archive Fixture");
 	gitOrThrow(root, "remote", "add", "origin", origin);
 	gitOrThrow(root, "push", "--quiet", "-u", "origin", "main");
 	return { root, origin, home: base };
@@ -355,9 +402,12 @@ function treeState(root: string): string {
 
 async function withWrapper(
 	body: (harness: WrapperHarness) => Promise<void>,
-	changes?: ChangeFixture[],
+	options: {
+		changes?: ChangeFixture[];
+		cli?: FakeOpenspecMode | "real";
+	} = {},
 ): Promise<void> {
-	const harness = await wrapperHarness(changes);
+	const harness = await wrapperHarness(options);
 	try {
 		await body(harness);
 	} finally {
@@ -1005,10 +1055,12 @@ describe("openspec lifecycle contract", () => {
 					expect(result.stderr).toContain("openspec -> probe-one");
 					expect(result.stderr).toContain("openspec -> probe-two");
 				},
-				[
-					{ name: "probe-one", complete: 1, remaining: 0 },
-					{ name: "probe-two", complete: 1, remaining: 0 },
-				],
+				{
+					changes: [
+						{ name: "probe-one", complete: 1, remaining: 0 },
+						{ name: "probe-two", complete: 1, remaining: 0 },
+					],
+				},
 			);
 		});
 
@@ -1035,6 +1087,273 @@ describe("openspec lifecycle contract", () => {
 				);
 			});
 		});
+	});
+
+	describe("the archive wrapper publishes only after it has verified", () => {
+		function originHead(harness: WrapperHarness): string {
+			return gitOrThrow(harness.origin, "rev-parse", "refs/heads/main").trim();
+		}
+
+		test("a complete change is archived, validated, committed and pushed", async () => {
+			await withWrapper(
+				async (harness) => {
+					const before = originHead(harness);
+					const result = runWrapper(harness, []);
+					expect(result.stderr).not.toContain("restoring");
+					expect(result.exitCode).toBe(0);
+					const date = new Date().toISOString().slice(0, 10);
+					const destination = resolve(
+						harness.root,
+						`openspec/changes/archive/${date}-probe-one`,
+					);
+					expect(
+						await Bun.file(resolve(destination, "proposal.md")).exists(),
+					).toBe(true);
+					expect(
+						await Bun.file(
+							resolve(harness.root, "openspec/changes/probe-one/proposal.md"),
+						).exists(),
+					).toBe(false);
+					// The delta spec reached the main specs, which is the half of an
+					// archive that is not a directory move.
+					expect(
+						await Bun.file(
+							resolve(harness.root, "openspec/specs/probe-cap/spec.md"),
+						).text(),
+					).toContain("### Requirement: Probe Requirement");
+					expect(
+						gitOrThrow(harness.root, "log", "-1", "--format=%s").trim(),
+					).toBe("chore(openspec): archive probe-one");
+					// Only the OpenSpec root is in the commit.
+					const changed = gitOrThrow(
+						harness.root,
+						"show",
+						"--name-only",
+						"--format=",
+						"HEAD",
+					)
+						.split("\n")
+						.filter(Boolean);
+					expect(changed.length).toBeGreaterThan(0);
+					for (const path of changed)
+						expect(path.startsWith("openspec/")).toBe(true);
+					expect(originHead(harness)).not.toBe(before);
+					expect(originHead(harness)).toBe(
+						gitOrThrow(harness.root, "rev-parse", "HEAD").trim(),
+					);
+					expect(gitOrThrow(harness.root, "status", "--porcelain")).toBe("");
+				},
+				{
+					cli: "faithful",
+					changes: [
+						{
+							name: "probe-one",
+							complete: 2,
+							remaining: 0,
+							requirement: "Probe Requirement",
+						},
+					],
+				},
+			);
+		}, 60_000);
+
+		test("a second run refuses on the occupied destination", async () => {
+			await withWrapper(
+				async (harness) => {
+					expect(runWrapper(harness, []).exitCode).toBe(0);
+					// Re-create the change exactly as it was. The CLI would happily
+					// rewrite the main specs and then report the duplicate with exit 0.
+					await writeRoot(harness.root, {
+						changes: [
+							{
+								name: "probe-one",
+								complete: 2,
+								remaining: 0,
+								requirement: "Probe Requirement",
+							},
+						],
+					});
+					gitOrThrow(harness.root, "add", "-A");
+					gitOrThrow(
+						harness.root,
+						"commit",
+						"--quiet",
+						"--no-verify",
+						"-m",
+						"chore: restore",
+					);
+					gitOrThrow(harness.root, "push", "--quiet", "origin", "main");
+					const result = runWrapper(harness, []);
+					expect(result.exitCode).toBe(8);
+					expect(result.stderr).toContain(
+						"already exists; the CLI would rewrite the main specs and archive nothing",
+					);
+					expect(gitOrThrow(harness.root, "status", "--porcelain")).toBe("");
+				},
+				{
+					cli: "faithful",
+					changes: [
+						{
+							name: "probe-one",
+							complete: 2,
+							remaining: 0,
+							requirement: "Probe Requirement",
+						},
+					],
+				},
+			);
+		}, 60_000);
+
+		test("a CLI that exits 0 without moving anything is caught by the post-state", async () => {
+			await withWrapper(
+				async (harness) => {
+					const head = gitOrThrow(harness.root, "rev-parse", "HEAD").trim();
+					const result = runWrapper(harness, []);
+					expect(result.exitCode).toBe(9);
+					expect(result.stderr).toContain("the CLI exited 0 but");
+					expect(result.stderr).toContain(
+						"is still there; nothing was archived",
+					);
+					expect(gitOrThrow(harness.root, "status", "--porcelain")).toBe("");
+					expect(gitOrThrow(harness.root, "rev-parse", "HEAD").trim()).toBe(
+						head,
+					);
+					expect(originHead(harness)).toBe(head);
+				},
+				{ cli: "archive-noop" },
+			);
+		}, 60_000);
+
+		test("an archive that writes outside the root is refused and rolled back", async () => {
+			await withWrapper(
+				async (harness) => {
+					const head = gitOrThrow(harness.root, "rev-parse", "HEAD").trim();
+					const result = runWrapper(harness, []);
+					expect(result.exitCode).toBe(9);
+					expect(result.stderr).toContain(
+						"the archive touched stray-from-archive.txt, which is outside openspec",
+					);
+					expect(gitOrThrow(harness.root, "rev-parse", "HEAD").trim()).toBe(
+						head,
+					);
+				},
+				{ cli: "archive-strays" },
+			);
+		}, 60_000);
+
+		test("a validation failure restores the root and commits nothing", async () => {
+			await withWrapper(
+				async (harness) => {
+					const head = gitOrThrow(harness.root, "rev-parse", "HEAD").trim();
+					const result = runWrapper(harness, []);
+					expect(result.exitCode).toBe(9);
+					expect(result.stderr).toContain(
+						"openspec:check failed on the archived tree",
+					);
+					expect(result.stderr).toContain("restoring openspec to HEAD");
+					expect(gitOrThrow(harness.root, "status", "--porcelain")).toBe("");
+					expect(gitOrThrow(harness.root, "rev-parse", "HEAD").trim()).toBe(
+						head,
+					);
+					expect(originHead(harness)).toBe(head);
+					// The change is back where it was, undamaged.
+					expect(
+						await Bun.file(
+							resolve(harness.root, "openspec/changes/probe-one/proposal.md"),
+						).exists(),
+					).toBe(true);
+				},
+				{
+					cli: "archive-drops-specs",
+					changes: [
+						{
+							name: "probe-one",
+							complete: 2,
+							remaining: 0,
+							requirement: "Probe Requirement",
+						},
+					],
+				},
+			);
+		}, 60_000);
+
+		test("a change whose commit subject would not fit is refused before the CLI runs", async () => {
+			const name = `probe-${"x".repeat(60)}`;
+			await withWrapper(
+				async (harness) => {
+					const before = treeState(harness.root);
+					const result = runWrapper(harness, []);
+					expect(result.exitCode).toBe(6);
+					expect(result.stderr).toContain("commitlint caps the header at 72");
+					expect(treeState(harness.root)).toBe(before);
+				},
+				{ cli: "faithful", changes: [{ name, complete: 1, remaining: 0 }] },
+			);
+		}, 60_000);
+
+		test("an incomplete change is refused with the CLI's own count", async () => {
+			await withWrapper(
+				async (harness) => {
+					const before = treeState(harness.root);
+					const result = runWrapper(harness, []);
+					expect(result.exitCode).toBe(7);
+					expect(result.stderr).toContain(
+						"probe-one still has 3 remaining task(s)",
+					);
+					expect(treeState(harness.root)).toBe(before);
+				},
+				{
+					cli: "faithful",
+					changes: [{ name: "probe-one", complete: 1, remaining: 3 }],
+				},
+			);
+		}, 60_000);
+
+		test("a rejected push keeps the commit and prints every way out", async () => {
+			await withWrapper(
+				async (harness) => {
+					// Branch protection, locally: the remote refuses the update. The
+					// commit must survive, because throwing it away would lose the
+					// archive the operator just validated.
+					const hook = resolve(harness.origin, "hooks/pre-receive");
+					await mkdir(resolve(harness.origin, "hooks"), { recursive: true });
+					await Bun.write(
+						hook,
+						"#!/usr/bin/env bash\necho 'protected branch' >&2\nexit 1\n",
+					);
+					await chmod(hook, 0o755);
+					const before = originHead(harness);
+					const result = runWrapper(harness, []);
+					expect(result.exitCode).toBe(10);
+					expect(result.stderr).toContain("the push was rejected");
+					expect(result.stderr).toContain("push it as an administrator");
+					expect(result.stderr).toContain(
+						"git switch -c chore/archive-probe-one",
+					);
+					expect(result.stderr).toContain("git reset --hard origin/main");
+					expect(
+						gitOrThrow(harness.root, "log", "-1", "--format=%s").trim(),
+					).toBe("chore(openspec): archive probe-one");
+					expect(originHead(harness)).toBe(before);
+					// The next run refuses on HEAD != origin/main, which is what makes
+					// the recovery self-healing rather than a note nobody reads.
+					const second = runWrapper(harness, ["--dry-run"]);
+					expect(second.exitCode).toBe(5);
+					expect(second.stderr).toContain("HEAD is ahead of origin/main");
+				},
+				{
+					cli: "faithful",
+					changes: [
+						{
+							name: "probe-one",
+							complete: 2,
+							remaining: 0,
+							requirement: "Probe Requirement",
+						},
+					],
+				},
+			);
+		}, 60_000);
 	});
 
 	describe("archive assessment", () => {

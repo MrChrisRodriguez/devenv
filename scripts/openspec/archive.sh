@@ -310,6 +310,17 @@ if archive_destination_exists; then
 	die "$ARCHIVE_DESTINATION already exists; the CLI would rewrite the main specs and archive nothing" 8
 fi
 
+# ── 6d. Commit subject ──────────────────────────────────────────────────────
+# Checked here rather than after the archive, even though the plan's order puts
+# it later: the subject is computable from the change name alone, and refusing
+# after a mutation is a worse refusal than refusing before one. Commitlint caps
+# the header at 72 characters, and a commit that cannot be written is a commit
+# whose archive would have to be rolled back.
+COMMIT_SUBJECT="chore(openspec): archive $CHANGE"
+if [ "${#COMMIT_SUBJECT}" -gt 72 ]; then
+	die "the commit subject \"$COMMIT_SUBJECT\" is ${#COMMIT_SUBJECT} characters; commitlint caps the header at 72" 6
+fi
+
 printf '%s\n' "$LABEL: $CHANGE in $ROOT"
 printf '%s\n' "  tasks remaining: $remaining"
 if [ "${#DELTA_CAPABILITIES[@]}" -eq 0 ]; then
@@ -324,4 +335,100 @@ if [ "$DRY_RUN" = "true" ]; then
 	exit 0
 fi
 
-die "archiving is not implemented yet in this revision" 1
+# ── 7. Archive ──────────────────────────────────────────────────────────────
+# Scoped to this root and to HEAD. Nothing outside the OpenSpec root is ever
+# touched, so a restore can never take an unrelated edit with it — which is
+# also why the clean-tree refusal above is unconditional: with a dirty tree
+# this rollback would not be safe to run.
+restore_openspec_root() {
+	note "restoring $ROOT to HEAD and removing anything the CLI left behind"
+	git restore --source=HEAD --staged --worktree -- "$ROOT" || true
+	git clean -qfd -- "$ROOT" || true
+}
+
+# The CLI's exit code says nothing. It RETURNS 0 after "Aborted. No files were
+# changed." and it RETURNS 0 after writing the main specs and then finding the
+# destination occupied. The post-state below is the only evidence that counts.
+if ! (cd "$WORKING_DIRECTORY" && openspec_cli archive "${ARCHIVE_ARGUMENTS[@]}"); then
+	restore_openspec_root
+	die "\`openspec archive $CHANGE\` failed; $ROOT was restored" 9
+fi
+
+verification_failed() {
+	restore_openspec_root
+	die "$1" 9
+}
+
+if [ -e "$CHANGE_DIR" ]; then
+	verification_failed "the CLI exited 0 but $CHANGE_DIR is still there; nothing was archived"
+fi
+if [ ! -d "$ARCHIVE_DESTINATION" ]; then
+	verification_failed "the CLI exited 0 but $ARCHIVE_DESTINATION does not exist"
+fi
+if [ -z "$(ls -A "$ARCHIVE_DESTINATION" 2>/dev/null)" ]; then
+	verification_failed "$ARCHIVE_DESTINATION is empty"
+fi
+while IFS= read -r line; do
+	[ -n "$line" ] || continue
+	path="${line:3}"
+	case "$path" in
+		"$ROOT"/*) ;;
+		*) verification_failed "the archive touched $path, which is outside $ROOT" ;;
+	esac
+done < <(git status --porcelain --untracked-files=all)
+
+# ── 8. Validate, then commit ────────────────────────────────────────────────
+# Across EVERY root, not just the one that changed: applying delta specs
+# rewrites openspec/specs/**, and the guard's archive-hygiene rules are the
+# only thing that looks at what the CLI just wrote.
+if [ -n "$BRIDGE" ]; then
+	# shellcheck disable=SC2086
+	validation_ok="$($BRIDGE bun run openspec:check >/dev/null 2>&1 && printf 'true' || printf 'false')"
+else
+	validation_ok="$(bun run openspec:check >/dev/null 2>&1 && printf 'true' || printf 'false')"
+fi
+if [ "$validation_ok" != "true" ]; then
+	restore_openspec_root
+	die "openspec:check failed on the archived tree; $ROOT was restored and nothing was committed" 9
+fi
+
+git add -A -- "$ROOT"
+while IFS= read -r path; do
+	[ -n "$path" ] || continue
+	case "$path" in
+		"$ROOT"/*) ;;
+		*) verification_failed "$path was staged, but only $ROOT may be" ;;
+	esac
+done < <(git diff --cached --name-only)
+
+# No --no-verify, ever. The hooks are how this repository formats and checks a
+# commit, and the archive commit is the one commit nobody reviews.
+git commit --quiet -m "$COMMIT_SUBJECT"
+ARCHIVE_COMMIT="$(git rev-parse HEAD)"
+
+# ── 9. Push ─────────────────────────────────────────────────────────────────
+# Re-fetched, because the checks above took time and the remote is shared. The
+# new commit's parent must still be exactly what origin has, or this push would
+# be a force in disguise.
+git fetch --prune --quiet origin
+REMOTE_HEAD="$(git rev-parse "refs/remotes/origin/$DEFAULT_BRANCH")"
+if [ "$(git rev-parse "$ARCHIVE_COMMIT^")" != "$REMOTE_HEAD" ]; then
+	note "origin/$DEFAULT_BRANCH moved while this archive was being validated."
+	note "The archive commit $ARCHIVE_COMMIT is kept. Rebase it and push, or reset with:"
+	note "  git reset --hard origin/$DEFAULT_BRANCH"
+	die "refusing to push a commit whose parent is no longer origin/$DEFAULT_BRANCH" 10
+fi
+
+if ! git push --quiet origin "HEAD:refs/heads/$DEFAULT_BRANCH"; then
+	# Branch protection can reject this, and that is a supported outcome rather
+	# than a bug: the commit stays, and the next run refuses on HEAD != origin
+	# until the operator picks one of these. Self-healing by construction.
+	note "the push was rejected. The archive commit $ARCHIVE_COMMIT is kept locally."
+	note "Choose one:"
+	note "  - push it as an administrator"
+	note "  - open a pull request:  git switch -c chore/archive-$CHANGE && git push -u origin HEAD"
+	note "  - discard it:           git reset --hard origin/$DEFAULT_BRANCH"
+	die "push rejected" 10
+fi
+
+printf '%s\n' "$LABEL: archived $CHANGE to $ARCHIVE_DESTINATION and pushed $ARCHIVE_COMMIT"

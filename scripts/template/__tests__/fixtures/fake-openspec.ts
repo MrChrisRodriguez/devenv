@@ -20,6 +20,15 @@ import { resolve } from "node:path";
  *                   and exits, which is the property the guard needs: a CI lane
  *                   must never be able to wait forever on an answer nobody is
  *                   there to give.
+ *
+ * And three ways `archive` lies, each of them observed:
+ *
+ * - `archive-noop`         prints "Aborted. No files were changed." and RETURNS
+ *                          0 without moving anything.
+ * - `archive-drops-specs`  moves the change but never applies its delta specs,
+ *                          which is what a mis-passed `--skip-specs` does.
+ * - `archive-strays`       archives correctly and also writes outside the
+ *                          OpenSpec root.
  */
 export type FakeOpenspecMode =
 	| "faithful"
@@ -28,7 +37,10 @@ export type FakeOpenspecMode =
 	| "wrong-version"
 	| "malformed"
 	| "nonzero"
-	| "prompt-hang";
+	| "prompt-hang"
+	| "archive-noop"
+	| "archive-drops-specs"
+	| "archive-strays";
 
 // `@@{` stands in for a shell parameter expansion: this is a template literal,
 // so the sequence has to be written once and substituted rather than escaped on
@@ -95,6 +107,65 @@ fi
 collect
 
 case "@@{1:-}" in
+	instructions)
+		# 'instructions apply --change <name> --json': the CLI's own answer about
+		# how much of a change is left, plus the context paths it resolved.
+		change=""
+		while [ "$#" -gt 0 ]; do
+			if [ "$1" = "--change" ]; then change="@@{2:-}"; fi
+			shift
+		done
+		dir="openspec/changes/$change"
+		if [ ! -d "$dir" ]; then
+			printf 'no such change: %s\n' "$change" >&2
+			exit 1
+		fi
+		total=0
+		done_count=0
+		if [ -f "$dir/tasks.md" ]; then
+			done_count="$(grep -c -E '^[[:space:]]*-[[:space:]]*\[[xX]\][[:space:]]' "$dir/tasks.md" || true)"
+			open_count="$(grep -c -E '^[[:space:]]*-[[:space:]]*\[[[:space:]]\][[:space:]]' "$dir/tasks.md" || true)"
+			total=$((done_count + open_count))
+		fi
+		printf '{\n  "changeName": "%s",\n  "changeDir": "%s",\n  "progress": {"total": %s, "complete": %s, "remaining": %s}\n}\n' \
+			"$change" "$(cd "$dir" && pwd -P)" "$total" "$done_count" "$((total - done_count))"
+		;;
+	archive)
+		shift
+		name=""
+		for argument in "$@"; do
+			case "$argument" in
+				--*) ;;
+				*) [ -z "$name" ] && name="$argument" ;;
+			esac
+		done
+		if [ "$MODE" = "archive-noop" ]; then
+			# The exact lie: a refusal reported as a success.
+			printf 'Aborted. No files were changed.\n'
+			exit 0
+		fi
+		if [ "$MODE" != "archive-drops-specs" ] && [ -d "openspec/changes/$name/specs" ]; then
+			for capability in openspec/changes/"$name"/specs/*/; do
+				[ -f "$capability/spec.md" ] || continue
+				id="$(basename "$capability")"
+				mkdir -p "openspec/specs/$id"
+				sed 's/^## ADDED Requirements$/## Requirements/' "$capability/spec.md" \
+					> "openspec/specs/$id/spec.md"
+			done
+		fi
+		destination="openspec/changes/archive/$(date -u +%Y-%m-%d)-$name"
+		if [ -e "$destination" ]; then
+			# Specs first, destination check second, exit 0 regardless.
+			printf 'Error: Archive already exists.\n' >&2
+			exit 0
+		fi
+		mkdir -p openspec/changes/archive
+		mv "openspec/changes/$name" "$destination"
+		if [ "$MODE" = "archive-strays" ]; then
+			printf 'stray\n' > stray-from-archive.txt
+		fi
+		printf "Change '%s' archived.\n" "$name"
+		;;
 	list)
 		printf '{\n  "changes": [\n'
 		first=1

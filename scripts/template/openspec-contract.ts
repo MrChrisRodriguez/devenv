@@ -482,6 +482,17 @@ export async function inspectOpenspec(
 export const WRAPPER_BRIDGE_DEFAULT =
 	"${OPENSPEC_BRIDGE-bash scripts/worktree/exec.sh --require-ready}";
 
+// The rollback, spelled once. It is scoped to the OpenSpec root on purpose: the
+// wrapper refuses a dirty tree precisely so that restoring that subtree can
+// never take an unrelated edit with it.
+export const ARCHIVE_RESTORE =
+	"git restore --source=HEAD --staged --worktree --";
+
+// The archive commit's subject. `chore` because an archive adds no behaviour,
+// and a fixed prefix because the subject has to fit commitlint's 72-character
+// header before the CLI is allowed to move anything.
+export const ARCHIVE_COMMIT_SUBJECT = "chore(openspec): archive ";
+
 /**
  * Rules about the wrapper itself.
  *
@@ -496,11 +507,18 @@ async function validateWrapperPolicy(root: string): Promise<string[]> {
 	const path = resolve(root, ARCHIVE_WRAPPER);
 	if (!(await Bun.file(path).exists())) return errors;
 	const source = textOf(path);
+	// The negative rules read the executable half only. A comment that explains
+	// why `--no-verify` is banned is not an instance of `--no-verify`, and a rule
+	// that cannot tell the difference makes writing the explanation impossible.
+	const code = source
+		.split("\n")
+		.filter((line) => !line.trimStart().startsWith("#"))
+		.join("\n");
 	if (!source.includes(WRAPPER_BRIDGE_DEFAULT))
 		errors.push(
 			`openspec: ${ARCHIVE_WRAPPER} must spell the default bridge exactly once, as ${WRAPPER_BRIDGE_DEFAULT}`,
 		);
-	if (source.includes("--no-verify"))
+	if (code.includes("--no-verify"))
 		errors.push(
 			`openspec: ${ARCHIVE_WRAPPER} must never bypass the git hooks with --no-verify`,
 		);
@@ -511,6 +529,32 @@ async function validateWrapperPolicy(root: string): Promise<string[]> {
 	if (!source.includes("OPENSPEC_TELEMETRY=0"))
 		errors.push(
 			`openspec: ${ARCHIVE_WRAPPER} must disable CLI telemetry on every invocation`,
+		);
+	// The order that matters most, checked as an order. `ArchiveCommand` writes
+	// the main specs before it looks at the destination and returns 0 when the
+	// destination is occupied, so a pre-check placed after the call is not a
+	// pre-check at all.
+	const precheck = source.indexOf("archive_destination_exists");
+	const invocation = source.search(/openspec_cli\s+archive\b/);
+	if (precheck < 0 || invocation < 0 || precheck > invocation)
+		errors.push(
+			`openspec: ${ARCHIVE_WRAPPER} must pre-check the archive destination before it calls the CLI`,
+		);
+	if (!source.includes(ARCHIVE_RESTORE))
+		errors.push(
+			`openspec: ${ARCHIVE_WRAPPER} must roll back with \`${ARCHIVE_RESTORE}\` scoped to the OpenSpec root`,
+		);
+	if (!source.includes(`bun run ${GUARD_SCRIPT}`))
+		errors.push(
+			`openspec: ${ARCHIVE_WRAPPER} must re-run ${GUARD_SCRIPT} across every root before it commits`,
+		);
+	if (!source.includes(ARCHIVE_COMMIT_SUBJECT))
+		errors.push(
+			`openspec: ${ARCHIVE_WRAPPER} must commit with the subject \`${ARCHIVE_COMMIT_SUBJECT}<change>\``,
+		);
+	if (/git\s+push[^\n]*(--force|\+refs)/.test(code))
+		errors.push(
+			`openspec: ${ARCHIVE_WRAPPER} must never force-push the default branch`,
 		);
 	const manifest = resolve(root, "package.json");
 	if (await Bun.file(manifest).exists()) {
