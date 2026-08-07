@@ -28,6 +28,8 @@ This file documents changes made to this template repository. Each entry provide
 
 **The fence is a fact about the template, not about a render.** The renderer deletes capability markers along with the blocks it keeps, so a generated project's step is correctly unfenced. `template-parameters.toml` is the marker that says which tree this is — the same marker the workflow's own browser lane already switches on — and the fence assertion stands down where it does not apply, instead of failing where it cannot be true.
 
+**Browser safety is an allowlist, never a denylist.** A denylist over server-only modules is a list of the mistakes somebody already made, and the first import nobody thought of ships a database driver into a browser bundle. A declared schema package may name the schema library, whatever else its `allowedSpecifiers` declares, and relative paths that resolve *inside its own root* — `../../shared/src/x` looks local and is not, and it is exactly the case this catches. Zero files under a declared package root is a distinct failure rather than a pass, and the whole rule holds in `skeleton` mode too: a module outside every declared package that reaches for the schema library extends the ban with no guard edit, because the covered surface is derived from the registry rather than hardcoded.
+
 **13.1's "remove superseded validators atomically" ships as a refusal.** There is no handwritten validator in this repository to supersede. Rather than record the clause as vacuous, the registry declares exactly one validator per surface and a second module claiming the same surface is a named error. Atomicity is enforced going forward instead of asserted about a past that does not exist.
 
 ---

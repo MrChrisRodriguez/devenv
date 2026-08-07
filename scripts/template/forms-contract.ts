@@ -786,6 +786,109 @@ export async function validateOwnership(root: string): Promise<string[]> {
 	return errors.sort();
 }
 
+function insidePackage(packageRoot: string, candidate: string): boolean {
+	return candidate === packageRoot || candidate.startsWith(`${packageRoot}/`);
+}
+
+/** Lexical resolution of a relative specifier, with no filesystem involved. */
+function resolveRelative(from: string, specifier: string): string {
+	const segments = from.split("/").slice(0, -1);
+	for (const segment of specifier.split("/")) {
+		if (segment === "." || segment === "") continue;
+		if (segment === "..") segments.pop();
+		else segments.push(segment);
+	}
+	return segments.join("/");
+}
+
+function allowedSpecifier(specifier: string, allowed: string[]): boolean {
+	return allowed.some(
+		(entry) => specifier === entry || specifier.startsWith(`${entry}/`),
+	);
+}
+
+/**
+ * Browser safety, as an ALLOWLIST.
+ *
+ * A denylist over server-only modules is the wrong shape: it is a list of the
+ * mistakes somebody already made, and the first import nobody thought of ships
+ * a database driver into a browser bundle. So a shared schema package may name
+ * the schema library, whatever else it declares, and relative paths that
+ * resolve INSIDE its own root — `../../shared/src/x` is a specifier that looks
+ * local and is not, and it is exactly the one this rule exists to catch.
+ *
+ * Zero files under a declared package root is a distinct failure rather than a
+ * pass: a scan with no input has answered nothing, which is the classic hole in
+ * a rule of this shape.
+ */
+export function validateBrowserSafety(
+	root: string,
+	contract: ApiContract,
+	state: TreeState,
+): string[] {
+	const errors: string[] = [];
+	if (state.scanned === 0)
+		return [
+			"forms: the browser-safety scan read no file at all; a rule with no input has answered nothing",
+		];
+	const files = enumerateFiles(root).filter(isSourceFile);
+	const roots = contract.schemaPackages.map((entry) => entry.root);
+	const outside = (path: string): boolean =>
+		!roots.some((packageRoot) => insidePackage(packageRoot, path));
+
+	// The half that holds in BOTH modes, and the whole of the rule in
+	// `skeleton`: nothing may reach for the schema library except a package that
+	// declared itself. The mode reconciliation above names the same file first
+	// and with a different message — that one says the registry is wrong, this
+	// one says the file is.
+	for (const path of files) {
+		if (!outside(path)) continue;
+		const specifiers = moduleSpecifiers(path, textOf(resolve(root, path)));
+		if (specifiers === undefined) continue;
+		if (importsSchemaLibrary(specifiers))
+			errors.push(
+				`forms: ${path} imports the shared schema library outside a declared schema package`,
+			);
+	}
+
+	for (const entry of contract.schemaPackages) {
+		const owned = files.filter((path) => insidePackage(entry.root, path));
+		if (owned.length === 0) {
+			errors.push(
+				`forms: the schema package ${entry.id} at ${entry.root} contains no file to scan`,
+			);
+			continue;
+		}
+		if (!insidePackage(entry.root, entry.entry))
+			errors.push(
+				`forms: the schema package ${entry.id} declares the entry ${entry.entry}, which is outside ${entry.root}`,
+			);
+		// The schema library is always legal inside a package whose whole job is
+		// to declare schemas; `allowedSpecifiers` extends that, it does not
+		// replace it.
+		const allowed = [...new Set([SCHEMA_LIBRARY, ...entry.allowedSpecifiers])];
+		for (const path of owned) {
+			const specifiers = moduleSpecifiers(path, textOf(resolve(root, path)));
+			if (specifiers === undefined) continue;
+			for (const specifier of specifiers) {
+				if (allowedSpecifier(specifier, allowed)) continue;
+				if (specifier.startsWith(".")) {
+					if (insidePackage(entry.root, resolveRelative(path, specifier)))
+						continue;
+					errors.push(
+						`forms: ${path} imports ${specifier}, which resolves outside the schema package ${entry.id}`,
+					);
+					continue;
+				}
+				errors.push(
+					`forms: ${path} imports ${specifier}, which the schema package ${entry.id} does not allow`,
+				);
+			}
+		}
+	}
+	return [...new Set(errors)].sort();
+}
+
 /**
  * The whole shared-schema and API contract, in the shape `validate.ts`
  * aggregates.
@@ -812,6 +915,7 @@ export async function validateFormsContract(
 		...validateSoleDeclarations(enumerateFiles(root), contract),
 		...(await validateWiring(root, contract)),
 		...(await validateOwnership(root)),
+		...validateBrowserSafety(root, contract, state),
 	];
 	return [...new Set(errors)].sort();
 }

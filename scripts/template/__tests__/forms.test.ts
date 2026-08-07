@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import {
@@ -8,42 +8,25 @@ import {
 	REGISTRY_PATH,
 	readApiContract,
 	type ServerParser,
+	validateBrowserSafety,
 	validateFormsContract,
 	validateSoleDeclarations,
 } from "../forms-contract";
 import { renderFixture } from "../render-fixture";
-
-const ROOT = resolve(import.meta.dir, "../../..");
-
-// Everything validateFormsContract reads. The fixture is a plain directory and
-// not a Git repository on purpose: the enumeration falls back to a pruned walk
-// there, which is the path a rendered project's CI actually takes before its
-// first commit.
-const CONTRACT_FILES = [
-	"api-contract.json",
-	"api-contract.schema.json",
-	"package.json",
-	"template-parameters.toml",
-	".github/workflows/ci.yml",
-	"scripts/template/forms-contract.ts",
-	"scripts/template/validate-forms.ts",
-	"docs/devcontainer-upgrade/stage-0/template-ownership.json",
-] as const;
-
-// Assembled exactly as the guard assembles them. A fixture that spelled either
-// needle out would BE an instance of the shape it is testing for, and the file
-// carrying the test would fail the guard it is testing.
-const RESOLVER_BINDING = `${"zod"}Resolver(`;
-const GENERATED_MARKER = ["DO", "NOT", "EDIT"].join(" ");
+import {
+	contractWorkspace,
+	GENERATED_MARKER,
+	RESOLVER_BINDING,
+	ROOT,
+	SCHEMA_IMPORT,
+	SKELETON,
+	schemaPackage,
+	writeFiles,
+	writeRegistry,
+} from "./fixtures/api-contract-workspaces";
 
 async function contractFixture(): Promise<string> {
-	const temporary = await mkdtemp(resolve(tmpdir(), "devenv-forms-contract-"));
-	for (const path of CONTRACT_FILES) {
-		const destination = resolve(temporary, path);
-		await mkdir(dirname(destination), { recursive: true });
-		await copyFile(resolve(ROOT, path), destination);
-	}
-	return temporary;
+	return await contractWorkspace({ prefix: "devenv-forms-contract-" });
 }
 
 async function mutate(
@@ -115,7 +98,7 @@ describe("shared schema and API contract registry", () => {
 			await withFile(
 				temporary,
 				"apps/api/src/schemas.ts",
-				'import { z } from "zod";\nexport const Body = z.object({});\n',
+				`${SCHEMA_IMPORT}export const Body = z.object({});\n`,
 				`forms: ${REGISTRY_PATH} declares skeleton mode but apps/api/src/schemas.ts imports the shared schema library`,
 			);
 			// A bare side-effect import and a dynamic import are the two spellings a
@@ -375,6 +358,123 @@ describe("shared schema and API contract registry", () => {
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
+	});
+
+	test("keeps a declared schema package browser safe by allowlist", async () => {
+		const contract: ApiContract = {
+			...SKELETON,
+			mode: "active",
+			schemaPackages: [schemaPackage({ allowedSpecifiers: ["@scope/units"] })],
+		};
+		const good = {
+			"libs/forms/src/index.ts": `${SCHEMA_IMPORT}export * from "./orders";\nexport * from "./util/money";\n`,
+			"libs/forms/src/orders.ts": `${SCHEMA_IMPORT}import { Money } from "@scope/units";\nexport const Order = z.object({ total: Money });\n`,
+			"libs/forms/src/util/money.ts":
+				'export { Money } from "../vendor/money";\n',
+			"libs/forms/src/vendor/money.ts": "export const Money = 1;\n",
+		};
+		const temporary = await contractWorkspace({ contract, files: good });
+		try {
+			expect(await validateFormsContract(temporary)).toEqual([]);
+
+			// A relative specifier that leaves the package is the case a denylist
+			// never catches: it looks local and is not.
+			await writeFiles(temporary, {
+				"libs/forms/src/util/money.ts":
+					'export { Money } from "../../../apps/api/src/money";\n',
+			});
+			expect(await validateFormsContract(temporary)).toContain(
+				"forms: libs/forms/src/util/money.ts imports ../../../apps/api/src/money, which resolves outside the schema package forms",
+			);
+			await writeFiles(temporary, good);
+			expect(await validateFormsContract(temporary)).toEqual([]);
+
+			// Three spellings a leg that only knew `import … from` would wave
+			// through, each of which reaches a module the allowlist never named.
+			for (const [path, body, specifier] of [
+				[
+					"libs/forms/src/db.ts",
+					'import { open } from "node:fs";\nexport const use = open;\n',
+					"node:fs",
+				],
+				[
+					"libs/forms/src/lazy.ts",
+					'export const load = async () => await import("better-auth");\n',
+					"better-auth",
+				],
+				["libs/forms/src/side-effect.ts", 'import "wrangler";\n', "wrangler"],
+			] as const) {
+				await writeFiles(temporary, { [path]: body });
+				expect(await validateFormsContract(temporary)).toContain(
+					`forms: ${path} imports ${specifier}, which the schema package forms does not allow`,
+				);
+				await rm(resolve(temporary, path));
+			}
+			expect(await validateFormsContract(temporary)).toEqual([]);
+
+			// A package with nothing in it is the classic hole: a scan with no
+			// input returns [] and calls it a pass.
+			await writeRegistry(temporary, {
+				...contract,
+				schemaPackages: [
+					schemaPackage({
+						id: "empty",
+						root: "libs/empty",
+						entry: "libs/empty/src/index.ts",
+					}),
+					...contract.schemaPackages,
+				],
+			});
+			expect(await validateFormsContract(temporary)).toContain(
+				"forms: the schema package empty at libs/empty contains no file to scan",
+			);
+			await writeRegistry(temporary, contract);
+
+			// The declared entry has to be inside the package it is the entry of.
+			await writeRegistry(temporary, {
+				...contract,
+				schemaPackages: [
+					schemaPackage({
+						entry: "apps/api/src/index.ts",
+						allowedSpecifiers: ["@scope/units"],
+					}),
+				],
+			});
+			expect(await validateFormsContract(temporary)).toContain(
+				"forms: the schema package forms declares the entry apps/api/src/index.ts, which is outside libs/forms",
+			);
+			await writeRegistry(temporary, contract);
+
+			// Derive-the-surface: a module outside every declared package that
+			// reaches for the schema library extends the ban with no guard edit.
+			await writeFiles(temporary, {
+				"apps/api/src/rogue.ts": `${SCHEMA_IMPORT}export const Rogue = z.string();\n`,
+			});
+			expect(await validateFormsContract(temporary)).toContain(
+				"forms: apps/api/src/rogue.ts imports the shared schema library outside a declared schema package",
+			);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	});
+
+	test("refuses a browser-safety scan that read nothing", () => {
+		// Anti-vacuity, driven directly. Reached through the whole contract this
+		// state is impossible, which is the point: the leg has to fail on it
+		// rather than return the empty list a passing run also returns.
+		expect(
+			validateBrowserSafety(ROOT, SKELETON, {
+				mode: "skeleton",
+				signals: [],
+				scanned: 0,
+				errors: [],
+			}),
+		).toEqual([
+			"forms: the browser-safety scan read no file at all; a rule with no input has answered nothing",
+		]);
+		expect(
+			validateBrowserSafety(ROOT, SKELETON, deriveTreeState(ROOT)),
+		).toEqual([]);
 	});
 
 	test("renders the contract surface only for the selected capability", async () => {
