@@ -4,6 +4,22 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-08-06 — Fix: classify agent rule files as global inputs
+
+**Goal:** Stop `classifyPath` from calling the repository's own rule files "documentation" before anything starts *selecting* on that answer.
+
+**How to implement:** `scripts/template/graph-contract.ts` classified every `**/*.md` path as `docs`, which swept up `AGENTS.md`, `CLAUDE.md`, `GEMINI.md`, `README.md`, `README.template.md` and `CHANGES.md`. While the classifier only *described* a change that was harmless. It stops being harmless the moment a CI matrix is derived from it: `__tests__/template.test.ts` and `scripts/template/ci-contract.ts` assert the **content** of `AGENTS.md`, `README.template.md` is rendered into every downstream project, and the changelog gate reads `CHANGES.md` — so a pull request touching only those files would be classified "docs-only", skip the suite, and land drift in the very files the suite guards.
+
+Those six repository-root files are now `global`. The rule is a list rather than a pattern, so adding one is a deliberate act, and it is checked *before* the documentation patterns because each of them matches the Markdown glob. Everything else is unchanged: `docs/**`, `openspec/**`, a pull-request template, a project's own `README.md`, and a nested `AGENTS.md` are all still `docs`. The classification test now pins both directions — the six root files as global (including the `./`-prefixed spelling `git diff` callers produce), and `docs/AGENTS.md` / `apps/web/AGENTS.md` as documentation, so the rule cannot decay into "Markdown is code".
+
+The same commit pins `MOON_AFFECTED_ARGV` beside the existing `MOON_QUERY_ARGV`: `moon query projects --affected --downstream deep --quiet`, verified against moon 2.3.5 inside this repository's devcontainer in a **synthetic three-project workspace** — the graph here is `{root}` alone, so `--downstream` semantics are unobservable in this tree. The verification established four facts. `--affected` reads the changed-file list from **stdin**. `--downstream deep` adds transitive dependents (a change under `libs/c` reported `c` *and* its dependent `a`). `--quiet` is a global `moon query` option that silences logging without touching the JSON on stdout. And `--json` does not exist in moon 2.x's query family at all — it exits 2, exactly as it does for `moon query projects`.
+
+The hazard the constant cannot express is recorded next to it: with **empty stdin**, `moon query projects --affected` does not answer "nothing affected", it falls back to **working-tree** detection. Verified both ways — an empty pipe over a clean tree printed `{"projects": []}`, and the same empty pipe with one uncommitted edit printed the project owning that edit. On a CI runner the tree is clean, so an accidental empty pipe returns an empty set with exit 0: a confident, silent "run nothing". Every caller must guard on the file count.
+
+**Why downstream cares:** If you copied `scripts/template/graph-contract.ts`, re-copy it and re-check your own root Markdown files against the list — the point is that files your test suite asserts on are not documentation, not that these six names are universal. This is tooling only: no `.devcontainer/**` file moves, so it costs **no container rebuild**.
+
+---
+
 ## 2026-08-06 — Fix: anchor Stage 7 evidence checks on the sealed gate
 
 **Goal:** Stop a sealed, green historical capture from being reported as fabrication the first time a later stage adds a CI job.

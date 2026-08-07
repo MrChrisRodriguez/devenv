@@ -14,6 +14,7 @@ import {
 	classifyPath,
 	compareDeclaredEdges,
 	importSpecifiers,
+	MOON_AFFECTED_ARGV,
 	MOON_QUERY_ARGV,
 	validateUniverseRegistry,
 } from "../graph-contract";
@@ -121,6 +122,24 @@ describe("moon project graph", () => {
 		// '--json' found", exit 2) because the whole `query` family emits JSON by
 		// definition. A guard that kept the flag would fail every run.
 		expect([...MOON_QUERY_ARGV]).toEqual(["query", "projects"]);
+	});
+
+	test("pins the verified moon affected-query invocation", () => {
+		// Verified against moon 2.3.5 in this repository's devcontainer, in a
+		// synthetic three-project workspace: `--affected` reads the changed-file
+		// list from stdin, `--downstream deep` adds the transitive dependents the
+		// committed selector computes itself, `--upstream` stays at its `none`
+		// default so moon is not wider than us by construction, and `--quiet` is a
+		// global option that silences logging without touching the JSON on stdout.
+		// `--json` is rejected here exactly as it is above.
+		expect([...MOON_AFFECTED_ARGV]).toEqual([
+			"query",
+			"projects",
+			"--affected",
+			"--downstream",
+			"deep",
+			"--quiet",
+		]);
 	});
 
 	test("derives a leaf project's edge from its manifest", async () => {
@@ -835,6 +854,18 @@ describe("graph contract mutations", () => {
 				".github/workflows/ci.yml",
 				"ci-matrix-universes.json",
 				"scripts/ci/run-tests.sh",
+				// The repository-root rule and changelog files. Each is asserted by
+				// the suite rather than merely read, so a change to one can break a
+				// check — and a selection that called them documentation would skip
+				// the suite guarding them.
+				"AGENTS.md",
+				"CHANGES.md",
+				"CLAUDE.md",
+				"GEMINI.md",
+				"README.md",
+				"README.template.md",
+				// Written as a relative path by `git diff` callers that prefix `./`.
+				"./AGENTS.md",
 			])
 				expect([path, classifyPath(path, projects)]).toEqual([
 					path,
@@ -842,9 +873,12 @@ describe("graph contract mutations", () => {
 				]);
 
 			// Documentation changes no build output — including under a directory
-			// the global list would otherwise claim, and inside a project.
+			// the global list would otherwise claim, and inside a project. The rule
+			// above is a list of six root files, not "Markdown is code": a README
+			// one directory down, a nested AGENTS.md, and a spec are all still docs.
 			for (const path of [
-				"README.md",
+				"docs/AGENTS.md",
+				"apps/web/AGENTS.md",
 				"docs/devcontainer-upgrade/stage-8a/README.md",
 				"openspec/specs/whatever.md",
 				".github/PULL_REQUEST_TEMPLATE.md",

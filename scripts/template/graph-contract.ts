@@ -14,6 +14,47 @@ import { resolve } from "node:path";
 // query, which is how a live oracle quietly becomes a no-op.
 export const MOON_QUERY_ARGV = ["query", "projects"] as const;
 
+// The moon subcommand that answers "which projects does this file list affect",
+// pinned for the same reason and verified the same way: against moon 2.3.5 in
+// this repository's own devcontainer, in a SYNTHETIC three-project workspace,
+// because the graph here is `{root}` alone and `--downstream` semantics are
+// unobservable over a single node.
+//
+// What the verification established, flag by flag:
+//
+//   * `--affected` takes the changed-file list on STDIN. With `apps/a/src/x.ts`
+//     piped in, moon reported exactly `a`; with `libs/c/src/x.ts` and
+//     `--downstream deep` it reported `c` AND its dependent `a`. That is the
+//     same question the committed selector answers by reverse-reachability, so
+//     it is the only argv the two answers can be compared on.
+//   * `--upstream` stays at its `none` default. The selector's closure is
+//     dependents-only; asking moon for dependencies as well would make its
+//     answer wider than ours BY CONSTRUCTION, and a permanent disagreement is
+//     a reconciliation that never reconciles.
+//   * `--quiet` is a GLOBAL option of `moon query` (`-q, --quiet`, `[env:
+//     MOON_QUIET=]`) and is accepted here. It hides moon's console logging
+//     without touching the JSON document on stdout — verified by diffing a run
+//     with it against a run without it.
+//   * `--json` does NOT exist. It exits 2 with "unexpected argument '--json'
+//     found", exactly as it does for `MOON_QUERY_ARGV` above.
+//
+// The hazard this constant cannot express, and which every caller must respect:
+// with EMPTY stdin `moon query projects --affected` does not report "nothing
+// affected", it falls back to WORKING-TREE detection. Verified both ways — an
+// empty pipe over a clean tree printed `{"projects": []}`, and the same empty
+// pipe with one uncommitted edit printed the project owning that edit. On a CI
+// runner the tree is clean, so an accidental empty pipe would return an empty
+// set with exit 0: a confident, silent "run nothing". Callers guard on the file
+// count and never invoke this with an empty list.
+export const MOON_AFFECTED_ARGV = [
+	"query",
+	"projects",
+	"--affected",
+	"--downstream",
+	"deep",
+	"--quiet",
+] as const;
+
 // Where the project graph is declared, and the authority every derived edge is
 // compared against.
 const WORKSPACE_CONFIG = ".moon/workspace.yml";
@@ -764,6 +805,32 @@ const GLOBAL_PATTERNS = [
 // Paths that change no build output at all.
 const DOCS_PATTERNS = ["docs/**", "**/*.md", "openspec/**"];
 
+// The repository-root Markdown files that are RULES, not documentation, and are
+// therefore global inputs despite matching `**/*.md`.
+//
+// Each one is asserted by the suite rather than merely read by a human, so a
+// change to it can break a check: `__tests__/template.test.ts` and
+// `ci-contract.ts` assert the CONTENT of AGENTS.md; the changelog gate reads
+// CHANGES.md; README.template.md is rendered into every project; CLAUDE.md and
+// GEMINI.md are the agent rule files a later stage checks directly. Classifying
+// them as documentation was harmless while `classifyPath` only described a
+// change — it becomes a hole the moment a selection consumes it, because a
+// "docs-only" pull request would then skip the very suite that guards these
+// files and land drift in them unopposed.
+//
+// `*.md` anywhere else — `docs/**`, `openspec/**`, a project's own README, a
+// pull-request template — is still documentation. The list is exactly the root
+// files the suite has an opinion about, and it is a list rather than a pattern
+// so that adding one is a deliberate, reviewable act.
+const GLOBAL_DOCUMENTS = [
+	"AGENTS.md",
+	"CHANGES.md",
+	"CLAUDE.md",
+	"GEMINI.md",
+	"README.md",
+	"README.template.md",
+];
+
 /**
  * Classify one repository-relative path.
  *
@@ -772,18 +839,21 @@ const DOCS_PATTERNS = ["docs/**", "**/*.md", "openspec/**"];
  * is a later stage, and building it on an unproven classifier is how a CI matrix
  * silently stops running the job that mattered.
  *
- * Order matters: documentation is checked first, because a Markdown file under
- * `.github/` or `scripts/` is still documentation; the global list is checked
- * next, because those paths sit inside the root project's source and would
- * otherwise be attributed to it; and anything left over falls to the deepest
- * project that contains it. A path that matches nothing is global, because the
- * conservative answer to "what does this affect" is "everything".
+ * Order matters: the root rule files are checked first, because each of them
+ * matches the Markdown glob and would otherwise read as documentation;
+ * documentation is checked next, because a Markdown file under `.github/` or `scripts/` is still
+ * documentation; the global list follows, because those paths sit inside the
+ * root project's source and would otherwise be attributed to it; and anything
+ * left over falls to the deepest project that contains it. A path that matches
+ * nothing is global, because the conservative answer to "what does this affect"
+ * is "everything".
  */
 export function classifyPath(
 	path: string,
 	projects: readonly GraphProject[],
 ): PathClassification {
 	const normalized = path.replace(/^\.\//, "");
+	if (GLOBAL_DOCUMENTS.includes(normalized)) return { scope: "global" };
 	if (DOCS_PATTERNS.some((pattern) => new Bun.Glob(pattern).match(normalized)))
 		return { scope: "docs" };
 	if (
