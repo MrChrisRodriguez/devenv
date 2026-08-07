@@ -4,6 +4,22 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-08-06 — Add: Moon project graph and its drift oracle
+
+**Goal:** Give this repository a project graph that is small, correct, and *checked*, so the affected-selection work that follows has something trustworthy to select against. Before this stage `.moon/workspace.yml` globbed `apps/*`, `libs/*` and `scripts/*`; `apps/` and `libs/` are empty skeletons, so the entire graph was the three tooling directories under `scripts/` — none of which is a package — plus a warning per loose file there ("Received a file path for a project root, must be a directory"). Meanwhile `vcs.defaultBranch` was unstated, which means moon's own default `master`: every "what changed" query would have silently diffed against a branch this repository does not have.
+
+**How to implement:**
+
+**The graph is anchored on a root project.** `.moon/workspace.yml` now declares `projects.globs: ['apps/*', 'libs/*']` and `projects.sources.root: '.'`, and a new root `moon.yml` gives that project `workspace.inheritedTasks.exclude: [lint, typecheck, test, build]`. The two halves are one decision. Dropping `scripts/*` removes projects that were never packages; adding the root keeps the graph from becoming *empty*, which matters more than it sounds: a query over an empty graph is trivially true, so a drift oracle over it would report "no drift" by having nothing to compare, in the template and in every freshly rendered project. The task exclusion is what makes a root project safe — those tasks are written for a package, and a project whose directory is the whole repository would run each of them over everything, so `moon run :lint` would lint the repo once for `root` and again for every real project inside it.
+
+`scripts/*` also leaves `package.json#workspaces.packages` in the same change, for the same reason: those directories have no `package.json`, so they were never workspace members. `bun.lock` records only the root workspace, so this edit is verifiably zero-churn — `bun install --frozen-lockfile` after it leaves the lock byte-identical, which is the check to run rather than to assume.
+
+`vcs.defaultBranch: 'main'` is stated explicitly. It is the same authority as `template-parameters.toml [project] default_branch`, and the graph contract asserts the two agree, so the value cannot drift away from the branch protection actually gates.
+
+**Why downstream cares:** Adopt `.moon/workspace.yml` and the root `moon.yml` together, and drop `scripts/*` from `package.json#workspaces` at the same time; re-run `bun install --frozen-lockfile` and confirm your lock is unchanged. If your `scripts/` directories really are packages (they have their own `package.json`), keep them in both lists — the point is that the two lists agree with reality, not that `scripts/` is forbidden. This is a configuration-only change: no `.devcontainer/**` file moves, so it costs **no container rebuild**.
+
+---
+
 ## 2026-08-06 — Add: CI bootstrap and workflow safety
 
 **Goal:** Make the CI surface itself contract-driven. Before this stage the workflows were the one part of the repository that nothing guarded: the Bun version was a literal typed into three places, `bun install` was a bare command that had no bound on a hang, third-party actions floated on mutable tags, and both `.github/workflows/ci.yml` and `.github/workflows/codex-cloud-smoke.yml` were free to drift from each other and from `.prototools`.

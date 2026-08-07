@@ -1,0 +1,23 @@
+$schema: 'https://moonrepo.dev/schemas/project.json'
+
+# The repository root, as a moon project.
+#
+# It exists so the project graph is never empty. apps/ and libs/ are empty
+# skeletons in the template and in every freshly rendered project, and a graph
+# with no nodes makes every query over it trivially true — a drift oracle would
+# then report "no drift" by having nothing to compare, forever.
+#
+# The inherited tasks in .moon/tasks.yml are excluded here, and that exclusion is
+# load-bearing rather than tidy. Those tasks are written for a package: `lint`
+# runs Biome over the project directory, `typecheck` over the project's own
+# tsconfig, `test` over the project's tests. Inherited by a project whose
+# directory is the whole repository, each of them would run over everything —
+# so `moon run :lint` would lint the repository once for the root project and
+# then again for every real project inside it.
+workspace:
+  inheritedTasks:
+    exclude:
+      - 'lint'
+      - 'typecheck'
+      - 'test'
+      - 'build'

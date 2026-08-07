@@ -44,11 +44,13 @@ Prefer Bun-native APIs over third-party equivalents:
 ```
 apps/      # deployable applications (Next.js, Elysia, Cloudflare Workers, etc.)
 libs/      # shared packages imported via @<project>/* path alias
-scripts/   # one-off tooling scripts
+scripts/   # tooling — neither workspace packages nor moon projects
 ```
 
 - Path alias: `@<project>/*` → `${configDir}/../../libs/*/src` from each consuming project config
 - Monorepo tasks (lint, typecheck, test, build) are defined in `.moon/tasks.yml` and run via `moon`
+- The moon project graph is `apps/*`, `libs/*`, and the repository root itself, whose project id is `root`. `scripts/` is deliberately outside both that graph and `package.json#workspaces`: those directories are tooling rather than packages, so a glob over them turned every one into a project inheriting tasks it cannot run.
+- The `root` project exists so the graph is never empty — `apps/` and `libs/` start empty, and a query over an empty graph is trivially true. Its `moon.yml` excludes the inherited tasks, because a project whose directory is the whole repository would otherwise run each of them over everything.
 
 ## Code Quality
 
