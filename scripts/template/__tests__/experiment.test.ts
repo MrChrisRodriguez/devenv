@@ -25,13 +25,19 @@ import {
 	APP_DIRECTORY,
 	APP_ID,
 	APP_PACKAGE,
+	activeRegistry,
 	activeWorkspace,
 	BIOME_PATH,
+	commitAll,
 	declaredExperiment,
 	experimentFiles,
 	experimentWorkspace,
 	FINDINGS_PATH,
+	generatedMoonConfig,
+	gitWorkspace,
 	IGNORE_PATH,
+	KEEPER_DIRECTORY,
+	keeperFiles,
 	MANIFEST_PATH,
 	MOON_WORKSPACE_PATH,
 	OWNERSHIP_PATH,
@@ -43,6 +49,7 @@ import {
 	TSCONFIG_PATH,
 	UNIVERSE_PATH,
 	WORKFLOW_PATH,
+	writeFiles,
 	writeRegistry,
 } from "./fixtures/experiment-workspaces";
 
@@ -1685,6 +1692,286 @@ describe("the structural refusal census", () => {
 			}
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("the removal lifecycle, end to end, over a real repository", () => {
+	test("a spike is created, deleted, and cleaned up one registration at a time", async () => {
+		// Both fixtures below run under a real `git init`, and that is not
+		// incidental. The retirement scan and the universe leg both go through the
+		// index, the index abstains when there is no repository, and an abstention
+		// reported as a clean result is the exact failure this program exists to
+		// refuse.
+		// Both directories are declared from the start, because an undeclared
+		// workspace directory is refused whatever else is true — which is the
+		// totality rule doing its job inside a fixture about something else.
+		const registry = activeRegistry({
+			experiments: [
+				declaredExperiment(),
+				declaredExperiment({ id: "keeper", directory: KEEPER_DIRECTORY }),
+			],
+		});
+		const root = await gitWorkspace({
+			registry,
+			files: {
+				...experimentFiles(),
+				[`${APP_DIRECTORY}/src/index.test.ts`]:
+					'import { expect, test } from "bun:test";\ntest("holds", () => expect(1).toBe(1));\n',
+				...keeperFiles(),
+			},
+			prefix: "devenv-experiment-removal-",
+		});
+		try {
+			// ── the spike exists and everything about it is declared ──────────
+			expect(await validateExperimentContract(root)).toEqual([]);
+			const created = deriveTreeState(root, registry);
+			expect(created.tracked).toBe(true);
+			expect(created.experimentDirectories).toEqual(
+				[KEEPER_DIRECTORY, APP_DIRECTORY].sort(),
+			);
+
+			// ── the registrations a real spike accumulates ────────────────────
+			const manifestPath = resolve(root, MANIFEST_PATH);
+			const manifest = (await Bun.file(manifestPath).json()) as {
+				devDependencies: Record<string, string>;
+			};
+			manifest.devDependencies[APP_PACKAGE] = "workspace:*";
+			await Bun.write(
+				manifestPath,
+				`${JSON.stringify(manifest, null, "\t")}\n`,
+			);
+			const universePath = resolve(root, UNIVERSE_PATH);
+			const universes = (await Bun.file(universePath).json()) as {
+				universes: Array<{ id: string; projects: string[] }>;
+			};
+			universes.universes[0]?.projects.push(APP_ID);
+			await Bun.write(
+				universePath,
+				`${JSON.stringify(universes, null, "\t")}\n`,
+			);
+			await writeFiles(root, {
+				...keeperFiles([APP_ID]),
+				[`${APP_DIRECTORY}/README.md`]: `# ${APP_ID}\n`,
+			});
+			await commitAll(root, "wire the spike into the workspace");
+			expect(await validateExperimentContract(root)).toEqual([]);
+
+			// ── the deletion, with nothing cleaned up ─────────────────────────
+			await rm(resolve(root, APP_DIRECTORY), { recursive: true, force: true });
+			const retiredRegistry = activeRegistry({
+				experiments: [
+					declaredExperiment({ id: "keeper", directory: KEEPER_DIRECTORY }),
+				],
+				retired: [retiredExperiment()],
+			});
+			await writeRegistry(root, retiredRegistry);
+			await commitAll(root, "delete the spike and retire the record");
+
+			const remaining = await validateExperimentContract(root);
+			// Every registration the removal forgot is named, one file at a time.
+			for (const expected of [
+				`experiment: ${MANIFEST_PATH} still names ${APP_PACKAGE}, which the retired record for ${APP_ID} declared as removed`,
+				`experiment: ${UNIVERSE_PATH} still names ${APP_ID}, which the retired record for ${APP_ID} declared as removed`,
+				`experiment: ${KEEPER_DIRECTORY}/moon.yml still names ${APP_ID}, which the retired record for ${APP_ID} declared as removed`,
+			])
+				expect(remaining).toContain(expected);
+			expect(remaining.length).toBeGreaterThanOrEqual(3);
+
+			// ── cleaned up one at a time, and each refusal disappears in turn ──
+			const cleanedManifest = (await Bun.file(manifestPath).json()) as {
+				devDependencies: Record<string, string>;
+			};
+			delete cleanedManifest.devDependencies[APP_PACKAGE];
+			await Bun.write(
+				manifestPath,
+				`${JSON.stringify(cleanedManifest, null, "\t")}\n`,
+			);
+			await commitAll(root, "drop the workspace dependency");
+			let errors = await validateExperimentContract(root);
+			expect(errors).not.toContain(
+				`experiment: ${MANIFEST_PATH} still names ${APP_PACKAGE}, which the retired record for ${APP_ID} declared as removed`,
+			);
+			expect(errors).toContain(
+				`experiment: ${UNIVERSE_PATH} still names ${APP_ID}, which the retired record for ${APP_ID} declared as removed`,
+			);
+
+			const cleanedUniverses = (await Bun.file(universePath).json()) as {
+				universes: Array<{ id: string; projects: string[] }>;
+			};
+			const first = cleanedUniverses.universes[0];
+			if (first)
+				first.projects = first.projects.filter((entry) => entry !== APP_ID);
+			await Bun.write(
+				universePath,
+				`${JSON.stringify(cleanedUniverses, null, "\t")}\n`,
+			);
+			await commitAll(root, "drop the universe entry");
+			errors = await validateExperimentContract(root);
+			expect(errors).not.toContain(
+				`experiment: ${UNIVERSE_PATH} still names ${APP_ID}, which the retired record for ${APP_ID} declared as removed`,
+			);
+			expect(errors).toContain(
+				`experiment: ${KEEPER_DIRECTORY}/moon.yml still names ${APP_ID}, which the retired record for ${APP_ID} declared as removed`,
+			);
+
+			await writeFiles(root, keeperFiles());
+			await commitAll(root, "regenerate the keeper's dependency block");
+
+			// ── fully cleaned: green, with the record and its findings intact ──
+			expect(await validateExperimentContract(root)).toEqual([]);
+			const { registry: finalRegistry } = await readExperimentRegistry(root);
+			expect(finalRegistry?.retired.length).toBe(1);
+			expect(finalRegistry?.retired[0]?.findings).toBe(FINDINGS_PATH);
+			expect(await Bun.file(resolve(root, FINDINGS_PATH)).exists()).toBe(true);
+			// The record is what proves the removal happened. Deleting it deletes
+			// the proof, so the guard has to still be looking.
+			const withoutRecord = activeRegistry({
+				experiments: [
+					declaredExperiment({ id: "keeper", directory: KEEPER_DIRECTORY }),
+				],
+				retired: [],
+			});
+			const before = await Bun.file(resolve(root, REGISTRY_PATH)).text();
+			await writeRegistry(root, withoutRecord);
+			const { notices } = await inspectExperimentContract(root);
+			expect(
+				notices.some((notice) =>
+					notice.includes("the retirement scan covered"),
+				),
+			).toBe(false);
+			await Bun.write(resolve(root, REGISTRY_PATH), before);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("an abstention is reported rather than swallowed, and the fallback still scans", async () => {
+		const root = await experimentWorkspace({
+			registry: { ...SKELETON, retired: [retiredExperiment()] },
+			prefix: "devenv-experiment-abstain-",
+		});
+		try {
+			const state = deriveTreeState(root);
+			expect(state.tracked).toBe(false);
+			const { errors, notices } = await inspectExperimentContract(root);
+			expect(errors).toEqual([]);
+			expect(
+				notices.some((notice) =>
+					notice.includes(
+						"is not a Git repository, so the enumeration fell back to a directory walk",
+					),
+				),
+			).toBe(true);
+			// And the fallback is a real scan rather than a skip wearing a notice:
+			// a leftover planted here is still found.
+			await withFile(
+				root,
+				"tools/leftover.json",
+				`{ "name": "${APP_PACKAGE}" }\n`,
+				`experiment: tools/leftover.json still names ${APP_PACKAGE}, which the retired record for ${APP_ID} declared as removed`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("the promotion lifecycle, end to end, over a real repository", () => {
+	test("a spike is created disposable, promoted, and completed one artefact at a time", async () => {
+		const root = await gitWorkspace({
+			registry: activeRegistry(),
+			files: experimentFiles(),
+			prefix: "devenv-experiment-promotion-",
+		});
+		try {
+			// ── disposable and complete ───────────────────────────────────────
+			expect(await validateExperimentContract(root)).toEqual([]);
+			expect(deriveTreeState(root).tracked).toBe(true);
+
+			// ── flipped to promoted, with nothing a promotion adds ────────────
+			const promotion = {
+				ownershipRule: "apps/**",
+				universeId: "ci",
+				testGlob: "**/*.test.ts",
+				documentation: "docs/spike-alpha.md",
+			};
+			await writeRegistry(
+				root,
+				activeRegistry({
+					experiments: [declaredExperiment({ status: "promoted", promotion })],
+				}),
+			);
+			await rm(resolve(root, `${APP_DIRECTORY}/moon.yml`));
+			await commitAll(root, "promote the spike, before doing the work");
+			const missing = await validateExperimentContract(root);
+			expect(missing).toContain(
+				`experiment: ${APP_ID} has no ${APP_DIRECTORY}/moon.yml; run graph:generate so the project joins the graph`,
+			);
+			expect(missing).toContain(
+				`experiment: ${APP_ID} declares the CI universe ci, which does not list the project ${APP_ID}`,
+			);
+			expect(missing).toContain(
+				`experiment: ${APP_ID} is promoted and no file under ${APP_DIRECTORY} matches **/*.test.ts; the CI test wrapper absorbs an empty match by design, so nothing else would ever say so`,
+			);
+			expect(missing).toContain(
+				`experiment: ${APP_ID} documents itself at docs/spike-alpha.md, which does not exist`,
+			);
+
+			// ── each artefact added, and each refusal disappears in turn ──────
+			await writeFiles(root, {
+				[`${APP_DIRECTORY}/moon.yml`]: generatedMoonConfig(),
+			});
+			await commitAll(root, "add the graph entry");
+			let errors = await validateExperimentContract(root);
+			expect(errors).not.toContain(
+				`experiment: ${APP_ID} has no ${APP_DIRECTORY}/moon.yml; run graph:generate so the project joins the graph`,
+			);
+
+			const universePath = resolve(root, UNIVERSE_PATH);
+			const universes = (await Bun.file(universePath).json()) as {
+				universes: Array<{ id: string; projects: string[] }>;
+			};
+			universes.universes[0]?.projects.push(APP_ID);
+			await Bun.write(
+				universePath,
+				`${JSON.stringify(universes, null, "\t")}\n`,
+			);
+			await commitAll(root, "join a CI universe");
+			errors = await validateExperimentContract(root);
+			expect(errors).not.toContain(
+				`experiment: ${APP_ID} declares the CI universe ci, which does not list the project ${APP_ID}`,
+			);
+
+			await writeFiles(root, {
+				[`${APP_DIRECTORY}/src/index.test.ts`]:
+					'import { expect, test } from "bun:test";\ntest("holds", () => expect(1).toBe(1));\n',
+			});
+			await commitAll(root, "add a test inside the directory");
+			errors = await validateExperimentContract(root);
+			expect(
+				errors.some((error) => error.includes("matches **/*.test.ts")),
+			).toBe(false);
+			expect(errors).toContain(
+				`experiment: ${APP_ID} documents itself at docs/spike-alpha.md, which does not exist`,
+			);
+
+			await writeFiles(root, {
+				"docs/spike-alpha.md": "# spike-alpha\n\nWhy this became a project.\n",
+			});
+			await commitAll(root, "document the promotion");
+
+			// ── complete ──────────────────────────────────────────────────────
+			expect(await validateExperimentContract(root)).toEqual([]);
+			const { registry: promoted } = await readExperimentRegistry(root);
+			expect(promoted?.experiments[0]?.status).toBe("promoted");
+			expect(promoted?.experiments[0]?.promotion).toEqual(promotion);
+			const { notices } = await inspectExperimentContract(root);
+			expect(
+				notices.some((notice) => notice.includes("belongs to no universe")),
+			).toBe(false);
+		} finally {
+			await rm(root, { recursive: true, force: true });
 		}
 	});
 });

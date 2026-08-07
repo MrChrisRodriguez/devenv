@@ -242,3 +242,76 @@ export function generatedMoonConfig(dependsOn: readonly string[] = []): string {
 	lines.push("# graph:generated:end", "");
 	return lines.join("\n");
 }
+
+/**
+ * A command run to completion, asynchronously, with its failure surfaced.
+ *
+ * The removal and promotion fixtures below are the only ones in this file that
+ * need a subprocess, and they need it for a reason the rest do not: the
+ * retirement scan and the universe leg both ask the Git index a question, the
+ * index abstains when there is no repository, and an abstention is not a pass.
+ */
+export async function run(root: string, argv: string[]): Promise<void> {
+	const child = Bun.spawn(argv, { cwd: root, stdout: "pipe", stderr: "pipe" });
+	const [stderr, code] = await Promise.all([
+		new Response(child.stderr).text(),
+		child.exited,
+	]);
+	if (code !== 0)
+		throw new Error(`${argv.join(" ")} exited ${code}: ${stderr.trim()}`);
+}
+
+/** Stage everything and commit it, so `git ls-files` reflects the tree. */
+export async function commitAll(root: string, message: string): Promise<void> {
+	await run(root, ["git", "add", "-A"]);
+	await run(root, [
+		"git",
+		"-c",
+		"user.email=fixture@example.invalid",
+		"-c",
+		"user.name=Experiment Fixture",
+		"commit",
+		"--quiet",
+		"--no-verify",
+		"-m",
+		message,
+	]);
+}
+
+/**
+ * A synthetic workspace that is a real repository.
+ *
+ * Every rule that reaches for Git in a non-repository tree abstains with a
+ * notice rather than reporting a clean result it never established, so an
+ * end-to-end lifecycle proof has to run somewhere the index actually answers.
+ */
+export async function gitWorkspace(options?: {
+	registry?: ExperimentRegistry;
+	files?: Record<string, string>;
+	prefix?: string;
+}): Promise<string> {
+	const root = await experimentWorkspace({
+		...options,
+		prefix: options?.prefix ?? "devenv-experiment-git-",
+	});
+	await run(root, ["git", "init", "--quiet", "--initial-branch=main"]);
+	await commitAll(root, "the tree before the experiment");
+	return root;
+}
+
+/** A second project, so a leftover cross-project dependency has somewhere to be. */
+export const KEEPER_DIRECTORY = "apps/keeper";
+
+export function keeperFiles(
+	dependsOn: readonly string[] = [],
+): Record<string, string> {
+	return {
+		[`${KEEPER_DIRECTORY}/package.json`]: `${JSON.stringify(
+			{ name: "@devenv/keeper", private: true, version: "0.0.0" },
+			null,
+			"\t",
+		)}\n`,
+		[`${KEEPER_DIRECTORY}/moon.yml`]: generatedMoonConfig(dependsOn),
+		[`${KEEPER_DIRECTORY}/src/index.ts`]: "export const kept = true;\n",
+	};
+}
