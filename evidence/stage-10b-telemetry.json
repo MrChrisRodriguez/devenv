@@ -1,0 +1,638 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-10b-telemetry",
+	"capturedAt": "2026-08-07T10:26:47.959Z",
+	"run": {
+		"id": "stage10b-20260807t102626z-75d5ebcf",
+		"logRoot": "evidence/stage-10b-telemetry-run"
+	},
+	"source": {
+		"baseSha": "cdc90904b14f697ce2cc6eca2a6057b4512a4c93",
+		"implementationSha": "75d5ebcfe854fa4a2975efdc20086d3429663ff0",
+		"treeClean": true,
+		"declaredMode": "skeleton",
+		"reservedTelemetryRoot": "libs/observability",
+		"typescriptCatalogPin": "5.9.3"
+	},
+	"host": {
+		"os": "darwin",
+		"architecture": "arm64",
+		"kernel": "25.5.0",
+		"insideDevcontainer": false,
+		"bunVersion": "1.3.13",
+		"gitVersion": "2.50.1",
+		"ghVersion": "2.59.0",
+		"redactedEnvironmentKeys": []
+	},
+	"repository": {
+		"nameWithOwner": "MrChrisRodriguez/devenv",
+		"workflowFile": ".github/workflows/ci.yml",
+		"gateJobId": "ci-gate",
+		"gateContext": "CI gate",
+		"gateNeeds": [
+			"ci",
+			"image",
+			"affected",
+			"project",
+			"moon-graph",
+			"browser"
+		],
+		"telemetryGuardScript": "telemetry:check",
+		"ciGuardScript": "ci:check",
+		"openspecGuardScript": "openspec:check",
+		"registryFile": "external-writes.json",
+		"capability": "sentry",
+		"addedJobs": 0,
+		"workflowSecretReferences": 0
+	},
+	"commands": [
+		{
+			"id": "telemetry-guard",
+			"command": ["bun", "run", "telemetry:check"],
+			"runId": "stage10b-20260807t102626z-75d5ebcf",
+			"startedAt": "2026-08-07T10:26:26.480Z",
+			"completedAt": "2026-08-07T10:26:27.065Z",
+			"durationMs": 585,
+			"stdoutPath": "evidence/stage-10b-telemetry-run/telemetry-guard.stdout",
+			"stderrPath": "evidence/stage-10b-telemetry-run/telemetry-guard.stderr",
+			"stdoutSha256": "bcba6ab855fe63898ca148605540a15fc09a3e619808866c145b435d368f5ef4",
+			"stderrSha256": "bac20adb64f4a5df33e63d76185657709615a1058b00084f9dec380c450dd817",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "ci-guard",
+			"command": ["bun", "run", "ci:check"],
+			"runId": "stage10b-20260807t102626z-75d5ebcf",
+			"startedAt": "2026-08-07T10:26:27.068Z",
+			"completedAt": "2026-08-07T10:26:27.130Z",
+			"durationMs": 62,
+			"stdoutPath": "evidence/stage-10b-telemetry-run/ci-guard.stdout",
+			"stderrPath": "evidence/stage-10b-telemetry-run/ci-guard.stderr",
+			"stdoutSha256": "9cfe650e97435463f535e1a81f5b30b1ab521cfb458af04688f901be57a294f9",
+			"stderrSha256": "d183538a63c244d8ba196aa5a8eb1eb4cfc636414a9ba546e4cfb9b3537e4088",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "openspec-guard",
+			"command": ["bun", "run", "openspec:check"],
+			"runId": "stage10b-20260807t102626z-75d5ebcf",
+			"startedAt": "2026-08-07T10:26:27.130Z",
+			"completedAt": "2026-08-07T10:26:27.569Z",
+			"durationMs": 439,
+			"stdoutPath": "evidence/stage-10b-telemetry-run/openspec-guard.stdout",
+			"stderrPath": "evidence/stage-10b-telemetry-run/openspec-guard.stderr",
+			"stdoutSha256": "e55f644c12bfb940b5562226a7838a2afb637df7a4f3d35bcae721a6e94ebdca",
+			"stderrSha256": "dc2c9a83def8b7f64a38d1f5b1ea3cf5e0f4f2695a054e1a20d972ea5d4dd827",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "telemetry-mutations",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/telemetry.test.ts"
+			],
+			"runId": "stage10b-20260807t102626z-75d5ebcf",
+			"startedAt": "2026-08-07T10:26:27.570Z",
+			"completedAt": "2026-08-07T10:26:33.918Z",
+			"durationMs": 6348,
+			"stdoutPath": "evidence/stage-10b-telemetry-run/telemetry-mutations.stdout",
+			"stderrPath": "evidence/stage-10b-telemetry-run/telemetry-mutations.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "042fadd8bd1b3e28a5930964e654c97fd1d18ee4d8a907f21b8ca6f293613fb6",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "surface-confinement",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/telemetry.test.ts",
+				"-t",
+				"telemetry SDK confinement"
+			],
+			"runId": "stage10b-20260807t102626z-75d5ebcf",
+			"startedAt": "2026-08-07T10:26:33.918Z",
+			"completedAt": "2026-08-07T10:26:34.673Z",
+			"durationMs": 755,
+			"stdoutPath": "evidence/stage-10b-telemetry-run/surface-confinement.stdout",
+			"stderrPath": "evidence/stage-10b-telemetry-run/surface-confinement.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "68b5fa8106eb3fa58e4161d61149bcc8a8fefa6f564d690f04ae3b0c3ad7ba1c",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "truth-table",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/telemetry.test.ts",
+				"-t",
+				"the upload truth table"
+			],
+			"runId": "stage10b-20260807t102626z-75d5ebcf",
+			"startedAt": "2026-08-07T10:26:34.673Z",
+			"completedAt": "2026-08-07T10:26:35.534Z",
+			"durationMs": 861,
+			"stdoutPath": "evidence/stage-10b-telemetry-run/truth-table.stdout",
+			"stderrPath": "evidence/stage-10b-telemetry-run/truth-table.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "48a9d02932f2875fd6358b60b17518dcf538b3ab5ac451bbdc6bc29f28f02780",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "scrub-policy",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/telemetry.test.ts",
+				"-t",
+				"scrubbing policy"
+			],
+			"runId": "stage10b-20260807t102626z-75d5ebcf",
+			"startedAt": "2026-08-07T10:26:35.534Z",
+			"completedAt": "2026-08-07T10:26:36.289Z",
+			"durationMs": 755,
+			"stdoutPath": "evidence/stage-10b-telemetry-run/scrub-policy.stdout",
+			"stderrPath": "evidence/stage-10b-telemetry-run/scrub-policy.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "136414e64ce28b37902cbdf9f26fde44b6d3be920e4d5d6b7d44ee3185351945",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "credential-literals",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/telemetry.test.ts",
+				"-t",
+				"credential literals"
+			],
+			"runId": "stage10b-20260807t102626z-75d5ebcf",
+			"startedAt": "2026-08-07T10:26:36.289Z",
+			"completedAt": "2026-08-07T10:26:36.783Z",
+			"durationMs": 494,
+			"stdoutPath": "evidence/stage-10b-telemetry-run/credential-literals.stdout",
+			"stderrPath": "evidence/stage-10b-telemetry-run/credential-literals.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "d387e75c29afdfd7c3e47299b971cb48e8e79eacb26240a9931eec9ce4d62a3c",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "allowlist-matrix",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/telemetry.test.ts",
+				"-t",
+				"the host allowlist"
+			],
+			"runId": "stage10b-20260807t102626z-75d5ebcf",
+			"startedAt": "2026-08-07T10:26:36.784Z",
+			"completedAt": "2026-08-07T10:26:36.804Z",
+			"durationMs": 20,
+			"stdoutPath": "evidence/stage-10b-telemetry-run/allowlist-matrix.stdout",
+			"stderrPath": "evidence/stage-10b-telemetry-run/allowlist-matrix.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "c9273942421ed73585aee8f2da61bf8d74192f76752332014c2e3ecf55906e8d",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "outage-and-final-state",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/telemetry.test.ts",
+				"-t",
+				"truth table, executed"
+			],
+			"runId": "stage10b-20260807t102626z-75d5ebcf",
+			"startedAt": "2026-08-07T10:26:36.805Z",
+			"completedAt": "2026-08-07T10:26:36.980Z",
+			"durationMs": 175,
+			"stdoutPath": "evidence/stage-10b-telemetry-run/outage-and-final-state.stdout",
+			"stderrPath": "evidence/stage-10b-telemetry-run/outage-and-final-state.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "19244e7acbf9db173868197100b5cf5ce2dfef23b82828930ca7d46272204998",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "workflow-secret-rules",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/ci.test.ts",
+				"-t",
+				"known-bad ci mutations"
+			],
+			"runId": "stage10b-20260807t102626z-75d5ebcf",
+			"startedAt": "2026-08-07T10:26:36.981Z",
+			"completedAt": "2026-08-07T10:26:40.247Z",
+			"durationMs": 3266,
+			"stdoutPath": "evidence/stage-10b-telemetry-run/workflow-secret-rules.stdout",
+			"stderrPath": "evidence/stage-10b-telemetry-run/workflow-secret-rules.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "4ee66afe4d6a0b991f88273b2f86bad2906d597ee678990efdd64d7594dff407",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "archive-readback",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/openspec.test.ts",
+				"-t",
+				"readback"
+			],
+			"runId": "stage10b-20260807t102626z-75d5ebcf",
+			"startedAt": "2026-08-07T10:26:40.248Z",
+			"completedAt": "2026-08-07T10:26:41.153Z",
+			"durationMs": 905,
+			"stdoutPath": "evidence/stage-10b-telemetry-run/archive-readback.stdout",
+			"stderrPath": "evidence/stage-10b-telemetry-run/archive-readback.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "417f7802dca878bccb259b3a5d597e90faa96e4973e7e9434fdb4f15195b0e1c",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rendered-telemetry",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-ten-b-evidence.ts",
+				"probe-render-telemetry",
+				"--workspace",
+				"/tmp/devenv-stage10b-20260807t102626z-75d5ebcf-render"
+			],
+			"runId": "stage10b-20260807t102626z-75d5ebcf",
+			"startedAt": "2026-08-07T10:26:41.153Z",
+			"completedAt": "2026-08-07T10:26:41.969Z",
+			"durationMs": 816,
+			"stdoutPath": "evidence/stage-10b-telemetry-run/rendered-telemetry.stdout",
+			"stderrPath": "evidence/stage-10b-telemetry-run/rendered-telemetry.stderr",
+			"stdoutSha256": "9e20161041cea7884233745baa8f732ceef487f5baaad0a7111057f1765495b9",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-gate",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nrun=\"$(gh run view 31169829476 --repo MrChrisRodriguez/devenv --json conclusion,createdAt,databaseId,event,headBranch,headSha,jobs,status,url,workflowName)\"\nprintf 'runJson=%s\\n' \"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\ngate=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; jobs=[job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]]; print(jobs[0] if jobs else \"\")' \"CI gate\")\"\nprintf 'gateJobId=%s\\n' \"$gate\"\nlog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$gate\" --log)\"\nprintf 'gateLogSha256=%s\\n' \"$(printf '%s' \"$log\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'upstreamResults=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*upstream results: //p' | head -n 1)\"\nprintf 'gateGreenLines=%s\\n' \"$(printf '%s\\n' \"$log\" | grep -c 'Every required job passed or was skipped' || true)\""
+			],
+			"runId": "stage10b-20260807t102626z-75d5ebcf",
+			"startedAt": "2026-08-07T10:26:41.969Z",
+			"completedAt": "2026-08-07T10:26:47.164Z",
+			"durationMs": 5195,
+			"stdoutPath": "evidence/stage-10b-telemetry-run/live-gate.stdout",
+			"stderrPath": "evidence/stage-10b-telemetry-run/live-gate.stderr",
+			"stdoutSha256": "eff42df60f8025b3ee3ceb17721eb7e1ba070bc3e6b8320b2f08ae2a6bfc3162",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rollback-proof",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-ten-b-evidence.ts",
+				"probe-rollback",
+				"--base",
+				"cdc90904b14f697ce2cc6eca2a6057b4512a4c93",
+				"--implementation",
+				"75d5ebcfe854fa4a2975efdc20086d3429663ff0",
+				"--workspace",
+				"/tmp/devenv-stage2-stage10b-20260807t102626z-75d5ebcf-rollback"
+			],
+			"runId": "stage10b-20260807t102626z-75d5ebcf",
+			"startedAt": "2026-08-07T10:26:47.164Z",
+			"completedAt": "2026-08-07T10:26:47.958Z",
+			"durationMs": 794,
+			"stdoutPath": "evidence/stage-10b-telemetry-run/rollback-proof.stdout",
+			"stderrPath": "evidence/stage-10b-telemetry-run/rollback-proof.stderr",
+			"stdoutSha256": "81da440c1de5a996cdc4bb46627484a4a211b4850f082b65cf3a7cc9081768c6",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		}
+	],
+	"guards": {
+		"telemetry": {
+			"commandId": "telemetry-guard",
+			"command": "bun run telemetry:check",
+			"summary": "Validated the external write registry, its declared mode against the tree, guard wiring, template ownership, every delegated write authority, telemetry SDK confinement, the upload truth table, every declared write's intent, credentials and verifier, the absence of committed credential literals, the scrubbing policy, and the host allowlist."
+		},
+		"ci": {
+			"commandId": "ci-guard",
+			"command": "bun run ci:check",
+			"summary": "Validated workflow trigger policy, bootstrap ownership, action pins, job bounds, failure tolerance, aggregate gate membership, shell injection surface, history ownership, compiler coverage, and guard wiring."
+		},
+		"openspec": {
+			"commandId": "openspec-guard",
+			"command": "bun run openspec:check",
+			"summary": "Validated 1 OpenSpec item(s) across 1 root(s) with the pinned repository-local CLI."
+		}
+	},
+	"suites": [
+		{
+			"commandId": "telemetry-mutations",
+			"testFile": "scripts/template/__tests__/telemetry.test.ts",
+			"passCount": 26,
+			"failCount": 0
+		},
+		{
+			"commandId": "surface-confinement",
+			"testFile": "scripts/template/__tests__/telemetry.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "truth-table",
+			"testFile": "scripts/template/__tests__/telemetry.test.ts",
+			"passCount": 3,
+			"failCount": 0
+		},
+		{
+			"commandId": "scrub-policy",
+			"testFile": "scripts/template/__tests__/telemetry.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "credential-literals",
+			"testFile": "scripts/template/__tests__/telemetry.test.ts",
+			"passCount": 2,
+			"failCount": 0
+		},
+		{
+			"commandId": "allowlist-matrix",
+			"testFile": "scripts/template/__tests__/telemetry.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "outage-and-final-state",
+			"testFile": "scripts/template/__tests__/telemetry.test.ts",
+			"passCount": 5,
+			"failCount": 0
+		},
+		{
+			"commandId": "workflow-secret-rules",
+			"testFile": "scripts/template/__tests__/ci.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "archive-readback",
+			"testFile": "scripts/template/__tests__/openspec.test.ts",
+			"passCount": 7,
+			"failCount": 0
+		}
+	],
+	"renderFixtures": {
+		"commandId": "rendered-telemetry",
+		"fixtures": [
+			{
+				"name": "minimal",
+				"capabilityEnabled": false,
+				"gatedPaths": [],
+				"packageScripts": ["ci:check", "openspec:check"],
+				"telemetryStepPresent": false,
+				"guardPresent": false,
+				"telemetryTokenFiles": 0,
+				"telemetryErrors": [],
+				"reservedRootFiles": 0,
+				"workflowGuardPresent": true,
+				"residueFindings": []
+			},
+			{
+				"name": "cloud",
+				"capabilityEnabled": false,
+				"gatedPaths": [],
+				"packageScripts": ["ci:check"],
+				"telemetryStepPresent": false,
+				"guardPresent": false,
+				"telemetryTokenFiles": 0,
+				"telemetryErrors": [],
+				"reservedRootFiles": 0,
+				"workflowGuardPresent": true,
+				"residueFindings": []
+			},
+			{
+				"name": "full",
+				"capabilityEnabled": true,
+				"gatedPaths": [
+					"external-writes.json",
+					"external-writes.schema.json",
+					"scripts/template/telemetry-contract.ts",
+					"scripts/template/validate-telemetry.ts"
+				],
+				"packageScripts": ["ci:check", "openspec:check", "telemetry:check"],
+				"telemetryStepPresent": true,
+				"guardPresent": true,
+				"telemetryTokenFiles": 4,
+				"telemetryErrors": [],
+				"reservedRootFiles": 0,
+				"workflowGuardPresent": true,
+				"residueFindings": []
+			}
+		]
+	},
+	"live": {
+		"live-gate": {
+			"commandId": "live-gate",
+			"heavyLaneRan": true,
+			"run": {
+				"runId": 31169829476,
+				"url": "https://github.com/MrChrisRodriguez/devenv/actions/runs/31169829476",
+				"event": "pull_request",
+				"headBranch": "feat/stage-10b-external-writes",
+				"headSha": "75d5ebcfe854fa4a2975efdc20086d3429663ff0",
+				"conclusion": "success",
+				"gateJobId": 92839562380,
+				"gateConclusion": "success",
+				"gateLogSha256": "53b9d1d5757eaacf06cdde5285dd910549a96e975eafc91277e549091fcf9a61",
+				"upstreamResults": "success,success,success,success,success,success",
+				"jobs": [
+					{
+						"name": "Build devcontainer image",
+						"conclusion": "success"
+					},
+					{
+						"name": "Contracts & Baseline",
+						"conclusion": "success"
+					},
+					{
+						"name": "Select affected projects",
+						"conclusion": "success"
+					},
+					{
+						"name": "Launch baked browser payload",
+						"conclusion": "success"
+					},
+					{
+						"name": "Verify Moon project graph",
+						"conclusion": "success"
+					},
+					{
+						"name": "Lint, Typecheck & Test (root)",
+						"conclusion": "success"
+					}
+				]
+			}
+		}
+	},
+	"coverage": [
+		{
+			"id": "declared-surface",
+			"task": "14.2 require explicit intent plus credentials for every generated external write",
+			"reason": "The input is a committed declaration rather than a query over an empty tree, and its declared mode is reconciled with the derived state in both directions before any leg runs: a tree that grows a reserved-root file, an SDK import, an initializer call or an undeclared write shape while the registry still says skeleton fails by name, and a registry that declares a surface the tree does not carry fails too.",
+			"commandIds": ["telemetry-guard", "telemetry-mutations"]
+		},
+		{
+			"id": "intent-and-credentials",
+			"task": "14.1 quiet-none, warn/disabled-partial, and enabled-both release/token semantics",
+			"reason": "The truth table is asserted statically as an AST projection — something must read both halves, no use of the credential may sit in a branch the intent does not dominate, the partial state must warn from a branch that reads both — and then executed against a loopback recorder in all four states, observing zero requests until both halves are set.",
+			"commandIds": ["truth-table", "outage-and-final-state"]
+		},
+		{
+			"id": "surface-confinement",
+			"task": "14.1 capability-gated centralized Sentry configuration",
+			"reason": "Centralized means an allowlist derived from the registry rather than a list of the call sites somebody already found: the SDK import, the initializer and the structured-logger and metrics namespaces are legal only inside a declared configuration module, and the user binding is refused everywhere because its whole purpose is to attach an identity to a report that leaves the building.",
+			"commandIds": ["surface-confinement", "telemetry-guard"]
+		},
+		{
+			"id": "credential-hygiene",
+			"task": "14.1 centralized configuration and 14.4 secrets registry",
+			"reason": "No credential is a committed literal, and the scan is proved by planting one and removing it in a finally; the declared scrubber imports no SDK so both tiers can share it, every configuration module binds a beforeSend hook and pins sendDefaultPii false, and the non-secrecy rule runs in both directions because the ingest DSN is public and the upload token is not.",
+			"commandIds": ["credential-literals", "scrub-policy"]
+		},
+		{
+			"id": "host-allowlist",
+			"task": "14.3 allowlist tests",
+			"reason": "Exact origins with no wildcard, no path, no query and no fragment, every write's hosts a subset of the declared union, and a declared tunnel a same-origin path; the executed matrix then shows a non-allowlisted host refused before any socket opens, with the recorder's request count as the proof rather than the response.",
+			"commandIds": ["allowlist-matrix", "outage-and-final-state"]
+		},
+		{
+			"id": "workflow-credentials",
+			"task": "14.2 explicit intent plus credentials on every deployment path",
+			"reason": "Four core rules that must hold in every render and therefore name no capability token: no credential interpolated into a shell body, none in a workflow-level or job-level env block, an if: required on any step that receives one, and no pull_request_target trigger at all because it runs with the base repository's secrets against a head a fork controls.",
+			"commandIds": ["ci-guard", "workflow-secret-rules"]
+		},
+		{
+			"id": "final-state-readback",
+			"task": "14.2 query/assert the final remote state after intentional writes",
+			"reason": "The one remote write this repository performs now reads the remote back with git ls-remote after pushing and refuses on a mismatch with its own exit code; the ordering, the binding and the single-assignment rules are guarded, a post-receive hook proves the refusal live, and the executed verifier shows a wrong final state reported as UNVERIFIED.",
+			"commandIds": [
+				"openspec-guard",
+				"archive-readback",
+				"outage-and-final-state"
+			]
+		},
+		{
+			"id": "outage-tolerance",
+			"task": "14.3 outage tests",
+			"reason": "A stopped recorder is what an outage looks like from the caller's side, and the upload warns and exits zero rather than failing the build: telemetry that could redden a deploy would be the tail wagging the dog, and the same reasoning is why the reference silences its own upload plugin's error handler.",
+			"commandIds": ["outage-and-final-state", "telemetry-mutations"]
+		},
+		{
+			"id": "capability-isolation",
+			"task": "14.4 validate generated enabled/disabled fixtures",
+			"reason": "Each fixture is rendered and inspected for the four gated paths, the package script and the fenced step, every project file of every render is swept for both signature tokens, the reserved configuration root is shown empty in all three, and the core workflow credential rules are shown to have reached the renders that disabled the capability.",
+			"commandIds": ["rendered-telemetry", "live-gate"]
+		},
+		{
+			"id": "rollback",
+			"task": "14.4 record rollback and evidence",
+			"reason": "A synthetic merge followed by git revert -m 1 produces a tree identical to the Stage 10A predecessor, and that tree is shown to carry none of the four paths this stage adds while the implementation tree carries all of them; nothing about this stage lives outside the tree.",
+			"commandIds": ["rollback-proof"]
+		}
+	],
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-10b-pr-merge-commit>"],
+		"outsideTheTree": [],
+		"containerRebuildRequired": true,
+		"scope": "Revert the external write registry and its schema, the telemetry guard and its entrypoint, the four core credential rules in the workflow contract, the readback in the OpenSpec archive wrapper and its ordering rule in the lifecycle guard, the telemetry:check package script, the one fenced step in the required lane, the ownership wiring, the fenced secrets.example and AGENTS.md blocks, the documentation, and this record as one Stage 10B bundle. Nothing about this stage lives outside the tree: there is no repository variable, no branch-protection change and no operator step, so the revert is order-independent — unlike Stage 7, whose recorded outsideTheTree list was also empty but whose branch-protection change made its rollback order-dependent in fact. Adopting or reverting it costs exactly one container rebuild, in both directions: the fenced block in .devcontainer/secrets.example is a comment-only change to a file the image never reads, but scripts/worktree/contract.toml names the whole .devcontainer directory as a definition fingerprint input and the Dockerfile bakes that directory in as a definition stamp, so the stamp layer is invalidated either way. Run bash scripts/worktree/up.sh once after adopting and once after reverting. libs/observability stays reserved and empty either way, and .codex/cloud/contract.toml is untouched in both directions.",
+		"proof": {
+			"commandId": "rollback-proof",
+			"predecessorSha": "cdc90904b14f697ce2cc6eca2a6057b4512a4c93",
+			"implementationSha": "75d5ebcfe854fa4a2975efdc20086d3429663ff0",
+			"syntheticMergeSha": "003ccb079e888711194bfba134391564c54d8aad",
+			"syntheticMergeTree": "772352c76f6bbce7de245a00174948f70c2fa52c",
+			"syntheticMergeParents": [
+				"cdc90904b14f697ce2cc6eca2a6057b4512a4c93",
+				"75d5ebcfe854fa4a2975efdc20086d3429663ff0"
+			],
+			"predecessorTree": "717471b3266ef7c9b66d076893b147a539c27a55",
+			"revertedTree": "717471b3266ef7c9b66d076893b147a539c27a55",
+			"treeMatchesPredecessor": true,
+			"operations": [
+				["git", "rev-parse", "cdc90904b14f697ce2cc6eca2a6057b4512a4c93^{tree}"],
+				["git", "rev-parse", "75d5ebcfe854fa4a2975efdc20086d3429663ff0^{tree}"],
+				[
+					"git",
+					"worktree",
+					"add",
+					"--detach",
+					"/tmp/devenv-stage2-stage10b-20260807t102626z-75d5ebcf-rollback",
+					"cdc90904b14f697ce2cc6eca2a6057b4512a4c93"
+				],
+				[
+					"git",
+					"commit-tree",
+					"772352c76f6bbce7de245a00174948f70c2fa52c",
+					"-p",
+					"cdc90904b14f697ce2cc6eca2a6057b4512a4c93",
+					"-p",
+					"75d5ebcfe854fa4a2975efdc20086d3429663ff0",
+					"-m",
+					"Stage 2 synthetic merge"
+				],
+				["git", "rev-parse", "003ccb079e888711194bfba134391564c54d8aad^{tree}"],
+				[
+					"git",
+					"show",
+					"-s",
+					"--format=%P",
+					"003ccb079e888711194bfba134391564c54d8aad"
+				],
+				[
+					"git",
+					"checkout",
+					"--detach",
+					"003ccb079e888711194bfba134391564c54d8aad"
+				],
+				[
+					"git",
+					"revert",
+					"--no-edit",
+					"-m",
+					"1",
+					"003ccb079e888711194bfba134391564c54d8aad"
+				],
+				["git", "rev-parse", "HEAD^{tree}"]
+			],
+			"addedPaths": [
+				"external-writes.json",
+				"external-writes.schema.json",
+				"scripts/template/telemetry-contract.ts",
+				"scripts/template/validate-telemetry.ts"
+			],
+			"addedPathsRemoved": true
+		}
+	}
+}
