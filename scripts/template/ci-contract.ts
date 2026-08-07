@@ -87,6 +87,12 @@ const HISTORY_OWNERS = [
 		reason:
 			"the affected diff needs the pull request's true merge base, which a shallow clone cannot resolve",
 	},
+	{
+		workflow: ".github/workflows/ci.yml",
+		job: "project",
+		reason:
+			"the suite this job runs re-checks sealed evidence ancestry with git merge-base --is-ancestor and builds synthetic merges, neither of which a shallow clone can answer",
+	},
 ] as const;
 
 // Steps that may fail without failing their job. The list is empty and is meant

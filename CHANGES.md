@@ -4,6 +4,18 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-08-06 — Fix: give the heavy CI lane the history its suite asserts
+
+**Goal:** Stop the sealed-evidence tests from going red the moment the suite moved into a job with a shallow checkout.
+
+**How to implement:** Moving `Lint`, `Typecheck` and `Test` out of the `ci` job into the new matrixed `project` job silently dropped something the steps had always had: `fetch-depth: 0`. The `ci` job carries it because `template:validate` re-checks sealed ancestry with `git merge-base --is-ancestor`; what nobody had written down is that **the suite does the same thing** — the Stage 1, 4 and 7 evidence tests re-check ancestry, and the rollback fixtures build synthetic merges. Neither is answerable from a depth-1 clone.
+
+Nothing local caught it: a developer checkout always has full history, and the render checks only assert the workflow's shape. The **first real run** on GitHub's runners did, with four evidence tests failing for a tree that was entirely correct. `project` is now a declared history owner with that reason written next to it, and the workflow guard's mutation matrix covers both owners independently.
+
+**Why downstream cares:** If you split a CI job, check what the steps were relying on from the job they left, not just what they run. `fetch-depth` is the easiest one to lose because a shallow clone fails only for questions about *history*, which unit tests rarely ask and evidence guards always do.
+
+---
+
 ## 2026-08-06 — Add: Moon affected selection
 
 **Goal:** Stop running the whole suite for every change, without ever letting "we ran less" become "we checked nothing". The heavy CI lane is derived from the committed project graph, moon is consulted as a second opinion that may only *widen* the answer, and the whole thing is behind a single repository variable that fails safe to the old all-or-nothing behaviour when it is unset.

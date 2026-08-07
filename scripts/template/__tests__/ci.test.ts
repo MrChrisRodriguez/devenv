@@ -636,6 +636,20 @@ describe("workflow policy contract", () => {
 					),
 				"ci: .github/workflows/ci.yml job affected must check out full history",
 			);
+			// The heavy lane owns history for a different reason, and it earned
+			// the entry the hard way: the three steps moved here out of a job that
+			// had always had full history, and the sealed-evidence tests went red
+			// on the first real run without it.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"          # workflow guard's HISTORY_OWNERS list.\n          fetch-depth: 0\n",
+						"          # workflow guard's HISTORY_OWNERS list.\n          fetch-depth: 1\n",
+					),
+				"ci: .github/workflows/ci.yml job project must check out full history",
+			);
 
 			// --- One selector ------------------------------------------------------
 			// A job's outputs decide what the lanes below it run, so two committed

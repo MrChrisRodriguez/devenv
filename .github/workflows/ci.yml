@@ -233,6 +233,16 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # Full history. The suite this job runs is not only unit tests: the
+          # sealed-evidence guards re-check ancestry with
+          # `git merge-base --is-ancestor` and the rollback fixtures build
+          # synthetic merges, and a shallow clone can answer neither. This came
+          # out of a real run — the steps moved here from the `ci` job, which
+          # had always had full history, and the evidence tests went red the
+          # first time they ran without it. The reason is recorded in the
+          # workflow guard's HISTORY_OWNERS list.
+          fetch-depth: 0
 
       - uses: ./.github/actions/setup-bun
         with:
