@@ -4,7 +4,11 @@ import { describe, expect, test } from "bun:test";
 import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { validateToolchainContract } from "../toolchain";
+import {
+	lockPeerRange,
+	resolvedVersions,
+	validateToolchainContract,
+} from "../toolchain";
 import {
 	validateStageOneEvidence,
 	validateStageOneEvidenceValue,
@@ -388,6 +392,99 @@ describe("repository toolchain contract", () => {
 			);
 			expect(await validateToolchainContract(temporary)).toEqual([]);
 			await Bun.write(packageManifest, originalPackage);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	});
+
+	test("the Cloudflare family governs the build tool it is loaded by", async () => {
+		const temporary = await contractFixture();
+		try {
+			// The tolerate half, and the measurement the rules are written against:
+			// the family is coherent as committed, the build tool resolves exactly
+			// once, and that resolution satisfies the plugin's own declared range.
+			// A guard that only ever refuses cannot see this case.
+			expect(await validateToolchainContract(temporary)).toEqual([]);
+			const lock = await Bun.file(resolve(temporary, "bun.lock")).text();
+			const range = lockPeerRange(lock, "@cloudflare/vite-plugin", "vite");
+			expect(range).toBe("^6.1.0 || ^7.0.0 || ^8.0.0");
+			expect(resolvedVersions(lock, "vite")).toEqual(["8.1.4"]);
+			expect(Bun.semver.satisfies("8.1.4", range ?? "")).toBe(true);
+
+			// A second resolution of the build tool. The plugin exact-depends on the
+			// command-line tool and the worker runtime and is loaded BY the build
+			// tool, so two build tools is two plugin environments.
+			await mutate(
+				temporary,
+				"bun.lock",
+				(source) =>
+					source.replace(
+						'"packages": {',
+						'"packages": {\n    "synthetic/vite": ["vite@8.1.5", "", {}],',
+					),
+				"lock: vite must resolve exactly once, found 2 entries (8.1.4, 8.1.5)",
+			);
+
+			// A resolution outside the range the plugin itself declares. The
+			// authority is the package's own metadata rather than a number typed
+			// into this guard, so the rule cannot go stale against an upgrade.
+			await mutate(
+				temporary,
+				"bun.lock",
+				(source) => source.replace('["vite@8.1.4"', '["vite@9.0.0"'),
+				"lock: build tool 9.0.0 is outside the Cloudflare plugin peer range ^6.1.0 || ^7.0.0 || ^8.0.0",
+			);
+
+			// A plugin whose lock entry declares no peer range at all: the leg has
+			// to report that it could not compare rather than pass silently.
+			await mutate(
+				temporary,
+				"bun.lock",
+				(source) =>
+					source.replace(
+						'"peerDependencies": { "vite": "^6.1.0 || ^7.0.0 || ^8.0.0" }, "bin": { "cf-vite"',
+						'"bin": { "cf-vite"',
+					),
+				"lock: the Cloudflare plugin declares no build tool peer range to reconcile",
+			);
+
+			// A floating spec for the build tool, in a workspace manifest. This is
+			// the shape the reference implementation has live in two of its own
+			// libraries, and its family guard concedes in writing that it does not
+			// cover it: the day the next major ships, the install breaks with a
+			// zero-line diff.
+			const app = resolve(temporary, "apps/web");
+			await mkdir(app, { recursive: true });
+			for (const [spec, expected] of [
+				[
+					'{"name":"web","devDependencies":{"vite":"latest"}}\n',
+					'catalog: apps/web/package.json devDependencies.vite floats "latest"; the build tool and its plugins move with the Cloudflare family or not at all',
+				],
+				[
+					'{"name":"web","devDependencies":{"@vitejs/plugin-react":"^6.0.0"}}\n',
+					'catalog: apps/web/package.json devDependencies.@vitejs/plugin-react floats "^6.0.0"; the build tool and its plugins move with the Cloudflare family or not at all',
+				],
+			] as const) {
+				await Bun.write(resolve(app, "package.json"), spec);
+				const errors = await validateToolchainContract(temporary);
+				expect(errors).toContain(expected);
+				console.log(`[stage1-observed] ${expected}`);
+			}
+			// ... and an exact spec for the same package is tolerated, because the
+			// rule is about the SPEC being floating rather than about the package
+			// being present.
+			await Bun.write(
+				resolve(app, "package.json"),
+				'{"name":"web","devDependencies":{"vite":"8.1.4"}}\n',
+			);
+			expect(await validateToolchainContract(temporary)).toContain(
+				"catalog: apps/web/package.json devDependencies.vite is not catalog-owned",
+			);
+			expect(await validateToolchainContract(temporary)).not.toContain(
+				'catalog: apps/web/package.json devDependencies.vite floats "8.1.4"; the build tool and its plugins move with the Cloudflare family or not at all',
+			);
+			await rm(app, { recursive: true });
+			expect(await validateToolchainContract(temporary)).toEqual([]);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}

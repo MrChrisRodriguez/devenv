@@ -110,6 +110,41 @@ export function resolvedOccurrences(
 	);
 }
 
+// capability:start cloudflare_workers
+// The build tool the Cloudflare plugin is loaded BY, and the scope its own
+// plugins live under. Neither is a catalog entry here — pinning a build tool in
+// a template that runs no build would put a version in every generated project
+// for a tool most of them never install — so the family is enforced as a RULE
+// over whatever a project does install, rather than as a number typed here.
+const BUILD_TOOL = "vite";
+const BUILD_TOOL_PLUGIN_SCOPE = "@vitejs/";
+
+/**
+ * A package's declared peer range for another package, read out of the lock.
+ *
+ * The authority is the PACKAGE'S OWN METADATA rather than a number somebody
+ * typed into a guard: the plugin states which build-tool majors it supports,
+ * and the only question worth asking is whether the resolution satisfies it.
+ * Each lock entry occupies one line, so the entry is matched whole and its peer
+ * block read out of it.
+ */
+export function lockPeerRange(
+	lock: string,
+	packageName: string,
+	peerName: string,
+): string | undefined {
+	const entry = new RegExp(
+		`\\["${escapeRegExp(packageName)}@[^"\\s]+",[^\\n]*`,
+	).exec(lock)?.[0];
+	if (entry === undefined) return undefined;
+	const peers = /"peerDependencies"\s*:\s*\{([^}]*)\}/.exec(entry)?.[1];
+	if (peers === undefined) return undefined;
+	return new RegExp(`"${escapeRegExp(peerName)}"\\s*:\\s*"([^"]*)"`).exec(
+		peers,
+	)?.[1];
+}
+// capability:end cloudflare_workers
+
 function validatePathPriority(
 	value: string,
 	label: string,
@@ -528,6 +563,12 @@ export async function validateToolchainContract(
 		// capability:end playwright
 		// capability:start cloudflare_workers
 		...(catalog["wrangler"] === undefined ? [] : ["miniflare", "workerd"]),
+		// The build tool joins the family as a lock-resolution singleton. The
+		// plugin exact-depends on the command-line tool and the worker runtime, and
+		// it is loaded BY the build tool — so a second build-tool resolution is the
+		// moment the plugin and the runtime it drives stop being one family, and it
+		// arrives with a zero-line diff the next time anything installs.
+		...(catalog["@cloudflare/vite-plugin"] === undefined ? [] : [BUILD_TOOL]),
 		// capability:end cloudflare_workers
 	];
 	for (const packageName of singletonPackages) {
@@ -568,6 +609,67 @@ export async function validateToolchainContract(
 			errors.push("lock: Playwright package family versions diverge");
 	}
 	// capability:end playwright
+	// capability:start cloudflare_workers
+	// The plugin's OWN declared peer range against the resolution the lock
+	// chose. The range spans three build-tool majors, which is exactly why this
+	// leg exists: the family is coherent today and stays coherent only while
+	// something checks, and nothing else in this guard governs the build tool at
+	// all. The authority is the package's metadata, so the rule cannot go stale
+	// against a plugin upgrade the way a typed number would.
+	if (catalog["@cloudflare/vite-plugin"] !== undefined) {
+		const range = lockPeerRange(
+			lockText,
+			"@cloudflare/vite-plugin",
+			BUILD_TOOL,
+		);
+		const resolved = resolvedVersions(lockText, BUILD_TOOL);
+		if (range === undefined)
+			errors.push(
+				"lock: the Cloudflare plugin declares no build tool peer range to reconcile",
+			);
+		else if (resolved.length === 0)
+			errors.push(
+				`lock: the Cloudflare plugin peer range ${range} governs a build tool that resolves nowhere`,
+			);
+		else
+			for (const version of resolved) {
+				if (!Bun.semver.satisfies(version, range))
+					errors.push(
+						`lock: build tool ${version} is outside the Cloudflare plugin peer range ${range}`,
+					);
+			}
+	}
+	// A floating or ranged spec for the build tool or one of its own plugins, in
+	// any workspace manifest. The catalog rule above already refuses an unowned
+	// package generically; this one names the family, because these three move
+	// together or not at all and a floating spec is how a major arrives without
+	// a diff for anyone to review.
+	for (const [relativePath, manifest] of manifests) {
+		for (const sectionName of [
+			"dependencies",
+			"devDependencies",
+			"optionalDependencies",
+		]) {
+			for (const [packageName, consumer] of Object.entries(
+				recordAt(manifest, sectionName),
+			)) {
+				if (
+					packageName !== BUILD_TOOL &&
+					!packageName.startsWith(BUILD_TOOL_PLUGIN_SCOPE)
+				)
+					continue;
+				if (
+					consumer === "catalog:" ||
+					(typeof consumer === "string" && EXACT_VERSION.test(consumer))
+				)
+					continue;
+				errors.push(
+					`catalog: ${relativePath} ${sectionName}.${packageName} floats ${JSON.stringify(consumer)}; the build tool and its plugins move with the Cloudflare family or not at all`,
+				);
+			}
+		}
+	}
+	// capability:end cloudflare_workers
 
 	const devcontainer = await readJson(
 		resolve(root, ".devcontainer/devcontainer.json"),
