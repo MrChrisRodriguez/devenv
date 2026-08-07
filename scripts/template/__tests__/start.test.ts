@@ -19,6 +19,18 @@ import {
 	validateStartContract,
 } from "../start-contract";
 import {
+	ALLOW_HEADER,
+	CACHE_CONTROL,
+	classifyProxyTarget,
+	DOCUMENT_CONTENT_TYPE,
+	DOCUMENT_PATH,
+	framingHeaders,
+	IDENTITY_HEADERS,
+	MUTATION_PREFIX,
+	NONCE_MARKER,
+	withHarness,
+} from "./fixtures/start-ssr-harness";
+import {
 	APP_DIRECTORY,
 	activeWorkspace,
 	appFiles,
@@ -1306,7 +1318,7 @@ describe("the declared application", () => {
 		}
 	});
 
-	test("the asset namespace, the route tree and the router options are decisions", async () => {
+	test("the asset namespace is one decision spelled three ways", async () => {
 		const { root, contract } = await activeWorkspace();
 		try {
 			await withRegistry(
@@ -1322,20 +1334,24 @@ describe("the declared application", () => {
 				{ ...contract, apps: [declaredApp({ assetsDir: "assets" })] },
 				`start: the application platform emits assets to assets and ${REGISTRY_PATH} declares ${contract.build.assetsPrefix}; rewriting document URLs does not move the directory the asset binding serves`,
 			);
-			await withRegistry(
-				root,
-				{
-					...contract,
-					router: { ...contract.router, defaultErrorComponent: false },
-				},
-				`start: ${REGISTRY_PATH} declares no default error component; without one the router installs NO catch boundary for a match, so a render throw escapes to the nearest ancestor gate and is misreported as a session failure`,
+			// A declared artefact that does not exist is a declaration nothing
+			// produced.
+			const entry = resolve(root, `${APP_DIRECTORY}/src/env.d.ts`);
+			const ambient = await Bun.file(entry).text();
+			await rm(entry);
+			expect(await validateStartContract(root)).toContain(
+				`start: the application platform declares ${APP_DIRECTORY}/src/env.d.ts, which is missing`,
 			);
-			await withRegistry(
-				root,
-				{ ...contract, router: { ...contract.router, defaultPreload: true } },
-				`start: ${REGISTRY_PATH} enables router-wide preloading; only source-audited high-frequency link sites should speculate, and a router-wide default speculates on every one`,
-			);
+			await Bun.write(entry, ambient);
+			expect(await validateStartContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
 
+	test("the generated route tree is governed as a committed artefact", async () => {
+		const { root } = await activeWorkspace();
+		try {
 			const routeTree = `${APP_DIRECTORY}/src/${NEEDLES.routeTree}`;
 			await mutate(
 				root,
@@ -1380,17 +1396,27 @@ describe("the declared application", () => {
 			} finally {
 				await Bun.write(biome, originalBiome);
 			}
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
 
-			// A declared artefact that does not exist is a declaration nothing
-			// produced.
-			const entry = resolve(root, `${APP_DIRECTORY}/src/env.d.ts`);
-			const ambient = await Bun.file(entry).text();
-			await rm(entry);
-			expect(await validateStartContract(root)).toContain(
-				`start: the application platform declares ${APP_DIRECTORY}/src/env.d.ts, which is missing`,
+	test("the router options are decisions rather than defaults", async () => {
+		const { root, contract } = await activeWorkspace();
+		try {
+			await withRegistry(
+				root,
+				{
+					...contract,
+					router: { ...contract.router, defaultErrorComponent: false },
+				},
+				`start: ${REGISTRY_PATH} declares no default error component; without one the router installs NO catch boundary for a match, so a render throw escapes to the nearest ancestor gate and is misreported as a session failure`,
 			);
-			await Bun.write(entry, ambient);
-			expect(await validateStartContract(root)).toEqual([]);
+			await withRegistry(
+				root,
+				{ ...contract, router: { ...contract.router, defaultPreload: true } },
+				`start: ${REGISTRY_PATH} enables router-wide preloading; only source-audited high-frequency link sites should speculate, and a router-wide default speculates on every one`,
+			);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}
@@ -1549,4 +1575,146 @@ describe("the refusal matrix", () => {
 			await rm(root, { recursive: true, force: true });
 		}
 	});
+});
+
+describe("one server render read and one browser mutation, executed", () => {
+	test("a document read through the declared proxy is exactly one server render", async () => {
+		await withHarness({}, async (handle) => {
+			// One origin, ephemeral, injected. Nothing here assumes a port.
+			expect(handle.origin).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/);
+			expect(new URL(handle.origin).port).not.toBe("0");
+
+			const response = await fetch(`${handle.origin}${DOCUMENT_PATH}`);
+			const body = await response.text();
+			expect(response.status).toBe(200);
+			expect(response.headers.get("cache-control")).toBe(CACHE_CONTROL);
+			expect(response.headers.get("content-type")).toBe(DOCUMENT_CONTENT_TYPE);
+			// The framing header describes the body that actually arrived, which is
+			// the REWRITTEN one: the proxy injected a nonce on the way through.
+			expect(response.headers.get("content-length")).toBe(
+				String(new TextEncoder().encode(body).length),
+			);
+			expect(body).toContain("rendered on the server");
+			expect(body).not.toContain(NONCE_MARKER);
+			// Read AFTER the case and BEFORE teardown. "The handler saw nothing" and
+			// "the handler was already gone" produce the same empty answer.
+			expect(handle.counters.documentReads).toBe(1);
+			expect(handle.classified).toEqual(["document"]);
+		});
+	}, 60000);
+
+	test("a browser mutation shares the origin, is stripped, and does not re-render", async () => {
+		await withHarness({}, async (handle) => {
+			const document = await fetch(`${handle.origin}${DOCUMENT_PATH}`);
+			expect(document.status).toBe(200);
+			await document.text();
+			expect(handle.counters.documentReads).toBe(1);
+
+			// The mutation is SAME-ORIGIN with the document it followed, which is
+			// the whole point of the apex proxy: production serves both from one
+			// origin, so the harness has to as well or it is testing a topology
+			// nobody ships.
+			const mutation = await fetch(`${handle.origin}${MUTATION_PREFIX}orders`, {
+				method: "POST",
+				headers: {
+					"content-type": "application/json",
+					"x-user-id": "impersonated",
+					authorization: "Bearer forged",
+					"x-gateway-auth": "forged",
+				},
+				body: JSON.stringify({ quantity: 1 }),
+			});
+			expect(mutation.status).toBe(200);
+			expect(await mutation.json()).toEqual({ accepted: true });
+			expect(handle.counters.mutations).toBe(1);
+
+			// An identity header a page injected would otherwise be honored, which
+			// silently passes a path production rejects.
+			for (const name of IDENTITY_HEADERS)
+				expect(handle.counters.lastMutationHeaders[name]).toBeUndefined();
+
+			// The zero-refetch property, which is what makes "server render read"
+			// mean something: the read happened on the server and did NOT happen
+			// again because of the client.
+			expect(handle.counters.documentReads).toBe(1);
+			expect(handle.classified).toEqual(["document", "api"]);
+		});
+	}, 60000);
+
+	test("a non-read method on the document path is 405 naming what it allows", async () => {
+		await withHarness({}, async (handle) => {
+			const response = await fetch(`${handle.origin}${DOCUMENT_PATH}`, {
+				method: "PUT",
+				body: "{}",
+			});
+			expect(response.status).toBe(405);
+			expect(response.headers.get("allow")).toBe(ALLOW_HEADER);
+			// The cache directive is on EVERY response class and not only the
+			// success path, which is the version of the rule that leaks.
+			expect(response.headers.get("cache-control")).toBe(CACHE_CONTROL);
+			expect(handle.counters.methodRejections).toBe(1);
+			expect(handle.counters.documentReads).toBe(0);
+		});
+	}, 60000);
+
+	test("HEAD is answered with GET semantics minus the body", async () => {
+		await withHarness({}, async (handle) => {
+			const response = await fetch(`${handle.origin}${DOCUMENT_PATH}`, {
+				method: "HEAD",
+			});
+			expect(response.status).toBe(200);
+			expect(response.headers.get("cache-control")).toBe(CACHE_CONTROL);
+			expect(response.headers.get("content-type")).toBe(DOCUMENT_CONTENT_TYPE);
+			expect(await response.text()).toBe("");
+			// It is the same read, so the counter moves for it.
+			expect(handle.counters.documentReads).toBe(1);
+		});
+	}, 60000);
+
+	test("framing headers are recomputed and never copied", async () => {
+		const upstream = new Headers({
+			"content-type": DOCUMENT_CONTENT_TYPE,
+			"content-encoding": "gzip",
+			"content-length": "105",
+		});
+		const rewritten = "<html><body>a rewritten document body</body></html>";
+		const length = String(new TextEncoder().encode(rewritten).length);
+
+		// Copying describes a body that no longer exists. In the reference
+		// implementation that made every browser fetch die with a content-length
+		// mismatch on the very first document — the upstream body arrives already
+		// decompressed and the proxy rewrites it besides.
+		const copied = framingHeaders(upstream, rewritten, "copy");
+		expect(copied.get("content-length")).toBe("105");
+		expect(copied.get("content-length")).not.toBe(length);
+		expect(copied.get("content-encoding")).toBe("gzip");
+
+		const recomputed = framingHeaders(upstream, rewritten, "recompute");
+		expect(recomputed.get("content-length")).toBe(length);
+		expect(recomputed.get("content-encoding")).toBeNull();
+		expect(recomputed.get("content-type")).toBe(DOCUMENT_CONTENT_TYPE);
+	});
+
+	test("the declared route table classifies by longest prefix", () => {
+		expect(classifyProxyTarget(DOCUMENT_PATH)).toBe("document");
+		expect(classifyProxyTarget(`${MUTATION_PREFIX}orders`)).toBe("api");
+		expect(classifyProxyTarget("/orders", [])).toBeUndefined();
+	});
+
+	test("every listener is torn down when the case that opened it returns", async () => {
+		let origin = "";
+		await withHarness({}, async (handle) => {
+			origin = handle.origin;
+			expect((await fetch(`${origin}${DOCUMENT_PATH}`)).status).toBe(200);
+		});
+		// A leaked listener is silent when the bind is ephemeral, which is exactly
+		// why the bind is ephemeral and the teardown is not optional.
+		let reachable = true;
+		try {
+			await fetch(`${origin}${DOCUMENT_PATH}`);
+		} catch {
+			reachable = false;
+		}
+		expect(reachable).toBe(false);
+	}, 60000);
 });
