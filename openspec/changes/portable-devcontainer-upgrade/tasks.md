@@ -1,4 +1,4 @@
-**Current status (2026-08-06):** 40 of 82 tasks are complete. Stages 0 through 6 have merged; Stage 7 is next.
+**Current status (2026-08-06):** 45 of 82 tasks are complete. Stages 0 through 7 have merged; Stage 8A is next.
 
 ## 1. Stage 0 PR — Inventory, Parameters, and Baseline
 
@@ -84,11 +84,11 @@ This stage adds a read-only doctor that explains environment health in human and
 
 This stage makes CI bootstrap deterministic and workflows fail closed, with correct triggers, timeouts, concurrency, aggregate gates, and mutation-tested policy checks.
 
-- [ ] 9.1 Add one composite action that requires the exact root Bun pin and performs optional frozen install with bounded attempts; atomically convert every workflow caller
-- [ ] 9.2 Make PR workflows base-branch agnostic with ready-for-review activity and separate draft/ready concurrency lanes; add non-vacuous structural trigger tests
-- [ ] 9.3 Add explicit job timeouts, remove permissive `continue-on-error`, unsupported inputs/contexts, mutable action inputs, fixed sleeps, blanket retries, and unmeasured Bun caching
-- [ ] 9.4 Add one `always()` aggregate gate with every correctness/detection/selection/oracle dependency and explicit informational/network-smoke exclusions
-- [ ] 9.5 Add mutation tests for setup input/context, trigger forms, aggregate dependency/results, semantic readiness/liveness, runtime ownership, compiler coverage, and network isolation; update evidence/rules/docs/`CHANGES.md`
+- [x] 9.1 Add one composite action that requires the exact root Bun pin and performs optional frozen install with bounded attempts; atomically convert every workflow caller
+- [x] 9.2 Make PR workflows base-branch agnostic with ready-for-review activity and separate draft/ready concurrency lanes; add non-vacuous structural trigger tests
+- [x] 9.3 Add explicit job timeouts, remove permissive `continue-on-error`, unsupported inputs/contexts, mutable action inputs, fixed sleeps, blanket retries, and unmeasured Bun caching
+- [x] 9.4 Add one `always()` aggregate gate with every correctness/detection/selection/oracle dependency and explicit informational/network-smoke exclusions
+- [x] 9.5 Add mutation tests for setup input/context, trigger forms, aggregate dependency/results, semantic readiness/liveness, runtime ownership, compiler coverage, and network isolation; update evidence/rules/docs/`CHANGES.md`
 
 ## 10. Stage 8A PR — Moon Graph and Full-mode Gate
 
