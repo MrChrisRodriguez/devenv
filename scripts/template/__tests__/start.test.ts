@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
+import { link, mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import {
@@ -21,6 +21,7 @@ import {
 import {
 	activeWorkspace,
 	appFiles,
+	compilerBinary,
 	declaredApp,
 	PROSE_SOURCE,
 	PROXY_REGISTRY_PATH,
@@ -30,6 +31,7 @@ import {
 	skeletonWorkspace,
 	startWorkspace,
 	TSCONFIG_PATH,
+	typecheckWorkspace,
 	writeRegistry,
 } from "./fixtures/start-workspaces";
 
@@ -458,6 +460,274 @@ describe("guard wiring and template ownership", () => {
 						"",
 					),
 				"start: template ownership must cover scripts/template/start-contract.ts",
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+/** The compiler, run for real against a project that really extends the base. */
+async function runCompiler(
+	project: string,
+): Promise<{ code: number; output: string }> {
+	// `Bun.spawn` and never `Bun.spawnSync`: a synchronous spawn blocks the loop
+	// this suite's other cases need, and it presents as a hang rather than an
+	// error. The deadline is bounded for the same reason.
+	const run = Bun.spawn(["bun", compilerBinary(), "--noEmit", "-p", project], {
+		stdout: "pipe",
+		stderr: "pipe",
+	});
+	const deadline = setTimeout(() => run.kill(), 120000);
+	try {
+		const [code, output, errors] = await Promise.all([
+			run.exited,
+			new Response(run.stdout).text(),
+			new Response(run.stderr).text(),
+		]);
+		return { code, output: `${output}${errors}` };
+	} finally {
+		clearTimeout(deadline);
+	}
+}
+
+describe("the shared TypeScript base, compiled for real", () => {
+	test("the repaired base compiles clean and the reserved entry fails TS2688", async () => {
+		const { root, project, base } = await typecheckWorkspace();
+		try {
+			// The tolerate half. A base nothing compiles is green forever, so the
+			// only proof that this repair is a repair is the compiler's own verdict
+			// over a project that really extends it.
+			const clean = await runCompiler(project);
+			expect(clean.output).toBe("");
+			expect(clean.code).toBe(0);
+
+			// ... and the mutate half, which is the defect this file shipped with
+			// since Stage 0: the entry names a subpath the router package does not
+			// export. `vite build` was never affected, because esbuild ignores
+			// `types` entirely — so a build-based proof of this repair would have
+			// been green against the broken file.
+			const original = await Bun.file(base).text();
+			await Bun.write(
+				base,
+				original.replace(
+					'"types": []',
+					'"types": ["@tanstack/react-router/globals"]',
+				),
+			);
+			const mutated = await runCompiler(project);
+			expect(mutated.output).toContain("error TS2688");
+			expect(mutated.output).toContain("@tanstack/react-router/globals");
+			expect(mutated.code).not.toBe(0);
+
+			// ... and the repair restores the clean verdict, so the failure is the
+			// entry and not the workspace.
+			await Bun.write(base, original);
+			const restored = await runCompiler(project);
+			expect(restored.code).toBe(0);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 300000);
+
+	test("a stale include entry would exit TS18003 rather than typecheck nothing", async () => {
+		const { root, project, base } = await typecheckWorkspace();
+		try {
+			// The generalized rule behind dropping `app.config.ts`: an include entry
+			// naming a concrete file nothing produces is a claim about a file layout,
+			// and when it is the ONLY matching pattern the compiler refuses outright.
+			await Bun.write(
+				resolve(project, "tsconfig.json"),
+				`${JSON.stringify(
+					{ extends: `../${TSCONFIG_PATH}`, include: ["app.config.ts"] },
+					null,
+					"\t",
+				)}\n`,
+			);
+			const stale = await runCompiler(project);
+			expect(stale.output).toContain("error TS18003");
+			expect(stale.code).not.toBe(0);
+			expect(await Bun.file(base).text()).toContain('"types": []');
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 300000);
+});
+
+describe("the shared TypeScript base, as a declaration", () => {
+	test("the base must extend the repository base and keep the strict set", async () => {
+		const root = await skeletonWorkspace();
+		try {
+			await mutate(
+				root,
+				TSCONFIG_PATH,
+				(source) =>
+					source.replace('"extends": "./tsconfig.base.json",\n\t', ""),
+				`start: ${TSCONFIG_PATH} must extend tsconfig.base.json; a base that restates a weaker option set beside the repository base calls itself strict without being it`,
+			);
+			await mutate(
+				root,
+				TSCONFIG_PATH,
+				(source) =>
+					source.replace(
+						'"noEmit": true',
+						'"noEmit": true,\n\t\t"strict": false',
+					),
+				`start: ${TSCONFIG_PATH} must set strict to true`,
+			);
+			await mutate(
+				root,
+				TSCONFIG_PATH,
+				(source) =>
+					source.replace(
+						'"noEmit": true',
+						'"noEmit": true,\n\t\t"moduleResolution": "NodeNext"',
+					),
+				`start: ${TSCONFIG_PATH} must resolve modules as bundler`,
+			);
+			await mutate(
+				root,
+				TSCONFIG_PATH,
+				(source) => source.replace('"jsx": "react-jsx",\n\t\t', ""),
+				`start: ${TSCONFIG_PATH} must declare jsx`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("an include entry no declared application produces is refused", async () => {
+		const root = await skeletonWorkspace();
+		try {
+			await mutate(
+				root,
+				TSCONFIG_PATH,
+				(source) =>
+					source.replace(
+						'"include": ["src", "*.d.ts"]',
+						'"include": ["src", "app.config.ts", "*.d.ts"]',
+					),
+				`start: ${TSCONFIG_PATH} includes app.config.ts, which no declared application produces; an include entry that can never match is a claim about a file layout that no longer exists`,
+			);
+			// The tolerate half: a directory entry and a glob are not concrete
+			// filenames, so neither is a claim about a file some application has to
+			// produce, and both stay legal.
+			const target = resolve(root, TSCONFIG_PATH);
+			const original = await Bun.file(target).text();
+			await Bun.write(
+				target,
+				original.replace(
+					'"include": ["src", "*.d.ts"]',
+					'"include": ["src", "test", "**/*.d.ts"]',
+				),
+			);
+			try {
+				expect(await validateStartContract(root)).toEqual([]);
+			} finally {
+				await Bun.write(target, original);
+			}
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("the base must be a file this repository exclusively owns", async () => {
+		const root = await skeletonWorkspace();
+		const target = resolve(root, TSCONFIG_PATH);
+		try {
+			const original = await Bun.file(target).text();
+
+			// A guard that reads a symlink validates a file it does not own: the
+			// bytes it approves and the bytes the compiler loads stop being the same
+			// thing the moment somebody repoints the link.
+			await Bun.write(resolve(root, "elsewhere.json"), original);
+			await rm(target);
+			await symlink(resolve(root, "elsewhere.json"), target);
+			expect(await validateStartContract(root)).toContain(
+				`start: ${TSCONFIG_PATH} must be an independent ordinary in-tree file with exactly one hard link`,
+			);
+			await rm(target);
+			await rm(resolve(root, "elsewhere.json"));
+			await Bun.write(target, original);
+			expect(await validateStartContract(root)).toEqual([]);
+
+			// ... and a hardlinked twin is the same defect without a symlink to see.
+			await link(target, resolve(root, "twin.json"));
+			expect(await validateStartContract(root)).toContain(
+				`start: ${TSCONFIG_PATH} must be an independent ordinary in-tree file with exactly one hard link`,
+			);
+			await rm(resolve(root, "twin.json"));
+			expect(await validateStartContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("every type entry must resolve, and a forbidden one is refused whether it does or not", async () => {
+		const root = await startWorkspace({ withNodeModules: true });
+		const target = resolve(root, TSCONFIG_PATH);
+		const original = await Bun.file(target).text();
+		const { contract } = await readStartSurface(root);
+		if (!contract) throw new Error("The committed registry did not parse");
+		const withTypes = async (
+			entries: string[],
+			expected?: string,
+		): Promise<string[]> => {
+			await Bun.write(
+				target,
+				original.replace('"types": []', `"types": ${JSON.stringify(entries)}`),
+			);
+			await writeRegistry(root, { ...contract, types: entries });
+			const errors = await validateStartContract(root);
+			if (expected !== undefined) expect(errors).toContain(expected);
+			return errors;
+		};
+		try {
+			// The tolerate half: an entry that resolves and is not forbidden.
+			expect(await withTypes(["bun-types"])).toEqual([]);
+
+			// An entry that does not resolve. This is the general rule the reserved
+			// entry is one instance of — removing that one entry would fix the file
+			// and leave the class open.
+			await withTypes(
+				["@acme/does-not-exist"],
+				`start: ${TSCONFIG_PATH} declares the type entry @acme/does-not-exist, which does not resolve; the build never reads this list and only the typechecker does, so an unresolvable entry is green everywhere a build is the proof`,
+			);
+
+			// ... and a forbidden entry is refused on its name, before resolution is
+			// even asked about.
+			await withTypes(
+				["@tanstack/react-router/globals"],
+				`start: ${TSCONFIG_PATH} declares the forbidden type entry @tanstack/react-router/globals; removing it would fix this file and leave the class open, which is why the entry is declared forbidden rather than merely deleted`,
+			);
+
+			// The registry and the file must agree, so neither can drift alone.
+			await Bun.write(target, original);
+			await writeRegistry(root, { ...contract, types: ["bun-types"] });
+			expect(await validateStartContract(root)).toContain(
+				`start: ${TSCONFIG_PATH} declares the types [] and ${REGISTRY_PATH} declares ["bun-types"]`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("a workspace with no resolver reports a notice rather than a silent miss", async () => {
+		const root = await skeletonWorkspace();
+		const target = resolve(root, TSCONFIG_PATH);
+		try {
+			const original = await Bun.file(target).text();
+			const { contract } = await readStartSurface(root);
+			if (!contract) throw new Error("The committed registry did not parse");
+			await Bun.write(
+				target,
+				original.replace('"types": []', '"types": ["bun-types"]'),
+			);
+			await writeRegistry(root, { ...contract, types: ["bun-types"] });
+			const report = await inspectStartContract(root);
+			expect(report.errors).toEqual([]);
+			expect(report.notices).toContain(
+				`start: no module resolver is available under ${root}, so the type entry bun-types was declared and not resolved`,
 			);
 		} finally {
 			await rm(root, { recursive: true, force: true });

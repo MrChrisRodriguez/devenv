@@ -1,5 +1,12 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Parsed JSON is a strict record.
-import { type Dirent, readdirSync, readFileSync, statSync } from "node:fs";
+import {
+	type Dirent,
+	lstatSync,
+	readdirSync,
+	readFileSync,
+	realpathSync,
+	statSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { join, relative, resolve, sep } from "node:path";
 import { validateJsonSchema } from "./json-schema";
@@ -40,6 +47,7 @@ const OWNERSHIP_PATH =
 	"docs/devcontainer-upgrade/stage-0/template-ownership.json";
 const WORKFLOW_PATH = ".github/workflows/ci.yml";
 const CONTRACT_JOB = "ci";
+const REPOSITORY_TSCONFIG_BASE = "tsconfig.base.json";
 
 // The core rule that already refuses `baseUrl` in every `tsconfig*.json` in the
 // tree, named so this guard can record the coverage without duplicating it.
@@ -1017,6 +1025,254 @@ export function reconcileProxyRegistry(
 	return { errors: errors.sort(), notices };
 }
 
+// ── The shared TypeScript base ─────────────────────────────────────────────
+
+/** Everything a `tsconfig*.json` resolves to once its extends chain is walked. */
+export interface EffectiveTsconfig {
+	options: JsonRecord;
+	include: string[];
+	chain: string[];
+	problems: string[];
+}
+
+/**
+ * The effective compiler options of a configuration file, parents first.
+ *
+ * Read through the chain and never off the one file, because that is where the
+ * whole argument for extending lives: a base that restates a weaker option set
+ * looks strict when you read its own keys and is not, and a base that inherits
+ * a strict set states nothing at all in the file you are reading.
+ */
+export function effectiveTsconfig(
+	root: string,
+	path: string,
+	seen: Set<string> = new Set(),
+): EffectiveTsconfig {
+	const problems: string[] = [];
+	if (seen.has(path))
+		return { options: {}, include: [], chain: [], problems: [] };
+	seen.add(path);
+	const source = textOf(resolve(root, path));
+	if (source === "")
+		return {
+			options: {},
+			include: [],
+			chain: [path],
+			problems: [`start: ${path} is missing or unreadable`],
+		};
+	let value: unknown;
+	try {
+		value = Bun.JSONC.parse(source) as unknown;
+	} catch {
+		return {
+			options: {},
+			include: [],
+			chain: [path],
+			problems: [`start: ${path} must parse as JSON with comments`],
+		};
+	}
+	if (!isRecord(value))
+		return {
+			options: {},
+			include: [],
+			chain: [path],
+			problems: [`start: ${path} must contain an object`],
+		};
+	let options: JsonRecord = {};
+	const chain: string[] = [];
+	for (const parent of extendedConfigs(path, source)) {
+		const resolved = effectiveTsconfig(root, parent, seen);
+		options = { ...options, ...resolved.options };
+		chain.push(...resolved.chain);
+		problems.push(...resolved.problems);
+	}
+	const own = isRecord(value["compilerOptions"])
+		? value["compilerOptions"]
+		: {};
+	options = { ...options, ...own };
+	chain.push(path);
+	const include = Array.isArray(value["include"])
+		? strings(value["include"])
+		: [];
+	return { options, include, chain, problems };
+}
+
+/**
+ * Whether a `compilerOptions.types` entry resolves to anything at all.
+ *
+ * The package root is deliberately NOT a fallback. The defect this rule exists
+ * for is a SUBPATH that the package does not export: the package itself was
+ * installed and resolvable, so accepting the package root would answer "found
+ * it" for the exact string that made the compiler fail.
+ */
+export function typeEntryCandidates(entry: string): string[] {
+	const parts = entry.split("/");
+	const packageName = entry.startsWith("@")
+		? parts.slice(0, 2).join("/")
+		: (parts[0] ?? entry);
+	const bare = packageName.startsWith("@")
+		? packageName.slice(1).replace("/", "__")
+		: packageName;
+	const ambient = entry === packageName ? [`@types/${bare}/package.json`] : [];
+	return [`${entry}/package.json`, entry, ...ambient];
+}
+
+export function resolvesTypeEntry(root: string, entry: string): boolean {
+	let require_: NodeJS.Require;
+	try {
+		require_ = createRequire(resolve(root, "package.json"));
+	} catch {
+		return false;
+	}
+	for (const candidate of typeEntryCandidates(entry)) {
+		try {
+			require_.resolve(candidate);
+			return true;
+		} catch {
+			// Each candidate is a separate question, and a miss is an answer.
+		}
+	}
+	return false;
+}
+
+/** Whether a resolver is available at all, so a miss is a miss and not a blind. */
+function resolverAvailable(root: string): boolean {
+	try {
+		createRequire(resolve(root, "package.json")).resolve("typescript");
+		return true;
+	} catch {
+		return false;
+	}
+}
+
+/** The effective option values this stack requires, whatever states them. */
+const REQUIRED_COMPILER_OPTIONS = {
+	noEmit: true,
+	isolatedModules: true,
+	strict: true,
+} as const;
+
+const REQUIRED_MODULE_RESOLUTION = "bundler";
+
+/**
+ * The shared TypeScript base, which is the artefact this stage was named after.
+ *
+ * Four rules and one deliberate omission. The file must be one this repository
+ * exclusively owns — an ordinary in-tree file, not a symlink, with exactly one
+ * hard link — because a guard that reads a symlink or a hardlinked twin
+ * validates a file it does not own. It must EXTEND the repository base rather
+ * than restate a weaker set beside it. Every `types` entry must resolve and none
+ * may be forbidden, which is the rule that closes the class the reserved entry
+ * opened. And every concrete filename in `include` must correspond to an
+ * artefact some declared application produces, because an include entry that can
+ * never match is a claim about a file layout — and if it were the only matching
+ * pattern the compiler would exit TS18003 rather than typecheck nothing.
+ *
+ * The omission is `baseUrl`: the core toolchain guard already refuses it in
+ * every `tsconfig*.json` in the tree, and this guard names that coverage in a
+ * notice rather than putting a second sentence on one defect.
+ */
+export function validateTypeScriptBase(
+	root: string,
+	contract: StartSurface,
+): StartReport {
+	const path = contract.tsconfigPath;
+	const errors: string[] = [];
+	const notices: string[] = [];
+	const full = resolve(root, path);
+	let stat: ReturnType<typeof lstatSync>;
+	try {
+		stat = lstatSync(full);
+	} catch {
+		// The missing-file refusal belongs to the wiring leg, which names the
+		// registry that promised it. Two refusals for one fact would send the
+		// reader to two files.
+		return { errors, notices };
+	}
+	if (stat.isSymbolicLink() || !stat.isFile() || stat.nlink !== 1) {
+		errors.push(
+			`start: ${path} must be an independent ordinary in-tree file with exactly one hard link`,
+		);
+		return { errors, notices };
+	}
+	try {
+		if (realpathSync(full) !== join(realpathSync(root), ...path.split("/")))
+			errors.push(
+				`start: ${path} canonical path rebinds outside the path the registry declared`,
+			);
+	} catch {
+		// An unresolvable canonical path is the missing-file case again.
+	}
+
+	const effective = effectiveTsconfig(root, path);
+	errors.push(...effective.problems);
+	if (!effective.chain.includes(REPOSITORY_TSCONFIG_BASE))
+		errors.push(
+			`start: ${path} must extend ${REPOSITORY_TSCONFIG_BASE}; a base that restates a weaker option set beside the repository base calls itself strict without being it`,
+		);
+
+	const declaredTypes = strings(effective.options["types"] ?? []);
+	if (JSON.stringify(declaredTypes) !== JSON.stringify(contract.types))
+		errors.push(
+			`start: ${path} declares the types ${JSON.stringify(declaredTypes)} and ${REGISTRY_PATH} declares ${JSON.stringify(contract.types)}`,
+		);
+	const resolvable = resolverAvailable(root);
+	for (const entry of declaredTypes) {
+		if (contract.forbiddenTypes.includes(entry)) {
+			errors.push(
+				`start: ${path} declares the forbidden type entry ${entry}; removing it would fix this file and leave the class open, which is why the entry is declared forbidden rather than merely deleted`,
+			);
+			continue;
+		}
+		if (!resolvable) {
+			notices.push(
+				`start: no module resolver is available under ${root}, so the type entry ${entry} was declared and not resolved`,
+			);
+			continue;
+		}
+		if (!resolvesTypeEntry(root, entry))
+			errors.push(
+				`start: ${path} declares the type entry ${entry}, which does not resolve; the build never reads this list and only the typechecker does, so an unresolvable entry is green everywhere a build is the proof`,
+			);
+	}
+
+	if (typeof effective.options["jsx"] !== "string")
+		errors.push(`start: ${path} must declare jsx`);
+	const moduleResolution = effective.options["moduleResolution"];
+	if (
+		typeof moduleResolution !== "string" ||
+		moduleResolution.toLowerCase() !== REQUIRED_MODULE_RESOLUTION
+	)
+		errors.push(
+			`start: ${path} must resolve modules as ${REQUIRED_MODULE_RESOLUTION}`,
+		);
+	for (const [option, expected] of Object.entries(REQUIRED_COMPILER_OPTIONS)) {
+		if (effective.options[option] !== expected)
+			errors.push(`start: ${path} must set ${option} to ${String(expected)}`);
+	}
+
+	const produced = new Set(
+		contract.apps.flatMap((app) => [
+			basenameOf(app.serverEntry),
+			basenameOf(app.clientEntry),
+			basenameOf(app.routerModule),
+			basenameOf(app.routeTree),
+			basenameOf(app.wranglerConfig),
+			...app.ambientDeclarations.map(basenameOf),
+		]),
+	);
+	for (const entry of effective.include) {
+		if (entry.includes("*") || entry.includes("?")) continue;
+		if (!entry.includes(".")) continue;
+		if (!produced.has(basenameOf(entry)))
+			errors.push(
+				`start: ${path} includes ${entry}, which no declared application produces; an include entry that can never match is a claim about a file layout that no longer exists`,
+			);
+	}
+
+	return { errors: [...new Set(errors)].sort(), notices };
+}
+
 /**
  * The rules that hold for this stack and live in CORE, named rather than
  * duplicated.
@@ -1065,6 +1321,8 @@ export async function inspectStartContract(
 	notices.push(...proxy.notices);
 	const devServer = validateDevServerPolicy(contract);
 	notices.push(...devServer.notices);
+	const typescriptBase = validateTypeScriptBase(root, contract);
+	notices.push(...typescriptBase.notices);
 	notices.push(...coreCrossReferences(contract));
 
 	const errors = [
@@ -1074,6 +1332,7 @@ export async function inspectStartContract(
 		...(await validateOwnership(root)),
 		...proxy.errors,
 		...devServer.errors,
+		...typescriptBase.errors,
 	];
 	return { errors: [...new Set(errors)].sort(), notices };
 }

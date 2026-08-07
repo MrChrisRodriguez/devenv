@@ -1,4 +1,5 @@
-import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
+import { copyFile, mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import {
@@ -249,6 +250,7 @@ export async function startWorkspace(options?: {
 	files?: Record<string, string>;
 	prefix?: string;
 	withoutProxyRegistry?: boolean;
+	withNodeModules?: boolean;
 }): Promise<string> {
 	const temporary = await mkdtemp(
 		resolve(tmpdir(), options?.prefix ?? "devenv-start-"),
@@ -258,11 +260,70 @@ export async function startWorkspace(options?: {
 		await mkdir(dirname(destination), { recursive: true });
 		await copyFile(resolve(ROOT, path), destination);
 	}
+	// Only where a leg has to answer "does this resolve", and never otherwise:
+	// a workspace with no resolver at all makes every resolution question a
+	// blind rather than a miss, which the guard reports as a notice.
+	if (options?.withNodeModules)
+		await symlink(
+			resolve(ROOT, "node_modules"),
+			resolve(temporary, "node_modules"),
+			"dir",
+		);
 	if (options?.withoutProxyRegistry)
 		await rm(resolve(temporary, PROXY_REGISTRY_PATH));
 	if (options?.contract) await writeRegistry(temporary, options.contract);
 	if (options?.files) await writeFiles(temporary, options.files);
 	return temporary;
+}
+
+/**
+ * The compiler binary, located through the same resolver the guard uses.
+ *
+ * The catalog already pins it, so the executed proof needs no new dependency —
+ * and it has to be the executed proof rather than a JSON assertion, because the
+ * defect being proved is invisible to every reader of the JSON: `types` is a
+ * list the BUILD never reads. Only the typechecker does.
+ */
+export function compilerBinary(): string {
+	return createRequire(import.meta.url)
+		.resolve("typescript")
+		.replace(/lib[/\\]typescript\.js$/, "bin/tsc");
+}
+
+/**
+ * A workspace whose only purpose is to be compiled: the repaired base, the
+ * repository base it extends, and one project that really does extend it.
+ *
+ * It has NO `node_modules`, which is the point — the reserved type entry is
+ * unresolvable in an empty tree exactly as it is in a full one, and the failure
+ * that proves it needs no package installed.
+ */
+export async function typecheckWorkspace(): Promise<{
+	root: string;
+	project: string;
+	base: string;
+}> {
+	const root = await mkdtemp(resolve(tmpdir(), "devenv-start-typecheck-"));
+	for (const path of ["tsconfig.base.json", TSCONFIG_PATH])
+		await copyFile(resolve(ROOT, path), resolve(root, path));
+	await mkdir(resolve(root, "project/src"), { recursive: true });
+	await Bun.write(
+		resolve(root, "project/tsconfig.json"),
+		`${JSON.stringify(
+			{ extends: `../${TSCONFIG_PATH}`, include: ["src"] },
+			null,
+			"\t",
+		)}\n`,
+	);
+	await Bun.write(
+		resolve(root, "project/src/index.ts"),
+		"export const value: string = 'ok';\n",
+	);
+	return {
+		root,
+		project: resolve(root, "project"),
+		base: resolve(root, TSCONFIG_PATH),
+	};
 }
 
 export async function skeletonWorkspace(prefix?: string): Promise<string> {
