@@ -20,6 +20,8 @@ export const CONTRACT_FILES = [
 	"release.json",
 	"release.schema.json",
 	"package.json",
+	"template-parameters.toml",
+	"template-parameters.schema.json",
 	"scripts/template/validate.ts",
 	".github/workflows/ci.yml",
 	"docs/devcontainer-upgrade/stage-0/template-ownership.json",

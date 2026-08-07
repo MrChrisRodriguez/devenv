@@ -80,6 +80,7 @@ const MANIFEST_PATH = "package.json";
 const VALIDATOR_PATH = "scripts/template/validate.ts";
 const CHANGELOG_PATH = "CHANGES.md";
 const FIXTURE_ROOT = "fixtures/template";
+const BASELINE_RECORD = "evidence/stage-0-baseline.json";
 
 // Directories no walk descends into. `tmp/` is where `template:fixtures`
 // renders and a rendered fixture carries a copy of this tree; `graphify-out/`
@@ -129,6 +130,9 @@ export interface ReleaseRegistry {
 		reason: string;
 	};
 	deferrals: DeferralDeclaration[];
+	acceptance: AcceptanceDeclaration[];
+	budgets: BudgetDeclaration[];
+	signals: SignalDeclaration[];
 }
 
 /**
@@ -1578,6 +1582,517 @@ export async function validateSyncBoundary(
 	return { errors: errors.sort(), notices: notices.sort() };
 }
 
+// ── 18.2's ten acceptance items, DERIVED rather than chosen ───────────────
+//
+// All ten already have a sealed record. Re-running all ten is days of live
+// capture that would re-prove Stages 1 through 10 at a head where most of their
+// surfaces have not moved; not re-running them and saying "Stage 2 proved it"
+// is a claim about a commit rather than about HEAD. So each item declares the
+// paths that produced its record and the commit that sealed it, and the guard
+// runs the diff: an inherited claim is legal only while the paths that produced
+// it are byte-unchanged. `mode` is therefore not a choice — it is a
+// consequence, and this function is what computes it.
+export const ACCEPTANCE_ITEMS = [
+	"exact-head-ci",
+	"full-default-branch-ci",
+	"image-build",
+	"two-worktree-isolation",
+	"doctor-security",
+	"cloud-profiles",
+	"browser-preflight",
+	"openspec-lifecycle",
+	"dependency-guards",
+	"enabled-stack-tests",
+] as const;
+
+export type AcceptanceItem = (typeof ACCEPTANCE_ITEMS)[number];
+
+export interface AcceptanceDeclaration {
+	id: AcceptanceItem;
+	item: string;
+	evidenceRecord: string;
+	boundarySha: string;
+	ownedPaths: string[];
+	mode: "live" | "inherited";
+	liveCommand: string | null;
+	knownNonDefects: string[];
+}
+
+export const BUDGET_FAMILIES = [
+	"warm command latency",
+	"startup/readiness",
+	"clean and incremental rebuild behavior",
+	"second-worktree disk growth",
+] as const;
+
+export interface BudgetSide {
+	record: string;
+	pointer: string;
+	value: number;
+	unit: "seconds" | "milliseconds" | "bytes";
+	normalized: number;
+}
+
+export interface BudgetDeclaration {
+	id: string;
+	specFamily: (typeof BUDGET_FAMILIES)[number];
+	baselineStatus: "measured" | "unavailable";
+	baselineMeasurement: string;
+	baseline: BudgetSide | null;
+	final: BudgetSide | null;
+	delta: number | null;
+	verdict: "improved" | "unchanged" | "regressed" | "no-baseline";
+	exception: { reason: string } | null;
+}
+
+export interface SignalDeclaration {
+	id: string;
+	kind: "pr-exact-head" | "default-branch-full";
+	status: "pending" | "captured";
+	sha: string | null;
+	runId: string | null;
+	capturedAt: string | null;
+}
+
+/** Paths under a boundary that have moved since it, or `undefined` on abstention. */
+export function changedSince(
+	root: string,
+	boundary: string,
+	paths: string[],
+): string[] | undefined {
+	const output = git(root, [
+		"diff",
+		"--name-only",
+		`${boundary}..HEAD`,
+		"--",
+		...paths,
+	]);
+	if (output === undefined) return undefined;
+	return output === "" ? [] : output.split("\n").filter(Boolean).sort();
+}
+
+/**
+ * The acceptance table, with the split computed and never declared.
+ *
+ * And the inherited list is printed on SUCCESS, because "the release gate is
+ * green" must never be readable as "everything was re-measured at this head".
+ */
+export async function validateAcceptance(
+	root: string,
+	registry: ReleaseRegistry,
+): Promise<ReleaseReport> {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	const declared = new Set(registry.acceptance.map((entry) => entry.id));
+	for (const item of ACCEPTANCE_ITEMS) {
+		if (!declared.has(item))
+			errors.push(
+				`release: ${REGISTRY_PATH} declares no acceptance record for ${item}; the full-fixture scenario names ten and a missing one is a signal nobody produced`,
+			);
+	}
+	for (const entry of registry.acceptance) {
+		if (!(ACCEPTANCE_ITEMS as readonly string[]).includes(entry.id))
+			errors.push(
+				`release: ${REGISTRY_PATH} declares the acceptance item ${entry.id}, which the requirement does not name`,
+			);
+		if (entry.ownedPaths.length === 0) {
+			errors.push(
+				`release: the ${entry.id} acceptance record owns no path, so nothing could ever falsify its inheritance`,
+			);
+			continue;
+		}
+		for (const path of entry.ownedPaths) {
+			if (!exists(resolve(root, path)))
+				errors.push(
+					`release: the ${entry.id} acceptance record owns ${path}, which does not exist`,
+				);
+		}
+		if (!exists(resolve(root, entry.evidenceRecord)))
+			errors.push(
+				`release: the ${entry.id} acceptance record names ${entry.evidenceRecord}, which does not exist`,
+			);
+		const kind = git(root, ["cat-file", "-t", entry.boundarySha]);
+		if (kind !== "commit") {
+			errors.push(
+				`release: the ${entry.id} acceptance record pins the boundary ${entry.boundarySha}, which is not a commit in this repository`,
+			);
+			continue;
+		}
+		const changed = changedSince(root, entry.boundarySha, entry.ownedPaths);
+		if (changed === undefined) {
+			// An abstention is not a pass. A guard that cannot run the diff has not
+			// established that the inherited claim still holds.
+			notices.push(
+				`release: the inheritance diff for ${entry.id} could not run, so its mode was asserted against nothing`,
+			);
+			continue;
+		}
+		if (changed.length > 0 && entry.mode !== "live")
+			errors.push(
+				`release: the ${entry.id} acceptance record claims an inherited result, but ${changed.length} of its owned paths have moved since ${entry.boundarySha}, first ${changed[0]}; an inherited claim is legal only while the paths that produced it are byte-unchanged`,
+			);
+		if (changed.length === 0 && entry.mode !== "inherited")
+			errors.push(
+				`release: the ${entry.id} acceptance record claims a live result, and none of its owned paths has moved since ${entry.boundarySha}; the mode is a consequence of the diff rather than a choice`,
+			);
+		if (entry.mode === "live" && (entry.liveCommand ?? "") === "")
+			errors.push(
+				`release: the ${entry.id} acceptance record is live and names no command, so nothing says what was re-measured`,
+			);
+		if (entry.mode === "inherited" && entry.liveCommand !== null)
+			errors.push(
+				`release: the ${entry.id} acceptance record is inherited and names a live command; one of the two is wrong`,
+			);
+		if (entry.mode === "inherited")
+			notices.push(
+				`release: ${entry.id} is INHERITED from ${entry.evidenceRecord} at ${entry.boundarySha}, and this run proved only that its owned paths are byte-unchanged since then`,
+			);
+		for (const nonDefect of entry.knownNonDefects)
+			notices.push(`release: ${entry.id} expects ${nonDefect}`);
+	}
+	const inherited = registry.acceptance.filter(
+		(entry) => entry.mode === "inherited",
+	).length;
+	notices.push(
+		`release: ${inherited} of ${registry.acceptance.length} acceptance items are inherited rather than re-measured at this head; a green release gate is not a claim that everything was run again`,
+	);
+	return { errors: errors.sort(), notices: notices.sort() };
+}
+
+const UNIT_TO_CANONICAL: Record<BudgetSide["unit"], number> = {
+	seconds: 1,
+	milliseconds: 0.001,
+	bytes: 1,
+};
+
+function pointerValue(value: unknown, pointer: string): unknown {
+	let current = value;
+	for (const segment of pointer.split(".")) {
+		if (!isRecord(current)) return undefined;
+		current = current[segment];
+	}
+	return current;
+}
+
+/**
+ * The budget table, and the honest answer to five measurements that were never
+ * taken.
+ *
+ * Five of Stage 0's ten families are recorded `"unavailable"` — no isolated
+ * worktree completed its lifecycle, so there is no readiness time and no valid
+ * warm-command baseline. Two of the four families the requirement names are
+ * among them. The requirement's own escape hatch is "unless an explicit
+ * reviewed budget exception explains the trade-off", so those two carry the
+ * verdict `no-baseline` and an exception whose reason must QUOTE the Stage 0
+ * record's own words — the guard reads the record and checks the quotation, so
+ * the exception cannot drift away from the fact that justifies it.
+ *
+ * The alternative was comparing this head's warm-command latency against
+ * `failedLifecycleExecLatency`, a number Stage 0 itself labels as belonging to
+ * a container that FAILED its lifecycle. That comparison would produce a
+ * spectacular apparent improvement and mean nothing.
+ */
+export async function validateBudgets(
+	root: string,
+	registry: ReleaseRegistry,
+): Promise<ReleaseReport> {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	const families = new Set(registry.budgets.map((entry) => entry.specFamily));
+	for (const family of BUDGET_FAMILIES) {
+		if (!families.has(family))
+			errors.push(
+				`release: ${REGISTRY_PATH} declares no budget for ${family}, which the requirement names by name`,
+			);
+	}
+	if (registry.budgets.length === 0) {
+		errors.push(
+			"release: the budget table is empty; a comparison over nothing is a pass nobody earned",
+		);
+		return { errors, notices };
+	}
+	const records_ = new Map<string, unknown>();
+	const load = async (path: string): Promise<unknown> => {
+		if (!records_.has(path)) {
+			try {
+				records_.set(path, JSON.parse(textOf(resolve(root, path))) as unknown);
+			} catch {
+				records_.set(path, undefined);
+			}
+		}
+		return records_.get(path);
+	};
+	for (const entry of registry.budgets) {
+		const check = async (side: BudgetSide, label: string): Promise<void> => {
+			const record = await load(side.record);
+			if (record === undefined) {
+				errors.push(
+					`release: the ${entry.id} budget names ${side.record} as its ${label} record, which did not parse`,
+				);
+				return;
+			}
+			const found = pointerValue(record, side.pointer);
+			if (found !== side.value)
+				errors.push(
+					`release: the ${entry.id} budget declares a ${label} of ${side.value} at ${side.record}#${side.pointer}, which carries ${JSON.stringify(found)}; a pin nothing compares is decoration`,
+				);
+			const canonical = side.value * UNIT_TO_CANONICAL[side.unit];
+			if (Math.abs(canonical - side.normalized) > 1e-6)
+				errors.push(
+					`release: the ${entry.id} budget normalizes its ${label} to ${side.normalized}, and ${side.value} ${side.unit} is ${canonical}`,
+				);
+		};
+		if (entry.baselineStatus === "measured") {
+			if (!entry.baseline || !entry.final) {
+				errors.push(
+					`release: the ${entry.id} budget declares a measured baseline and omits one of its two sides`,
+				);
+				continue;
+			}
+			await check(entry.baseline, "baseline");
+			await check(entry.final, "final");
+			const delta = entry.final.normalized - entry.baseline.normalized;
+			if (entry.delta === null || Math.abs(delta - entry.delta) > 1e-6)
+				errors.push(
+					`release: the ${entry.id} budget declares a delta of ${entry.delta} and its two sides differ by ${delta}`,
+				);
+			const verdict =
+				delta < 0 ? "improved" : delta > 0 ? "regressed" : "unchanged";
+			if (entry.verdict !== verdict)
+				errors.push(
+					`release: the ${entry.id} budget declares the verdict ${entry.verdict} and its measurements say ${verdict}`,
+				);
+			if (verdict === "regressed" && (entry.exception?.reason ?? "") === "")
+				errors.push(
+					`release: the ${entry.id} budget regressed and carries no reviewed exception; release is blocked until the regression is corrected or an exception is approved`,
+				);
+			if (verdict !== "regressed" && entry.exception !== null)
+				errors.push(
+					`release: the ${entry.id} budget did not regress and carries an exception; an exemption with nothing to exempt widens itself`,
+				);
+			notices.push(
+				`release: ${entry.id} moved from ${entry.baseline.normalized} to ${entry.final.normalized} and is ${verdict}`,
+			);
+			continue;
+		}
+		// An unavailable baseline. The verdict is `no-baseline`, the reason has to
+		// quote the record that says why, and this head's measurement — when there
+		// is one — becomes the FIRST baseline rather than a comparison.
+		if (entry.verdict !== "no-baseline")
+			errors.push(
+				`release: the ${entry.id} budget has no Stage 0 baseline and declares the verdict ${entry.verdict}; there is nothing to compare against`,
+			);
+		if (entry.baseline !== null || entry.delta !== null)
+			errors.push(
+				`release: the ${entry.id} budget has no Stage 0 baseline and declares one anyway`,
+			);
+		const reason = entry.exception?.reason ?? "";
+		if (reason === "") {
+			errors.push(
+				`release: the ${entry.id} budget has no baseline and no documented exception; an unmeasured family is a gap somebody has to accept in writing`,
+			);
+			continue;
+		}
+		const baselineRecord = await load(BASELINE_RECORD);
+		const recorded = pointerValue(
+			baselineRecord,
+			`measurements.${entry.baselineMeasurement}.reason`,
+		);
+		if (typeof recorded !== "string")
+			errors.push(
+				`release: the ${entry.id} budget names the Stage 0 measurement ${entry.baselineMeasurement}, which records no reason`,
+			);
+		else if (!reason.includes(recorded))
+			errors.push(
+				`release: the ${entry.id} budget's exception does not quote the Stage 0 record, which says: ${recorded}`,
+			);
+		else
+			notices.push(
+				`release: ${entry.id} has NO Stage 0 baseline and is recorded as no-baseline rather than compared; the first measurement taken at this head becomes the baseline`,
+			);
+	}
+	return { errors: errors.sort(), notices: notices.sort() };
+}
+
+/**
+ * The two required signals, DECLARED and never queried.
+ *
+ * A fine-grained token cannot read the Checks API — `commits/{sha}/check-runs`
+ * answers 403 and there is no grantable toggle — so a guard that asked GitHub
+ * whether a commit was green would abstain in exactly the environment it was
+ * written for. The run ids come from the human who watched them go green, the
+ * shas are checked against local Git objects, and a signal that has not been
+ * captured yet says `pending` rather than pretending.
+ */
+export function validateSignals(
+	root: string,
+	registry: ReleaseRegistry,
+): ReleaseReport {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	for (const kind of ["pr-exact-head", "default-branch-full"] as const) {
+		if (!registry.signals.some((entry) => entry.kind === kind))
+			errors.push(
+				`release: ${REGISTRY_PATH} declares no ${kind} signal, and the requirement names both`,
+			);
+	}
+	const head = git(root, ["rev-parse", "HEAD"]);
+	for (const entry of registry.signals) {
+		if (entry.status === "pending") {
+			if (
+				entry.sha !== null ||
+				entry.runId !== null ||
+				entry.capturedAt !== null
+			)
+				errors.push(
+					`release: the ${entry.id} signal is pending and carries a sha, a run id or a capture time; a pending signal records nothing`,
+				);
+			if (registry.decision === "released")
+				errors.push(
+					`release: ${REGISTRY_PATH} declares the released decision while the ${entry.id} signal is still pending`,
+				);
+			notices.push(
+				`release: the ${entry.id} signal is PENDING; it is a post-merge artefact and the runbook is what fills it in`,
+			);
+			continue;
+		}
+		if (
+			entry.sha === null ||
+			entry.runId === null ||
+			entry.capturedAt === null
+		) {
+			errors.push(
+				`release: the ${entry.id} signal is captured and omits its sha, its run id or its capture time`,
+			);
+			continue;
+		}
+		if (git(root, ["cat-file", "-t", entry.sha]) !== "commit")
+			errors.push(
+				`release: the ${entry.id} signal names ${entry.sha}, which is not a commit in this repository`,
+			);
+		else if (
+			entry.kind === "pr-exact-head" &&
+			head !== null &&
+			entry.sha !== head
+		)
+			errors.push(
+				`release: the ${entry.id} signal belongs to ${entry.sha} and HEAD is ${head}; a green run for a different commit is not an exact-head signal`,
+			);
+		notices.push(
+			`release: the ${entry.id} signal is captured at ${entry.sha} as run ${entry.runId}, asserted against local Git objects and never against a Checks API this guard may not read`,
+		);
+	}
+	return { errors: errors.sort(), notices: notices.sort() };
+}
+
+/**
+ * The capability inventory, reconciled and then ASSERTED.
+ *
+ * Six stages recorded that `alwaysEmittedPartial` still lists `"moon"`, a name
+ * that has not been a capability since PR #21, and every one of them left it
+ * for the same honest reason: nothing validated the block. This is the stage
+ * where "nothing validates it" stops being a reason and becomes the defect —
+ * the release gate is the thing that reads ownership metadata for a living, and
+ * an inventory wrong by six entries is the definition of an unfinalized one.
+ *
+ * The assertion is set equality against the parameter file's supported list,
+ * with no name in two buckets. That is what stops it going stale again.
+ */
+export async function validateCapabilityInventory(
+	root: string,
+): Promise<string[]> {
+	const errors: string[] = [];
+	const ownershipPath = resolve(root, OWNERSHIP_PATH);
+	if (!exists(ownershipPath)) return errors;
+	const ownership = (await Bun.file(ownershipPath).json()) as JsonRecord;
+	const inventory = isRecord(ownership["capabilityInventory"])
+		? ownership["capabilityInventory"]
+		: undefined;
+	if (!inventory) {
+		errors.push(
+			`release: ${OWNERSHIP_PATH} declares no capabilityInventory at all`,
+		);
+		return errors;
+	}
+	const parameters = await loadTemplateParameters(root);
+	const supported = new Set(Object.keys(parameters.capabilities.supported));
+	const seen = new Map<string, string>();
+	for (const bucket of ["alwaysEmittedPartial", "advertisedOnly", "absent"]) {
+		for (const name of strings(inventory[bucket])) {
+			const first = seen.get(name);
+			if (first !== undefined)
+				errors.push(
+					`release: capabilityInventory lists ${name} in both ${first} and ${bucket}; a capability is in one bucket or the inventory means nothing`,
+				);
+			else seen.set(name, bucket);
+			if (!supported.has(name))
+				errors.push(
+					`release: capabilityInventory lists ${name} in ${bucket}, and template-parameters.toml supports no such capability`,
+				);
+		}
+	}
+	for (const name of [...supported].sort()) {
+		if (!seen.has(name))
+			errors.push(
+				`release: capabilityInventory places ${name} in no bucket, so the inventory describes fewer capabilities than the template has`,
+			);
+	}
+	return errors.sort();
+}
+
+/**
+ * The version authorities, whose `currentRisk` strings were all false.
+ *
+ * Five of the six described the PRE-migration template — "latest, ranges, and
+ * catalog bypasses coexist", "floating major tags and Node lts; lock absent",
+ * "mutable base/latest downloads and missing checksums" — and every one of them
+ * was resolved by Stages 1 through 3 and 7. `template-ownership.json` is a live
+ * registry rather than sealed evidence; five stages have edited it. A file the
+ * release gate reads, carrying false present-tense claims, is precisely what
+ * "finalize" means here. So the field becomes `historicalRisk`, each entry
+ * gains the stage that resolved it and a present-tense `authorityRule`, and the
+ * guard refuses the old field name outright.
+ */
+export async function validateVersionAuthorities(
+	root: string,
+): Promise<string[]> {
+	const errors: string[] = [];
+	const ownershipPath = resolve(root, OWNERSHIP_PATH);
+	if (!exists(ownershipPath)) return errors;
+	const ownership = (await Bun.file(ownershipPath).json()) as JsonRecord;
+	const authorities = records(ownership["versionAuthorities"]);
+	if (authorities.length === 0) {
+		errors.push(
+			`release: ${OWNERSHIP_PATH} declares no version authority at all`,
+		);
+		return errors;
+	}
+	for (const entry of authorities) {
+		const domain = typeof entry["domain"] === "string" ? entry["domain"] : "?";
+		if (entry["currentRisk"] !== undefined)
+			errors.push(
+				`release: the ${domain} version authority still carries currentRisk, a present-tense claim about a template that no longer exists; record it as historicalRisk with the stage that resolved it`,
+			);
+		for (const field of ["historicalRisk", "resolvedBy", "authorityRule"]) {
+			if (typeof entry[field] !== "string" || entry[field] === "")
+				errors.push(
+					`release: the ${domain} version authority declares no ${field}`,
+				);
+		}
+		const authority = entry["authority"];
+		if (typeof authority === "string") {
+			for (const path of authority.split(" and ")) {
+				if (path.includes("*") || path.includes("$")) continue;
+				if (!exists(resolve(root, path)))
+					errors.push(
+						`release: the ${domain} version authority names ${path}, which does not exist`,
+					);
+			}
+		}
+	}
+	return errors.sort();
+}
+
 /**
  * Every leg, in the order the requirement enumerates them, with the notices
  * kept separate from the refusals.
@@ -1626,6 +2141,21 @@ export async function inspectReleaseContract(
 	const deferrals = await validateDeferrals(root, registry);
 	errors.push(...deferrals.errors);
 	notices.push(...deferrals.notices);
+
+	errors.push(...(await validateCapabilityInventory(root)));
+	errors.push(...(await validateVersionAuthorities(root)));
+
+	const acceptance = await validateAcceptance(root, registry);
+	errors.push(...acceptance.errors);
+	notices.push(...acceptance.notices);
+
+	const budgets = await validateBudgets(root, registry);
+	errors.push(...budgets.errors);
+	notices.push(...budgets.notices);
+
+	const signals = validateSignals(root, registry);
+	errors.push(...signals.errors);
+	notices.push(...signals.notices);
 
 	if (options.renders === false) {
 		const goldens = await validateGoldens(root, registry, { render: false });

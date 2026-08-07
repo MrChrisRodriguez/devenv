@@ -203,5 +203,238 @@
 				"The two strict-JSON surfaces gain a fencing mechanism, or the renderer learns to prune the graphify hook by something other than a script filename."
 			]
 		}
+	],
+	"acceptance": [
+		{
+			"id": "exact-head-ci",
+			"item": "exact-head PR CI over the final capability set",
+			"evidenceRecord": "evidence/stage-7-ci.json",
+			"boundarySha": "9b15ab355b401e366f8e6a37976f95a0f7e1521e",
+			"ownedPaths": [".github/workflows/ci.yml", ".github/actions"],
+			"mode": "live",
+			"liveCommand": "the pull request's own ci-gate run at the reviewed head, in affected mode because MOON_AFFECTED_MODE selects affected for pull requests",
+			"knownNonDefects": []
+		},
+		{
+			"id": "full-default-branch-ci",
+			"item": "full default-branch or nightly CI over the same capability set",
+			"evidenceRecord": "evidence/stage-7-ci.json",
+			"boundarySha": "9b15ab355b401e366f8e6a37976f95a0f7e1521e",
+			"ownedPaths": [".github/workflows/ci.yml", ".github/actions"],
+			"mode": "live",
+			"liveCommand": "the push-to-main run on the merge commit, in full mode because the same selection rule chooses full for default-branch pushes; it cannot exist before the merge and the runbook is what captures it",
+			"knownNonDefects": []
+		},
+		{
+			"id": "image-build",
+			"item": "clean and incremental devcontainer image builds",
+			"evidenceRecord": "evidence/stage-2-image.json",
+			"boundarySha": "69a97d84e2591242265887a7c062bbb0853b5ca9",
+			"ownedPaths": [".devcontainer"],
+			"mode": "live",
+			"liveCommand": "devcontainer build --workspace-folder <worktree> --no-cache, then the same command without --no-cache",
+			"knownNonDefects": []
+		},
+		{
+			"id": "two-worktree-isolation",
+			"item": "two simultaneous isolated worktrees",
+			"evidenceRecord": "evidence/stage-5-worktree.json",
+			"boundarySha": "21af7c9ac74f90debb4df8e4231ede9628485cd7",
+			"ownedPaths": ["scripts/worktree"],
+			"mode": "live",
+			"liveCommand": "bash scripts/worktree/up.sh in two checkouts of the same repository, then bash scripts/worktree/doctor.sh --json in each",
+			"knownNonDefects": []
+		},
+		{
+			"id": "doctor-security",
+			"item": "doctor security posture",
+			"evidenceRecord": "evidence/stage-6-doctor.json",
+			"boundarySha": "4a8894c2fb05c75bf2959ecedf9ca72ceb4f675b",
+			"ownedPaths": ["scripts/worktree/doctor.sh"],
+			"mode": "inherited",
+			"liveCommand": null,
+			"knownNonDefects": []
+		},
+		{
+			"id": "cloud-profiles",
+			"item": "Codex Cloud profiles",
+			"evidenceRecord": "evidence/stage-4-cloud.json",
+			"boundarySha": "fe433334f63a2c01e45b6a55c97dca057e00ea57",
+			"ownedPaths": [".codex/cloud"],
+			"mode": "inherited",
+			"liveCommand": null,
+			"knownNonDefects": [
+				"a rendered fixture to report `cloud: fingerprint input bun.lock is missing`, which is correct by design: bun.lock is renderPolicy omit and a generated project installs its own. Do NOT 'fix' it by dropping bun.lock from fingerprint_inputs"
+			]
+		},
+		{
+			"id": "browser-preflight",
+			"item": "optional browser launch preflight",
+			"evidenceRecord": "evidence/stage-3-runtimes.json",
+			"boundarySha": "af2ac5b288c226e8ee5c86e30325ecb2ae46b45c",
+			"ownedPaths": [
+				"scripts/browser-preflight.ts",
+				"scripts/template/browser-contract.ts"
+			],
+			"mode": "live",
+			"liveCommand": "bun run browser:preflight inside a full-fixture container built on the development_browser target",
+			"knownNonDefects": []
+		},
+		{
+			"id": "openspec-lifecycle",
+			"item": "OpenSpec lifecycle",
+			"evidenceRecord": "evidence/stage-9-openspec.json",
+			"boundarySha": "69e4995f305de997f761f8b57011acfa95c5fb6b",
+			"ownedPaths": ["scripts/openspec"],
+			"mode": "live",
+			"liveCommand": "bun run openspec:check, and the post-merge bash scripts/openspec/archive.sh --change portable-devcontainer-upgrade the runbook names",
+			"knownNonDefects": [
+				"bun run openspec:check to print a NOTICE once every task is checked, saying the change has no remaining tasks and naming the archive wrapper. It is Stage 9's designed handoff and not a failure"
+			]
+		},
+		{
+			"id": "dependency-guards",
+			"item": "enabled dependency guards",
+			"evidenceRecord": "evidence/stage-1-toolchain.json",
+			"boundarySha": "85c549990268bbda576fc510e03a6a93800425e8",
+			"ownedPaths": [".prototools", "scripts/template/toolchain.ts"],
+			"mode": "live",
+			"liveCommand": "bun run toolchain:check and bun install --frozen-lockfile",
+			"knownNonDefects": []
+		},
+		{
+			"id": "enabled-stack-tests",
+			"item": "enabled application-stack guards and their tests",
+			"evidenceRecord": "evidence/stage-10d-start.json",
+			"boundarySha": "1427f9063d6a502b81f3f98b69b6820b735f3ada",
+			"ownedPaths": [
+				"api-contract.json",
+				"external-writes.json",
+				"proxy-routes.json",
+				"start-surface.json",
+				"scripts/template/forms-contract.ts",
+				"scripts/template/proxy-contract.ts",
+				"scripts/template/start-contract.ts",
+				"scripts/template/telemetry-contract.ts"
+			],
+			"mode": "inherited",
+			"liveCommand": null,
+			"knownNonDefects": []
+		}
+	],
+	"budgets": [
+		{
+			"id": "cleanImageBuild",
+			"specFamily": "clean and incremental rebuild behavior",
+			"baselineStatus": "measured",
+			"baselineMeasurement": "cleanImageBuild",
+			"baseline": {
+				"record": "evidence/stage-0-baseline.json",
+				"pointer": "measurements.cleanImageBuild.value",
+				"value": 312.33,
+				"unit": "seconds",
+				"normalized": 312.33
+			},
+			"final": {
+				"record": "evidence/stage-2-image.json",
+				"pointer": "builds.clean.durationMs",
+				"value": 86666,
+				"unit": "milliseconds",
+				"normalized": 86.666
+			},
+			"delta": -225.664,
+			"verdict": "improved",
+			"exception": null
+		},
+		{
+			"id": "incrementalImageBuild",
+			"specFamily": "clean and incremental rebuild behavior",
+			"baselineStatus": "measured",
+			"baselineMeasurement": "warmImageBuild",
+			"baseline": {
+				"record": "evidence/stage-0-baseline.json",
+				"pointer": "measurements.warmImageBuild.value",
+				"value": 17.08,
+				"unit": "seconds",
+				"normalized": 17.08
+			},
+			"final": {
+				"record": "evidence/stage-2-image.json",
+				"pointer": "builds.warm.durationMs",
+				"value": 3469,
+				"unit": "milliseconds",
+				"normalized": 3.469
+			},
+			"delta": -13.611,
+			"verdict": "improved",
+			"exception": null
+		},
+		{
+			"id": "secondWorktreeGrowth",
+			"specFamily": "second-worktree disk growth",
+			"baselineStatus": "measured",
+			"baselineMeasurement": "secondWorktreeGrowth",
+			"baseline": {
+				"record": "evidence/stage-0-baseline.json",
+				"pointer": "measurements.secondWorktreeGrowth.value.totalBytesRounded",
+				"value": 96111608,
+				"unit": "bytes",
+				"normalized": 96111608
+			},
+			"final": {
+				"record": "evidence/stage-2-image.json",
+				"pointer": "secondWorktreeStorage.observedBytes",
+				"value": 4472832,
+				"unit": "bytes",
+				"normalized": 4472832
+			},
+			"delta": -91638776,
+			"verdict": "improved",
+			"exception": null
+		},
+		{
+			"id": "warmCommandLatency",
+			"specFamily": "warm command latency",
+			"baselineStatus": "unavailable",
+			"baselineMeasurement": "warmCommandLatency",
+			"baseline": null,
+			"final": null,
+			"delta": null,
+			"verdict": "no-baseline",
+			"exception": {
+				"reason": "There is nothing to compare against. Stage 0 records this family as unavailable and says why: No container reached lifecycle readiness, so a valid warm-command baseline could not be measured. The only other number in that record is failedLifecycleExecLatency, which Stage 0 itself labels as belonging to a container that FAILED its lifecycle — comparing against it would produce a spectacular apparent improvement and mean nothing. The first measurement taken on a ready container becomes the baseline rather than a comparison."
+			}
+		},
+		{
+			"id": "startupReadiness",
+			"specFamily": "startup/readiness",
+			"baselineStatus": "unavailable",
+			"baselineMeasurement": "readiness",
+			"baseline": null,
+			"final": null,
+			"delta": null,
+			"verdict": "no-baseline",
+			"exception": {
+				"reason": "There is nothing to compare against. Stage 0 records this family as unavailable and says why: Neither isolated worktree completed the lifecycle, so there is no successful readiness time. Both fresh-startup slots and the ready-restart measurement are unavailable for the same cause, so the whole family is unbaselined rather than partially so. The first readiness time measured on a container that completes its lifecycle becomes the baseline."
+			}
+		}
+	],
+	"signals": [
+		{
+			"id": "pr-exact-head",
+			"kind": "pr-exact-head",
+			"status": "pending",
+			"sha": null,
+			"runId": null,
+			"capturedAt": null
+		},
+		{
+			"id": "default-branch-full",
+			"kind": "default-branch-full",
+			"status": "pending",
+			"sha": null,
+			"runId": null,
+			"capturedAt": null
+		}
 	]
 }

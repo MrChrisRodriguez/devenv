@@ -4,6 +4,8 @@ import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import { loadTemplateParameters } from "../parameters";
 import {
+	ACCEPTANCE_ITEMS,
+	BUDGET_FAMILIES,
 	classifyGoldenDrift,
 	declaredFixtures,
 	declaredPorts,
@@ -22,14 +24,19 @@ import {
 	skillDirectories,
 	TEMPLATE_ONLY_PATHS,
 	templateOnlyBlockOf,
+	validateAcceptance,
+	validateBudgets,
+	validateCapabilityInventory,
 	validateDeferrals,
 	validateGoldens,
 	validateOwnership,
 	validateReleaseContract,
 	validateScans,
+	validateSignals,
 	validateSoleDeclarations,
 	validateSyncBoundary,
 	validateTopLevelWorkspaces,
+	validateVersionAuthorities,
 	validateWiring,
 } from "../release-contract";
 import {
@@ -276,8 +283,8 @@ describe("the four asserted negatives that keep this surface template-only", () 
 			OWNERSHIP_PATH,
 			(source) =>
 				source.replace(
-					'\t\t{ "pattern": "openspec/config.yaml", "requiresAll": ["openspec"] },',
-					'\t\t{ "pattern": "release.json", "requiresAll": ["openspec"] },\n\t\t{ "pattern": "openspec/config.yaml", "requiresAll": ["openspec"] },',
+					'\t"artifactRules": [\n',
+					'\t"artifactRules": [\n\t\t{ "pattern": "release.json", "requiresAll": ["openspec"] },\n',
 				),
 			validateOwnership,
 			"release: release.json must not be a gated artifact; this surface has no capability and ships in no render",
@@ -749,4 +756,306 @@ describe("the disabled-residue vacuity the renderer never refused", () => {
 			"release: the minimal residue scan covered",
 		);
 	}, 120_000);
+});
+
+describe("18.2's ten acceptance items", () => {
+	test("declares all ten and refuses a missing one", async () => {
+		expect(COMMITTED.acceptance.map((entry) => entry.id).sort()).toEqual(
+			[...ACCEPTANCE_ITEMS].sort(),
+		);
+		const registry: ReleaseRegistry = {
+			...COMMITTED,
+			acceptance: COMMITTED.acceptance.filter(
+				(entry) => entry.id !== "doctor-security",
+			),
+		};
+		const report = await validateAcceptance(ROOT, registry);
+		expect(report.errors.join("\n")).toContain(
+			"release: release.json declares no acceptance record for doctor-security; the full-fixture scenario names ten and a missing one is a signal nobody produced",
+		);
+	});
+
+	test("derives the mode from the diff in both directions", async () => {
+		expect((await validateAcceptance(ROOT, COMMITTED)).errors).toEqual([]);
+		// An inherited claim over paths that have moved is the failure the whole
+		// table exists to catch: `.devcontainer/**` has moved since Stage 2, so
+		// the image build cannot be inherited from it.
+		const asInherited: ReleaseRegistry = {
+			...COMMITTED,
+			acceptance: COMMITTED.acceptance.map((entry) =>
+				entry.id === "image-build"
+					? { ...entry, mode: "inherited" as const, liveCommand: null }
+					: entry,
+			),
+		};
+		expect(
+			(await validateAcceptance(ROOT, asInherited)).errors.join("\n"),
+		).toContain(
+			"an inherited claim is legal only while the paths that produced it are byte-unchanged",
+		);
+		// And the other direction, which is the half a guard usually forgets: a
+		// live claim over paths nothing has touched is a mode nobody derived.
+		const asLive: ReleaseRegistry = {
+			...COMMITTED,
+			acceptance: COMMITTED.acceptance.map((entry) =>
+				entry.id === "doctor-security"
+					? { ...entry, mode: "live" as const, liveCommand: "something" }
+					: entry,
+			),
+		};
+		expect(
+			(await validateAcceptance(ROOT, asLive)).errors.join("\n"),
+		).toContain("the mode is a consequence of the diff rather than a choice");
+	});
+
+	test("refuses an item that owns no path", async () => {
+		const registry: ReleaseRegistry = {
+			...COMMITTED,
+			acceptance: COMMITTED.acceptance.map((entry) =>
+				entry.id === "cloud-profiles" ? { ...entry, ownedPaths: [] } : entry,
+			),
+		};
+		expect(
+			(await validateAcceptance(ROOT, registry)).errors.join("\n"),
+		).toContain(
+			"release: the cloud-profiles acceptance record owns no path, so nothing could ever falsify its inheritance",
+		);
+	});
+
+	test("prints the inherited list so green is never read as re-measured", async () => {
+		const report = await validateAcceptance(ROOT, COMMITTED);
+		const inherited = COMMITTED.acceptance.filter(
+			(entry) => entry.mode === "inherited",
+		);
+		expect(inherited.length).toBeGreaterThan(0);
+		for (const entry of inherited) {
+			expect(report.notices.join("\n")).toContain(
+				`release: ${entry.id} is INHERITED from ${entry.evidenceRecord}`,
+			);
+		}
+		expect(report.notices.join("\n")).toContain(
+			`release: ${inherited.length} of ${COMMITTED.acceptance.length} acceptance items are inherited rather than re-measured at this head`,
+		);
+	});
+});
+
+describe("18.3's budget table", () => {
+	test("covers every family the requirement names and pins both sides", async () => {
+		expect((await validateBudgets(ROOT, COMMITTED)).errors).toEqual([]);
+		expect(new Set(COMMITTED.budgets.map((entry) => entry.specFamily))).toEqual(
+			new Set(BUDGET_FAMILIES),
+		);
+		const registry: ReleaseRegistry = {
+			...COMMITTED,
+			budgets: COMMITTED.budgets.filter(
+				(entry) => entry.specFamily !== "second-worktree disk growth",
+			),
+		};
+		expect((await validateBudgets(ROOT, registry)).errors.join("\n")).toContain(
+			"release: release.json declares no budget for second-worktree disk growth, which the requirement names by name",
+		);
+	});
+
+	test("refuses a pinned number the named record does not carry", async () => {
+		const registry: ReleaseRegistry = {
+			...COMMITTED,
+			budgets: COMMITTED.budgets.map((entry) =>
+				entry.id === "cleanImageBuild" && entry.baseline
+					? {
+							...entry,
+							baseline: { ...entry.baseline, value: 999, normalized: 999 },
+						}
+					: entry,
+			),
+		};
+		// A pin nothing compares is decoration. This is the comparison.
+		expect((await validateBudgets(ROOT, registry)).errors.join("\n")).toContain(
+			"a pin nothing compares is decoration",
+		);
+	});
+
+	test("refuses a regression with no exception and an improvement carrying one", async () => {
+		const regressed: ReleaseRegistry = {
+			...COMMITTED,
+			budgets: COMMITTED.budgets.map((entry) =>
+				entry.id === "cleanImageBuild" && entry.baseline && entry.final
+					? {
+							...entry,
+							baseline: {
+								...entry.baseline,
+								pointer: "measurements.warmImageBuild.value",
+								value: 17.08,
+								normalized: 17.08,
+							},
+							delta: 69.586,
+							verdict: "regressed" as const,
+						}
+					: entry,
+			),
+		};
+		expect(
+			(await validateBudgets(ROOT, regressed)).errors.join("\n"),
+		).toContain(
+			"release is blocked until the regression is corrected or an exception is approved",
+		);
+		const excused: ReleaseRegistry = {
+			...COMMITTED,
+			budgets: COMMITTED.budgets.map((entry) =>
+				entry.id === "secondWorktreeGrowth"
+					? { ...entry, exception: { reason: "because" } }
+					: entry,
+			),
+		};
+		expect((await validateBudgets(ROOT, excused)).errors.join("\n")).toContain(
+			"an exemption with nothing to exempt widens itself",
+		);
+	});
+
+	test("requires a no-baseline exception to quote the Stage 0 record", async () => {
+		const invented: ReleaseRegistry = {
+			...COMMITTED,
+			budgets: COMMITTED.budgets.map((entry) =>
+				entry.id === "warmCommandLatency"
+					? {
+							...entry,
+							exception: { reason: "we did not feel like measuring" },
+						}
+					: entry,
+			),
+		};
+		// The exception cannot drift away from the fact that justifies it: the
+		// guard reads Stage 0's own words and checks the quotation.
+		expect((await validateBudgets(ROOT, invented)).errors.join("\n")).toContain(
+			"budget's exception does not quote the Stage 0 record, which says: No container reached lifecycle readiness",
+		);
+		const bare: ReleaseRegistry = {
+			...COMMITTED,
+			budgets: COMMITTED.budgets.map((entry) =>
+				entry.id === "startupReadiness" ? { ...entry, exception: null } : entry,
+			),
+		};
+		expect((await validateBudgets(ROOT, bare)).errors.join("\n")).toContain(
+			"an unmeasured family is a gap somebody has to accept in writing",
+		);
+	});
+});
+
+describe("the two declared CI signals", () => {
+	test("accepts a pending signal and refuses a released decision beside it", () => {
+		expect(validateSignals(ROOT, COMMITTED).errors).toEqual([]);
+		const registry: ReleaseRegistry = { ...COMMITTED, decision: "released" };
+		expect(validateSignals(ROOT, registry).errors.join("\n")).toContain(
+			"declares the released decision while the pr-exact-head signal is still pending",
+		);
+	});
+
+	test("refuses a captured signal that names a commit other than HEAD", () => {
+		const registry: ReleaseRegistry = {
+			...COMMITTED,
+			signals: COMMITTED.signals.map((entry) =>
+				entry.kind === "pr-exact-head"
+					? {
+							...entry,
+							status: "captured" as const,
+							sha: COMMITTED.auditedSource.commit,
+							runId: "1",
+							capturedAt: "2026-08-07T00:00:00Z",
+						}
+					: entry,
+			),
+		};
+		// "belongs to a different commit" is the requirement's own wording, and
+		// the audited base commit is a different commit from HEAD by construction.
+		expect(validateSignals(ROOT, registry).errors.join("\n")).toContain(
+			"a green run for a different commit is not an exact-head signal",
+		);
+	});
+
+	test("refuses a pending signal that carries a run id anyway", () => {
+		const registry: ReleaseRegistry = {
+			...COMMITTED,
+			signals: COMMITTED.signals.map((entry) =>
+				entry.kind === "default-branch-full"
+					? { ...entry, runId: "123" }
+					: entry,
+			),
+		};
+		expect(validateSignals(ROOT, registry).errors.join("\n")).toContain(
+			"a pending signal records nothing",
+		);
+	});
+});
+
+describe("the ownership metadata this stage finally reconciles", () => {
+	test("places every supported capability in exactly one inventory bucket", async () => {
+		expect(await validateCapabilityInventory(ROOT)).toEqual([]);
+		const parameters = await loadTemplateParameters(ROOT);
+		const ownership = (await Bun.file(
+			resolve(
+				ROOT,
+				"docs/devcontainer-upgrade/stage-0/template-ownership.json",
+			),
+		).json()) as {
+			capabilityInventory: {
+				alwaysEmittedPartial: string[];
+				advertisedOnly: string[];
+				absent: string[];
+			};
+		};
+		const inventory = ownership.capabilityInventory;
+		const union = [
+			...inventory.alwaysEmittedPartial,
+			...inventory.advertisedOnly,
+			...inventory.absent,
+		];
+		// Six stages recorded that this block still listed "moon", a name that has
+		// not been a capability since PR #21, and every one of them left it
+		// because nothing validated the block. This assertion is why it will not
+		// be stale again.
+		expect(union.sort()).toEqual(
+			Object.keys(parameters.capabilities.supported).sort(),
+		);
+		expect(new Set(union).size).toBe(union.length);
+		expect(union).not.toContain("moon");
+	});
+
+	test("refuses a capability in two buckets and a capability in none", async () => {
+		await inWorkspace(
+			OWNERSHIP_PATH,
+			(source) =>
+				source.replace(
+					'"absent": ["playwright", "better_auth"]',
+					'"absent": ["playwright"]',
+				),
+			validateCapabilityInventory,
+			"release: capabilityInventory places better_auth in no bucket, so the inventory describes fewer capabilities than the template has",
+		);
+		await inWorkspace(
+			OWNERSHIP_PATH,
+			(source) =>
+				source.replace(
+					'"advertisedOnly": ["cloudflare_workers"]',
+					'"advertisedOnly": ["cloudflare_workers", "playwright"]',
+				),
+			validateCapabilityInventory,
+			"release: capabilityInventory lists playwright in both advertisedOnly and absent; a capability is in one bucket or the inventory means nothing",
+		);
+	});
+
+	test("refuses a version authority that still claims a resolved risk in the present tense", async () => {
+		expect(await validateVersionAuthorities(ROOT)).toEqual([]);
+		// Against the real tree rather than a synthetic one: every authority
+		// names a path this leg asserts exists, and a workspace carrying six of
+		// them would be testing the fixture instead of the rule.
+		await withMutatedFile(
+			OWNERSHIP_PATH,
+			(source) => source.replace('"historicalRisk"', '"currentRisk"'),
+			async () => {
+				expect((await validateVersionAuthorities(ROOT)).join("\n")).toContain(
+					"release: the Proto tools version authority still carries currentRisk, a present-tense claim about a template that no longer exists; record it as historicalRisk with the stage that resolved it",
+				);
+			},
+		);
+		expect(await validateVersionAuthorities(ROOT)).toEqual([]);
+	});
 });

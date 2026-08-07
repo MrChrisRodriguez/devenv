@@ -13,7 +13,10 @@
 		"scans",
 		"topLevelWorkspaces",
 		"syncBoundary",
-		"deferrals"
+		"deferrals",
+		"acceptance",
+		"budgets",
+		"signals"
 	],
 	"properties": {
 		"schemaVersion": {
@@ -162,9 +165,171 @@
 					}
 				}
 			}
+		},
+		"acceptance": {
+			"description": "The ten signals the full-fixture scenario names, each split into `live` or `inherited` by a path diff rather than by choice. All ten already have a sealed record: re-running all ten is days of live capture that would re-prove Stages 1 through 10 at a head where most of their surfaces have not moved, and NOT re-running them while saying an earlier stage proved it is a claim about a commit rather than about HEAD. So each item declares the paths that produced its record and the commit that sealed it, and the guard runs `git diff <boundarySha>..HEAD -- <ownedPaths>`: an inherited claim is legal only while the paths that produced it are byte-unchanged, and a live claim is required the moment one of them moves. `mode` is a CONSEQUENCE and the guard is what computes it. The inherited list prints on success, so a green release gate can never be read as `everything was re-measured`.",
+			"type": "array",
+			"minItems": 10,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"item",
+					"evidenceRecord",
+					"boundarySha",
+					"ownedPaths",
+					"mode",
+					"liveCommand",
+					"knownNonDefects"
+				],
+				"properties": {
+					"id": {
+						"type": "string",
+						"enum": [
+							"exact-head-ci",
+							"full-default-branch-ci",
+							"image-build",
+							"two-worktree-isolation",
+							"doctor-security",
+							"cloud-profiles",
+							"browser-preflight",
+							"openspec-lifecycle",
+							"dependency-guards",
+							"enabled-stack-tests"
+						]
+					},
+					"item": { "type": "string", "minLength": 1 },
+					"evidenceRecord": { "$ref": "#/$defs/relativePath" },
+					"boundarySha": { "$ref": "#/$defs/sha" },
+					"ownedPaths": {
+						"description": "The paths whose contents produced the sealed result. Empty is a refusal: an inherited claim nothing can falsify is a promise in prose.",
+						"type": "array",
+						"minItems": 1,
+						"items": { "$ref": "#/$defs/relativePath" }
+					},
+					"mode": { "type": "string", "enum": ["live", "inherited"] },
+					"liveCommand": { "type": ["string", "null"] },
+					"knownNonDefects": {
+						"description": "Outputs this item is EXPECTED to produce that look like failures and are not. A release gate that meets one of these and stops blocks the release for a documented non-defect.",
+						"type": "array",
+						"items": { "type": "string", "minLength": 1 }
+					}
+				}
+			}
+		},
+		"budgets": {
+			"description": "The four budget families the requirement names, with a verdict each. Five of Stage 0's ten measurements were never taken — no isolated worktree completed its lifecycle — and two of the four families are among them. The requirement's own escape hatch is `unless an explicit reviewed budget exception explains the trade-off`, so those two carry `no-baseline` and an exception whose reason must QUOTE the Stage 0 record's own words, which the guard reads and checks. Both sides of a measured comparison are pinned by a pointer into the record that carries them, so a number nobody can trace back is a refusal rather than a table entry.",
+			"type": "array",
+			"minItems": 4,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"specFamily",
+					"baselineStatus",
+					"baselineMeasurement",
+					"baseline",
+					"final",
+					"delta",
+					"verdict",
+					"exception"
+				],
+				"properties": {
+					"id": { "type": "string", "minLength": 1 },
+					"specFamily": {
+						"type": "string",
+						"enum": [
+							"warm command latency",
+							"startup/readiness",
+							"clean and incremental rebuild behavior",
+							"second-worktree disk growth"
+						]
+					},
+					"baselineStatus": {
+						"type": "string",
+						"enum": ["measured", "unavailable"]
+					},
+					"baselineMeasurement": {
+						"description": "The key under `evidence/stage-0-baseline.json#measurements` this family compares against. For an unavailable baseline it is also where the guard finds the reason the exception has to quote.",
+						"type": "string",
+						"minLength": 1
+					},
+					"baseline": {
+						"oneOf": [{ "type": "null" }, { "$ref": "#/$defs/budgetSide" }]
+					},
+					"final": {
+						"oneOf": [{ "type": "null" }, { "$ref": "#/$defs/budgetSide" }]
+					},
+					"delta": { "type": ["number", "null"] },
+					"verdict": {
+						"type": "string",
+						"enum": ["improved", "unchanged", "regressed", "no-baseline"]
+					},
+					"exception": {
+						"oneOf": [
+							{ "type": "null" },
+							{
+								"type": "object",
+								"additionalProperties": false,
+								"required": ["reason"],
+								"properties": {
+									"reason": { "type": "string", "minLength": 1 }
+								}
+							}
+						]
+					}
+				}
+			}
+		},
+		"signals": {
+			"description": "The two required CI signals, DECLARED and never queried. A fine-grained token cannot read `commits/{sha}/check-runs` — it answers 403 and there is no grantable toggle — so a guard that asked GitHub whether a commit was green would abstain in exactly the environment it was written for. The run ids come from the human who watched them go green; the shas are checked against local Git objects; and a signal that does not exist yet says `pending` rather than pretending. The full default-branch signal cannot exist before the merge commit does, which is the honesty gap this stage states rather than hides.",
+			"type": "array",
+			"minItems": 2,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["id", "kind", "status", "sha", "runId", "capturedAt"],
+				"properties": {
+					"id": { "type": "string", "minLength": 1 },
+					"kind": {
+						"type": "string",
+						"enum": ["pr-exact-head", "default-branch-full"]
+					},
+					"status": { "type": "string", "enum": ["pending", "captured"] },
+					"sha": {
+						"oneOf": [{ "type": "null" }, { "$ref": "#/$defs/sha" }]
+					},
+					"runId": { "type": ["string", "null"] },
+					"capturedAt": { "type": ["string", "null"] }
+				}
+			}
 		}
 	},
 	"$defs": {
+		"budgetSide": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["record", "pointer", "value", "unit", "normalized"],
+			"properties": {
+				"record": { "$ref": "#/$defs/relativePath" },
+				"pointer": {
+					"description": "A dotted path into that record. The guard resolves it and refuses a declared value the record does not carry, because a pin nothing compares is decoration.",
+					"type": "string",
+					"minLength": 1
+				},
+				"value": { "type": "number" },
+				"unit": {
+					"type": "string",
+					"enum": ["seconds", "milliseconds", "bytes"]
+				},
+				"normalized": {
+					"description": "The same value in the family's canonical unit, so the two sides of a comparison can be subtracted. The guard recomputes it.",
+					"type": "number"
+				}
+			}
+		},
 		"scan": {
 			"type": "object",
 			"additionalProperties": false,

@@ -14,5 +14,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-	"Validated the release declaration, its decision against the tree, the template-only wiring and its four asserted negatives, and the three golden render manifests.",
+	"Validated the release declaration, its decision against the tree, the template-only wiring and its four asserted negatives, the three golden render manifests, the six scan families over every render, the top-level layout rule, the sync boundary ratchet, the recorded deferrals, the capability inventory and version authorities, the ten acceptance items and their derived inheritance, the four budget families, and the two declared CI signals.",
 );
