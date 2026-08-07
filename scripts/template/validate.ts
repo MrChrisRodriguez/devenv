@@ -14,6 +14,7 @@ import {
 	resolveFixtureParameters,
 } from "./parameters";
 import { validateStageEightAEvidence } from "./stage-eight-a-evidence";
+import { validateStageEightBEvidence } from "./stage-eight-b-evidence";
 import { validateStageFiveBEvidence } from "./stage-five-b-evidence";
 import { validateStageFiveEvidence } from "./stage-five-evidence";
 import { validateStageFourEvidence } from "./stage-four-evidence";
@@ -50,6 +51,8 @@ export interface ValidationReport {
 	ciEvidenceSchemaFile: string;
 	graphEvidenceFile: string;
 	graphEvidenceSchemaFile: string;
+	affectedEvidenceFile: string;
+	affectedEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -82,6 +85,9 @@ export async function validateAll(
 		ciEvidenceSchemaFile: "evidence/stage-7-ci.schema.json",
 		graphEvidenceFile: "evidence/stage-8a-moon-graph.json",
 		graphEvidenceSchemaFile: "evidence/stage-8a-moon-graph.schema.json",
+		affectedEvidenceFile: "evidence/stage-8b-affected-selection.json",
+		affectedEvidenceSchemaFile:
+			"evidence/stage-8b-affected-selection.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -227,6 +233,13 @@ export async function validateAll(
 				...graphEvidenceErrors.map((error) => `stage-8a evidence: ${error}`),
 			);
 		}
+		const affectedEvidenceErrors = await validateStageEightBEvidence(root);
+		if (affectedEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...affectedEvidenceErrors.map((error) => `stage-8b evidence: ${error}`),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -245,7 +258,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, ${report.graphEvidenceFile}, and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, ${report.graphEvidenceFile}, ${report.affectedEvidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(
