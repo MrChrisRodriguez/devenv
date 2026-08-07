@@ -66,6 +66,7 @@
 		"openspec:check": "bun scripts/template/validate-openspec.ts",
 		"proxy:check": "bun scripts/template/validate-proxy.ts",
 		"telemetry:check": "bun scripts/template/validate-telemetry.ts",
+		"start:check": "bun scripts/template/validate-start.ts",
 		"rules:check": "bun scripts/template/validate-agent-rules.ts",
 		"rules:sync": "bun scripts/template/sync-agent-rules.ts",
 		"worktree:check": "bun scripts/template/validate-worktree.ts",

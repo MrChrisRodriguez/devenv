@@ -345,6 +345,20 @@
 			"sourceOfTruth": "proxy-routes.json"
 		},
 		{
+			"pattern": "scripts/template/validate-start.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "TanStack Start and server render contract entrypoint"
+		},
+		{
+			"pattern": "scripts/template/start-contract.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "start-surface.json"
+		},
+		{
 			"pattern": "scripts/worktree/**",
 			"classification": "template-owned",
 			"syncPolicy": "merge",
@@ -499,6 +513,20 @@
 			"sourceOfTruth": "proxy-routes.schema.json"
 		},
 		{
+			"pattern": "start-surface.json",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "start-surface.json"
+		},
+		{
+			"pattern": "start-surface.schema.json",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "start-surface.schema.json"
+		},
+		{
 			"pattern": "*",
 			"classification": "template-owned",
 			"syncPolicy": "merge",
@@ -627,6 +655,19 @@
 			"requiresAll": ["vite_websocket_proxy"]
 		},
 		{ "pattern": "vite.config.ts", "requiresAll": ["vite_websocket_proxy"] },
+		{ "pattern": "start-surface.json", "requiresAll": ["tanstack_start"] },
+		{
+			"pattern": "start-surface.schema.json",
+			"requiresAll": ["tanstack_start"]
+		},
+		{
+			"pattern": "scripts/template/start-contract.ts",
+			"requiresAll": ["tanstack_start"]
+		},
+		{
+			"pattern": "scripts/template/validate-start.ts",
+			"requiresAll": ["tanstack_start"]
+		},
 		{ "pattern": "scripts/worktree/**", "requiresAll": ["devcontainer"] },
 		{
 			"pattern": "scripts/template/worktree-contract.ts",
@@ -762,6 +803,12 @@
 			"scripts": ["telemetry:check"]
 		},
 		{
+			"capability": "tanstack_start",
+			"sections": [],
+			"packages": [],
+			"scripts": ["start:check"]
+		},
+		{
 			"capability": "vite_websocket_proxy",
 			"sections": [],
 			"packages": [],
@@ -873,8 +920,14 @@
 			"tokens": ["@sentry/", "telemetry:check"]
 		},
 		"tanstack_start": {
-			"paths": ["tsconfig.start.base.json"],
-			"tokens": ["@tanstack/start"]
+			"paths": [
+				"tsconfig.start.base.json",
+				"start-surface.json",
+				"start-surface.schema.json",
+				"scripts/template/start-contract.ts",
+				"scripts/template/validate-start.ts"
+			],
+			"tokens": ["@tanstack/start", "@tanstack/", "start:check"]
 		},
 		"vite_websocket_proxy": {
 			"paths": [
@@ -1139,7 +1192,7 @@
 			"claude_octopus",
 			"claude_warp"
 		],
-		"advertisedOnly": ["cloudflare_workers", "tanstack_start"],
+		"advertisedOnly": ["cloudflare_workers"],
 		"absent": ["playwright", "better_auth"]
 	},
 	"knownBoundaryRisks": [

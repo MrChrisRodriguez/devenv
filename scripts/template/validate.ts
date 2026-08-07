@@ -29,6 +29,7 @@ import { validateStageTenAEvidence } from "./stage-ten-a-evidence";
 import { validateStageTenBEvidence } from "./stage-ten-b-evidence";
 import { validateStageTenCEvidence } from "./stage-ten-c-evidence";
 import { validateStageThreeEvidence } from "./stage-three-evidence";
+import { validateStartContract } from "./start-contract";
 import { validateTelemetryContract } from "./telemetry-contract";
 import { validateToolchainContract } from "./toolchain";
 import { validateStageOneEvidence } from "./toolchain-evidence";
@@ -72,6 +73,8 @@ export interface ValidationReport {
 	proxyRegistrySchemaFile: string;
 	proxyEvidenceFile: string;
 	proxyEvidenceSchemaFile: string;
+	startRegistryFile: string;
+	startRegistrySchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -117,6 +120,8 @@ export async function validateAll(
 		proxyRegistrySchemaFile: "proxy-routes.schema.json",
 		proxyEvidenceFile: "evidence/stage-10c-proxy.json",
 		proxyEvidenceSchemaFile: "evidence/stage-10c-proxy.schema.json",
+		startRegistryFile: "start-surface.json",
+		startRegistrySchemaFile: "start-surface.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -233,6 +238,16 @@ export async function validateAll(
 		if (proxyErrors.length > 0) {
 			report.status = "fail";
 			report.errors.push(...proxyErrors);
+		}
+		// The application surface and server render contract. Hermetic for the
+		// fourth time and for the fourth reason: it reads a committed declaration,
+		// the JSON shape of whatever worker configuration that declaration names,
+		// and the syntax of the tracked tree, so it needs no application, no
+		// bundler and no worker runtime to answer.
+		const startErrors = await validateStartContract(root);
+		if (startErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...startErrors);
 		}
 		// Hermetic again: the vendor-artifact leg spawns the pinned CLI, which
 		// `rules:check` owns.

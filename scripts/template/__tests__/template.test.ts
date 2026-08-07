@@ -1297,6 +1297,109 @@ describe("deterministic fixture renderer", () => {
 		}
 	});
 
+	test("known-bad application surface residue is detected and named", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const output = resolve(temporary, "minimal");
+			await renderFixture({ root: ROOT, fixtureName: "minimal", output });
+			// A project without the capability receives neither the declaration,
+			// nor its schema, nor either guard module, nor the shared TypeScript
+			// base, nor the package script, nor the workflow step that runs it.
+			for (const path of [
+				"start-surface.json",
+				"start-surface.schema.json",
+				"scripts/template/start-contract.ts",
+				"scripts/template/validate-start.ts",
+				"tsconfig.start.base.json",
+			])
+				expect(await Bun.file(resolve(output, path)).exists()).toBe(false);
+			const minimalPackage = await Bun.file(
+				resolve(output, "package.json"),
+			).json();
+			expect(minimalPackage.scripts["start:check"]).toBeUndefined();
+			const minimalCi = await Bun.file(
+				resolve(output, ".github/workflows/ci.yml"),
+			).text();
+			expect(minimalCi).not.toContain("start:check");
+
+			const parameters = await loadTemplateParameters(ROOT);
+			const fixture = await loadFixtureDefinition(ROOT, "minimal", parameters);
+			const resolved = resolveFixtureParameters(parameters, fixture);
+			const ownership = await loadTemplateOwnership(ROOT);
+			for (const path of [
+				"start-surface.json",
+				"start-surface.schema.json",
+				"scripts/template/start-contract.ts",
+				"scripts/template/validate-start.ts",
+			]) {
+				await Bun.write(resolve(output, path), "export const leaked = 1;\n");
+				const leaked = await scanDisabledResidue(output, resolved, ownership);
+				expect(leaked.status).toBe("fail");
+				expect(leaked.findings).toContainEqual({
+					capability: "tanstack_start",
+					path,
+					signature: path,
+					kind: "path",
+				});
+				await rm(resolve(output, path));
+			}
+			// The shared TypeScript base was pre-reserved by Stage 0 before anything
+			// extended it, and the reservation still holds.
+			await Bun.write(resolve(output, "tsconfig.start.base.json"), "{}\n");
+			const reserved = await scanDisabledResidue(output, resolved, ownership);
+			expect(reserved.findings).toContainEqual({
+				capability: "tanstack_start",
+				path: "tsconfig.start.base.json",
+				signature: "tsconfig.start.base.json",
+				kind: "path",
+			});
+			await rm(resolve(output, "tsconfig.start.base.json"));
+
+			// The Stage 0 token names a package that NO LONGER EXISTS — it was the
+			// pre-release name of this framework — so the reservation cannot fire at
+			// all. The scope joins it rather than replacing it, and it is the entry
+			// that catches a real dependency.
+			await Bun.write(
+				resolve(output, "apps/web/package.json"),
+				'{ "dependencies": { "@tanstack/react-start": "1.168.27" } }\n',
+			);
+			const scope = await scanDisabledResidue(output, resolved, ownership);
+			expect(scope.status).toBe("fail");
+			expect(scope.findings).toContainEqual({
+				capability: "tanstack_start",
+				path: "apps/web/package.json",
+				signature: "@tanstack/",
+				kind: "token",
+			});
+			expect(scope.findings).not.toContainEqual({
+				capability: "tanstack_start",
+				path: "apps/web/package.json",
+				signature: "@tanstack/start",
+				kind: "token",
+			});
+			await rm(resolve(output, "apps/web/package.json"));
+
+			// The package script is a pre-declared signature TOKEN, and a token is
+			// a plain substring search: a leaked script name is caught wherever it
+			// lands, not only in the manifest it belongs to.
+			await Bun.write(
+				resolve(output, "scripts/ci/leaked.sh"),
+				"#!/usr/bin/env bash\nbun run start:check\n",
+			);
+			const token = await scanDisabledResidue(output, resolved, ownership);
+			expect(token.status).toBe("fail");
+			expect(token.findings).toContainEqual({
+				capability: "tanstack_start",
+				path: "scripts/ci/leaked.sh",
+				signature: "start:check",
+				kind: "token",
+			});
+			await rm(resolve(output, "scripts/ci/leaked.sh"));
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	});
+
 	test("full fixture still rejects global source identity residue", async () => {
 		const temporary = await temporaryDirectory();
 		try {
