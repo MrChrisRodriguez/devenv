@@ -1,4 +1,4 @@
-**Current status (2026-08-06):** 55 of 82 tasks are complete. Stages 0 through 8B have merged; Stage 9 is next.
+**Current status (2026-08-07):** 60 of 82 tasks are complete. Stages 0 through 9 have merged; Stage 10A is next.
 
 ## 1. Stage 0 PR — Inventory, Parameters, and Baseline
 
@@ -114,11 +114,11 @@ This stage enables Moon-based affected-project selection after shadow comparison
 
 This stage makes OpenSpec validation and archival safe and reproducible, and consolidates agent rules so all supported assistants follow one lifecycle.
 
-- [ ] 12.1 Add repository-local multi-root strict OpenSpec validation using CLI-returned roots/context paths with anti-vacuity and active/archive hygiene checks
-- [ ] 12.2 Add an executable archive wrapper requiring explicit selection when ambiguous plus freshly fetched clean current `main` exactly equal to `origin/main`
-- [ ] 12.3 Implement delta assessment/sync, duplicate-destination refusal, post-archive strict validation, and commit/push only after success
-- [ ] 12.4 Consolidate canonical cross-agent rules and mechanically synchronize required tool-specific commands/skills without duplicate normative text
-- [ ] 12.5 Prove feature/dirty/stale/missing-base/duplicate/ambiguous/invalid archive refusal and one disposable post-merge lifecycle; record rollback/evidence and update docs/`CHANGES.md`
+- [x] 12.1 Add repository-local multi-root strict OpenSpec validation using CLI-returned roots/context paths with anti-vacuity and active/archive hygiene checks
+- [x] 12.2 Add an executable archive wrapper requiring explicit selection when ambiguous plus freshly fetched clean current `main` exactly equal to `origin/main`
+- [x] 12.3 Implement delta assessment/sync, duplicate-destination refusal, post-archive strict validation, and commit/push only after success
+- [x] 12.4 Consolidate canonical cross-agent rules and mechanically synchronize required tool-specific commands/skills without duplicate normative text
+- [x] 12.5 Prove feature/dirty/stale/missing-base/duplicate/ambiguous/invalid archive refusal and one disposable post-merge lifecycle; record rollback/evidence and update docs/`CHANGES.md`
 
 ## 13. Stage 10A PR — Shared Schemas, Forms, and API Contracts
 

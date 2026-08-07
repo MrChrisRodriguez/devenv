@@ -50,7 +50,15 @@ The overlay on top is deliberately the smallest thing that can be checked, becau
 
 **Codex's surface is a negative requirement, written down as a check.** Codex reads the root `AGENTS.md` and receives no OpenSpec commands or skills. That was a standing decision living in somebody's memory, which is the kind of decision that gets re-litigated the first time a generator offers to write `.codex/skills/openspec-*`. It is now a table entry plus a scan: any `.codex/**` file naming `opsx` or `openspec-` fails the guard.
 
+**The evidence is eight commands with digest-bound logs.** `evidence/stage-9-openspec.json` seals the two guards, both mutation suites, one whole archive lifecycle run against the real pinned CLI in a throwaway clone with its own bare origin, the three rendered fixtures, the green required gate at the implementation boundary, and a synthetic-merge rollback proof. The collector validates the record before it writes it and a committed suite fabricates each claim in turn. `template:validate` is deliberately absent from that list: it aggregates every hermetic contract *including this record*, so it cannot appear in the record it validates — the required CI lane runs it instead.
+
+Two things the capture found that review would not have: a probe that read its post-archive facts *after* re-creating the change reported a correct run as a failed one, and a change with no delta specs at all fails the real CLI's `--strict` validation, so the fixture's second, still-active change needs its own delta spec. Both are recorded in the stage README.
+
+**Rollback is one `git revert -m 1`.** Nothing about this stage lives outside the tree — no repository variable, no branch-protection change, no operator step — so `rollback.outsideTheTree` in the sealed record is empty, unlike Stage 8B's. Nothing under `.devcontainer/**` changed either, so adopting or reverting costs no container rebuild.
+
 **Why downstream cares:** If a tool's success path is compatible with "there was nothing to check", its exit code is not a result. Enumerate the inputs yourself, make the tool agree with your enumeration, and treat every ambiguous answer as a failure. And when a script mutates a tree, put every refusal it will ever make ahead of its first write — a guard that refuses halfway has not refused.
+
+Full detail: `docs/devcontainer-upgrade/stage-9/README.md`.
 
 ---
 
