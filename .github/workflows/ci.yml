@@ -164,6 +164,20 @@ jobs:
         run: bun run proxy:check
       # capability:end vite_websocket_proxy
 
+      # capability:start tanstack_start
+      # Unconditional, and in THIS job for the same reason the four contract
+      # guards above are. The application surface guard reads a committed
+      # declaration and reconciles it with the tracked tree, so its cost is
+      # fixed rather than scaling with the project graph, and a gate on a
+      # server-rendered surface living in a lane a selection can narrow would be
+      # skipped by exactly the pull requests that add one. There is deliberately
+      # NO new job: every sealed evidence record's run-shape assertions are
+      # anchored on the gate's own `needs`, and a stage that adds no lane cannot
+      # re-open that wound.
+      - name: Validate application surface and server render contract
+        run: bun run start:check
+      # capability:end tanstack_start
+
       # Ungated. Every project has agent rule files and a canonical AGENTS.md,
       # whatever else it disables, and the guard checks the mirrors only for
       # blocks the canonical file still declares — so a project that fenced a

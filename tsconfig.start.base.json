@@ -1,29 +1,39 @@
 {
 	"$schema": "https://json.schemastore.org/tsconfig",
+	// Extends the repository base like `tsconfig.worker.base.json` and
+	// `tsconfig.lib.base.json` do, instead of restating a weaker option set. The
+	// standalone version silently dropped `exactOptionalPropertyTypes`,
+	// `noUncheckedIndexedAccess`, `noPropertyAccessFromIndexSignature`,
+	// `noImplicitOverride`, `noImplicitReturns`, `noFallthroughCasesInSwitch` and
+	// `useUnknownInCatchVariables` while calling itself strict.
+	"extends": "./tsconfig.base.json",
 	"compilerOptions": {
 		// Language and Environment
-		"target": "ES2022",
 		"lib": ["DOM", "DOM.Iterable", "ES2022"],
 		"jsx": "react-jsx",
 		// Modules
-		"module": "ESNext",
-		"moduleResolution": "Bundler",
-		"resolveJsonModule": true,
 		"allowImportingTsExtensions": true,
 		// Type Checking
-		"types": ["@tanstack/react-router/globals"],
-		"strict": true,
-		"strictNullChecks": true,
-		"noImplicitAny": true,
-		"noImplicitThis": true,
-		"alwaysStrict": true,
+		// TanStack Router registers route types through declaration merging in
+		// each app; modern releases do not expose an ambient globals type library.
+		// The previous value named a subpath the router package does not export,
+		// so `tsc` failed with TS2688 — and nothing ever reported it, because
+		// `vite build` was unaffected: esbuild ignores `types` entirely and no
+		// project in this repository extends this file.
+		//
+		// What replaces it is an ambient declaration file each app owns, modelling
+		// the Worker environment structurally so the app never needs a platform
+		// types package in this empty list.
+		"types": [],
 		// Emit
-		"noEmit": true,
-		"isolatedModules": true,
-		// Interop Constraints
-		"esModuleInterop": true,
-		"forceConsistentCasingInFileNames": true,
-		"skipLibCheck": true
+		"noEmit": true
 	},
-	"include": ["src", "app.config.ts", "*.d.ts"]
+	// Path Mapping - apps declare their own paths WITHOUT baseUrl (resolved
+	// relative to the tsconfig since TS 4.1; baseUrl is deprecated on the TS 6/7
+	// line and `toolchain:check` already refuses it repository-wide).
+	//
+	// `app.config.ts` is deliberately gone from this list: it was the entry file
+	// of a build generation this stack replaced with `vite.config.ts`, so it is a
+	// claim about a file layout that no longer exists.
+	"include": ["src", "*.d.ts"]
 }

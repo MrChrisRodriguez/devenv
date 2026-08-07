@@ -1,0 +1,3 @@
+$ bun scripts/template/validate-start.ts
+start: baseUrl is refused in every tsconfig by toolchain:check, which already covers tsconfig.start.base.json; it is not re-checked here
+start: the coupled build-tool and worker-runtime pin family is owned by toolchain:check, because it must hold whenever that capability is enabled and this one is not

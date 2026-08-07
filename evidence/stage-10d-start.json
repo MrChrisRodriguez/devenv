@@ -1,0 +1,776 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-10d-start",
+	"capturedAt": "2026-08-07T14:17:28.160Z",
+	"run": {
+		"id": "stage10d-20260807t141711z-1427f906",
+		"logRoot": "evidence/stage-10d-start-run"
+	},
+	"source": {
+		"baseSha": "4859e086be715206c7a83ec089b7475d40a274e3",
+		"implementationSha": "1427f9063d6a502b81f3f98b69b6820b735f3ada",
+		"treeClean": true,
+		"declaredMode": "skeleton",
+		"devServer": "wrangler",
+		"ssrMode": "buffered",
+		"repairedTsconfig": "tsconfig.start.base.json",
+		"forbiddenTypes": ["@tanstack/react-router/globals"],
+		"cloudflareFamily": {
+			"@cloudflare/vite-plugin": "1.43.0",
+			"@cloudflare/vitest-pool-workers": "0.18.0",
+			"wrangler": "4.107.0",
+			"miniflare": "4.20260701.0",
+			"workerd": "1.20260701.1",
+			"vite": "8.1.4"
+		},
+		"buildToolPeerRange": "^6.1.0 || ^7.0.0 || ^8.0.0",
+		"lockfileChanged": false,
+		"harnessBindPort": 0,
+		"harnessListeners": 2,
+		"typescriptCatalogPin": "5.9.3"
+	},
+	"host": {
+		"os": "darwin",
+		"architecture": "arm64",
+		"kernel": "25.5.0",
+		"insideDevcontainer": false,
+		"bunVersion": "1.3.13",
+		"gitVersion": "2.50.1",
+		"ghVersion": "2.59.0"
+	},
+	"repository": {
+		"nameWithOwner": "MrChrisRodriguez/devenv",
+		"workflowFile": ".github/workflows/ci.yml",
+		"gateJobId": "ci-gate",
+		"gateContext": "CI gate",
+		"gateNeeds": [
+			"ci",
+			"image",
+			"affected",
+			"project",
+			"moon-graph",
+			"browser"
+		],
+		"startGuardScript": "start:check",
+		"familyGuardScript": "toolchain:check",
+		"ciGuardScript": "ci:check",
+		"registryFile": "start-surface.json",
+		"capability": "tanstack_start",
+		"capabilityDependencies": ["cloudflare_workers", "vite_websocket_proxy"],
+		"addedJobs": 0,
+		"devcontainerFilesChanged": 0
+	},
+	"commands": [
+		{
+			"id": "start-guard",
+			"command": ["bun", "run", "start:check"],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:11.892Z",
+			"completedAt": "2026-08-07T14:17:12.177Z",
+			"durationMs": 285,
+			"stdoutPath": "evidence/stage-10d-start-run/start-guard.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/start-guard.stderr",
+			"stdoutSha256": "b9da17f72d7c4adefb31b352dbbd83f5d410410540b22820ea32a7f55908bdd6",
+			"stderrSha256": "352a7f6820dab372c0b5560f841f0a7ea7fbfe60fea0f0ba43d3f9c1def5b465",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "family-guard",
+			"command": ["bun", "run", "toolchain:check"],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:12.177Z",
+			"completedAt": "2026-08-07T14:17:12.616Z",
+			"durationMs": 439,
+			"stdoutPath": "evidence/stage-10d-start-run/family-guard.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/family-guard.stderr",
+			"stdoutSha256": "3fd2b95593a7482b057943f927e5ee77dda508eadd485ee0574ed41fb20518e6",
+			"stderrSha256": "7b673fdb2eaf9541313beae59744635aeb03a86d30a1277bd3a71da3a1fe7193",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "ci-guard",
+			"command": ["bun", "run", "ci:check"],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:12.616Z",
+			"completedAt": "2026-08-07T14:17:12.677Z",
+			"durationMs": 61,
+			"stdoutPath": "evidence/stage-10d-start-run/ci-guard.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/ci-guard.stderr",
+			"stdoutSha256": "9cfe650e97435463f535e1a81f5b30b1ab521cfb458af04688f901be57a294f9",
+			"stderrSha256": "d183538a63c244d8ba196aa5a8eb1eb4cfc636414a9ba546e4cfb9b3537e4088",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "start-mutations",
+			"command": ["bun", "test", "scripts/template/__tests__/start.test.ts"],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:12.677Z",
+			"completedAt": "2026-08-07T14:17:18.443Z",
+			"durationMs": 5766,
+			"stdoutPath": "evidence/stage-10d-start-run/start-mutations.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/start-mutations.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "6bb605b2e067f1ca1d3f66c73fb465b5c57b4ad691761a9210ad4d73e0814c89",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "tsconfig-mutations",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/start.test.ts",
+				"-t",
+				"the shared TypeScript base, as a declaration"
+			],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:18.443Z",
+			"completedAt": "2026-08-07T14:17:19.054Z",
+			"durationMs": 611,
+			"stdoutPath": "evidence/stage-10d-start-run/tsconfig-mutations.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/tsconfig-mutations.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "7d6d0a595c3c3f8a9863a79ea9b4168032a5588615aa4b61bb1bdadf755a3562",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "family-mutations",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/toolchain.test.ts",
+				"-t",
+				"the Cloudflare family governs the build tool it is loaded by"
+			],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:19.054Z",
+			"completedAt": "2026-08-07T14:17:19.133Z",
+			"durationMs": 79,
+			"stdoutPath": "evidence/stage-10d-start-run/family-mutations.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/family-mutations.stderr",
+			"stdoutSha256": "e9eae5df282edeb49e76dd67ca753a1d3ea526026e2162b6250f9ccb10f1603f",
+			"stderrSha256": "e4b0d6108d658b8320e2992f2760de3a8d75f56d300537e4d147cad405846b12",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "ssr-policy",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/start.test.ts",
+				"-t",
+				"the server render policy is a declared matrix"
+			],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:19.134Z",
+			"completedAt": "2026-08-07T14:17:19.694Z",
+			"durationMs": 560,
+			"stdoutPath": "evidence/stage-10d-start-run/ssr-policy.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/ssr-policy.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "2e6c5228361fb795dfb8e7aa6b8ce118fa4560fb7d36247378074908eb23c8e3",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "worker-config",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/start.test.ts",
+				"-t",
+				"the hand-written worker configuration is reconciled"
+			],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:19.695Z",
+			"completedAt": "2026-08-07T14:17:20.331Z",
+			"durationMs": 636,
+			"stdoutPath": "evidence/stage-10d-start-run/worker-config.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/worker-config.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "e9c727293820a15de391098fecd21a91c66c9ff2df28cecf8f4b8bcb71dc355d",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "built-artifact",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/start.test.ts",
+				"-t",
+				"the built worker configuration is the only portable proof"
+			],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:20.332Z",
+			"completedAt": "2026-08-07T14:17:20.820Z",
+			"durationMs": 488,
+			"stdoutPath": "evidence/stage-10d-start-run/built-artifact.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/built-artifact.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "32103836c1d53c893d45ff44665a8e555c0d8f36686aae9e073936918fe62cc4",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "namespace-drift",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/start.test.ts",
+				"-t",
+				"the asset namespace is one decision spelled three ways"
+			],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:20.820Z",
+			"completedAt": "2026-08-07T14:17:21.152Z",
+			"durationMs": 332,
+			"stdoutPath": "evidence/stage-10d-start-run/namespace-drift.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/namespace-drift.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "afc60b4dc059cfcac92d887c34e1a485a122523263fef746d2281b7490364369",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "route-tree",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/start.test.ts",
+				"-t",
+				"the generated route tree is governed as a committed artefact"
+			],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:21.153Z",
+			"completedAt": "2026-08-07T14:17:21.453Z",
+			"durationMs": 300,
+			"stdoutPath": "evidence/stage-10d-start-run/route-tree.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/route-tree.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "c327297ef8df63f3db1ccbf49488bd87bb7a299c3cc13b9fe16b66619cf6e316",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "router-options",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/start.test.ts",
+				"-t",
+				"the router options are decisions rather than defaults"
+			],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:21.453Z",
+			"completedAt": "2026-08-07T14:17:21.721Z",
+			"durationMs": 268,
+			"stdoutPath": "evidence/stage-10d-start-run/router-options.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/router-options.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "7f71924b65a58725a7fa30cda95c1e524b593355031780a0db2382a146d295dd",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "proxy-reconciliation",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/start.test.ts",
+				"-t",
+				"the declared capability dependency"
+			],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:21.721Z",
+			"completedAt": "2026-08-07T14:17:22.140Z",
+			"durationMs": 419,
+			"stdoutPath": "evidence/stage-10d-start-run/proxy-reconciliation.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/proxy-reconciliation.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "cb1de3363200fa6567c0435d51f3c6cd607c57865f0608647ee6bea07e439828",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "tsconfig-typecheck",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/start.test.ts",
+				"-t",
+				"the shared TypeScript base, compiled for real"
+			],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:22.140Z",
+			"completedAt": "2026-08-07T14:17:22.882Z",
+			"durationMs": 742,
+			"stdoutPath": "evidence/stage-10d-start-run/tsconfig-typecheck.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/tsconfig-typecheck.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "973c02739fbc8863815b8e40fb46e7179f707845309c6595260cec7b31126f11",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "ssr-read-through-proxy",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/start.test.ts",
+				"-t",
+				"a document read through the declared proxy is exactly one"
+			],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:22.882Z",
+			"completedAt": "2026-08-07T14:17:22.908Z",
+			"durationMs": 26,
+			"stdoutPath": "evidence/stage-10d-start-run/ssr-read-through-proxy.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/ssr-read-through-proxy.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "628beac43ec4f42cc12bb4bf9dc6c4b91ba4c0b186c2a3388bb9b7c52e4092d4",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "browser-mutation-through-proxy",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/start.test.ts",
+				"-t",
+				"a browser mutation shares the origin, is stripped"
+			],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:22.908Z",
+			"completedAt": "2026-08-07T14:17:22.933Z",
+			"durationMs": 25,
+			"stdoutPath": "evidence/stage-10d-start-run/browser-mutation-through-proxy.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/browser-mutation-through-proxy.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "35f7a831a72c29dc4d468cd9e7b6d69e9590963fbb8659ded633b2b3a315c033",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rendered-start",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-ten-d-evidence.ts",
+				"probe-render-start",
+				"--workspace",
+				"/tmp/devenv-stage10d-20260807t141711z-1427f906-render"
+			],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:22.933Z",
+			"completedAt": "2026-08-07T14:17:23.679Z",
+			"durationMs": 746,
+			"stdoutPath": "evidence/stage-10d-start-run/rendered-start.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/rendered-start.stderr",
+			"stdoutSha256": "d7660800d91cc77b6eac8fed3980689ba20cecbc6eda9d3a85984a88a1aca22b",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-gate",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nrun=\"$(gh run view 31186431733 --repo MrChrisRodriguez/devenv --json conclusion,createdAt,databaseId,event,headBranch,headSha,jobs,status,url,workflowName)\"\nprintf 'runJson=%s\\n' \"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\ngate=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; jobs=[job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]]; print(jobs[0] if jobs else \"\")' \"CI gate\")\"\nprintf 'gateJobId=%s\\n' \"$gate\"\nlog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$gate\" --log)\"\nprintf 'gateLogSha256=%s\\n' \"$(printf '%s' \"$log\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'upstreamResults=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*upstream results: //p' | head -n 1)\"\nprintf 'gateGreenLines=%s\\n' \"$(printf '%s\\n' \"$log\" | grep -c 'Every required job passed or was skipped' || true)\""
+			],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:23.679Z",
+			"completedAt": "2026-08-07T14:17:27.452Z",
+			"durationMs": 3773,
+			"stdoutPath": "evidence/stage-10d-start-run/live-gate.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/live-gate.stderr",
+			"stdoutSha256": "62b9e92311ad65e95a9f675d18fbdca4f7f5d81c769cb31bcc68f5fbad701423",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rollback-proof",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-ten-d-evidence.ts",
+				"probe-rollback",
+				"--base",
+				"4859e086be715206c7a83ec089b7475d40a274e3",
+				"--implementation",
+				"1427f9063d6a502b81f3f98b69b6820b735f3ada",
+				"--workspace",
+				"/tmp/devenv-stage2-stage10d-20260807t141711z-1427f906-rollback"
+			],
+			"runId": "stage10d-20260807t141711z-1427f906",
+			"startedAt": "2026-08-07T14:17:27.452Z",
+			"completedAt": "2026-08-07T14:17:28.159Z",
+			"durationMs": 707,
+			"stdoutPath": "evidence/stage-10d-start-run/rollback-proof.stdout",
+			"stderrPath": "evidence/stage-10d-start-run/rollback-proof.stderr",
+			"stdoutSha256": "e98a8707afae66d7b58b2e6f789bb59d77102847291ad997dfbd0037d9c0b045",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		}
+	],
+	"guards": {
+		"start": {
+			"commandId": "start-guard",
+			"command": "bun run start:check",
+			"summary": "Validated the application surface registry, its declared mode against the tree, guard wiring, template ownership, the development runtime policy, and the declared proxy routes against the development proxy registry."
+		},
+		"family": {
+			"commandId": "family-guard",
+			"command": "bun run toolchain:check",
+			"summary": "Validated exact Proto, catalog, lock, feature, TypeScript, and PATH contracts with Stage 1 evidence."
+		},
+		"ci": {
+			"commandId": "ci-guard",
+			"command": "bun run ci:check",
+			"summary": "Validated workflow trigger policy, bootstrap ownership, action pins, job bounds, failure tolerance, aggregate gate membership, shell injection surface, history ownership, compiler coverage, and guard wiring."
+		}
+	},
+	"suites": [
+		{
+			"commandId": "start-mutations",
+			"testFile": "scripts/template/__tests__/start.test.ts",
+			"passCount": 45,
+			"failCount": 0
+		},
+		{
+			"commandId": "tsconfig-typecheck",
+			"testFile": "scripts/template/__tests__/start.test.ts",
+			"passCount": 2,
+			"failCount": 0
+		},
+		{
+			"commandId": "tsconfig-mutations",
+			"testFile": "scripts/template/__tests__/start.test.ts",
+			"passCount": 5,
+			"failCount": 0
+		},
+		{
+			"commandId": "family-mutations",
+			"testFile": "scripts/template/__tests__/toolchain.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "ssr-policy",
+			"testFile": "scripts/template/__tests__/start.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "worker-config",
+			"testFile": "scripts/template/__tests__/start.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "built-artifact",
+			"testFile": "scripts/template/__tests__/start.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "namespace-drift",
+			"testFile": "scripts/template/__tests__/start.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "route-tree",
+			"testFile": "scripts/template/__tests__/start.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "router-options",
+			"testFile": "scripts/template/__tests__/start.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "proxy-reconciliation",
+			"testFile": "scripts/template/__tests__/start.test.ts",
+			"passCount": 4,
+			"failCount": 0
+		},
+		{
+			"commandId": "ssr-read-through-proxy",
+			"testFile": "scripts/template/__tests__/start.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "browser-mutation-through-proxy",
+			"testFile": "scripts/template/__tests__/start.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		}
+	],
+	"typecheckProof": {
+		"commandId": "tsconfig-typecheck",
+		"forbiddenEntry": "@tanstack/react-router/globals",
+		"mutationDiagnostic": "TS2688",
+		"staleIncludeDiagnostic": "TS18003",
+		"passCount": 2
+	},
+	"renderFixtures": {
+		"commandId": "rendered-start",
+		"fixtures": [
+			{
+				"name": "minimal",
+				"capabilityEnabled": false,
+				"cloudflareEnabled": false,
+				"gatedPaths": [],
+				"packageScripts": ["ci:check", "toolchain:check"],
+				"startStepPresent": false,
+				"guardPresent": false,
+				"repairedTsconfigPresent": false,
+				"startTokenFiles": 0,
+				"startErrors": [],
+				"buildToolFamilyPresent": false,
+				"residueFindings": []
+			},
+			{
+				"name": "cloud",
+				"capabilityEnabled": false,
+				"cloudflareEnabled": true,
+				"gatedPaths": [],
+				"packageScripts": ["ci:check", "toolchain:check"],
+				"startStepPresent": false,
+				"guardPresent": false,
+				"repairedTsconfigPresent": false,
+				"startTokenFiles": 0,
+				"startErrors": [],
+				"buildToolFamilyPresent": true,
+				"residueFindings": []
+			},
+			{
+				"name": "full",
+				"capabilityEnabled": true,
+				"cloudflareEnabled": true,
+				"gatedPaths": [
+					"scripts/template/start-contract.ts",
+					"scripts/template/validate-start.ts",
+					"start-surface.json",
+					"start-surface.schema.json"
+				],
+				"packageScripts": ["ci:check", "start:check", "toolchain:check"],
+				"startStepPresent": true,
+				"guardPresent": true,
+				"repairedTsconfigPresent": true,
+				"startTokenFiles": 4,
+				"startErrors": [],
+				"buildToolFamilyPresent": true,
+				"residueFindings": []
+			}
+		]
+	},
+	"live": {
+		"live-gate": {
+			"commandId": "live-gate",
+			"heavyLaneRan": true,
+			"run": {
+				"runId": 31186431733,
+				"url": "https://github.com/MrChrisRodriguez/devenv/actions/runs/31186431733",
+				"event": "pull_request",
+				"headBranch": "feat/stage-10d-tanstack-start",
+				"headSha": "1427f9063d6a502b81f3f98b69b6820b735f3ada",
+				"conclusion": "success",
+				"gateJobId": 92892916471,
+				"gateConclusion": "success",
+				"gateLogSha256": "cd0706e84dc66d7cb62f0050b14bd48b7cf6630e011bee810a2eadf632d810a9",
+				"upstreamResults": "success,success,success,success,success,success",
+				"jobs": [
+					{
+						"name": "Build devcontainer image",
+						"conclusion": "success"
+					},
+					{
+						"name": "Contracts & Baseline",
+						"conclusion": "success"
+					},
+					{
+						"name": "Select affected projects",
+						"conclusion": "success"
+					},
+					{
+						"name": "Verify Moon project graph",
+						"conclusion": "success"
+					},
+					{
+						"name": "Launch baked browser payload",
+						"conclusion": "success"
+					},
+					{
+						"name": "Lint, Typecheck & Test (root)",
+						"conclusion": "success"
+					}
+				]
+			}
+		}
+	},
+	"coverage": [
+		{
+			"id": "declared-surface",
+			"task": "16.1 declare the TanStack Start application surface",
+			"reason": "The input is a committed declaration rather than a query over an empty tree, and its declared mode is reconciled with the derived state in both directions before any leg runs: a generated route tree at any depth, a framework-scope dependency in any manifest section, a source file that CALLS one of the two entry helpers, or a project that extends the shared base all fail a registry still saying skeleton, and a registry declaring a surface the tree does not carry fails too.",
+			"commandIds": ["start-guard", "start-mutations"]
+		},
+		{
+			"id": "strict-typescript-base",
+			"task": "16.1 generate the strict shared Start TypeScript base without baseUrl or nonexistent globals",
+			"reason": "The base now extends the repository base instead of restating a weaker set beside it, its unresolvable type entry is gone and declared forbidden, and the stale include entry is dropped; the proof is the catalog-pinned compiler run for real over a synthetic project that genuinely extends it, because a build-based proof would have been green against the broken file — esbuild ignores types entirely.",
+			"commandIds": ["tsconfig-typecheck", "tsconfig-mutations"]
+		},
+		{
+			"id": "cloudflare-pin-family",
+			"task": "16.1 align Cloudflare Vite/runtime pins as one family",
+			"reason": "The build tool joins the coupled family as a lock-resolution singleton, its resolution is reconciled against the plugin's OWN declared peer range read out of the lockfile, and a floating spec for it or any of its plugins in a workspace manifest is refused; the rules are core and fenced on the capability this one depends on, so they hold in the render where Cloudflare is on and this capability is off.",
+			"commandIds": ["family-guard", "family-mutations", "rendered-start"]
+		},
+		{
+			"id": "server-render-policy",
+			"task": "16.2 smoke one SSR read in the generated fixture",
+			"reason": "Buffered is the declared default because this worker runtime's backpressure and abort behaviour under a stream is unproven, and streaming is a waivable refusal rather than an impossibility; the methods are exactly the two reads, an unsupported method takes a 405 that names them, and the cache directive is asserted on every response class rather than only on the success path.",
+			"commandIds": ["ssr-policy", "ssr-read-through-proxy"]
+		},
+		{
+			"id": "worker-configuration",
+			"task": "16.2 build in the generated fixture",
+			"reason": "The service binding allowlist is closed because a narrow binding set is what makes a leak between two services structurally impossible, the Node compatibility flag is required because the server bundle fails at module evaluation without it, the generated subdomain and preview origins are pinned off, and a hand-written assets block is refused because the plugin synthesizes that block itself.",
+			"commandIds": ["worker-config", "start-guard"]
+		},
+		{
+			"id": "built-artifact",
+			"task": "16.2 build and verify the artifact the deploy ships",
+			"reason": "The generated worker configuration is checked against the declaration rather than against the source it came from, because the two are different files and only one reaches production: the declared entry module and asset directory, service bindings that equal the declaration rather than subset it, empty forbidden binding families, and a harness-only variable as a hard failure.",
+			"commandIds": ["built-artifact", "start-guard"]
+		},
+		{
+			"id": "asset-namespace",
+			"task": "16.2 typecheck and build one application surface without namespace drift",
+			"reason": "Rewriting document URLs to a different public prefix does not move the physical directory the asset binding serves, which made every rewritten URL 404 in the built worker while the development server stayed green; the public prefix, the router basepath and the emitted asset directory are three spellings of one decision and drift between any two is refused by name.",
+			"commandIds": ["namespace-drift", "router-options"]
+		},
+		{
+			"id": "route-tree",
+			"task": "16.3 add config/build/graph mutations over the generated route tree",
+			"reason": "The route tree is governed as a committed artefact rather than a regenerable one: tracked, absent from the ignore file, and excluded from the formatter and the linter and the assist alike, because the generator's raw style fails a lint pass over a freshly built tree that a checked-in copy passes; whether it is current is deliberately not a rule and the README says why.",
+			"commandIds": ["route-tree", "start-mutations"]
+		},
+		{
+			"id": "declared-dependency",
+			"task": "16.1 declare the surface behind a capability with declared dependencies",
+			"reason": "This is the first capability in the template with declared dependencies, so the import rule had to be written down: a gated module may import core or same-capability modules only, and a declared dependency earns the right to READ a dependency's committed registry file with a named notice when it is absent, because the guarantee that both travel together expires at generation and a static import would turn a diagnostic into a module-load crash.",
+			"commandIds": ["proxy-reconciliation", "start-guard"]
+		},
+		{
+			"id": "executed-read-and-mutation",
+			"task": "16.2 smoke one SSR read plus one browser mutation through the intended proxy",
+			"reason": "Two loopback listeners make the apex proxy the single browser-visible origin production actually serves, a document read increments the server-side render counter by exactly one read before teardown, and a same-origin mutation reaches the upstream with every identity-override header stripped while the render counter does not move again — which is the zero-refetch property that makes a server render read mean something.",
+			"commandIds": [
+				"ssr-read-through-proxy",
+				"browser-mutation-through-proxy",
+				"start-mutations"
+			]
+		},
+		{
+			"id": "capability-isolation",
+			"task": "16.3 validate enabled and disabled fixtures",
+			"reason": "Each fixture is rendered and inspected for the four gated paths, the shared TypeScript base, the package script and the fenced step, every project file of every render is swept for both signature tokens, the guard returns a real verdict where the capability is on, and the core pin family is shown present in the render where Cloudflare is on and this capability is off.",
+			"commandIds": ["rendered-start", "live-gate"]
+		},
+		{
+			"id": "rollback",
+			"task": "16.3 record rollback and evidence",
+			"reason": "A synthetic merge followed by git revert -m 1 produces a tree identical to the Stage 10C predecessor, that tree carries none of the four paths this stage adds while the implementation tree carries all of them, and the shared TypeScript base — which this stage repairs rather than creates — is shown restored to the version carrying the entry that made the compiler fail.",
+			"commandIds": ["rollback-proof"]
+		}
+	],
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-10d-pr-merge-commit>"],
+		"outsideTheTree": [],
+		"containerRebuildRequired": false,
+		"scope": "Revert the application surface registry and its schema, the guard and its entrypoint, the start:check package script, the one fenced step in the required lane, the ownership wiring, the widened capability signature, the core Cloudflare build-tool family legs in scripts/template/toolchain.ts, the repair to tsconfig.start.base.json, the fenced AGENTS.md block, the documentation, and this record as one Stage 10D bundle. One half is asymmetric and the record proves it separately: the shared TypeScript base is a Stage 0 artefact this stage REPAIRS, so reverting restores the version whose types entry named a subpath the router package does not export — a file the compiler refuses and nothing in this repository compiles. Nothing about this stage lives outside the tree: there is no repository variable, no branch-protection change and no operator step, so the revert is order-independent. Adopting or reverting it costs no container rebuild in either direction: nothing under .devcontainer/ is touched, no advertised port is added because the port this stack's worker runs on is already advertised under the capability this one depends on, and the definition fingerprint is unchanged. bun.lock, template-parameters.toml, every fixture and scripts/worktree/** are untouched in both directions, and apps/ and libs/ stay empty either way.",
+		"proof": {
+			"commandId": "rollback-proof",
+			"predecessorSha": "4859e086be715206c7a83ec089b7475d40a274e3",
+			"implementationSha": "1427f9063d6a502b81f3f98b69b6820b735f3ada",
+			"syntheticMergeSha": "c0688038d99eb902a39fa51e0c42a29fcf61c2c8",
+			"syntheticMergeTree": "7a6dda8bab0383a4f01dcc8186c09c66cb7965cb",
+			"syntheticMergeParents": [
+				"4859e086be715206c7a83ec089b7475d40a274e3",
+				"1427f9063d6a502b81f3f98b69b6820b735f3ada"
+			],
+			"predecessorTree": "972e0c3dd04f9f4bef700d0a6cdfc882481bf5ac",
+			"revertedTree": "972e0c3dd04f9f4bef700d0a6cdfc882481bf5ac",
+			"treeMatchesPredecessor": true,
+			"operations": [
+				["git", "rev-parse", "4859e086be715206c7a83ec089b7475d40a274e3^{tree}"],
+				["git", "rev-parse", "1427f9063d6a502b81f3f98b69b6820b735f3ada^{tree}"],
+				[
+					"git",
+					"worktree",
+					"add",
+					"--detach",
+					"/tmp/devenv-stage2-stage10d-20260807t141711z-1427f906-rollback",
+					"4859e086be715206c7a83ec089b7475d40a274e3"
+				],
+				[
+					"git",
+					"commit-tree",
+					"7a6dda8bab0383a4f01dcc8186c09c66cb7965cb",
+					"-p",
+					"4859e086be715206c7a83ec089b7475d40a274e3",
+					"-p",
+					"1427f9063d6a502b81f3f98b69b6820b735f3ada",
+					"-m",
+					"Stage 2 synthetic merge"
+				],
+				["git", "rev-parse", "c0688038d99eb902a39fa51e0c42a29fcf61c2c8^{tree}"],
+				[
+					"git",
+					"show",
+					"-s",
+					"--format=%P",
+					"c0688038d99eb902a39fa51e0c42a29fcf61c2c8"
+				],
+				[
+					"git",
+					"checkout",
+					"--detach",
+					"c0688038d99eb902a39fa51e0c42a29fcf61c2c8"
+				],
+				[
+					"git",
+					"revert",
+					"--no-edit",
+					"-m",
+					"1",
+					"c0688038d99eb902a39fa51e0c42a29fcf61c2c8"
+				],
+				["git", "rev-parse", "HEAD^{tree}"]
+			],
+			"addedPaths": [
+				"start-surface.json",
+				"start-surface.schema.json",
+				"scripts/template/start-contract.ts",
+				"scripts/template/validate-start.ts"
+			],
+			"addedPathsRemoved": true,
+			"repairedTsconfigRestored": true
+		}
+	}
+}

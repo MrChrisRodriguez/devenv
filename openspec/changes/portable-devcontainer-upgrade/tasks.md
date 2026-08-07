@@ -1,4 +1,4 @@
-**Current status (2026-08-07):** 71 of 82 tasks are complete. Stages 0 through 10C have merged; Stage 10D is next.
+**Current status (2026-08-07):** 74 of 82 tasks are complete. Stages 0 through 10D have merged; Stage 10E is next.
 
 ## 1. Stage 0 PR — Inventory, Parameters, and Baseline
 
@@ -150,9 +150,9 @@ This stage generates correct HTTP and WebSocket proxy configuration and proves r
 
 This stage makes the TanStack Start stack strict and reproducible, aligns its Cloudflare tool family, and proves SSR reads plus browser mutations in a generated fixture.
 
-- [ ] 16.1 Generate the strict shared Start TypeScript base without `baseUrl` or nonexistent globals and align Cloudflare Vite/runtime pins as one family
-- [ ] 16.2 Typecheck, test, build, and smoke one SSR read plus one browser mutation through the intended proxy in the generated fixture
-- [ ] 16.3 Add pin/config/build/graph mutations, validate enabled/disabled fixtures, record rollback/evidence, and update rules/docs/`CHANGES.md`
+- [x] 16.1 Generate the strict shared Start TypeScript base without `baseUrl` or nonexistent globals and align Cloudflare Vite/runtime pins as one family
+- [x] 16.2 Typecheck, test, build, and smoke one SSR read plus one browser mutation through the intended proxy in the generated fixture
+- [x] 16.3 Add pin/config/build/graph mutations, validate enabled/disabled fixtures, record rollback/evidence, and update rules/docs/`CHANGES.md`
 
 ## 17. Stage 10E PR — Experiment Hygiene
 

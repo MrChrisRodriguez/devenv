@@ -28,7 +28,9 @@ import { validateStageSixEvidence } from "./stage-six-evidence";
 import { validateStageTenAEvidence } from "./stage-ten-a-evidence";
 import { validateStageTenBEvidence } from "./stage-ten-b-evidence";
 import { validateStageTenCEvidence } from "./stage-ten-c-evidence";
+import { validateStageTenDEvidence } from "./stage-ten-d-evidence";
 import { validateStageThreeEvidence } from "./stage-three-evidence";
+import { validateStartContract } from "./start-contract";
 import { validateTelemetryContract } from "./telemetry-contract";
 import { validateToolchainContract } from "./toolchain";
 import { validateStageOneEvidence } from "./toolchain-evidence";
@@ -72,6 +74,10 @@ export interface ValidationReport {
 	proxyRegistrySchemaFile: string;
 	proxyEvidenceFile: string;
 	proxyEvidenceSchemaFile: string;
+	startRegistryFile: string;
+	startRegistrySchemaFile: string;
+	startEvidenceFile: string;
+	startEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -117,6 +123,10 @@ export async function validateAll(
 		proxyRegistrySchemaFile: "proxy-routes.schema.json",
 		proxyEvidenceFile: "evidence/stage-10c-proxy.json",
 		proxyEvidenceSchemaFile: "evidence/stage-10c-proxy.schema.json",
+		startRegistryFile: "start-surface.json",
+		startRegistrySchemaFile: "start-surface.schema.json",
+		startEvidenceFile: "evidence/stage-10d-start.json",
+		startEvidenceSchemaFile: "evidence/stage-10d-start.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -234,6 +244,16 @@ export async function validateAll(
 			report.status = "fail";
 			report.errors.push(...proxyErrors);
 		}
+		// The application surface and server render contract. Hermetic for the
+		// fourth time and for the fourth reason: it reads a committed declaration,
+		// the JSON shape of whatever worker configuration that declaration names,
+		// and the syntax of the tracked tree, so it needs no application, no
+		// bundler and no worker runtime to answer.
+		const startErrors = await validateStartContract(root);
+		if (startErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...startErrors);
+		}
 		// Hermetic again: the vendor-artifact leg spawns the pinned CLI, which
 		// `rules:check` owns.
 		const agentRulesErrors = await validateAgentRulesContract(root, {
@@ -345,6 +365,13 @@ export async function validateAll(
 				...proxyEvidenceErrors.map((error) => `stage-10c evidence: ${error}`),
 			);
 		}
+		const startEvidenceErrors = await validateStageTenDEvidence(root);
+		if (startEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...startEvidenceErrors.map((error) => `stage-10d evidence: ${error}`),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -363,7 +390,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, ${report.graphEvidenceFile}, ${report.affectedEvidenceFile}, ${report.openspecEvidenceFile}, ${report.contractEvidenceFile}, ${report.telemetryEvidenceFile}, ${report.proxyEvidenceFile}, and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, ${report.graphEvidenceFile}, ${report.affectedEvidenceFile}, ${report.openspecEvidenceFile}, ${report.contractEvidenceFile}, ${report.telemetryEvidenceFile}, ${report.proxyEvidenceFile}, ${report.startEvidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(
