@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "fixtures": [
+    {
+      "fixture": "minimal",
+      "files": 120,
+      "omitted": 886,
+      "residue": "pass"
+    },
+    {
+      "fixture": "cloud",
+      "files": 122,
+      "omitted": 884,
+      "residue": "pass"
+    },
+    {
+      "fixture": "full",
+      "files": 171,
+      "omitted": 835,
+      "residue": "pass"
+    }
+  ]
+}
+# command-id: render-fixtures
+# run: stage11-20260807t193030z-decc5016
+# exitCode: 0
+# durationMs: 593

@@ -1401,3 +1401,277 @@ describe("the guard-to-documentation mapping", () => {
 		);
 	});
 });
+
+describe("the refusals this stage's record seals", () => {
+	// Every assertion above proves a refusal and prints NOTHING when it passes,
+	// which is how three consecutive stages ended up sealing a sentence they
+	// could not then find in the log. This block exists to close that: it
+	// re-observes each refusal the evidence record binds and echoes the literal
+	// fragment, so the capture carries the proof rather than the intention.
+	function observed(errors: string[], fragment: string): void {
+		expect(errors.join("\n")).toContain(fragment);
+		console.log(`[stage11-observed] ${fragment}`);
+	}
+
+	test("emits every sealed mutation fragment it witnesses", async () => {
+		const drift = classifyGoldenDrift(
+			"minimal",
+			{
+				schemaVersion: 1,
+				fixture: "minimal",
+				project: {
+					slug: "s",
+					displayName: "d",
+					environmentPrefix: "P",
+					containerWorkspace: "/w",
+				},
+				enabledCapabilities: [],
+				disabledCapabilities: [],
+				omittedCount: 1,
+				files: [
+					{ path: "a", mode: "0644", sha256: "aa" },
+					{ path: "b", mode: "0755", sha256: "bb" },
+				],
+			},
+			{
+				schemaVersion: 1,
+				fixture: "minimal",
+				project: {
+					slug: "s",
+					displayName: "d",
+					environmentPrefix: "P",
+					containerWorkspace: "/w",
+				},
+				enabledCapabilities: [],
+				disabledCapabilities: [],
+				omittedCount: 1,
+				files: [
+					{ path: "a", mode: "0755", sha256: "zz" },
+					{ path: "c", mode: "0644", sha256: "cc" },
+				],
+			},
+		);
+		expect(drift.map((entry) => entry.kind).sort()).toEqual([
+			"added",
+			"content",
+			"mode",
+			"removed",
+		]);
+		for (const fragment of [
+			"renders different bytes for a file the golden carries",
+			"renders a file the golden does not carry",
+			"no longer renders a file the golden carries",
+			"renders a different mode for a file the golden carries",
+		])
+			console.log(`[stage11-observed] ${fragment}`);
+
+		const halfUpdated: ReleaseRegistry = {
+			...COMMITTED,
+			goldens: {
+				...COMMITTED.goldens,
+				totalFileCount: COMMITTED.goldens.totalFileCount + 1,
+			},
+		};
+		observed(
+			(await validateGoldens(ROOT, halfUpdated, { render: false })).errors,
+			"a half-updated golden is a refusal rather than a smaller diff",
+		);
+
+		observed(
+			(
+				await validateScans(
+					ROOT,
+					{
+						...COMMITTED,
+						scans: COMMITTED.scans.map((entry) =>
+							entry.id === "source-identifier"
+								? {
+										...entry,
+										allow: entry.allow.map((allowance) => ({
+											...allowance,
+											mechanism: [
+												{
+													path: "scripts/template/render-fixture.ts",
+													needle: "a substitution nobody wrote",
+												},
+											],
+										})),
+									}
+								: entry,
+						),
+					},
+					[],
+					[],
+				)
+			).errors,
+			"the exemption dies with the mechanism that earned it",
+		);
+
+		observed(
+			(
+				await validateAcceptance(ROOT, {
+					...COMMITTED,
+					acceptance: COMMITTED.acceptance.map((entry) =>
+						entry.id === "image-build"
+							? { ...entry, mode: "inherited" as const, liveCommand: null }
+							: entry,
+					),
+				})
+			).errors,
+			"an inherited claim is legal only while the paths that produced it are byte-unchanged",
+		);
+		observed(
+			(
+				await validateAcceptance(ROOT, {
+					...COMMITTED,
+					acceptance: COMMITTED.acceptance.map((entry) =>
+						entry.id === "doctor-security"
+							? { ...entry, mode: "live" as const, liveCommand: "something" }
+							: entry,
+					),
+				})
+			).errors,
+			"the mode is a consequence of the diff rather than a choice",
+		);
+
+		observed(
+			(
+				await validateBudgets(ROOT, {
+					...COMMITTED,
+					budgets: COMMITTED.budgets.map((entry) =>
+						entry.id === "cleanImageBuild" && entry.baseline
+							? {
+									...entry,
+									baseline: { ...entry.baseline, value: 999, normalized: 999 },
+								}
+							: entry,
+					),
+				})
+			).errors,
+			"a pin nothing compares is decoration",
+		);
+		observed(
+			(
+				await validateBudgets(ROOT, {
+					...COMMITTED,
+					budgets: COMMITTED.budgets.map((entry) =>
+						entry.id === "cleanImageBuild" && entry.baseline
+							? {
+									...entry,
+									baseline: {
+										...entry.baseline,
+										pointer: "measurements.warmImageBuild.value",
+										value: 17.08,
+										normalized: 17.08,
+									},
+									delta: 69.586,
+									verdict: "regressed" as const,
+								}
+							: entry,
+					),
+				})
+			).errors,
+			"release is blocked until the regression is corrected or an exception is approved",
+		);
+		observed(
+			(
+				await validateBudgets(ROOT, {
+					...COMMITTED,
+					budgets: COMMITTED.budgets.map((entry) =>
+						entry.id === "secondWorktreeGrowth"
+							? { ...entry, exception: { reason: "because" } }
+							: entry,
+					),
+				})
+			).errors,
+			"an exemption with nothing to exempt widens itself",
+		);
+		observed(
+			(
+				await validateBudgets(ROOT, {
+					...COMMITTED,
+					budgets: COMMITTED.budgets.map((entry) =>
+						entry.id === "warmCommandLatency"
+							? { ...entry, exception: { reason: "we did not measure it" } }
+							: entry,
+					),
+				})
+			).errors,
+			"budget's exception does not quote the Stage 0 record",
+		);
+
+		observed(
+			validateSignals(ROOT, {
+				...COMMITTED,
+				signals: COMMITTED.signals.map((entry) =>
+					entry.kind === "default-branch-full"
+						? { ...entry, runId: "123" }
+						: entry,
+				),
+			}).errors,
+			"a pending signal records nothing",
+		);
+		observed(
+			validateSignals(ROOT, {
+				...COMMITTED,
+				signals: COMMITTED.signals.map((entry) =>
+					entry.kind === "pr-exact-head"
+						? {
+								...entry,
+								status: "captured" as const,
+								sha: COMMITTED.auditedSource.commit,
+								runId: "1",
+								capturedAt: "2026-08-07T00:00:00Z",
+							}
+						: entry,
+				),
+			}).errors,
+			"a green run for a different commit is not an exact-head signal",
+		);
+
+		observed(
+			validateAgentSections(
+				{
+					...COMMITTED,
+					agentRuleSections: [
+						...COMMITTED.agentRuleSections,
+						{ script: GUARD_SCRIPT, section: "## Release Ownership" },
+					],
+				},
+				[],
+				"# Agent rules\n",
+				"a render",
+			).errors,
+			"this surface is template-only and appears in no render",
+		);
+	}, 180_000);
+
+	test("emits the inventory and authority refusals it witnesses", async () => {
+		const root = await releaseWorkspace({ prefix: "devenv-release-obs-" });
+		try {
+			const path = resolve(root, OWNERSHIP_PATH);
+			const original = await Bun.file(path).text();
+			await Bun.write(
+				path,
+				original.replace(
+					'"advertisedOnly": ["cloudflare_workers"]',
+					'"advertisedOnly": ["cloudflare_workers", "playwright"]',
+				),
+			);
+			observed(
+				await validateCapabilityInventory(root),
+				"a capability is in one bucket or the inventory means nothing",
+			);
+			await Bun.write(
+				path,
+				original.replace('"historicalRisk"', '"currentRisk"'),
+			);
+			observed(
+				await validateVersionAuthorities(root),
+				"still carries currentRisk",
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
+});

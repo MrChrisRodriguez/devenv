@@ -1,0 +1,286 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "Stage 11 final template release evidence",
+	"description": "The sealed record for the stage that closes the program. It is validated by `scripts/template/stage-eleven-evidence.ts`, which is deliberately ENVIRONMENT-AGNOSTIC: every assertion binds a sealed value to another sealed value, to a digest of a committed log, or to a Git object the record itself names. Nothing here asks the host what it is, and nothing here reaches the network — a record that only validates on the machine that captured it proves nothing to a reviewer, and a validator that queried GitHub would be one the design constraints already forbid. The stage's own decision is visible in this schema's negatives: `containerRebuildRequired` is pinned `false`, `addedJobs` and `lockfileBytesChanged` are pinned `0`, `outsideTheTree` is pinned empty, and the release decision is pinned `candidate` because the tag it plans cannot exist until a merge commit does.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"stage",
+		"capturedAt",
+		"run",
+		"source",
+		"host",
+		"repository",
+		"release",
+		"commands",
+		"live",
+		"coverage",
+		"rollback"
+	],
+	"properties": {
+		"schemaVersion": { "type": "integer", "const": 1 },
+		"stage": { "type": "string", "const": "stage-11-release" },
+		"capturedAt": { "type": "string", "format": "date-time" },
+		"run": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "logRoot", "collector"],
+			"properties": {
+				"id": { "type": "string", "minLength": 1 },
+				"logRoot": {
+					"type": "string",
+					"const": "evidence/stage-11-release-run"
+				},
+				"collector": {
+					"description": "The script that produced this record. A capture nobody can re-run is a claim about a shell history.",
+					"type": "string",
+					"const": "scripts/template/collect-stage-eleven-evidence.ts"
+				}
+			}
+		},
+		"source": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["baseSha", "implementationSha", "treeClean"],
+			"properties": {
+				"baseSha": { "$ref": "#/$defs/sha" },
+				"implementationSha": { "$ref": "#/$defs/sha" },
+				"treeClean": { "type": "boolean", "const": true }
+			}
+		},
+		"host": {
+			"description": "Recorded for the reader rather than asserted against. The validator never reads these: an assertion on them would make the record valid only where it was taken.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["os", "architecture", "kernel", "insideDevcontainer"],
+			"properties": {
+				"os": { "type": "string", "minLength": 1 },
+				"architecture": { "type": "string", "minLength": 1 },
+				"kernel": { "type": "string", "minLength": 1 },
+				"insideDevcontainer": { "type": "boolean" },
+				"bunVersion": { "type": "string" },
+				"gitVersion": { "type": "string" },
+				"dockerVersion": { "type": "string" },
+				"loadAverage": { "type": "array", "items": { "type": "number" } }
+			}
+		},
+		"repository": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"nameWithOwner",
+				"workflowFile",
+				"gateJobId",
+				"gateContext",
+				"gateNeeds",
+				"releaseGuardScript",
+				"releaseSyncScript",
+				"registryFile",
+				"capability",
+				"imageTarget",
+				"addedJobs",
+				"devcontainerFilesChanged",
+				"lockfileBytesChanged"
+			],
+			"properties": {
+				"nameWithOwner": { "type": "string", "minLength": 1 },
+				"workflowFile": { "type": "string", "minLength": 1 },
+				"gateJobId": { "type": "string", "minLength": 1 },
+				"gateContext": { "type": "string", "minLength": 1 },
+				"gateNeeds": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"releaseGuardScript": {
+					"description": "The `template:` prefix is what removes this guard from every rendered manifest, and it is asserted rather than assumed.",
+					"type": "string",
+					"pattern": "^template:"
+				},
+				"releaseSyncScript": { "type": "string", "pattern": "^template:" },
+				"registryFile": { "type": "string", "const": "release.json" },
+				"capability": {
+					"description": "Null, and it is the whole point. This is the first surface in the program that is neither gated nor core.",
+					"type": "null"
+				},
+				"imageTarget": { "type": "string", "minLength": 1 },
+				"addedJobs": { "type": "integer", "const": 0 },
+				"devcontainerFilesChanged": { "type": "integer", "const": 0 },
+				"lockfileBytesChanged": { "type": "integer", "const": 0 }
+			}
+		},
+		"release": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"decision",
+				"plannedTag",
+				"changeName",
+				"scanFamilies",
+				"acceptanceItems",
+				"acceptanceLive",
+				"acceptanceInherited",
+				"budgetFamilies",
+				"goldenFixtures",
+				"goldenTotalFileCount",
+				"goldenDigests",
+				"postMergeSteps"
+			],
+			"properties": {
+				"decision": { "type": "string", "const": "candidate" },
+				"plannedTag": {
+					"type": "string",
+					"pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+$"
+				},
+				"changeName": { "type": "string", "minLength": 1 },
+				"scanFamilies": { "type": "integer", "minimum": 1 },
+				"acceptanceItems": { "type": "integer", "minimum": 1 },
+				"acceptanceLive": { "type": "integer", "minimum": 0 },
+				"acceptanceInherited": { "type": "integer", "minimum": 0 },
+				"budgetFamilies": { "type": "integer", "minimum": 1 },
+				"goldenFixtures": { "type": "integer", "minimum": 1 },
+				"goldenTotalFileCount": { "type": "integer", "minimum": 1 },
+				"goldenDigests": {
+					"description": "The committed golden manifests, digest-bound here as well as in the registry. A pinned hash nothing compares is decoration, and this is where the record's own copy is compared.",
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["path", "sha256", "fileCount"],
+						"properties": {
+							"path": { "type": "string", "minLength": 1 },
+							"sha256": { "$ref": "#/$defs/digest" },
+							"fileCount": { "type": "integer", "minimum": 1 }
+						}
+					}
+				},
+				"postMergeSteps": {
+					"description": "The ordered sequence that cannot be a commit in this pull request. It is sealed here as well as declared in the registry, because it is the half of 18.5 nobody can check before the merge.",
+					"type": "array",
+					"minItems": 5,
+					"items": { "type": "string", "minLength": 1 }
+				}
+			}
+		},
+		"commands": {
+			"type": "array",
+			"minItems": 1,
+			"items": { "$ref": "#/$defs/command" }
+		},
+		"live": {
+			"description": "The one thing in this record this repository cannot fabricate. `runId` and `conclusion` come from the run that actually happened; `jobs` must be a subset of the lanes the gate needs, because a lane the gate does not need is not a required signal.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["provider", "runId", "headSha", "conclusion", "jobs", "url"],
+			"properties": {
+				"provider": { "type": "string", "const": "github-actions" },
+				"runId": { "type": "string", "minLength": 1 },
+				"headSha": { "$ref": "#/$defs/sha" },
+				"conclusion": { "type": "string", "const": "success" },
+				"jobs": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"url": { "type": "string", "minLength": 1 }
+			}
+		},
+		"coverage": {
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["id", "task", "reason", "commandIds"],
+				"properties": {
+					"id": { "type": "string", "minLength": 1 },
+					"task": { "type": "string", "minLength": 1 },
+					"reason": { "type": "string", "minLength": 1 },
+					"commandIds": {
+						"type": "array",
+						"minItems": 1,
+						"items": { "type": "string", "minLength": 1 }
+					}
+				}
+			}
+		},
+		"rollback": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"mode",
+				"command",
+				"addedPaths",
+				"outsideTheTree",
+				"containerRebuildRequired",
+				"scope",
+				"proofCommandId"
+			],
+			"properties": {
+				"mode": { "type": "string", "const": "atomic" },
+				"command": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"addedPaths": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"outsideTheTree": {
+					"description": "Empty, and pinned empty. The one stage in this program with a non-empty value flipped a repository variable; this one flips nothing.",
+					"type": "array",
+					"maxItems": 0
+				},
+				"containerRebuildRequired": {
+					"description": "Pinned `false` with its reason: nothing under `.devcontainer/**` moves, and that directory is a definition-fingerprint input, so a single byte there would cost every downstream developer a container recreate.",
+					"type": "boolean",
+					"const": false
+				},
+				"scope": { "type": "string", "minLength": 1 },
+				"proofCommandId": { "type": "string", "const": "rollback-proof" }
+			}
+		}
+	},
+	"$defs": {
+		"sha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+		"digest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+		"command": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"runId",
+				"command",
+				"cwd",
+				"exitCode",
+				"status",
+				"durationMs",
+				"stdoutPath",
+				"stdoutSha256",
+				"stderrPath",
+				"stderrSha256"
+			],
+			"properties": {
+				"id": { "type": "string", "minLength": 1 },
+				"runId": { "type": "string", "minLength": 1 },
+				"command": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "type": "string" }
+				},
+				"cwd": { "type": "string", "minLength": 1 },
+				"exitCode": { "type": "integer", "const": 0 },
+				"status": { "type": "string", "const": "pass" },
+				"durationMs": { "type": "integer", "minimum": 0 },
+				"stdoutPath": { "type": "string", "minLength": 1 },
+				"stdoutSha256": { "$ref": "#/$defs/digest" },
+				"stderrPath": { "type": "string", "minLength": 1 },
+				"stderrSha256": { "$ref": "#/$defs/digest" }
+			}
+		}
+	}
+}

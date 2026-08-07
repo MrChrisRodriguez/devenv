@@ -1,0 +1,8 @@
+Validated exact Proto, catalog, lock, feature, TypeScript, and PATH contracts with Stage 1 evidence.
+bun install v1.3.13 (bf2e2cec)
+
+Checked 299 installs across 374 packages (no changes) [185.00ms]
+# command-id: dependency-guards
+# run: stage11-20260807t193030z-decc5016
+# exitCode: 0
+# durationMs: 732

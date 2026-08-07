@@ -1,0 +1,39 @@
+$ bun scripts/template/validate-release.ts
+release: 15 *:check scripts survive into the full render and each is described by a section of its AGENTS.md
+release: 3 of 10 acceptance items are inherited rather than re-measured at this head; a green release gate is not a claim that everything was run again
+release: 35 template-owned scripts declare a merge sync policy that scripts/sync-devcontainer.sh excludes, which knownBoundaryRisks[0] in docs/devcontainer-upgrade/stage-0/template-ownership.json already records; this run asserts the count rather than widening the script
+release: 7 *:check scripts survive into the cloud render and each is described by a section of its AGENTS.md
+release: 7 *:check scripts survive into the minimal render and each is described by a section of its AGENTS.md
+release: cleanImageBuild moved from 312.33 to 86.666 and is improved
+release: cloud-profiles expects a rendered fixture to report `cloud: fingerprint input bun.lock is missing`, which is correct by design: bun.lock is renderPolicy omit and a generated project installs its own. Do NOT 'fix' it by dropping bun.lock from fingerprint_inputs
+release: cloud-profiles is INHERITED from evidence/stage-4-cloud.json at fe433334f63a2c01e45b6a55c97dca057e00ea57, and this run proved only that its owned paths are byte-unchanged since then
+release: doctor-security is INHERITED from evidence/stage-6-doctor.json at 4a8894c2fb05c75bf2959ecedf9ca72ceb4f675b, and this run proved only that its owned paths are byte-unchanged since then
+release: duplicate normative rule TEXT is refused by rules:check, which owns that sentence; this scan covers the skill and command directories nothing else reads
+release: enabled-stack-tests is INHERITED from evidence/stage-10d-start.json at 1427f9063d6a502b81f3f98b69b6820b735f3ada, and this run proved only that its owned paths are byte-unchanged since then
+release: graphify stays deferred, recorded by Stage 9 deviation 12, re-recorded by Stage 10E, and this run asserted the facts that keep it open
+release: incrementalImageBuild moved from 17.08 to 3.469 and is improved
+release: openspec-lifecycle expects bun run openspec:check to print a NOTICE once every task is checked, saying the change has no remaining tasks and naming the archive wrapper. It is Stage 9's designed handoff and not a failure
+release: secondWorktreeGrowth moved from 96111608 to 4472832 and is improved
+release: startupReadiness has NO Stage 0 baseline and is recorded as no-baseline rather than compared; the first measurement taken at this head becomes the baseline
+release: the cloud golden pinned 122 rendered files and 884 omitted template paths
+release: the cloud residue scan covered 123 files for 8 disabled capabilities with a signature
+release: the default-branch-full signal is PENDING; it is a post-merge artefact and the runbook is what fills it in
+release: the disabled-residue scan selects 9 default-false capabilities that carry a signature, and graphify is not one of them
+release: the duplicate-rule-skill scan cross-references rules:check, which owns that sentence for the template tree; this scan adds the render surface
+release: the duplicate-rule-skill scan inspected 1 skill and command directories of the cloud render
+release: the duplicate-rule-skill scan inspected 8 skill and command directories of the minimal render
+release: the duplicate-rule-skill scan inspected 9 skill and command directories of the full render
+release: the duplicate-rule-skill scan inspected 9 skill and command directories of the template tree
+release: the full golden pinned 171 rendered files and 835 omitted template paths
+release: the full render disables no capability, so its residue scan is vacuous by construction rather than by defect and proves nothing about residue
+release: the minimal golden pinned 120 rendered files and 886 omitted template paths
+release: the minimal residue scan covered 121 files for 12 disabled capabilities with a signature
+release: the mutable-pin scan cross-references ci:check and toolchain:check, which owns that sentence for the template tree; this scan adds the render surface
+release: the obsolete-command scan cross-references worktree:check, which owns that sentence for the template tree; this scan adds the render surface
+release: the pr-exact-head signal is PENDING; it is a post-merge artefact and the runbook is what fills it in
+release: the source-identifier, fixed-source-port, mutable-pin and obsolete-command scans read 118 files of the minimal render
+release: the source-identifier, fixed-source-port, mutable-pin and obsolete-command scans read 120 files of the cloud render
+release: the source-identifier, fixed-source-port, mutable-pin and obsolete-command scans read 169 files of the full render
+release: the source-identifier, fixed-source-port, mutable-pin and obsolete-command scans read 169 files of the template tree
+release: the top-level layout rule inspected 15 tracked directories and found 0 carrying a package.json
+release: warmCommandLatency has NO Stage 0 baseline and is recorded as no-baseline rather than compared; the first measurement taken at this head becomes the baseline

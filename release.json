@@ -21,7 +21,7 @@
 				"fixture": "cloud",
 				"manifest": "fixtures/golden/cloud.json",
 				"fileCount": 122,
-				"omittedCount": 884,
+				"omittedCount": 928,
 				"enabledCount": 11,
 				"disabledCount": 8
 			},
@@ -29,7 +29,7 @@
 				"fixture": "full",
 				"manifest": "fixtures/golden/full.json",
 				"fileCount": 171,
-				"omittedCount": 835,
+				"omittedCount": 879,
 				"enabledCount": 19,
 				"disabledCount": 0
 			},
@@ -37,7 +37,7 @@
 				"fixture": "minimal",
 				"manifest": "fixtures/golden/minimal.json",
 				"fileCount": 120,
-				"omittedCount": 886,
+				"omittedCount": 930,
 				"enabledCount": 6,
 				"disabledCount": 13
 			}

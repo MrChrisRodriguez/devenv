@@ -1,0 +1,10 @@
+Worktree environment: devenv-main uses offset 0 (main); published host port 8080
+Worktree environment: devenv-main uses offset 0 (main); published host port 8080
+Worktree ensure: starting the container for /Users/mrcr/Code/templates/devenv
+Worktree up: container 4fd57b1803ba541b9b82a3fb8f87bddb290f35844c62c64b8fee6b48c0808f7c
+Worktree manifest: direct URL http://127.0.0.1:8080
+Worktree manifest: friendly URL http://main.devenv.localhost
+Worktree up: no services are declared
+Worktree up: devenv-main is up
+Worktree up: direct URL http://127.0.0.1:8080
+Worktree up: friendly URL http://main.devenv.localhost

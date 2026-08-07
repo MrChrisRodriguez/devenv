@@ -24,6 +24,7 @@ import {
 } from "./release-contract";
 import { validateStageEightAEvidence } from "./stage-eight-a-evidence";
 import { validateStageEightBEvidence } from "./stage-eight-b-evidence";
+import { validateStageElevenEvidence } from "./stage-eleven-evidence";
 import { validateStageFiveBEvidence } from "./stage-five-b-evidence";
 import { validateStageFiveEvidence } from "./stage-five-evidence";
 import { validateStageFourEvidence } from "./stage-four-evidence";
@@ -92,6 +93,8 @@ export interface ValidationReport {
 	releaseRegistrySchemaFile: string;
 	goldenRoot: string;
 	releaseDecision: string;
+	releaseEvidenceFile: string;
+	releaseEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -149,6 +152,8 @@ export async function validateAll(
 		releaseRegistrySchemaFile: "release.schema.json",
 		goldenRoot: "fixtures/golden",
 		releaseDecision: "candidate",
+		releaseEvidenceFile: "evidence/stage-11-release.json",
+		releaseEvidenceSchemaFile: "evidence/stage-11-release.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -421,6 +426,13 @@ export async function validateAll(
 			report.status = "fail";
 			report.errors.push(
 				...startEvidenceErrors.map((error) => `stage-10d evidence: ${error}`),
+			);
+		}
+		const releaseEvidenceErrors = await validateStageElevenEvidence(root);
+		if (releaseEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...releaseEvidenceErrors.map((error) => `stage-11 evidence: ${error}`),
 			);
 		}
 		const experimentEvidenceErrors = await validateStageTenEEvidence(root);

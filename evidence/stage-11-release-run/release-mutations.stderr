@@ -1,0 +1,7 @@
+
+scripts/template/__tests__/release.test.ts:
+
+ 69 pass
+ 0 fail
+ 248 expect() calls
+Ran 69 tests across 1 file. [11.76s]
