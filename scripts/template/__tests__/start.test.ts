@@ -1414,3 +1414,139 @@ describe("the declared application", () => {
 		}
 	});
 });
+
+describe("the refusal matrix", () => {
+	/**
+	 * Every structural refusal this guard can produce, driven one at a time.
+	 *
+	 * The point is not the individual refusals — each already has a case above —
+	 * but the two properties the whole set has to have: every sentence must be
+	 * DISTINCT, so a reader can search for the one they were given, and the set
+	 * must be non-vacuous, so a guard cannot pass this suite by refusing
+	 * everything or by answering nothing at all.
+	 */
+	test("every refusal is distinct, prefixed, sorted and deduplicated", async () => {
+		const { root, contract } = await activeWorkspace();
+		try {
+			const sentences: string[] = [];
+			const registryMutations: Array<Partial<StartSurface>> = [
+				{ devServer: "vite" },
+				{ ssr: { ...contract.ssr, mode: "streaming" } },
+				{ ssr: { ...contract.ssr, methods: ["GET"] } },
+				{ ssr: { ...contract.ssr, cacheControl: "public" } },
+				{
+					ssr: {
+						...contract.ssr,
+						methodRejection: { status: 404, allowHeader: "GET, HEAD" },
+					},
+				},
+				{ apps: [declaredApp({ assetsDir: "static" })] },
+				{ apps: [declaredApp({ basePath: "/games/" })] },
+				{ apps: [declaredApp(), declaredApp({ id: "second" })] },
+				{ router: { ...contract.router, defaultErrorComponent: false } },
+				{ router: { ...contract.router, defaultPreload: true } },
+			];
+			for (const overrides of registryMutations) {
+				await writeRegistry(root, { ...contract, ...overrides });
+				const errors = await validateStartContract(root);
+				expect(errors.length).toBeGreaterThan(0);
+				sentences.push(...errors);
+			}
+			await writeRegistry(root, contract);
+
+			const fileMutations: Array<[string, (source: string) => string]> = [
+				[
+					`${APP_DIRECTORY}/wrangler.jsonc`,
+					(source) =>
+						source.replace('"workers_dev": false', '"workers_dev": true'),
+				],
+				[
+					`${APP_DIRECTORY}/wrangler.jsonc`,
+					(source) =>
+						source.replace(
+							`"${COMPATIBILITY_FLAG}"`,
+							'"streams_enable_constructors"',
+						),
+				],
+				[
+					`${APP_DIRECTORY}/${contract.build.builtConfigPath}`,
+					(source) =>
+						source.replace('"main": "index.js"', '"main": "server.js"'),
+				],
+				[
+					TSCONFIG_PATH,
+					(source) => source.replace('"noEmit": true', '"noEmit": false'),
+				],
+				[".gitignore", (source) => `${source}\n**/${NEEDLES.routeTree}\n`],
+				[
+					"biome.jsonc",
+					(source) =>
+						source.replace(`"!**/${NEEDLES.routeTree}"`, '"!**/nothing"'),
+				],
+			];
+			for (const [path, transform] of fileMutations) {
+				const target = resolve(root, path);
+				const original = await Bun.file(target).text();
+				await Bun.write(target, transform(original));
+				const errors = await validateStartContract(root);
+				expect(errors.length).toBeGreaterThan(0);
+				sentences.push(...errors);
+				await Bun.write(target, original);
+			}
+
+			// Every sentence this guard can produce is prefixed with its domain, so
+			// an aggregated report never leaves a reader guessing which guard spoke.
+			for (const sentence of sentences)
+				expect(sentence.startsWith("start: ")).toBe(true);
+			// ... and there are genuinely many distinct ones, rather than one
+			// sentence returned for every defect.
+			expect(new Set(sentences).size).toBeGreaterThan(12);
+
+			// The aggregate is sorted and deduplicated, which is what makes a diff
+			// of two runs readable.
+			await writeRegistry(root, {
+				...contract,
+				devServer: "vite",
+				ssr: { ...contract.ssr, mode: "streaming", cacheControl: "public" },
+				router: { ...contract.router, defaultErrorComponent: false },
+			});
+			const aggregate = await validateStartContract(root);
+			expect(aggregate.length).toBeGreaterThan(3);
+			expect(new Set(aggregate).size).toBe(aggregate.length);
+			expect(aggregate).toEqual([...aggregate].sort());
+
+			// ... and the entirely correct workspace still returns a real verdict
+			// rather than an empty one because nothing was looked at.
+			await writeRegistry(root, contract);
+			expect(await validateStartContract(root)).toEqual([]);
+			const state = deriveTreeState(root, contract);
+			expect(state.scanned).toBeGreaterThan(0);
+			expect(state.mode).toBe("active");
+			expect(state.signals.length).toBeGreaterThan(0);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 120000);
+
+	test("the skeleton this template ships is non-vacuous in the same way", async () => {
+		const root = await skeletonWorkspace();
+		try {
+			// A skeleton is where a vacuous pass hides best: every question about an
+			// application is trivially true when there is no application. So the
+			// derived state records what it read, and the same guard that returns
+			// green here refuses a planted application immediately.
+			const state = deriveTreeState(root);
+			expect(state.scanned).toBeGreaterThan(0);
+			expect(state.signals).toEqual([]);
+			expect(await validateStartContract(root)).toEqual([]);
+			await withFile(
+				root,
+				`apps/planted-start/src/${NEEDLES.routeTree}`,
+				ROUTE_TREE_SOURCE,
+				`start: ${REGISTRY_PATH} declares skeleton mode but apps/planted-start/src/${NEEDLES.routeTree} is a generated route tree, and its presence is what marks this project as carrying an application of this stack`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
