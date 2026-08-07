@@ -1,5 +1,12 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Parsed JSON is a strict record.
-import { type Dirent, readdirSync, readFileSync, statSync } from "node:fs";
+import {
+	type Dirent,
+	readdirSync,
+	readFileSync,
+	statSync,
+	unlinkSync,
+	writeFileSync,
+} from "node:fs";
 import { createRequire } from "node:module";
 import { join, relative, resolve, sep } from "node:path";
 import { validateJsonSchema } from "./json-schema";
@@ -542,18 +549,25 @@ export function reconcileMode(
 	state: TreeState,
 ): string[] {
 	const errors: string[] = [...state.errors];
-	if (contract.mode === "skeleton") {
-		for (const signal of state.signals)
-			errors.push(
-				`forms: ${REGISTRY_PATH} declares skeleton mode but ${signal.detail}`,
-			);
-		return errors.sort();
-	}
 	const declared =
 		contract.schemaPackages.length +
 		contract.formModules.length +
 		contract.serverParsers.length +
 		(contract.openapi === null ? 0 : 1);
+	if (contract.mode === "skeleton") {
+		for (const signal of state.signals)
+			errors.push(
+				`forms: ${REGISTRY_PATH} declares skeleton mode but ${signal.detail}`,
+			);
+		// The same assertion from the registry's side. A skeleton that declares a
+		// contract artifact has already left skeleton, and every leg below would
+		// then be asked a question about a world the mode says does not exist.
+		if (declared > 0)
+			errors.push(
+				`forms: ${REGISTRY_PATH} declares skeleton mode but declares a contract surface`,
+			);
+		return errors.sort();
+	}
 	if (declared === 0)
 		errors.push(
 			`forms: ${REGISTRY_PATH} declares active mode but declares no schema package, contract artifact, form module or server parser`,
@@ -889,33 +903,542 @@ export function validateBrowserSafety(
 	return [...new Set(errors)].sort();
 }
 
+// The generator's binary, injectable exactly as `MOON_BIN` and `OPENSPEC_BIN`
+// are: a failure path nothing can execute is a failure path nobody has checked.
+export const GENERATE_BIN_VARIABLE = "FORMS_GENERATE_BIN";
+
+// The ref the evolution gate diffs against. A template cannot know a downstream
+// project's default branch, so it is injectable and then guessed from the
+// remote — and when neither answers, the gate says so out loud instead of
+// passing quietly.
+export const MERGE_BASE_VARIABLE = "FORMS_MERGE_BASE";
+const BASE_CANDIDATES = ["origin/HEAD", "origin/main", "main"] as const;
+
+const BIOME_CONFIG = "biome.jsonc";
+
 /**
- * The whole shared-schema and API contract, in the shape `validate.ts`
- * aggregates.
+ * JSONC with its comments removed, which is the only way to read a file whose
+ * whole point is that it carries them.
+ *
+ * Quote state is tracked because a `//` inside a glob string is a glob, not a
+ * comment — and a stripper that could not tell the difference would silently
+ * truncate the very `includes` list this guard reads.
+ */
+export function stripJsonComments(source: string): string {
+	let output = "";
+	let inString = false;
+	let inLine = false;
+	let inBlock = false;
+	for (let index = 0; index < source.length; index += 1) {
+		const character = source[index] ?? "";
+		const next = source[index + 1] ?? "";
+		if (inLine) {
+			if (character === "\n") {
+				inLine = false;
+				output += character;
+			}
+			continue;
+		}
+		if (inBlock) {
+			if (character === "*" && next === "/") {
+				inBlock = false;
+				index += 1;
+			}
+			continue;
+		}
+		if (inString) {
+			output += character;
+			if (character === "\\") {
+				output += next;
+				index += 1;
+				continue;
+			}
+			if (character === '"') inString = false;
+			continue;
+		}
+		if (character === '"') {
+			inString = true;
+			output += character;
+			continue;
+		}
+		if (character === "/" && next === "/") {
+			inLine = true;
+			index += 1;
+			continue;
+		}
+		if (character === "/" && next === "*") {
+			inBlock = true;
+			index += 1;
+			continue;
+		}
+		output += character;
+	}
+	return output;
+}
+
+function matchesGlob(pattern: string, path: string): boolean {
+	return new Bun.Glob(pattern).match(path);
+}
+
+/**
+ * Biome must not touch a generated artifact.
+ *
+ * The compare is byte-for-byte against what the generator emits, so a
+ * reformatted artifact is a correct artifact that fails its own gate — and the
+ * failure names the file rather than the formatter, which is the wrong place to
+ * look. All three tools are checked, not just the formatter: an assist action
+ * rewrites a file just as thoroughly.
+ *
+ * The override is required in BOTH modes. In `skeleton` there is no artifact to
+ * cover, and a rule that only ran once one existed would be a rule the first
+ * generated artifact ships without.
+ */
+export async function validateGeneratedOutputPolicy(
+	root: string,
+	contract: ApiContract,
+): Promise<string[]> {
+	const path = resolve(root, BIOME_CONFIG);
+	if (!exists(path)) return [];
+	let value: unknown;
+	try {
+		value = JSON.parse(stripJsonComments(textOf(path))) as unknown;
+	} catch {
+		return [`forms: ${BIOME_CONFIG} must parse as JSON with comments`];
+	}
+	const overrides = isRecord(value) ? records(value["overrides"]) : [];
+	const exempting = overrides.filter((entry) => {
+		const off = (key: string): boolean => {
+			const section = entry[key];
+			return isRecord(section) && section["enabled"] === false;
+		};
+		return off("linter") && off("formatter") && off("assist");
+	});
+	if (exempting.length === 0)
+		return [
+			`forms: ${BIOME_CONFIG} must exempt generated output from the linter, the formatter and the assist actions`,
+		];
+	const errors: string[] = [];
+	for (const artifact of contract.openapi === null
+		? []
+		: [
+				contract.openapi.artifact,
+				...contract.openapi.clients.map((client) => client.path),
+			]) {
+		const covered = exempting.some((entry) =>
+			(Array.isArray(entry["includes"]) ? entry["includes"] : []).some(
+				(pattern) =>
+					typeof pattern === "string" && matchesGlob(pattern, artifact),
+			),
+		);
+		if (!covered)
+			errors.push(
+				`forms: ${BIOME_CONFIG} must exempt the generated ${artifact} from reformatting`,
+			);
+	}
+	return errors.sort();
+}
+
+function readBytes(path: string): Uint8Array | undefined {
+	try {
+		return new Uint8Array(readFileSync(path));
+	} catch {
+		return undefined;
+	}
+}
+
+function sameBytes(
+	left: Uint8Array | undefined,
+	right: Uint8Array | undefined,
+): boolean {
+	if (left === undefined || right === undefined) return left === right;
+	if (left.length !== right.length) return false;
+	return left.every((byte, index) => byte === right[index]);
+}
+
+/** The declared command as an argv, with its binary optionally injected. */
+export function generateArgv(command: string): string[] {
+	const argv = command.trim().split(/\s+/).filter(Boolean);
+	const injected = process.env[GENERATE_BIN_VARIABLE];
+	if (injected && argv.length > 0) argv[0] = injected;
+	return argv;
+}
+
+interface DriftReport {
+	errors: string[];
+	notices: string[];
+}
+
+/**
+ * Run the declared generator, read the post-state, then put the tree back.
+ *
+ * The reference regenerates in memory because its generator lives in the same
+ * repository. A template cannot import a downstream project's generator, so the
+ * same semantic becomes run-then-compare — and the compare is over the declared
+ * artifacts only, from bytes captured before the run, so a drifted repository is
+ * never left rewritten by the guard that noticed.
+ *
+ * The post-state is read IMMEDIATELY after the generator returns and before any
+ * restore. A probe that reads its facts after a later step has undone them
+ * reports a run that was completely correct as a failure, or worse.
+ */
+export function runDriftGate(root: string, contract: ApiContract): DriftReport {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	const openapi = contract.openapi;
+	if (openapi === null) return { errors, notices };
+	const targets = [
+		openapi.artifact,
+		...openapi.clients.map((client) => client.path),
+	];
+	const before = new Map<string, Uint8Array | undefined>();
+	for (const target of targets)
+		before.set(target, readBytes(resolve(root, target)));
+
+	const argv = generateArgv(openapi.generate);
+	if (argv.length === 0)
+		return {
+			errors: [`forms: ${REGISTRY_PATH} declares an empty generator command`],
+			notices,
+		};
+	let result: { exitCode: number; stderr: string } | undefined;
+	try {
+		const spawned = Bun.spawnSync(argv, {
+			cwd: root,
+			stdout: "pipe",
+			stderr: "pipe",
+		});
+		result = {
+			exitCode: spawned.exitCode,
+			stderr: spawned.stderr.toString().trim(),
+		};
+	} catch (error) {
+		result = undefined;
+		errors.push(
+			`forms: the declared generator \`${openapi.generate}\` could not be executed: ${error instanceof Error ? error.message : String(error)}`,
+		);
+	}
+
+	// Post-state first, restore second, verdict last.
+	const after = new Map<string, Uint8Array | undefined>();
+	for (const target of targets)
+		after.set(target, readBytes(resolve(root, target)));
+	for (const target of targets) {
+		const original = before.get(target);
+		const path = resolve(root, target);
+		if (original === undefined) {
+			if (after.get(target) !== undefined) unlinkSync(path);
+			continue;
+		}
+		if (!sameBytes(original, after.get(target))) writeFileSync(path, original);
+	}
+
+	if (result === undefined) return { errors, notices };
+	if (result.exitCode !== 0) {
+		errors.push(
+			`forms: the declared generator \`${openapi.generate}\` exited ${result.exitCode}${result.stderr === "" ? "" : `: ${result.stderr}`}`,
+		);
+		return { errors, notices };
+	}
+	for (const target of targets) {
+		if (sameBytes(before.get(target), after.get(target))) continue;
+		errors.push(
+			`forms: ${target} is a stale generated artifact; run \`${openapi.generate}\` and commit the result`,
+		);
+	}
+	return { errors, notices };
+}
+
+/**
+ * Every generated client says so in its own first lines.
+ *
+ * Without the banner the file is indistinguishable from something a person
+ * maintains, and the first hand edit to it is a change the generator silently
+ * reverts on its next run.
+ */
+export function validateGeneratedBanners(
+	root: string,
+	contract: ApiContract,
+): string[] {
+	const errors: string[] = [];
+	for (const client of contract.openapi?.clients ?? []) {
+		const source = textOf(resolve(root, client.path));
+		if (source === "") continue;
+		if (!source.split("\n", 5).some((line) => line.includes(client.banner)))
+			errors.push(
+				`forms: ${client.path} must open with its declared generated-artifact banner`,
+			);
+	}
+	return errors.sort();
+}
+
+interface OperationShape {
+	operations: Set<string>;
+	properties: Map<string, string>;
+	required: Set<string>;
+	strictResponses: string[];
+}
+
+const HTTP_METHODS = [
+	"get",
+	"put",
+	"post",
+	"delete",
+	"options",
+	"head",
+	"patch",
+	"trace",
+] as const;
+
+function describeSchema(
+	node: unknown,
+	operation: string,
+	pointer: string,
+	shape: OperationShape,
+	depth: number,
+): void {
+	if (depth > 12 || !isRecord(node)) return;
+	const type = node["type"];
+	if (typeof type === "string")
+		shape.properties.set(`${operation}${pointer}`, type);
+	const required = node["required"];
+	if (Array.isArray(required)) {
+		for (const name of required)
+			if (typeof name === "string")
+				shape.required.add(`${operation}${pointer}.${name}`);
+	}
+	const properties = isRecord(node["properties"]) ? node["properties"] : {};
+	for (const [name, child] of Object.entries(properties))
+		describeSchema(child, operation, `${pointer}.${name}`, shape, depth + 1);
+	const items = node["items"];
+	if (items !== undefined)
+		describeSchema(items, operation, `${pointer}[]`, shape, depth + 1);
+	for (const key of ["allOf", "anyOf", "oneOf"]) {
+		const branches = node[key];
+		if (!Array.isArray(branches)) continue;
+		for (const [index, branch] of branches.entries())
+			describeSchema(
+				branch,
+				operation,
+				`${pointer}(${key}:${index})`,
+				shape,
+				depth + 1,
+			);
+	}
+}
+
+function hasStrictObject(node: unknown, depth = 0): boolean {
+	if (depth > 12 || !isRecord(node)) return false;
+	if (node["additionalProperties"] === false) return true;
+	return Object.values(node).some((child) =>
+		Array.isArray(child)
+			? child.some((entry) => hasStrictObject(entry, depth + 1))
+			: hasStrictObject(child, depth + 1),
+	);
+}
+
+/** The published contract, reduced to the facts the evolution rules compare. */
+export function describeArtifact(source: string): OperationShape | undefined {
+	let value: unknown;
+	try {
+		value = JSON.parse(source) as unknown;
+	} catch {
+		return undefined;
+	}
+	const shape: OperationShape = {
+		operations: new Set(),
+		properties: new Map(),
+		required: new Set(),
+		strictResponses: [],
+	};
+	const paths =
+		isRecord(value) && isRecord(value["paths"]) ? value["paths"] : {};
+	for (const [route, item] of Object.entries(paths)) {
+		if (!isRecord(item)) continue;
+		for (const method of HTTP_METHODS) {
+			const operation = item[method];
+			if (!isRecord(operation)) continue;
+			const id = `${method.toUpperCase()} ${route}`;
+			shape.operations.add(id);
+			const body = isRecord(operation["requestBody"])
+				? operation["requestBody"]
+				: {};
+			const bodyContent = isRecord(body["content"]) ? body["content"] : {};
+			for (const media of Object.values(bodyContent)) {
+				if (isRecord(media))
+					describeSchema(media["schema"], id, "#request", shape, 0);
+			}
+			const responses = isRecord(operation["responses"])
+				? operation["responses"]
+				: {};
+			for (const [status, response] of Object.entries(responses)) {
+				if (!isRecord(response)) continue;
+				const content = isRecord(response["content"])
+					? response["content"]
+					: {};
+				for (const media of Object.values(content)) {
+					if (!isRecord(media)) continue;
+					describeSchema(media["schema"], id, `#${status}`, shape, 0);
+					// The asymmetry the reference spells out: strict in the tests,
+					// lenient on the wire. A browser that strict-parses a live
+					// response breaks on the first purely additive deploy, during the
+					// window in which two versions are both serving.
+					if (hasStrictObject(media["schema"]))
+						shape.strictResponses.push(`${id} ${status}`);
+				}
+			}
+		}
+	}
+	return shape;
+}
+
+function gitOutput(root: string, args: string[]): string | undefined {
+	const result = Bun.spawnSync(["git", "-C", root, ...args], {
+		stdout: "pipe",
+		stderr: "pipe",
+	});
+	return result.exitCode === 0 ? result.stdout.toString() : undefined;
+}
+
+/**
+ * Additive-only evolution, proved against the merge base.
+ *
+ * The reference has no wire-level skew mechanism at all — no `426`, no version
+ * header, no contract hash — and inventing one for a template would ship an
+ * unproven protocol. What it enforces instead is policy, and two halves of that
+ * policy are mechanical: a response body may not be strict-parsed on the wire,
+ * and a change to the published contract may not remove a field, remove an
+ * operation, add a required field or change a type unless the registry names
+ * the operation with a staged migration.
+ */
+export function validateEvolution(
+	root: string,
+	contract: ApiContract,
+): DriftReport {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	const openapi = contract.openapi;
+	if (openapi === null) return { errors, notices };
+	const head = describeArtifact(textOf(resolve(root, openapi.artifact)));
+	if (head === undefined)
+		return {
+			errors: [`forms: ${openapi.artifact} must parse as JSON`],
+			notices,
+		};
+	for (const response of head.strictResponses) {
+		errors.push(
+			`forms: ${openapi.artifact} strict-parses the response body of ${response}; the published contract must stay lenient on the wire`,
+		);
+	}
+
+	const injected = process.env[MERGE_BASE_VARIABLE];
+	const candidates = injected ? [injected] : [...BASE_CANDIDATES];
+	let base: string | undefined;
+	for (const candidate of candidates) {
+		if (
+			gitOutput(root, ["rev-parse", "--verify", "--quiet", candidate]) ===
+			undefined
+		)
+			continue;
+		base = gitOutput(root, ["merge-base", "HEAD", candidate])?.trim();
+		if (base) break;
+	}
+	if (!base) {
+		notices.push(
+			`forms: no merge base resolved (tried ${candidates.join(", ")}); the evolution gate compared nothing. Set ${MERGE_BASE_VARIABLE} to the branch this change is proposed against.`,
+		);
+		return { errors: errors.sort(), notices };
+	}
+	const previous = gitOutput(root, ["show", `${base}:${openapi.artifact}`]);
+	if (previous === undefined) {
+		notices.push(
+			`forms: ${openapi.artifact} is new at ${base}; the evolution gate has no earlier contract to compare against`,
+		);
+		return { errors: errors.sort(), notices };
+	}
+	const before = describeArtifact(previous);
+	if (before === undefined) {
+		notices.push(
+			`forms: ${openapi.artifact} did not parse at ${base}; the evolution gate compared nothing`,
+		);
+		return { errors: errors.sort(), notices };
+	}
+
+	const staged = new Set(contract.evolution.map((entry) => entry.operation));
+	const refuse = (operation: string, detail: string): void => {
+		if (staged.has(operation)) return;
+		errors.push(
+			`forms: ${openapi.artifact} ${detail}; declare ${operation} in evolution[] with a staged add, migrate or remove`,
+		);
+	};
+	for (const operation of before.operations) {
+		if (!head.operations.has(operation))
+			refuse(operation, `removes the operation ${operation}`);
+	}
+	const operationOf = (key: string): string => key.split("#")[0] ?? key;
+	for (const [key, type] of before.properties) {
+		const operation = operationOf(key);
+		if (!before.operations.has(operation)) continue;
+		if (!head.operations.has(operation)) continue;
+		const current = head.properties.get(key);
+		if (current === undefined) refuse(operation, `removes the field ${key}`);
+		else if (current !== type)
+			refuse(operation, `narrows ${key} from ${type} to ${current}`);
+	}
+	for (const key of head.required) {
+		const operation = operationOf(key);
+		if (!before.operations.has(operation)) continue;
+		if (before.required.has(key)) continue;
+		refuse(operation, `newly requires ${key}`);
+	}
+	return { errors: [...new Set(errors)].sort(), notices };
+}
+
+/**
+ * The whole shared-schema and API contract, with the notices the caller prints.
  *
  * The order is the safety property. An unreadable registry stops everything,
  * because every leg below reads it; a mode disagreement stops everything too,
  * because every leg below is written for one of the two worlds and would answer
  * the wrong question in the other.
  */
-export async function validateFormsContract(
+export async function inspectFormsContract(
 	root = resolve(import.meta.dir, "../.."),
 	_options: FormsContractOptions = {},
-): Promise<string[]> {
+): Promise<DriftReport> {
+	const notices: string[] = [];
 	const { contract, errors: registryErrors } = await readApiContract(root);
-	if (!contract) return [...new Set(registryErrors)].sort();
+	if (!contract)
+		return { errors: [...new Set(registryErrors)].sort(), notices };
 
 	const state = deriveTreeState(root);
 	const reconciliation = reconcileMode(contract, state);
 	if (reconciliation.length > 0)
-		return [...new Set([...registryErrors, ...reconciliation])].sort();
+		return {
+			errors: [...new Set([...registryErrors, ...reconciliation])].sort(),
+			notices,
+		};
 
+	const drift = runDriftGate(root, contract);
+	const evolution = validateEvolution(root, contract);
+	notices.push(...drift.notices, ...evolution.notices);
 	const errors = [
 		...registryErrors,
 		...validateSoleDeclarations(enumerateFiles(root), contract),
 		...(await validateWiring(root, contract)),
 		...(await validateOwnership(root)),
 		...validateBrowserSafety(root, contract, state),
+		...(await validateGeneratedOutputPolicy(root, contract)),
+		...validateGeneratedBanners(root, contract),
+		...drift.errors,
+		...evolution.errors,
 	];
-	return [...new Set(errors)].sort();
+	return { errors: [...new Set(errors)].sort(), notices };
+}
+
+/** The error half, in the shape `validate.ts` aggregates. */
+export async function validateFormsContract(
+	root = resolve(import.meta.dir, "../.."),
+	options: FormsContractOptions = {},
+): Promise<string[]> {
+	return (await inspectFormsContract(root, options)).errors;
 }

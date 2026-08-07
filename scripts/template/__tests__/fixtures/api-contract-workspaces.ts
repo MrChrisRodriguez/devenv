@@ -13,6 +13,7 @@ export const CONTRACT_FILES = [
 	"api-contract.json",
 	"api-contract.schema.json",
 	"package.json",
+	"biome.jsonc",
 	"template-parameters.toml",
 	".github/workflows/ci.yml",
 	"scripts/template/forms-contract.ts",
@@ -88,6 +89,94 @@ export async function contractWorkspace(options?: {
 	return temporary;
 }
 
+export const ARTIFACT_PATH = "libs/api-client/openapi/api.v1.json";
+export const CLIENT_PATH = "libs/api-client/src/generated/api.ts";
+export const CLIENT_BANNER = `GENERATED FILE — ${GENERATED_MARKER}.`;
+export const GENERATE_COMMAND = "bun scripts/generate.ts";
+
+/** A minimal but real OpenAPI 3.1 document, in the reference's shape. */
+export function artifactDocument(options?: {
+	strictResponse?: boolean;
+	dropField?: boolean;
+	requireField?: boolean;
+	narrowField?: boolean;
+	dropOperation?: boolean;
+}): string {
+	const created: Record<string, unknown> = {
+		type: "object",
+		properties: {
+			id: { type: "string" },
+			...(options?.dropField ? {} : { note: { type: "string" } }),
+		},
+		...(options?.strictResponse ? { additionalProperties: false } : {}),
+	};
+	const paths: Record<string, unknown> = {
+		"/orders": {
+			post: {
+				operationId: "createOrder",
+				requestBody: {
+					content: {
+						"application/json": {
+							schema: {
+								type: "object",
+								required: options?.requireField ? ["total", "note"] : ["total"],
+								properties: {
+									total: { type: options?.narrowField ? "string" : "number" },
+									note: { type: "string" },
+								},
+							},
+						},
+					},
+				},
+				responses: {
+					"201": { content: { "application/json": { schema: created } } },
+				},
+			},
+		},
+	};
+	if (!options?.dropOperation) {
+		paths["/orders/{id}"] = {
+			get: {
+				operationId: "readOrder",
+				responses: {
+					"200": { content: { "application/json": { schema: created } } },
+				},
+			},
+		};
+	}
+	return `${JSON.stringify(
+		{
+			openapi: "3.1.0",
+			info: { title: "api", version: "1" },
+			paths,
+		},
+		null,
+		"\t",
+	)}\n`;
+}
+
+export function clientTypes(): string {
+	return `// ${CLIENT_BANNER}\n// CI byte-compares this file.\nexport type CreateOrder = { id: string; note: string };\n`;
+}
+
+/**
+ * A generator committed INTO the workspace, so the drift leg has a real command
+ * to run rather than a mock to believe.
+ */
+export function generatorScript(artifact: string, client: string): string {
+	return [
+		'import { mkdir } from "node:fs/promises";',
+		'import { dirname, resolve } from "node:path";',
+		`const files = ${JSON.stringify({ [ARTIFACT_PATH]: artifact, [CLIENT_PATH]: client }, null, "\t")};`,
+		"for (const [path, content] of Object.entries(files)) {",
+		'\tconst target = resolve(import.meta.dir, "..", path);',
+		"\tawait mkdir(dirname(target), { recursive: true });",
+		"\tawait Bun.write(target, content);",
+		"}",
+		"",
+	].join("\n");
+}
+
 /** A declared schema package, in the shape the registry names it. */
 export function schemaPackage(
 	overrides: Partial<ApiContract["schemaPackages"][number]> = {},
@@ -99,4 +188,34 @@ export function schemaPackage(
 		allowedSpecifiers: [],
 		...overrides,
 	};
+}
+
+/** An `active` workspace with a real artifact, client, generator and package. */
+export async function activeWorkspace(): Promise<{
+	root: string;
+	contract: ApiContract;
+}> {
+	const artifact = artifactDocument();
+	const client = clientTypes();
+	const contract: ApiContract = {
+		...SKELETON,
+		mode: "active",
+		schemaPackages: [schemaPackage()],
+		openapi: {
+			artifact: ARTIFACT_PATH,
+			generate: GENERATE_COMMAND,
+			clients: [{ path: CLIENT_PATH, banner: CLIENT_BANNER }],
+		},
+	};
+	const root = await contractWorkspace({
+		contract,
+		prefix: "devenv-forms-active-",
+		files: {
+			"libs/forms/src/index.ts": `${SCHEMA_IMPORT}export const Order = z.object({});\n`,
+			[ARTIFACT_PATH]: artifact,
+			[CLIENT_PATH]: client,
+			"scripts/generate.ts": generatorScript(artifact, client),
+		},
+	});
+	return { root, contract };
 }

@@ -5,17 +5,27 @@ import { dirname, resolve } from "node:path";
 import {
 	type ApiContract,
 	deriveTreeState,
+	GENERATE_BIN_VARIABLE,
+	MERGE_BASE_VARIABLE,
 	REGISTRY_PATH,
 	readApiContract,
 	type ServerParser,
 	validateBrowserSafety,
+	validateEvolution,
 	validateFormsContract,
 	validateSoleDeclarations,
 } from "../forms-contract";
 import { renderFixture } from "../render-fixture";
 import {
+	ARTIFACT_PATH,
+	activeWorkspace,
+	artifactDocument,
+	CLIENT_PATH,
+	clientTypes,
 	contractWorkspace,
+	GENERATE_COMMAND,
 	GENERATED_MARKER,
+	generatorScript,
 	RESOLVER_BINDING,
 	ROOT,
 	SCHEMA_IMPORT,
@@ -476,6 +486,212 @@ describe("shared schema and API contract registry", () => {
 			validateBrowserSafety(ROOT, SKELETON, deriveTreeState(ROOT)),
 		).toEqual([]);
 	});
+
+	test("refuses generated artifacts that drift, and restores the tree either way", async () => {
+		const { root, contract } = await activeWorkspace();
+		try {
+			expect(await validateFormsContract(root)).toEqual([]);
+			const committed = await Bun.file(resolve(root, ARTIFACT_PATH)).text();
+
+			// A hand-edited artifact is what the generator would overwrite, which
+			// is exactly the state the gate exists to name.
+			await writeFiles(root, {
+				[ARTIFACT_PATH]: committed.replace('"3.1.0"', '"3.1.1"'),
+			});
+			expect(await validateFormsContract(root)).toContain(
+				`forms: ${ARTIFACT_PATH} is a stale generated artifact; run \`${GENERATE_COMMAND}\` and commit the result`,
+			);
+			// The gate ran a generator that rewrote the tree, and the tree is back
+			// exactly as it was. A drifted repository must not be left mutated by
+			// the guard that noticed the drift.
+			expect(await Bun.file(resolve(root, ARTIFACT_PATH)).text()).toBe(
+				committed.replace('"3.1.0"', '"3.1.1"'),
+			);
+			await writeFiles(root, { [ARTIFACT_PATH]: committed });
+			expect(await validateFormsContract(root)).toEqual([]);
+			expect(await Bun.file(resolve(root, ARTIFACT_PATH)).text()).toBe(
+				committed,
+			);
+
+			// An artifact the registry declares and the tree does not have. The
+			// generator recreates it during the run, so "restore on every exit
+			// path" has to mean deleting it again.
+			await rm(resolve(root, ARTIFACT_PATH));
+			expect(await validateFormsContract(root)).toContain(
+				`forms: ${REGISTRY_PATH} declares ${ARTIFACT_PATH}, which is missing`,
+			);
+			expect(await Bun.file(resolve(root, ARTIFACT_PATH)).exists()).toBe(false);
+			await writeFiles(root, { [ARTIFACT_PATH]: committed });
+
+			// A generated client that no longer says it is generated is a file the
+			// next generator run silently reverts.
+			const client = await Bun.file(resolve(root, CLIENT_PATH)).text();
+			await writeFiles(root, {
+				[CLIENT_PATH]: client.split("\n").slice(1).join("\n"),
+			});
+			expect(await validateFormsContract(root)).toContain(
+				`forms: ${CLIENT_PATH} must open with its declared generated-artifact banner`,
+			);
+			await writeFiles(root, { [CLIENT_PATH]: client });
+			expect(await validateFormsContract(root)).toEqual([]);
+
+			// A generator that is not there fails the gate rather than skipping it.
+			process.env[GENERATE_BIN_VARIABLE] = resolve(root, "no-such-generator");
+			const absent = await validateFormsContract(root);
+			delete process.env[GENERATE_BIN_VARIABLE];
+			expect(absent.join("\n")).toContain("forms: the declared generator");
+			expect(await validateFormsContract(root)).toEqual([]);
+
+			// Biome must not touch the generated output, or the byte-compare above
+			// fails for a file that is perfectly correct.
+			const biome = await Bun.file(resolve(root, "biome.jsonc")).text();
+			await writeFiles(root, {
+				"biome.jsonc": biome.replace(', "**/openapi/**"', ""),
+			});
+			expect(await validateFormsContract(root)).toContain(
+				`forms: biome.jsonc must exempt the generated ${ARTIFACT_PATH} from reformatting`,
+			);
+			await writeFiles(root, { "biome.jsonc": biome });
+			expect(await validateFormsContract(root)).toEqual([]);
+
+			// Strict on the wire is the one asymmetry the reference is explicit
+			// about: a browser that strict-parses a live response breaks on the
+			// first purely additive deploy.
+			await writeFiles(root, {
+				[ARTIFACT_PATH]: artifactDocument({ strictResponse: true }),
+				"scripts/generate.ts": generatorScript(
+					artifactDocument({ strictResponse: true }),
+					clientTypes(),
+				),
+			});
+			expect(await validateFormsContract(root)).toContain(
+				`forms: ${ARTIFACT_PATH} strict-parses the response body of POST /orders 201; the published contract must stay lenient on the wire`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+			delete process.env[GENERATE_BIN_VARIABLE];
+		}
+	}, 60_000);
+
+	test("refuses contract evolution that is not additive", async () => {
+		const root = await mkdtemp(resolve(tmpdir(), "devenv-forms-evolution-"));
+		const git = (...args: string[]): void => {
+			const result = Bun.spawnSync(["git", "-C", root, ...args], {
+				stdout: "pipe",
+				stderr: "pipe",
+				env: {
+					...process.env,
+					GIT_AUTHOR_NAME: "t",
+					GIT_AUTHOR_EMAIL: "t@t",
+					GIT_COMMITTER_NAME: "t",
+					GIT_COMMITTER_EMAIL: "t@t",
+				},
+			});
+			if (result.exitCode !== 0)
+				throw new Error(`git ${args.join(" ")}: ${result.stderr.toString()}`);
+		};
+		const contractFor = (evolution: ApiContract["evolution"]): ApiContract => ({
+			...SKELETON,
+			mode: "active",
+			evolution,
+			openapi: {
+				artifact: ARTIFACT_PATH,
+				generate: GENERATE_COMMAND,
+				clients: [],
+			},
+		});
+		const publish = async (document: string): Promise<void> => {
+			await writeFiles(root, { [ARTIFACT_PATH]: document });
+		};
+		try {
+			git("init", "--quiet", "--initial-branch", "main");
+			await publish(artifactDocument());
+			git("add", "-A");
+			git("commit", "--quiet", "--no-verify", "-m", "base");
+			const base =
+				Bun.spawnSync(["git", "-C", root, "rev-parse", "HEAD"], {
+					stdout: "pipe",
+				})
+					.stdout.toString()
+					.trim() ?? "";
+			process.env[MERGE_BASE_VARIABLE] = base;
+
+			expect(validateEvolution(root, contractFor([])).errors).toEqual([]);
+
+			// Four ways to break a client that is still running the old build,
+			// during the window in which two versions are both serving.
+			for (const [options, detail, operations] of [
+				[
+					{ dropField: true },
+					"removes the field POST /orders#201.note",
+					["POST /orders", "GET /orders/{id}"],
+				],
+				[
+					{ dropOperation: true },
+					"removes the operation GET /orders/{id}",
+					["GET /orders/{id}"],
+				],
+				[
+					{ requireField: true },
+					"newly requires POST /orders#request.note",
+					["POST /orders"],
+				],
+				[
+					{ narrowField: true },
+					"narrows POST /orders#request.total from number to string",
+					["POST /orders"],
+				],
+			] as const) {
+				await publish(artifactDocument(options));
+				expect(
+					validateEvolution(root, contractFor([])).errors.join("\n"),
+				).toContain(detail);
+				// ... each of which a staged migration authorizes by name.
+				expect(
+					validateEvolution(
+						root,
+						contractFor(
+							operations.map((operation) => ({
+								operation,
+								stage: "migrate" as const,
+								note: "staged add then remove",
+							})),
+						),
+					).errors,
+				).toEqual([]);
+			}
+
+			// A contract artifact new in this branch has no earlier contract to
+			// compare against, and the gate says so instead of passing quietly.
+			await publish(artifactDocument());
+			const moved = "libs/api-client/openapi/api.v2.json";
+			await writeFiles(root, { [moved]: artifactDocument() });
+			const fresh = validateEvolution(root, {
+				...contractFor([]),
+				openapi: {
+					artifact: moved,
+					generate: GENERATE_COMMAND,
+					clients: [],
+				},
+			});
+			expect(fresh.errors).toEqual([]);
+			expect(fresh.notices.join("\n")).toContain(
+				`forms: ${moved} is new at ${base}`,
+			);
+
+			// No base at all is a notice too, never a silent pass.
+			delete process.env[MERGE_BASE_VARIABLE];
+			process.env[MERGE_BASE_VARIABLE] = "refs/heads/no-such-branch";
+			const unresolved = validateEvolution(root, contractFor([]));
+			expect(unresolved.errors).toEqual([]);
+			expect(unresolved.notices.join("\n")).toContain(
+				"the evolution gate compared nothing",
+			);
+		} finally {
+			delete process.env[MERGE_BASE_VARIABLE];
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
 
 	test("renders the contract surface only for the selected capability", async () => {
 		const temporary = await mkdtemp(resolve(tmpdir(), "devenv-forms-render-"));
