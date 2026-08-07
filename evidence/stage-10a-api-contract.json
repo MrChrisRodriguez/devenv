@@ -1,0 +1,552 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-10a-api-contract",
+	"capturedAt": "2026-08-07T07:59:03.217Z",
+	"run": {
+		"id": "stage10a-20260807t075841z-0a58ad0b",
+		"logRoot": "evidence/stage-10a-api-contract-run"
+	},
+	"source": {
+		"baseSha": "f92960e51c3dc3056bbf2c89b860d5f6f5c672b4",
+		"implementationSha": "0a58ad0be9f67d783be3ba16092c8290fc41127c",
+		"treeClean": true,
+		"declaredMode": "skeleton",
+		"typescriptCatalogPin": "5.9.3"
+	},
+	"host": {
+		"os": "darwin",
+		"architecture": "arm64",
+		"kernel": "25.5.0",
+		"insideDevcontainer": false,
+		"bunVersion": "1.3.13",
+		"gitVersion": "2.50.1",
+		"ghVersion": "2.59.0"
+	},
+	"repository": {
+		"nameWithOwner": "MrChrisRodriguez/devenv",
+		"workflowFile": ".github/workflows/ci.yml",
+		"gateJobId": "ci-gate",
+		"gateContext": "CI gate",
+		"gateNeeds": [
+			"ci",
+			"image",
+			"affected",
+			"project",
+			"moon-graph",
+			"browser"
+		],
+		"formsGuardScript": "forms:check",
+		"ciGuardScript": "ci:check",
+		"registryFile": "api-contract.json",
+		"capability": "rhf_zod",
+		"addedJobs": 0
+	},
+	"commands": [
+		{
+			"id": "forms-guard",
+			"command": ["bun", "run", "forms:check"],
+			"runId": "stage10a-20260807t075841z-0a58ad0b",
+			"startedAt": "2026-08-07T07:58:41.781Z",
+			"completedAt": "2026-08-07T07:58:42.310Z",
+			"durationMs": 529,
+			"stdoutPath": "evidence/stage-10a-api-contract-run/forms-guard.stdout",
+			"stderrPath": "evidence/stage-10a-api-contract-run/forms-guard.stderr",
+			"stdoutSha256": "397d29f012de06ca3b0ebe53d46640ea35fd6ab1a8572c7c1954b84167536d17",
+			"stderrSha256": "05d09b08d25ef90dda742452a9f2a7e61407e4fb0d58045ec090c31fa44b7d74",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "ci-guard",
+			"command": ["bun", "run", "ci:check"],
+			"runId": "stage10a-20260807t075841z-0a58ad0b",
+			"startedAt": "2026-08-07T07:58:42.310Z",
+			"completedAt": "2026-08-07T07:58:42.370Z",
+			"durationMs": 60,
+			"stdoutPath": "evidence/stage-10a-api-contract-run/ci-guard.stdout",
+			"stderrPath": "evidence/stage-10a-api-contract-run/ci-guard.stderr",
+			"stdoutSha256": "9cfe650e97435463f535e1a81f5b30b1ab521cfb458af04688f901be57a294f9",
+			"stderrSha256": "d183538a63c244d8ba196aa5a8eb1eb4cfc636414a9ba546e4cfb9b3537e4088",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "forms-mutations",
+			"command": ["bun", "test", "scripts/template/__tests__/forms.test.ts"],
+			"runId": "stage10a-20260807t075841z-0a58ad0b",
+			"startedAt": "2026-08-07T07:58:42.370Z",
+			"completedAt": "2026-08-07T07:58:51.779Z",
+			"durationMs": 9409,
+			"stdoutPath": "evidence/stage-10a-api-contract-run/forms-mutations.stdout",
+			"stderrPath": "evidence/stage-10a-api-contract-run/forms-mutations.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "4bd8f0346e04b268083e81368e251ce0e0a2986fef0354a96b454fe4bd98ddbd",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "browser-safety-matrix",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/forms.test.ts",
+				"-t",
+				"browser safe"
+			],
+			"runId": "stage10a-20260807t075841z-0a58ad0b",
+			"startedAt": "2026-08-07T07:58:51.779Z",
+			"completedAt": "2026-08-07T07:58:52.513Z",
+			"durationMs": 734,
+			"stdoutPath": "evidence/stage-10a-api-contract-run/browser-safety-matrix.stdout",
+			"stderrPath": "evidence/stage-10a-api-contract-run/browser-safety-matrix.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "eb7a8fda2273d13223be87976f735c0bfb3e57a7fe7a703169469f941a2ea6bb",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "drift-gate",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/forms.test.ts",
+				"-t",
+				"generated artifacts that drift"
+			],
+			"runId": "stage10a-20260807t075841z-0a58ad0b",
+			"startedAt": "2026-08-07T07:58:52.513Z",
+			"completedAt": "2026-08-07T07:58:53.819Z",
+			"durationMs": 1306,
+			"stdoutPath": "evidence/stage-10a-api-contract-run/drift-gate.stdout",
+			"stderrPath": "evidence/stage-10a-api-contract-run/drift-gate.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "be0f1e850812247535c5fb3321546e854529234ab0b14bcdb41e0ec5fb7c7cb8",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "evolution-gate",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/forms.test.ts",
+				"-t",
+				"contract evolution that is not additive"
+			],
+			"runId": "stage10a-20260807t075841z-0a58ad0b",
+			"startedAt": "2026-08-07T07:58:53.820Z",
+			"completedAt": "2026-08-07T07:58:54.134Z",
+			"durationMs": 314,
+			"stdoutPath": "evidence/stage-10a-api-contract-run/evolution-gate.stdout",
+			"stderrPath": "evidence/stage-10a-api-contract-run/evolution-gate.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "ddd11201fdab5d1a0e61c9e9eaff6603fd71329de67911f8ab9e421a9e653227",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "parallel-types",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/forms.test.ts",
+				"-t",
+				"second set of response types"
+			],
+			"runId": "stage10a-20260807t075841z-0a58ad0b",
+			"startedAt": "2026-08-07T07:58:54.134Z",
+			"completedAt": "2026-08-07T07:58:55.546Z",
+			"durationMs": 1412,
+			"stdoutPath": "evidence/stage-10a-api-contract-run/parallel-types.stdout",
+			"stderrPath": "evidence/stage-10a-api-contract-run/parallel-types.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "520196c4b76e2e42552bb6968c803cd1a24679f93b876cfab1b5fb4df9ca98a1",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "authz-seam",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/forms.test.ts",
+				"-t",
+				"inline authorization outside the declared policy seam"
+			],
+			"runId": "stage10a-20260807t075841z-0a58ad0b",
+			"startedAt": "2026-08-07T07:58:55.546Z",
+			"completedAt": "2026-08-07T07:58:56.360Z",
+			"durationMs": 814,
+			"stdoutPath": "evidence/stage-10a-api-contract-run/authz-seam.stdout",
+			"stderrPath": "evidence/stage-10a-api-contract-run/authz-seam.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "12b973bb094a59888c06017a4ac1082b0eb803520f7d07c984274dd0deb8f59d",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "form-bindings",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/forms.test.ts",
+				"-t",
+				"registers every form"
+			],
+			"runId": "stage10a-20260807t075841z-0a58ad0b",
+			"startedAt": "2026-08-07T07:58:56.360Z",
+			"completedAt": "2026-08-07T07:58:56.975Z",
+			"durationMs": 615,
+			"stdoutPath": "evidence/stage-10a-api-contract-run/form-bindings.stdout",
+			"stderrPath": "evidence/stage-10a-api-contract-run/form-bindings.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "7340b041d5d9f315409bdc18ed3c8f6aae0621e31a5a5ffeb51cf7d52c1d2251",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rendered-forms",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-ten-a-evidence.ts",
+				"probe-render-forms",
+				"--workspace",
+				"/tmp/devenv-stage10a-20260807t075841z-0a58ad0b-render"
+			],
+			"runId": "stage10a-20260807t075841z-0a58ad0b",
+			"startedAt": "2026-08-07T07:58:56.976Z",
+			"completedAt": "2026-08-07T07:58:57.771Z",
+			"durationMs": 795,
+			"stdoutPath": "evidence/stage-10a-api-contract-run/rendered-forms.stdout",
+			"stderrPath": "evidence/stage-10a-api-contract-run/rendered-forms.stderr",
+			"stdoutSha256": "677668b1f25482366f8a4d97df6b3ece3e0c1776eb76ebaf85d7356d998ffac0",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-gate",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nrun=\"$(gh run view 31159545163 --repo MrChrisRodriguez/devenv --json conclusion,createdAt,databaseId,event,headBranch,headSha,jobs,status,url,workflowName)\"\nprintf 'runJson=%s\\n' \"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\ngate=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; jobs=[job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]]; print(jobs[0] if jobs else \"\")' \"CI gate\")\"\nprintf 'gateJobId=%s\\n' \"$gate\"\nlog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$gate\" --log)\"\nprintf 'gateLogSha256=%s\\n' \"$(printf '%s' \"$log\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'upstreamResults=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*upstream results: //p' | head -n 1)\"\nprintf 'gateGreenLines=%s\\n' \"$(printf '%s\\n' \"$log\" | grep -c 'Every required job passed or was skipped' || true)\""
+			],
+			"runId": "stage10a-20260807t075841z-0a58ad0b",
+			"startedAt": "2026-08-07T07:58:57.771Z",
+			"completedAt": "2026-08-07T07:59:02.639Z",
+			"durationMs": 4868,
+			"stdoutPath": "evidence/stage-10a-api-contract-run/live-gate.stdout",
+			"stderrPath": "evidence/stage-10a-api-contract-run/live-gate.stderr",
+			"stdoutSha256": "da13ff120bb204f0c81cfea71ec9263a261fe24c9d9356a7719371d3eb2bf7d1",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rollback-proof",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-ten-a-evidence.ts",
+				"probe-rollback",
+				"--base",
+				"f92960e51c3dc3056bbf2c89b860d5f6f5c672b4",
+				"--implementation",
+				"0a58ad0be9f67d783be3ba16092c8290fc41127c",
+				"--workspace",
+				"/tmp/devenv-stage2-stage10a-20260807t075841z-0a58ad0b-rollback"
+			],
+			"runId": "stage10a-20260807t075841z-0a58ad0b",
+			"startedAt": "2026-08-07T07:59:02.639Z",
+			"completedAt": "2026-08-07T07:59:03.217Z",
+			"durationMs": 578,
+			"stdoutPath": "evidence/stage-10a-api-contract-run/rollback-proof.stdout",
+			"stderrPath": "evidence/stage-10a-api-contract-run/rollback-proof.stderr",
+			"stdoutSha256": "0ae752a912746dae0d2da88e772151c24adf698bd1976ceff9e29f2185449ad3",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		}
+	],
+	"guards": {
+		"forms": {
+			"commandId": "forms-guard",
+			"command": "bun run forms:check",
+			"summary": "Validated the api contract registry, its declared mode against the tree, guard wiring, template ownership, browser safety, generated-artifact drift, additive-only evolution, parallel response types, inline authorization, form bindings, and server parsers."
+		},
+		"ci": {
+			"commandId": "ci-guard",
+			"command": "bun run ci:check",
+			"summary": "Validated workflow trigger policy, bootstrap ownership, action pins, job bounds, failure tolerance, aggregate gate membership, shell injection surface, history ownership, compiler coverage, and guard wiring."
+		}
+	},
+	"suites": [
+		{
+			"commandId": "forms-mutations",
+			"testFile": "scripts/template/__tests__/forms.test.ts",
+			"passCount": 20,
+			"failCount": 0
+		},
+		{
+			"commandId": "browser-safety-matrix",
+			"testFile": "scripts/template/__tests__/forms.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "drift-gate",
+			"testFile": "scripts/template/__tests__/forms.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "evolution-gate",
+			"testFile": "scripts/template/__tests__/forms.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "parallel-types",
+			"testFile": "scripts/template/__tests__/forms.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "authz-seam",
+			"testFile": "scripts/template/__tests__/forms.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "form-bindings",
+			"testFile": "scripts/template/__tests__/forms.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		}
+	],
+	"renderFixtures": {
+		"commandId": "rendered-forms",
+		"fixtures": [
+			{
+				"name": "minimal",
+				"capabilityEnabled": false,
+				"gatedPaths": [],
+				"packageScripts": ["ci:check"],
+				"formsStepPresent": false,
+				"guardPresent": false,
+				"schemaLibraryTokenFiles": 0,
+				"formsErrors": [],
+				"biomeGeneratedOverride": true,
+				"residueFindings": []
+			},
+			{
+				"name": "cloud",
+				"capabilityEnabled": false,
+				"gatedPaths": [],
+				"packageScripts": ["ci:check"],
+				"formsStepPresent": false,
+				"guardPresent": false,
+				"schemaLibraryTokenFiles": 0,
+				"formsErrors": [],
+				"biomeGeneratedOverride": true,
+				"residueFindings": []
+			},
+			{
+				"name": "full",
+				"capabilityEnabled": true,
+				"gatedPaths": [
+					"api-contract.json",
+					"api-contract.schema.json",
+					"scripts/template/forms-contract.ts",
+					"scripts/template/validate-forms.ts"
+				],
+				"packageScripts": ["ci:check", "forms:check"],
+				"formsStepPresent": true,
+				"guardPresent": true,
+				"schemaLibraryTokenFiles": 3,
+				"formsErrors": [],
+				"biomeGeneratedOverride": true,
+				"residueFindings": []
+			}
+		]
+	},
+	"live": {
+		"live-gate": {
+			"commandId": "live-gate",
+			"heavyLaneRan": true,
+			"run": {
+				"runId": 31159545163,
+				"url": "https://github.com/MrChrisRodriguez/devenv/actions/runs/31159545163",
+				"event": "pull_request",
+				"headBranch": "feat/stage-10a-api-contract",
+				"headSha": "0a58ad0be9f67d783be3ba16092c8290fc41127c",
+				"conclusion": "success",
+				"gateJobId": 92807119820,
+				"gateConclusion": "success",
+				"gateLogSha256": "9da2cc5881e5067a4d1b7de14d7c426939d3682836470a993bc9d26847711120",
+				"upstreamResults": "success,success,success,success,success,success",
+				"jobs": [
+					{
+						"name": "Build devcontainer image",
+						"conclusion": "success"
+					},
+					{
+						"name": "Contracts & Baseline",
+						"conclusion": "success"
+					},
+					{
+						"name": "Launch baked browser payload",
+						"conclusion": "success"
+					},
+					{
+						"name": "Select affected projects",
+						"conclusion": "success"
+					},
+					{
+						"name": "Verify Moon project graph",
+						"conclusion": "success"
+					},
+					{
+						"name": "Lint, Typecheck & Test (root)",
+						"conclusion": "success"
+					}
+				]
+			}
+		}
+	},
+	"coverage": [
+		{
+			"id": "declared-surface",
+			"task": "13.1 capability-gated browser-safe shared request schemas and types",
+			"reason": "The input is a committed declaration rather than a query over an empty tree, and its declared mode is reconciled with the derived state in both directions before any leg runs: a tree that grows one of the four surface shapes while the registry still says skeleton fails by name, and a registry that declares a surface the tree does not carry fails too.",
+			"commandIds": ["forms-guard", "forms-mutations"]
+		},
+		{
+			"id": "browser-safety",
+			"task": "13.1 browser-safe shared request schemas",
+			"reason": "A declared schema package is scanned with an allowlist rather than a denylist, over every specifier spelling the AST carries, and a relative path that resolves outside the package root is refused; zero files under a declared root is a distinct failure and a module outside every declared package that reaches for the schema library is refused wherever it lives.",
+			"commandIds": ["browser-safety-matrix", "forms-guard"]
+		},
+		{
+			"id": "generated-drift",
+			"task": "13.2 generate response types and block handwritten parallel ones",
+			"reason": "The declared generator is executed, the post-state is read before any restore, the tree is put back on every exit path, and a byte difference in a declared artifact is refused by name; every generated client must open with its declared banner and the linter, formatter and assist actions are required to be off for it.",
+			"commandIds": ["drift-gate", "forms-mutations"]
+		},
+		{
+			"id": "deployment-skew",
+			"task": "13.3 deployment-skew and OpenAPI drift on every deployment path",
+			"reason": "Skew is proved as an additive-only evolution gate against the merge base plus a lenient wire contract, using a two-version fixture: the additive change is accepted, every field the old client reads is still present, and a removed field, a removed operation, a newly required field or a changed type is refused unless the registry stages it.",
+			"commandIds": ["evolution-gate", "forms-mutations"]
+		},
+		{
+			"id": "parallel-types",
+			"task": "13.2 block handwritten parallel response types",
+			"reason": "All four reference categories are refused at call sites whose covered routes are derived from the artifact's own paths, one hop of path resolution deep, across the wrapper type argument, the cast and the annotation; an artifact declaring no operation is itself a failure so the ban can never cover nothing.",
+			"commandIds": ["parallel-types", "forms-mutations"]
+		},
+		{
+			"id": "inline-authorization",
+			"task": "13.2 block inline authorization outside the policy seam",
+			"reason": "The banned denial messages are read from the declared seam module rather than written into the guard, a branch that reads a caller role bit and answers with a refusal is refused in both arms of a ternary, resolution stops at a seam call, and with no seam declared nothing at all may decide.",
+			"commandIds": ["authz-seam", "forms-mutations"]
+		},
+		{
+			"id": "forms-and-parsers",
+			"task": "13.1 RHF catalog family, server parsing, visible business rejection",
+			"reason": "Every module that binds a resolver must be registered with an empty exemption set, bound fields must exist in the declared schema, and a declared parser must import the shared schema, answer with the declared envelope, separate a malformed body from a schema rejection and declare the client mapping that makes the rejection visible.",
+			"commandIds": ["form-bindings", "forms-mutations"]
+		},
+		{
+			"id": "delivery-gating",
+			"task": "13.3 make contract drift block every deployment path",
+			"reason": "The guard is one unconditional fenced step in the required lane and this stage adds no job at all, while the core workflow contract now refuses any job that delivers without reaching the contract-guard job through needs, including a delivery job in a workflow that declares no contract job to gate it.",
+			"commandIds": ["ci-guard", "live-gate"]
+		},
+		{
+			"id": "capability-isolation",
+			"task": "13.4 validate generated enabled and disabled fixtures",
+			"reason": "Each fixture is rendered and inspected for the four gated paths, the package script and the fenced step, every project file of every render is swept for the three signature tokens, and the guard is run over the enabled render for a real verdict while the disabled ones are shown not to carry it at all.",
+			"commandIds": ["rendered-forms", "live-gate"]
+		},
+		{
+			"id": "rollback",
+			"task": "13.4 record rollback and evidence",
+			"reason": "A synthetic merge followed by git revert -m 1 produces a tree identical to the Stage 9 predecessor, and that tree is shown to carry none of the four paths this stage adds while the implementation tree carries all of them; nothing about this stage lives outside the tree.",
+			"commandIds": ["rollback-proof"]
+		}
+	],
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-10a-pr-merge-commit>"],
+		"outsideTheTree": [],
+		"containerRebuildRequired": false,
+		"scope": "Revert the api contract registry and its schema, the shared schema and API contract guard and its entrypoint, the core json-schema module's copy ownership, the delivery rule in the workflow contract, the generated-output exemption in biome.jsonc, the forms:check package script, the one fenced step in the required lane, the ownership wiring, the documentation, and this record as one Stage 10A bundle. Nothing about this stage lives outside the tree: there is no repository variable, no branch-protection change and no operator step, so the revert is order-independent — unlike Stage 7, whose recorded outsideTheTree list was also empty but whose branch-protection change made its rollback order-dependent in fact. Nothing under .devcontainer/** changed, so adopting or reverting it costs no container rebuild. libs/forms stays reserved and empty either way.",
+		"proof": {
+			"commandId": "rollback-proof",
+			"predecessorSha": "f92960e51c3dc3056bbf2c89b860d5f6f5c672b4",
+			"implementationSha": "0a58ad0be9f67d783be3ba16092c8290fc41127c",
+			"syntheticMergeSha": "3440fb8e0787996d6b305c5a564322bf655db539",
+			"syntheticMergeTree": "073b134b53463b1068453e31e4db3dfced83edcd",
+			"syntheticMergeParents": [
+				"f92960e51c3dc3056bbf2c89b860d5f6f5c672b4",
+				"0a58ad0be9f67d783be3ba16092c8290fc41127c"
+			],
+			"predecessorTree": "91930b58deb80965a1ade8c0428c574bad8c5a14",
+			"revertedTree": "91930b58deb80965a1ade8c0428c574bad8c5a14",
+			"treeMatchesPredecessor": true,
+			"operations": [
+				["git", "rev-parse", "f92960e51c3dc3056bbf2c89b860d5f6f5c672b4^{tree}"],
+				["git", "rev-parse", "0a58ad0be9f67d783be3ba16092c8290fc41127c^{tree}"],
+				[
+					"git",
+					"worktree",
+					"add",
+					"--detach",
+					"/tmp/devenv-stage2-stage10a-20260807t075841z-0a58ad0b-rollback",
+					"f92960e51c3dc3056bbf2c89b860d5f6f5c672b4"
+				],
+				[
+					"git",
+					"commit-tree",
+					"073b134b53463b1068453e31e4db3dfced83edcd",
+					"-p",
+					"f92960e51c3dc3056bbf2c89b860d5f6f5c672b4",
+					"-p",
+					"0a58ad0be9f67d783be3ba16092c8290fc41127c",
+					"-m",
+					"Stage 2 synthetic merge"
+				],
+				["git", "rev-parse", "3440fb8e0787996d6b305c5a564322bf655db539^{tree}"],
+				[
+					"git",
+					"show",
+					"-s",
+					"--format=%P",
+					"3440fb8e0787996d6b305c5a564322bf655db539"
+				],
+				[
+					"git",
+					"checkout",
+					"--detach",
+					"3440fb8e0787996d6b305c5a564322bf655db539"
+				],
+				[
+					"git",
+					"revert",
+					"--no-edit",
+					"-m",
+					"1",
+					"3440fb8e0787996d6b305c5a564322bf655db539"
+				],
+				["git", "rev-parse", "HEAD^{tree}"]
+			],
+			"addedPaths": [
+				"api-contract.json",
+				"api-contract.schema.json",
+				"scripts/template/forms-contract.ts",
+				"scripts/template/validate-forms.ts"
+			],
+			"addedPathsRemoved": true
+		}
+	}
+}
