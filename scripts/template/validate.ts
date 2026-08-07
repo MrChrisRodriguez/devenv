@@ -27,6 +27,7 @@ import { validateStageSevenEvidence } from "./stage-seven-evidence";
 import { validateStageSixEvidence } from "./stage-six-evidence";
 import { validateStageTenAEvidence } from "./stage-ten-a-evidence";
 import { validateStageTenBEvidence } from "./stage-ten-b-evidence";
+import { validateStageTenCEvidence } from "./stage-ten-c-evidence";
 import { validateStageThreeEvidence } from "./stage-three-evidence";
 import { validateTelemetryContract } from "./telemetry-contract";
 import { validateToolchainContract } from "./toolchain";
@@ -69,6 +70,8 @@ export interface ValidationReport {
 	telemetryEvidenceSchemaFile: string;
 	proxyRegistryFile: string;
 	proxyRegistrySchemaFile: string;
+	proxyEvidenceFile: string;
+	proxyEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -112,6 +115,8 @@ export async function validateAll(
 		telemetryEvidenceSchemaFile: "evidence/stage-10b-telemetry.schema.json",
 		proxyRegistryFile: "proxy-routes.json",
 		proxyRegistrySchemaFile: "proxy-routes.schema.json",
+		proxyEvidenceFile: "evidence/stage-10c-proxy.json",
+		proxyEvidenceSchemaFile: "evidence/stage-10c-proxy.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -333,6 +338,13 @@ export async function validateAll(
 				),
 			);
 		}
+		const proxyEvidenceErrors = await validateStageTenCEvidence(root);
+		if (proxyEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...proxyEvidenceErrors.map((error) => `stage-10c evidence: ${error}`),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -351,7 +363,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, ${report.graphEvidenceFile}, ${report.affectedEvidenceFile}, ${report.openspecEvidenceFile}, ${report.contractEvidenceFile}, ${report.telemetryEvidenceFile}, and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, ${report.graphEvidenceFile}, ${report.affectedEvidenceFile}, ${report.openspecEvidenceFile}, ${report.contractEvidenceFile}, ${report.telemetryEvidenceFile}, ${report.proxyEvidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(

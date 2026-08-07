@@ -1,0 +1,694 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-10c-proxy",
+	"capturedAt": "2026-08-07T12:13:31.231Z",
+	"run": {
+		"id": "stage10c-20260807t121319z-9dfc65e7",
+		"logRoot": "evidence/stage-10c-proxy-run"
+	},
+	"source": {
+		"baseSha": "99acb85e9a41c447f836a76339d80992efb8be54",
+		"implementationSha": "9dfc65e75ec17e6e336a317298158874bfd2c6d0",
+		"treeClean": true,
+		"declaredMode": "skeleton",
+		"reservedConfigPath": "vite.config.ts",
+		"publishedContainerPort": 8080,
+		"harnessBindPort": 0,
+		"harnessListeners": 3,
+		"typescriptCatalogPin": "5.9.3"
+	},
+	"host": {
+		"os": "darwin",
+		"architecture": "arm64",
+		"kernel": "25.5.0",
+		"insideDevcontainer": false,
+		"bunVersion": "1.3.13",
+		"gitVersion": "2.50.1",
+		"ghVersion": "2.59.0"
+	},
+	"repository": {
+		"nameWithOwner": "MrChrisRodriguez/devenv",
+		"workflowFile": ".github/workflows/ci.yml",
+		"gateJobId": "ci-gate",
+		"gateContext": "CI gate",
+		"gateNeeds": [
+			"ci",
+			"image",
+			"affected",
+			"project",
+			"moon-graph",
+			"browser"
+		],
+		"proxyGuardScript": "proxy:check",
+		"ciGuardScript": "ci:check",
+		"worktreeGuardScript": "worktree:check",
+		"registryFile": "proxy-routes.json",
+		"capability": "vite_websocket_proxy",
+		"addedJobs": 0,
+		"devcontainerFilesChanged": 0
+	},
+	"commands": [
+		{
+			"id": "proxy-guard",
+			"command": ["bun", "run", "proxy:check"],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:19.121Z",
+			"completedAt": "2026-08-07T12:13:19.393Z",
+			"durationMs": 272,
+			"stdoutPath": "evidence/stage-10c-proxy-run/proxy-guard.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/proxy-guard.stderr",
+			"stdoutSha256": "97dc82f501f1ea533cf23d49296b260040b3d412c919bffdf8e39ad2bafd0994",
+			"stderrSha256": "bc9f2fa0aee0b7f7c93e085e51b769bb25cd640bb53df0bd577e8032d168da1b",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "ci-guard",
+			"command": ["bun", "run", "ci:check"],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:19.393Z",
+			"completedAt": "2026-08-07T12:13:19.457Z",
+			"durationMs": 64,
+			"stdoutPath": "evidence/stage-10c-proxy-run/ci-guard.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/ci-guard.stderr",
+			"stdoutSha256": "9cfe650e97435463f535e1a81f5b30b1ab521cfb458af04688f901be57a294f9",
+			"stderrSha256": "d183538a63c244d8ba196aa5a8eb1eb4cfc636414a9ba546e4cfb9b3537e4088",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "worktree-guard",
+			"command": ["bun", "run", "worktree:check"],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:19.457Z",
+			"completedAt": "2026-08-07T12:13:19.662Z",
+			"durationMs": 205,
+			"stdoutPath": "evidence/stage-10c-proxy-run/worktree-guard.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/worktree-guard.stderr",
+			"stdoutSha256": "b8fc787fad0cc3f993f929092349ec69500a2a05c0162ba2b0fa03d85e0fb54c",
+			"stderrSha256": "b21172c02c58cf08110b00d513cdbce996f4ccd7813f16729358cd34cb9daad7",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "proxy-mutations",
+			"command": ["bun", "test", "scripts/template/__tests__/proxy.test.ts"],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:19.663Z",
+			"completedAt": "2026-08-07T12:13:23.734Z",
+			"durationMs": 4071,
+			"stdoutPath": "evidence/stage-10c-proxy-run/proxy-mutations.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/proxy-mutations.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "74871bcc7eac11dbca757b68a70468177f84928e0e0808f38365930226caea5c",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "config-identity",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/proxy.test.ts",
+				"-t",
+				"configuration identity and shape"
+			],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:23.734Z",
+			"completedAt": "2026-08-07T12:13:24.142Z",
+			"durationMs": 408,
+			"stdoutPath": "evidence/stage-10c-proxy-run/config-identity.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/config-identity.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "994d54612bb1795f4bf3ec6dc7d7dce816388d7e5d62694eeebf68ede33ea277",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "route-shape",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/proxy.test.ts",
+				"-t",
+				"route shape"
+			],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:24.142Z",
+			"completedAt": "2026-08-07T12:13:25.023Z",
+			"durationMs": 881,
+			"stdoutPath": "evidence/stage-10c-proxy-run/route-shape.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/route-shape.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "2950585f4c22307a9b52304998c71aef97d19065b6a06ce4a6c039366c9b89db",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "dev-preview-alignment",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/proxy.test.ts",
+				"-t",
+				"dev and preview alignment"
+			],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:25.023Z",
+			"completedAt": "2026-08-07T12:13:25.316Z",
+			"durationMs": 293,
+			"stdoutPath": "evidence/stage-10c-proxy-run/dev-preview-alignment.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/dev-preview-alignment.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "e9b57e195503f1cdf184a3ce37a03763a360d357d8cb70c0d31b2f2a8666d7ac",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "reachability",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/proxy.test.ts",
+				"-t",
+				"reachability"
+			],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:25.317Z",
+			"completedAt": "2026-08-07T12:13:25.650Z",
+			"durationMs": 333,
+			"stdoutPath": "evidence/stage-10c-proxy-run/reachability.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/reachability.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "af6efd67dd559d2cb3eec24c1b3dca34d2d42920814f33bffdac5e9bd929ec2b",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "host-validation",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/proxy.test.ts",
+				"-t",
+				"host validation"
+			],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:25.650Z",
+			"completedAt": "2026-08-07T12:13:25.979Z",
+			"durationMs": 329,
+			"stdoutPath": "evidence/stage-10c-proxy-run/host-validation.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/host-validation.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "0afa6db1ad9d2aa0f294474a799042e8fee606e6fa32397d7ecd32c0f8e7ab37",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "hmr-policy",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/proxy.test.ts",
+				"-t",
+				"hot reload and asset origin policy"
+			],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:25.979Z",
+			"completedAt": "2026-08-07T12:13:26.332Z",
+			"durationMs": 353,
+			"stdoutPath": "evidence/stage-10c-proxy-run/hmr-policy.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/hmr-policy.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "38360cd6c961a5310c6fc64dc6c0d847cccb5c574d13da65cb95e5ba211993a0",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "renderer-drift",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/proxy.test.ts",
+				"-t",
+				"the renderer and its drift leg"
+			],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:26.332Z",
+			"completedAt": "2026-08-07T12:13:26.594Z",
+			"durationMs": 262,
+			"stdoutPath": "evidence/stage-10c-proxy-run/renderer-drift.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/renderer-drift.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "7eb76ec4c2db2a19db483b11f34f0af807937fc5f68bfad33ddc341484e4d5a1",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "http-through-proxy",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/proxy.test.ts",
+				"-t",
+				"http and a real socket both reach the upstream"
+			],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:26.595Z",
+			"completedAt": "2026-08-07T12:13:26.712Z",
+			"durationMs": 117,
+			"stdoutPath": "evidence/stage-10c-proxy-run/http-through-proxy.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/http-through-proxy.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "34e5788360c3d28533aa3003b2f3deca1959fb83f8e2f3adff6481b7d57340de",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "websocket-handshake",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/proxy.test.ts",
+				"-t",
+				"an executed websocket handshake"
+			],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:26.712Z",
+			"completedAt": "2026-08-07T12:13:26.910Z",
+			"durationMs": 198,
+			"stdoutPath": "evidence/stage-10c-proxy-run/websocket-handshake.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/websocket-handshake.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "28595faa3204344d36a4192f0f12dcbd6b1f81a7f8b730bce83b811b549425ba",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "hmr-handshake",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/proxy.test.ts",
+				"-t",
+				"an executed hot reload handshake"
+			],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:26.911Z",
+			"completedAt": "2026-08-07T12:13:27.031Z",
+			"durationMs": 120,
+			"stdoutPath": "evidence/stage-10c-proxy-run/hmr-handshake.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/hmr-handshake.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "405d7f9677ec97cca1393b1b2405472227ab319a54f06838f5d06ce0eaa6fcde",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rendered-proxy",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-ten-c-evidence.ts",
+				"probe-render-proxy",
+				"--workspace",
+				"/tmp/devenv-stage10c-20260807t121319z-9dfc65e7-render"
+			],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:27.031Z",
+			"completedAt": "2026-08-07T12:13:27.752Z",
+			"durationMs": 721,
+			"stdoutPath": "evidence/stage-10c-proxy-run/rendered-proxy.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/rendered-proxy.stderr",
+			"stdoutSha256": "90447ed9c5165ede7ddb99c62a45583cb2b93e6a3aca36382a3571a15310d082",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-gate",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nrun=\"$(gh run view 31176674024 --repo MrChrisRodriguez/devenv --json conclusion,createdAt,databaseId,event,headBranch,headSha,jobs,status,url,workflowName)\"\nprintf 'runJson=%s\\n' \"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\ngate=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; jobs=[job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]]; print(jobs[0] if jobs else \"\")' \"CI gate\")\"\nprintf 'gateJobId=%s\\n' \"$gate\"\nlog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$gate\" --log)\"\nprintf 'gateLogSha256=%s\\n' \"$(printf '%s' \"$log\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'upstreamResults=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*upstream results: //p' | head -n 1)\"\nprintf 'gateGreenLines=%s\\n' \"$(printf '%s\\n' \"$log\" | grep -c 'Every required job passed or was skipped' || true)\""
+			],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:27.752Z",
+			"completedAt": "2026-08-07T12:13:30.571Z",
+			"durationMs": 2819,
+			"stdoutPath": "evidence/stage-10c-proxy-run/live-gate.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/live-gate.stderr",
+			"stdoutSha256": "098ae29720a2ede2109221ce22440fc3ca58750d90b962fc3c10b62bce347431",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rollback-proof",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-ten-c-evidence.ts",
+				"probe-rollback",
+				"--base",
+				"99acb85e9a41c447f836a76339d80992efb8be54",
+				"--implementation",
+				"9dfc65e75ec17e6e336a317298158874bfd2c6d0",
+				"--workspace",
+				"/tmp/devenv-stage2-stage10c-20260807t121319z-9dfc65e7-rollback"
+			],
+			"runId": "stage10c-20260807t121319z-9dfc65e7",
+			"startedAt": "2026-08-07T12:13:30.572Z",
+			"completedAt": "2026-08-07T12:13:31.230Z",
+			"durationMs": 658,
+			"stdoutPath": "evidence/stage-10c-proxy-run/rollback-proof.stdout",
+			"stderrPath": "evidence/stage-10c-proxy-run/rollback-proof.stderr",
+			"stdoutSha256": "d429f29f697967323373ad163847b67f565f334f3a52476cfe300a111fc02ada",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		}
+	],
+	"guards": {
+		"proxy": {
+			"commandId": "proxy-guard",
+			"command": "bun run proxy:check",
+			"summary": "Validated the proxy route registry, its declared mode against the tree, guard wiring, template ownership, and the published port and friendly domain against the worktree runtime contract."
+		},
+		"ci": {
+			"commandId": "ci-guard",
+			"command": "bun run ci:check",
+			"summary": "Validated workflow trigger policy, bootstrap ownership, action pins, job bounds, failure tolerance, aggregate gate membership, shell injection surface, history ownership, compiler coverage, and guard wiring."
+		},
+		"worktree": {
+			"commandId": "worktree-guard",
+			"command": "bun run worktree:check",
+			"summary": "Validated worktree runtime contract keys, generator equality, devcontainer coherence, fingerprint authority, script boundary, and ownership wiring."
+		}
+	},
+	"suites": [
+		{
+			"commandId": "proxy-mutations",
+			"testFile": "scripts/template/__tests__/proxy.test.ts",
+			"passCount": 49,
+			"failCount": 0
+		},
+		{
+			"commandId": "config-identity",
+			"testFile": "scripts/template/__tests__/proxy.test.ts",
+			"passCount": 4,
+			"failCount": 0
+		},
+		{
+			"commandId": "route-shape",
+			"testFile": "scripts/template/__tests__/proxy.test.ts",
+			"passCount": 3,
+			"failCount": 0
+		},
+		{
+			"commandId": "dev-preview-alignment",
+			"testFile": "scripts/template/__tests__/proxy.test.ts",
+			"passCount": 2,
+			"failCount": 0
+		},
+		{
+			"commandId": "reachability",
+			"testFile": "scripts/template/__tests__/proxy.test.ts",
+			"passCount": 2,
+			"failCount": 0
+		},
+		{
+			"commandId": "host-validation",
+			"testFile": "scripts/template/__tests__/proxy.test.ts",
+			"passCount": 2,
+			"failCount": 0
+		},
+		{
+			"commandId": "hmr-policy",
+			"testFile": "scripts/template/__tests__/proxy.test.ts",
+			"passCount": 3,
+			"failCount": 0
+		},
+		{
+			"commandId": "renderer-drift",
+			"testFile": "scripts/template/__tests__/proxy.test.ts",
+			"passCount": 4,
+			"failCount": 0
+		},
+		{
+			"commandId": "http-through-proxy",
+			"testFile": "scripts/template/__tests__/proxy.test.ts",
+			"passCount": 1,
+			"failCount": 0
+		},
+		{
+			"commandId": "websocket-handshake",
+			"testFile": "scripts/template/__tests__/proxy.test.ts",
+			"passCount": 5,
+			"failCount": 0
+		},
+		{
+			"commandId": "hmr-handshake",
+			"testFile": "scripts/template/__tests__/proxy.test.ts",
+			"passCount": 2,
+			"failCount": 0
+		}
+	],
+	"renderFixtures": {
+		"commandId": "rendered-proxy",
+		"fixtures": [
+			{
+				"name": "minimal",
+				"capabilityEnabled": false,
+				"gatedPaths": [],
+				"packageScripts": ["ci:check", "worktree:check"],
+				"proxyStepPresent": false,
+				"guardPresent": false,
+				"proxyTokenFiles": 0,
+				"proxyErrors": [],
+				"reservedConfigPresent": false,
+				"viteConfigFiles": 0,
+				"residueFindings": []
+			},
+			{
+				"name": "cloud",
+				"capabilityEnabled": false,
+				"gatedPaths": [],
+				"packageScripts": ["ci:check", "worktree:check"],
+				"proxyStepPresent": false,
+				"guardPresent": false,
+				"proxyTokenFiles": 0,
+				"proxyErrors": [],
+				"reservedConfigPresent": false,
+				"viteConfigFiles": 0,
+				"residueFindings": []
+			},
+			{
+				"name": "full",
+				"capabilityEnabled": true,
+				"gatedPaths": [
+					"proxy-routes.json",
+					"proxy-routes.schema.json",
+					"scripts/template/proxy-contract.ts",
+					"scripts/template/validate-proxy.ts"
+				],
+				"packageScripts": ["ci:check", "proxy:check", "worktree:check"],
+				"proxyStepPresent": true,
+				"guardPresent": true,
+				"proxyTokenFiles": 3,
+				"proxyErrors": [],
+				"reservedConfigPresent": false,
+				"viteConfigFiles": 0,
+				"residueFindings": []
+			}
+		]
+	},
+	"live": {
+		"live-gate": {
+			"commandId": "live-gate",
+			"heavyLaneRan": true,
+			"run": {
+				"runId": 31176674024,
+				"url": "https://github.com/MrChrisRodriguez/devenv/actions/runs/31176674024",
+				"event": "pull_request",
+				"headBranch": "feat/stage-10c-proxy-safety",
+				"headSha": "9dfc65e75ec17e6e336a317298158874bfd2c6d0",
+				"conclusion": "success",
+				"gateJobId": 92860744516,
+				"gateConclusion": "success",
+				"gateLogSha256": "f152345015fa6288bd91da222d1e22dcda7c2a58a5bebcddd10ba897df888497",
+				"upstreamResults": "success,success,success,success,success,success",
+				"jobs": [
+					{
+						"name": "Select affected projects",
+						"conclusion": "success"
+					},
+					{
+						"name": "Contracts & Baseline",
+						"conclusion": "success"
+					},
+					{
+						"name": "Verify Moon project graph",
+						"conclusion": "success"
+					},
+					{
+						"name": "Launch baked browser payload",
+						"conclusion": "success"
+					},
+					{
+						"name": "Build devcontainer image",
+						"conclusion": "success"
+					},
+					{
+						"name": "Lint, Typecheck & Test (root)",
+						"conclusion": "success"
+					}
+				]
+			}
+		}
+	},
+	"coverage": [
+		{
+			"id": "declared-surface",
+			"task": "15.1 generate enabled development and preview proxy routes in aligned object form",
+			"reason": "The input is a committed declaration rather than a query over an empty tree, and its declared mode is reconciled with the derived state in both directions before any leg runs: a tree that grows a build-tool configuration at any depth, a direct build-tool dependency or a source file carrying a proxy table while the registry still says skeleton fails by name, and a registry that declares a surface the tree does not carry fails too.",
+			"commandIds": ["proxy-guard", "proxy-mutations"]
+		},
+		{
+			"id": "forwarding-routes",
+			"task": "15.1 aligned object form with ws: true on every forwarding route",
+			"reason": "Every proxy entry must be an object literal, must state ws, changeOrigin and secure explicitly, and must target a declared loopback upstream; a string shorthand is refused quoting the reference's own sentence that a string target never proxies WS, and a route carrying both a path rewrite and a forwarded upgrade is refused with the named upstream casualty that discovered it.",
+			"commandIds": ["route-shape", "proxy-guard"]
+		},
+		{
+			"id": "config-identity",
+			"task": "15.1 generate the configuration this registry governs",
+			"reason": "Before a byte is parsed the declared configuration must be an ordinary in-tree file with exactly one hard link, not a symlink, canonicalizing to the path the registry named, because a guard that reads a symlink or a hardlinked twin validates a file it does not own; then one effective default export so a commented-out decoy never counts, and an object literal.",
+			"commandIds": ["config-identity", "proxy-guard"]
+		},
+		{
+			"id": "dev-preview-alignment",
+			"task": "15.1 aligned development and preview route tables",
+			"reason": "The registry declares one shared table so alignment is a property of the declaration, and the guard additionally compares the configuration's two proxy objects entry by entry: a route in one and not the other, a target that differs between them, and an upgrade forwarded for one server and not the other are three separate refusals because they are three separate mistakes.",
+			"commandIds": ["dev-preview-alignment", "proxy-mutations"]
+		},
+		{
+			"id": "reachability",
+			"task": "15.1 generate a development server the published container port reaches",
+			"reason": "strictPort is pinned because without it the server silently takes the next free port and the container publish maps to nothing, the bind must be wide because a server on the container's loopback is unreachable through a published port, and exactly one process binds the published port: this server or a fronting service the worktree runtime contract actually declares.",
+			"commandIds": ["reachability", "worktree-guard"]
+		},
+		{
+			"id": "host-validation",
+			"task": "15.2 non-vacuous structural proxy policy tests",
+			"reason": "A WebSocket handshake is not subject to CORS, so a cross-site page can open an authenticated socket unless the server checks the host itself; allowedHosts true, a wildcard, an empty entry and the literal all are all refused, the loopback family and the friendly domain suffix are both required, and the executed harness shows an attacker host refused while an allowed one opens.",
+			"commandIds": ["host-validation", "websocket-handshake"]
+		},
+		{
+			"id": "hot-reload-policy",
+			"task": "15.2 real HMR handshake tests",
+			"reason": "Two browser-visible origins are published at once, so a pinned client port is a single number that can match at most one of them and silently breaks the other; the override and the asset origin are pinned null, a client port equal to the published container port earns its own refusal, and the handshake is executed through a published port boundary rather than argued.",
+			"commandIds": ["hmr-policy", "hmr-handshake"]
+		},
+		{
+			"id": "generated-config",
+			"task": "15.1 generate the enabled development and preview proxy configuration",
+			"reason": "The renderer makes three properties structural rather than checked — object form with ws on every route, one table for both servers, and no import at all — and the drift leg pins the generated bytes exactly, which is what catches a route removed rather than malformed: the file still parses, every entry is object form, and the two tables still agree.",
+			"commandIds": ["renderer-drift", "proxy-guard"]
+		},
+		{
+			"id": "executed-handshake",
+			"task": "15.2 real HTTP/WebSocket handshake tests with string-shorthand and missing-ws mutations",
+			"reason": "A structural guard can be perfect about a proxy that never forwards a byte, so a real client opens a socket through a declared route and gets its frame echoed, the same route with the upgrade dropped never opens while its HTTP half stays green, and the shorthand and rewriting mutations are refused before any socket exists.",
+			"commandIds": [
+				"http-through-proxy",
+				"websocket-handshake",
+				"proxy-mutations"
+			]
+		},
+		{
+			"id": "capability-isolation",
+			"task": "15.3 validate generated enabled/disabled fixtures",
+			"reason": "Each fixture is rendered and inspected for the four gated paths, the package script and the fenced step, every project file of every render is swept for both signature tokens, the reserved configuration path is shown absent in all three, no render carries a build-tool configuration at any depth, and the guard returns a real verdict where the capability is on.",
+			"commandIds": ["rendered-proxy", "live-gate"]
+		},
+		{
+			"id": "rollback",
+			"task": "15.3 record rollback and evidence",
+			"reason": "A synthetic merge followed by git revert -m 1 produces a tree identical to the Stage 10B predecessor, and that tree is shown to carry none of the four paths this stage adds while the implementation tree carries all of them; nothing about this stage lives outside the tree and nothing under .devcontainer changed.",
+			"commandIds": ["rollback-proof"]
+		}
+	],
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-10c-pr-merge-commit>"],
+		"outsideTheTree": [],
+		"containerRebuildRequired": false,
+		"scope": "Revert the proxy route registry and its schema, the development server and proxy guard and its entrypoint, the proxy:check package script, the one fenced step in the required lane, the ownership wiring, the widened capability signature, the fenced AGENTS.md block, the documentation, and this record as one Stage 10C bundle. Nothing about this stage lives outside the tree: there is no repository variable, no branch-protection change and no operator step, so the revert is order-independent — unlike Stage 7, whose recorded outsideTheTree list was also empty but whose branch-protection change made its rollback order-dependent in fact. Adopting or reverting it costs no container rebuild in either direction: nothing under .devcontainer/ is touched, no advertised port is added, and the definition fingerprint is unchanged, which is the deliberate difference from Stage 10B and the reason the evidence commit precedes the documentation commit here. bun.lock, template-parameters.toml, every fixture and scripts/worktree/** are untouched in both directions, and vite.config.ts stays reserved and absent either way.",
+		"proof": {
+			"commandId": "rollback-proof",
+			"predecessorSha": "99acb85e9a41c447f836a76339d80992efb8be54",
+			"implementationSha": "9dfc65e75ec17e6e336a317298158874bfd2c6d0",
+			"syntheticMergeSha": "1e3cf8823ab589a89924c80d9772814bc60871d9",
+			"syntheticMergeTree": "a3cb60b1b6aa83207c8ffe3a8b2fce5ee19cccc7",
+			"syntheticMergeParents": [
+				"99acb85e9a41c447f836a76339d80992efb8be54",
+				"9dfc65e75ec17e6e336a317298158874bfd2c6d0"
+			],
+			"predecessorTree": "fd7b450f4e27bb82d23634b74be6ffef62395b0b",
+			"revertedTree": "fd7b450f4e27bb82d23634b74be6ffef62395b0b",
+			"treeMatchesPredecessor": true,
+			"operations": [
+				["git", "rev-parse", "99acb85e9a41c447f836a76339d80992efb8be54^{tree}"],
+				["git", "rev-parse", "9dfc65e75ec17e6e336a317298158874bfd2c6d0^{tree}"],
+				[
+					"git",
+					"worktree",
+					"add",
+					"--detach",
+					"/tmp/devenv-stage2-stage10c-20260807t121319z-9dfc65e7-rollback",
+					"99acb85e9a41c447f836a76339d80992efb8be54"
+				],
+				[
+					"git",
+					"commit-tree",
+					"a3cb60b1b6aa83207c8ffe3a8b2fce5ee19cccc7",
+					"-p",
+					"99acb85e9a41c447f836a76339d80992efb8be54",
+					"-p",
+					"9dfc65e75ec17e6e336a317298158874bfd2c6d0",
+					"-m",
+					"Stage 2 synthetic merge"
+				],
+				["git", "rev-parse", "1e3cf8823ab589a89924c80d9772814bc60871d9^{tree}"],
+				[
+					"git",
+					"show",
+					"-s",
+					"--format=%P",
+					"1e3cf8823ab589a89924c80d9772814bc60871d9"
+				],
+				[
+					"git",
+					"checkout",
+					"--detach",
+					"1e3cf8823ab589a89924c80d9772814bc60871d9"
+				],
+				[
+					"git",
+					"revert",
+					"--no-edit",
+					"-m",
+					"1",
+					"1e3cf8823ab589a89924c80d9772814bc60871d9"
+				],
+				["git", "rev-parse", "HEAD^{tree}"]
+			],
+			"addedPaths": [
+				"proxy-routes.json",
+				"proxy-routes.schema.json",
+				"scripts/template/proxy-contract.ts",
+				"scripts/template/validate-proxy.ts"
+			],
+			"addedPathsRemoved": true
+		}
+	}
+}

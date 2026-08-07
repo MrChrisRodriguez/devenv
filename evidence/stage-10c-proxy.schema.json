@@ -1,0 +1,415 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"stage",
+		"capturedAt",
+		"run",
+		"source",
+		"host",
+		"repository",
+		"commands",
+		"guards",
+		"suites",
+		"renderFixtures",
+		"live",
+		"coverage",
+		"rollback"
+	],
+	"properties": {
+		"schemaVersion": { "type": "integer", "const": 1 },
+		"stage": { "type": "string", "const": "stage-10c-proxy" },
+		"capturedAt": { "type": "string", "format": "date-time" },
+		"run": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "logRoot"],
+			"properties": {
+				"id": { "type": "string", "minLength": 1 },
+				"logRoot": { "type": "string", "const": "evidence/stage-10c-proxy-run" }
+			}
+		},
+		"source": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"baseSha",
+				"implementationSha",
+				"treeClean",
+				"declaredMode",
+				"reservedConfigPath",
+				"publishedContainerPort",
+				"harnessBindPort",
+				"harnessListeners",
+				"typescriptCatalogPin"
+			],
+			"properties": {
+				"baseSha": { "$ref": "#/$defs/gitSha" },
+				"implementationSha": { "$ref": "#/$defs/gitSha" },
+				"treeClean": { "type": "boolean", "const": true },
+				"declaredMode": { "type": "string", "const": "skeleton" },
+				"reservedConfigPath": { "type": "string", "const": "vite.config.ts" },
+				"publishedContainerPort": {
+					"description": "The single port that crosses the container boundary. The whole reachability argument rests on there being exactly one, and this stage adds none.",
+					"type": "integer",
+					"const": 8080
+				},
+				"harnessBindPort": {
+					"description": "The port every executed-harness listener ASKS for, not the ephemeral value the kernel handed back. An ephemeral number is a fact about one run on one machine and is evidence of nothing; \"every listener asked for port zero\" is the property that keeps two worktrees from colliding, and it is checkable against the committed fixture.",
+					"type": "integer",
+					"const": 0
+				},
+				"harnessListeners": {
+					"description": "How many loopback listeners the harness binds: the upstream, the proxy under test, and the published port map that makes the hot-reload cases executable rather than argued.",
+					"type": "integer",
+					"const": 3
+				},
+				"typescriptCatalogPin": { "$ref": "#/$defs/version" }
+			}
+		},
+		"host": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"os",
+				"architecture",
+				"kernel",
+				"insideDevcontainer",
+				"bunVersion",
+				"gitVersion",
+				"ghVersion"
+			],
+			"properties": {
+				"os": { "type": "string", "minLength": 1 },
+				"architecture": { "type": "string", "minLength": 1 },
+				"kernel": { "type": "string", "minLength": 1 },
+				"insideDevcontainer": { "type": "boolean" },
+				"bunVersion": { "$ref": "#/$defs/version" },
+				"gitVersion": { "$ref": "#/$defs/version" },
+				"ghVersion": { "$ref": "#/$defs/version" }
+			}
+		},
+		"repository": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"nameWithOwner",
+				"workflowFile",
+				"gateJobId",
+				"gateContext",
+				"gateNeeds",
+				"proxyGuardScript",
+				"ciGuardScript",
+				"worktreeGuardScript",
+				"registryFile",
+				"capability",
+				"addedJobs",
+				"devcontainerFilesChanged"
+			],
+			"properties": {
+				"nameWithOwner": { "type": "string", "minLength": 1 },
+				"workflowFile": {
+					"type": "string",
+					"const": ".github/workflows/ci.yml"
+				},
+				"gateJobId": { "type": "string", "const": "ci-gate" },
+				"gateContext": { "type": "string", "minLength": 1 },
+				"gateNeeds": {
+					"type": "array",
+					"minItems": 2,
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"proxyGuardScript": { "type": "string", "const": "proxy:check" },
+				"ciGuardScript": { "type": "string", "const": "ci:check" },
+				"worktreeGuardScript": { "type": "string", "const": "worktree:check" },
+				"registryFile": { "type": "string", "const": "proxy-routes.json" },
+				"capability": { "type": "string", "const": "vite_websocket_proxy" },
+				"addedJobs": { "type": "integer", "const": 0 },
+				"devcontainerFilesChanged": {
+					"description": "Zero, measured rather than promised. `scripts/worktree/contract.toml` names `.devcontainer` — the whole directory — as a definition fingerprint input, and the Dockerfile bakes that directory in as a definition stamp, so a single byte here would cost every downstream developer a container rebuild. The previous stage paid one for a comment-only edit to a file the image never reads.",
+					"type": "integer",
+					"const": 0
+				}
+			}
+		},
+		"commands": {
+			"type": "array",
+			"minItems": 17,
+			"maxItems": 17,
+			"items": { "$ref": "#/$defs/commandResult" }
+		},
+		"guards": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["proxy", "ci", "worktree"],
+			"properties": {
+				"proxy": { "$ref": "#/$defs/guardSummary" },
+				"ci": { "$ref": "#/$defs/guardSummary" },
+				"worktree": { "$ref": "#/$defs/guardSummary" }
+			}
+		},
+		"suites": {
+			"type": "array",
+			"minItems": 11,
+			"maxItems": 11,
+			"items": { "$ref": "#/$defs/suiteCounts" }
+		},
+		"renderFixtures": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "fixtures"],
+			"properties": {
+				"commandId": { "type": "string", "const": "rendered-proxy" },
+				"fixtures": {
+					"type": "array",
+					"minItems": 3,
+					"maxItems": 3,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"name",
+							"capabilityEnabled",
+							"gatedPaths",
+							"packageScripts",
+							"proxyStepPresent",
+							"guardPresent",
+							"proxyTokenFiles",
+							"proxyErrors",
+							"reservedConfigPresent",
+							"viteConfigFiles",
+							"residueFindings"
+						],
+						"properties": {
+							"name": { "type": "string", "minLength": 1 },
+							"capabilityEnabled": { "type": "boolean" },
+							"gatedPaths": {
+								"type": "array",
+								"items": { "type": "string", "minLength": 1 }
+							},
+							"packageScripts": {
+								"type": "array",
+								"items": { "type": "string", "minLength": 1 }
+							},
+							"proxyStepPresent": { "type": "boolean" },
+							"guardPresent": { "type": "boolean" },
+							"proxyTokenFiles": { "type": "integer", "minimum": 0 },
+							"proxyErrors": {
+								"type": "array",
+								"maxItems": 0,
+								"items": { "type": "string" }
+							},
+							"reservedConfigPresent": { "type": "boolean", "const": false },
+							"viteConfigFiles": {
+								"description": "Zero in EVERY render, enabled or not. The Stage 0 reservation is an exact filename with no glob, so this count is what makes the claim about the whole tree rather than about one path.",
+								"type": "integer",
+								"const": 0
+							},
+							"residueFindings": {
+								"type": "array",
+								"maxItems": 0,
+								"items": { "type": "object" }
+							}
+						}
+					}
+				}
+			}
+		},
+		"live": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["live-gate"],
+			"properties": {
+				"live-gate": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["commandId", "heavyLaneRan", "run"],
+					"properties": {
+						"commandId": { "type": "string", "const": "live-gate" },
+						"heavyLaneRan": { "type": "boolean", "const": true },
+						"run": {
+							"type": "object",
+							"additionalProperties": false,
+							"required": [
+								"runId",
+								"url",
+								"event",
+								"headBranch",
+								"headSha",
+								"conclusion",
+								"gateJobId",
+								"gateConclusion",
+								"gateLogSha256",
+								"upstreamResults",
+								"jobs"
+							],
+							"properties": {
+								"runId": { "type": "integer", "minimum": 1 },
+								"url": { "type": "string", "minLength": 1 },
+								"event": { "type": "string", "const": "pull_request" },
+								"headBranch": { "type": "string", "minLength": 1 },
+								"headSha": { "$ref": "#/$defs/gitSha" },
+								"conclusion": { "type": "string", "const": "success" },
+								"gateJobId": { "type": "integer", "minimum": 1 },
+								"gateConclusion": { "type": "string", "const": "success" },
+								"gateLogSha256": { "$ref": "#/$defs/sha256" },
+								"upstreamResults": { "type": "string", "minLength": 1 },
+								"jobs": {
+									"type": "array",
+									"minItems": 1,
+									"items": { "$ref": "#/$defs/jobResult" }
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"coverage": {
+			"type": "array",
+			"minItems": 11,
+			"maxItems": 11,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["id", "task", "reason", "commandIds"],
+				"properties": {
+					"id": { "type": "string", "minLength": 1 },
+					"task": { "type": "string", "minLength": 1 },
+					"reason": { "type": "string", "minLength": 40 },
+					"commandIds": {
+						"type": "array",
+						"minItems": 1,
+						"items": { "type": "string", "minLength": 1 }
+					}
+				}
+			}
+		},
+		"rollback": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"mode",
+				"command",
+				"outsideTheTree",
+				"containerRebuildRequired",
+				"scope",
+				"proof"
+			],
+			"properties": {
+				"mode": { "type": "string", "const": "atomic" },
+				"command": { "$ref": "#/$defs/command" },
+				"outsideTheTree": {
+					"type": "array",
+					"maxItems": 0,
+					"items": { "type": "string" }
+				},
+				"containerRebuildRequired": {
+					"description": "False, and it is a decision rather than luck. `scripts/worktree/contract.toml` names `.devcontainer` — the whole directory — as a definition fingerprint input, so the previous stage paid a rebuild for a comment-only edit to a file the image never reads. This stage refuses to add an advertised port: only one port crosses the container boundary, a development server on any other port would be invisible to the host whatever `forwardPorts` said, and adding one would force an edit to that directory for a port nothing can reach. The record carries the measured `devcontainerFilesChanged` count rather than the promise.",
+					"type": "boolean",
+					"const": false
+				},
+				"scope": { "type": "string", "minLength": 80 },
+				"proof": {
+					"type": "object",
+					"additionalProperties": true,
+					"required": [
+						"commandId",
+						"predecessorSha",
+						"implementationSha",
+						"treeMatchesPredecessor",
+						"addedPaths",
+						"addedPathsRemoved"
+					],
+					"properties": {
+						"commandId": { "type": "string", "const": "rollback-proof" },
+						"predecessorSha": { "$ref": "#/$defs/gitSha" },
+						"implementationSha": { "$ref": "#/$defs/gitSha" },
+						"treeMatchesPredecessor": { "type": "boolean", "const": true },
+						"addedPaths": {
+							"type": "array",
+							"minItems": 4,
+							"maxItems": 4,
+							"items": { "type": "string", "minLength": 1 }
+						},
+						"addedPathsRemoved": { "type": "boolean", "const": true }
+					}
+				}
+			}
+		}
+	},
+	"$defs": {
+		"gitSha": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+		"sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+		"version": { "type": "string", "minLength": 1 },
+		"command": {
+			"type": "array",
+			"minItems": 1,
+			"items": { "type": "string" }
+		},
+		"commandResult": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"command",
+				"runId",
+				"startedAt",
+				"completedAt",
+				"durationMs",
+				"stdoutPath",
+				"stderrPath",
+				"stdoutSha256",
+				"stderrSha256",
+				"exitCode",
+				"status"
+			],
+			"properties": {
+				"id": { "type": "string", "minLength": 1 },
+				"command": { "$ref": "#/$defs/command" },
+				"runId": { "type": "string", "minLength": 1 },
+				"startedAt": { "type": "string", "format": "date-time" },
+				"completedAt": { "type": "string", "format": "date-time" },
+				"durationMs": { "type": "number", "minimum": 1 },
+				"stdoutPath": { "type": "string", "minLength": 1 },
+				"stderrPath": { "type": "string", "minLength": 1 },
+				"stdoutSha256": { "$ref": "#/$defs/sha256" },
+				"stderrSha256": { "$ref": "#/$defs/sha256" },
+				"exitCode": { "type": "number", "const": 0 },
+				"status": { "type": "string", "const": "pass" }
+			}
+		},
+		"guardSummary": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "command", "summary"],
+			"properties": {
+				"commandId": { "type": "string", "minLength": 1 },
+				"command": { "type": "string", "minLength": 1 },
+				"summary": { "type": "string", "minLength": 20 }
+			}
+		},
+		"suiteCounts": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "testFile", "passCount", "failCount"],
+			"properties": {
+				"commandId": { "type": "string", "minLength": 1 },
+				"testFile": { "type": "string", "minLength": 1 },
+				"passCount": { "type": "number", "minimum": 1 },
+				"failCount": { "type": "number", "const": 0 }
+			}
+		},
+		"jobResult": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["name", "conclusion"],
+			"properties": {
+				"name": { "type": "string", "minLength": 1 },
+				"conclusion": { "type": "string", "minLength": 1 }
+			}
+		}
+	}
+}
