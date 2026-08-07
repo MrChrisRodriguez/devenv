@@ -1,0 +1,23 @@
+
+scripts/template/__tests__/ci.test.ts:
+(pass) workflow policy contract > passes the real tree and rejects known-bad ci mutations [209.01ms]
+(pass) workflow policy contract > keeps every rendered workflow's dependency graph whole [329.01ms]
+(pass) CI bootstrap action > routes its install through the committed retry wrapper [1.00ms]
+(pass) CI bootstrap action > refuses an empty Bun version and accepts a supplied one [1.00ms]
+(pass) CI bootstrap action > verifies the installed Bun against the pinned manifest [5.00ms]
+(pass) bounded dependency install > kills a hung install, caps the attempts, and reports the timeout [2026.07ms]
+(pass) bounded dependency install > retries a failing install and surfaces its real exit code [14.00ms]
+(pass) bounded dependency install > preserves the frozen and first-lock install semantics [16.00ms]
+(pass) aggregate gate > derives its verdict from the upstream results [5.00ms]
+(pass) aggregate gate > refuses to go green on a draft even when every job was skipped [2.00ms]
+(pass) aggregate gate > skips every gating job on a draft [1.00ms]
+(pass) failure tolerance > runs the suite and the compiler through their committed wrappers [1.00ms]
+(pass) failure tolerance > separates an empty suite from a failing one [27.00ms]
+(pass) failure tolerance > classifies every wording of an empty suite and nothing else [11.00ms]
+(pass) failure tolerance > separates an empty compiler run from a failing one [626.02ms]
+(pass) failure tolerance > keeps the trigger and tolerance policy identical in both lanes [2.00ms]
+
+ 16 pass
+ 0 fail
+ 155 expect() calls
+Ran 16 tests across 1 file. [3.29s]

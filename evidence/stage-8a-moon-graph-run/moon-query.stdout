@@ -1,0 +1,3 @@
+queryJson={"options":{"affected":null,"alias":null,"id":null,"language":null,"layer":null,"query":null,"source":null,"stack":null,"tags":null,"tasks":null},"projects":[{"aliases":[{"alias":"devenv-template","plugin":"javascript"}],"config":{"docker":{"file":{},"scaffold":{}},"language":"unknown","layer":"unknown","owners":{"paths":[]},"schema":"https://moonrepo.dev/schemas/project.json","stack":"unknown","toolchains":{"plugins":{}},"workspace":{"inheritedTasks":{"exclude":["lint","typecheck","test","build"]}}},"id":"root","inherited":{"configs":{},"layers":{}},"language":"javascript","layer":"unknown","root":"/workspace","source":".","stack":"unknown","toolchains":["bun","javascript"]}]}
+projects=root=.
+edges=

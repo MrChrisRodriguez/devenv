@@ -1,0 +1,33 @@
+
+scripts/template/__tests__/moon-graph.test.ts:
+(pass) moon project graph > pins the verified moon query invocation
+(pass) moon project graph > derives a leaf project's edge from its manifest [3.00ms]
+(pass) moon project graph > fans one project out to every dependency it names [2.00ms]
+(pass) moon project graph > keeps the deepest transitive edge without inventing a shortcut [1.00ms]
+(pass) moon project graph > resolves the library path alias to the project it names [1.00ms]
+(pass) moon project graph > attributes each file to the deepest project that contains it [1.00ms]
+(pass) moon project graph > reads no edge out of a commented-out import
+(pass) moon project graph > names an unknown project rather than skipping it
+(pass) moon project graph > rejects a default branch that disagrees with the template parameter [1.00ms]
+(pass) moon project config generator > writes a sorted dependsOn and preserves hand-written keys [2.00ms]
+(pass) moon project config generator > states nothing it cannot justify for a project with no dependency
+(pass) moon project config generator > detects drift in both directions and names the repair [2.00ms]
+(pass) moon project config generator > refuses an unbalanced generated block instead of guessing
+(pass) moon project config generator > leaves the root project's hand-written config alone [31.00ms]
+(pass) ci matrix universe registry > accepts a total, single-universe registry [2.00ms]
+(pass) ci matrix universe registry > rejects every way the registry can be wrong [10.00ms]
+(pass) ci matrix universe registry > rejects a registry that is not JSON [1.00ms]
+(pass) ci matrix universe registry > rejects a second tracked registry [8.00ms]
+(pass) ci matrix universe registry > accepts the committed registry against the committed graph [24.00ms]
+(pass) live moon reconciliation > agrees with a healthy graph [9.00ms]
+(pass) live moon reconciliation > fails closed on every abnormal query outcome [32.00ms]
+(pass) live moon reconciliation > names each way moon and the committed graph can disagree [29.00ms]
+(pass) live moon reconciliation > passes the committed tree with the live leg disabled [26.00ms]
+(pass) graph contract mutations > names every way the committed graph can drift [14.00ms]
+(pass) graph contract mutations > classifies a change by who owns it [1.00ms]
+(pass) graph contract mutations > accepts the rendered full fixture on its own terms [185.01ms]
+
+ 26 pass
+ 0 fail
+ 91 expect() calls
+Ran 26 tests across 1 file. [428.00ms]
