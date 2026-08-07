@@ -1238,6 +1238,216 @@ export function validateDeclaredWrites(
 	return [...new Set(errors)].sort();
 }
 
+// The two credential literals, assembled at run time for the usual reason: this
+// guard scans a tree that contains this guard, and a file that spelled either
+// pattern out would be the first thing its own scan found.
+//
+// The first is an ingest URL — scheme, an opaque public key, a host and a
+// numeric project. The second is any long opaque value assigned to a
+// credential-shaped name. Neither is ever a legitimate committed literal: a
+// credential belongs to the environment that supplies it.
+const DSN_LITERAL = new RegExp(
+	[
+		"https:",
+		"//",
+		"[A-Za-z0-9]{12,}",
+		"@",
+		"[A-Za-z0-9.-]+",
+		"/",
+		"[0-9]+",
+	].join(""),
+);
+const CREDENTIAL_ASSIGNMENT = new RegExp(
+	[
+		"[A-Za-z0-9_]*",
+		"(?:TOKEN|SECRET|PASSWORD|CREDENTIAL|PRIVATE_KEY|API_KEY)",
+		"[A-Za-z0-9_]*",
+		"\\s*[:=]\\s*[\"'`]",
+		"([A-Za-z0-9_-]{32,})",
+		"[\"'`]",
+	].join(""),
+	"gi",
+);
+
+/**
+ * Whether a long string is a credential rather than a sentence.
+ *
+ * Length alone is not enough and the difference matters: a fixture's sentinel
+ * value and a test's descriptive placeholder are both long, both assigned to a
+ * secret-shaped name, and both harmless. A credential carries digits and does
+ * not read as hyphenated words, so both facts are required before the scan
+ * calls something a secret — a rule that cried wolf on every long constant
+ * would be turned off within a week.
+ */
+function looksOpaque(value: string): boolean {
+	if (!/[0-9]/.test(value)) return false;
+	return (value.match(/[-_]/g) ?? []).length <= 2;
+}
+
+// The NON-SECRECY vocabulary, and it deliberately excludes `DSN` and `KEY`. An
+// ingest DSN is a PUBLIC value that ships inside the client bundle — the
+// reference passes it as a repository variable rather than a secret — so a
+// blanket "looks like a credential" rule would refuse the one name that is
+// correct. The upload token carries the opposite requirement.
+const CREDENTIAL_NAME = /TOKEN|SECRET|PASSWORD|CREDENTIAL|PRIVATE_KEY|AUTH/i;
+
+/**
+ * No credential is ever a committed literal, and the scan is proved by
+ * planting one.
+ *
+ * A tree-wide scan that finds nothing is only meaningful when something proves
+ * it WOULD find something, which is why the suite plants a literal, asserts the
+ * named refusal, and removes it in a `finally`.
+ */
+export function validateCredentialLiterals(root: string): string[] {
+	const errors: string[] = [];
+	for (const path of enumerateFiles(root)) {
+		if (path === REGISTRY_SCHEMA_PATH) continue;
+		const source = textOf(resolve(root, path));
+		if (source === "") continue;
+		const code = isExecutableFile(path) ? executableHalf(path, source) : source;
+		if (DSN_LITERAL.test(code))
+			errors.push(
+				`telemetry: ${path} carries a committed ingest DSN literal; a credential belongs to the environment that supplies it`,
+			);
+		CREDENTIAL_ASSIGNMENT.lastIndex = 0;
+		for (const match of code.matchAll(CREDENTIAL_ASSIGNMENT)) {
+			if (!looksOpaque(match[1] ?? "")) continue;
+			errors.push(
+				`telemetry: ${path} assigns a long opaque value to a credential-named binding; a credential belongs to the environment that supplies it`,
+			);
+		}
+	}
+	return [...new Set(errors)].sort();
+}
+
+/**
+ * Scrubbing, and the two properties that make one scrubber serve both tiers.
+ *
+ * The scrub module is SDK-FREE on purpose: that is what lets a browser tier and
+ * a server tier share it instead of maintaining two that drift apart. Every
+ * declared configuration module routes through it, pins default PII collection
+ * off, and names the public DSN variable — which carries the reference's
+ * NON-SECRECY rule in reverse: a value declared as reaching a client bundle may
+ * not be credential-named, and the credential that must never reach one must
+ * be.
+ */
+export function validateScrubPolicy(
+	root: string,
+	contract: ExternalWrites,
+): string[] {
+	const telemetry = contract.telemetry;
+	if (telemetry === null) return [];
+	const errors: string[] = [];
+	if (CREDENTIAL_NAME.test(telemetry.dsnVariable))
+		errors.push(
+			`telemetry: ${telemetry.dsnVariable} is declared as the client-visible ingest variable and reads like a credential; a value that ships inside a bundle may not be named as a secret`,
+		);
+	const upload = telemetry.upload;
+	if (upload && !CREDENTIAL_NAME.test(upload.tokenVariable))
+		errors.push(
+			`telemetry: ${upload.tokenVariable} is the upload credential and is not named as one; a secret that does not read like a secret is a secret nobody protects`,
+		);
+	const scrubSource = textOf(resolve(root, telemetry.scrubModule));
+	if (scrubSource !== "") {
+		const specifiers = moduleSpecifiers(telemetry.scrubModule, scrubSource);
+		if (specifiers !== undefined && importsSdk(specifiers))
+			errors.push(
+				`telemetry: ${telemetry.scrubModule} imports the telemetry SDK; the scrubber is shared by every tier and must stay pure`,
+			);
+	}
+	const scrubName = telemetry.scrubModule.slice(
+		telemetry.scrubModule.lastIndexOf("/") + 1,
+		telemetry.scrubModule.lastIndexOf("."),
+	);
+	for (const entry of telemetry.configModules) {
+		const source = textOf(resolve(root, entry.path));
+		if (source === "") continue;
+		const code = executableHalf(entry.path, source);
+		if (!/beforeSend\s*:/.test(code))
+			errors.push(
+				`telemetry: ${entry.path} declares no beforeSend hook; a payload nothing scrubs is a payload nothing checked`,
+			);
+		if (!/sendDefaultPii\s*:\s*false/.test(code))
+			errors.push(
+				`telemetry: ${entry.path} must pin sendDefaultPii to false; there is no configuration in which a template collects default PII`,
+			);
+		const specifiers = moduleSpecifiers(entry.path, source) ?? [];
+		if (
+			!specifiers.some((specifier) =>
+				specifier.split("/").pop()?.startsWith(scrubName),
+			)
+		)
+			errors.push(
+				`telemetry: ${entry.path} never imports ${telemetry.scrubModule}; a declared scrubber nothing routes through scrubs nothing`,
+			);
+	}
+	return [...new Set(errors)].sort();
+}
+
+/** An exact origin, and never a pattern that can match a host nobody listed. */
+function originError(entry: string): string | undefined {
+	if (entry.includes("*"))
+		return "is a wildcard; an allowlist that can match a host nobody enumerated is a denylist wearing an allowlist's name";
+	let url: URL;
+	try {
+		url = new URL(entry);
+	} catch {
+		return "is not an absolute origin";
+	}
+	if (url.protocol !== "https:" && url.hostname !== "127.0.0.1")
+		return "is not https and is not loopback";
+	const normalized = entry.endsWith("/") ? entry.slice(0, -1) : entry;
+	if (url.search !== "" || url.hash !== "" || url.origin !== normalized)
+		return "carries a path, a query or a fragment; an allowlist entry is an origin";
+	return undefined;
+}
+
+/**
+ * The host allowlist, kept as narrow as the evidence.
+ *
+ * Exact origins only. The reference keeps its own telemetry-path allowlist
+ * deliberately narrow and says why in its own comment: a blanket entry would
+ * swallow a neighbouring surface that is not telemetry at all, and an exemption
+ * that suppresses a safety guard stays as narrow as the evidence for it.
+ */
+export function validateAllowlist(contract: ExternalWrites): string[] {
+	const errors: string[] = [];
+	const union = new Set(contract.allowedHosts);
+	for (const entry of contract.allowedHosts) {
+		const problem = originError(entry);
+		if (problem !== undefined)
+			errors.push(`telemetry: the allowed host ${entry} ${problem}`);
+	}
+	for (const write of contract.writes) {
+		for (const entry of write.allowedHosts) {
+			const problem = originError(entry);
+			if (problem !== undefined)
+				errors.push(
+					`telemetry: the write ${write.id} allows the host ${entry}, which ${problem}`,
+				);
+			if (!union.has(entry))
+				errors.push(
+					`telemetry: the write ${write.id} allows the host ${entry}, which ${REGISTRY_PATH} does not list; every write's hosts are a subset of the declared union`,
+				);
+		}
+	}
+	const tunnel = contract.telemetry?.tunnel;
+	if (typeof tunnel === "string" && !tunnel.startsWith("/"))
+		errors.push(
+			`telemetry: the declared tunnel ${tunnel} is not a same-origin path; a tunnel that names a host is a second ingest endpoint`,
+		);
+	if (
+		contract.mode === "active" &&
+		contract.writes.length > 0 &&
+		union.size === 0
+	)
+		errors.push(
+			`telemetry: ${REGISTRY_PATH} declares a write and no allowed host; an empty allowlist is not a narrow one`,
+		);
+	return [...new Set(errors)].sort();
+}
+
 /**
  * The whole telemetry and external-write contract, with the notices the caller
  * prints.
@@ -1273,6 +1483,9 @@ export async function inspectTelemetryContract(
 		...validateSurfaceConfinement(root, contract),
 		...validateTruthTable(root, contract),
 		...validateDeclaredWrites(root, contract),
+		...validateCredentialLiterals(root),
+		...validateScrubPolicy(root, contract),
+		...validateAllowlist(contract),
 	];
 	return { errors: [...new Set(errors)].sort(), notices };
 }

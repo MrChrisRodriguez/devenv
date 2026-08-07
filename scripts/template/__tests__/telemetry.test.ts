@@ -8,6 +8,8 @@ import {
 	type ExternalWrites,
 	REGISTRY_PATH,
 	readExternalWrites,
+	validateAllowlist,
+	validateCredentialLiterals,
 	validateDeclaredWrites,
 	validateSoleDeclarations,
 	validateTelemetryContract,
@@ -17,10 +19,12 @@ import {
 	CONFIG_MODULE_PATH,
 	configModuleSource,
 	DEPLOY_SCRIPT_PATH,
+	declaredTelemetry,
 	declaredWrite,
 	INSTRUCTION_SCRIPT,
 	RELEASE_VARIABLE,
 	ROOT,
+	SCRUB_MODULE_PATH,
 	SDK_IMPORT,
 	SDK_INITIALIZER,
 	SDK_LOGGER,
@@ -626,6 +630,203 @@ describe("declared writes", () => {
 			}),
 		).toContain(
 			"telemetry: the write deploy declares a verify command that is itself a remote write; a verifier that mutates confirms only its own effect",
+		);
+	});
+});
+
+// Assembled at run time, exactly as the guard assembles the patterns that find
+// them. A test file that spelled either literal out would be the first thing
+// its own scan reported, and neither host can ever resolve: `.invalid` is
+// reserved by the DNS specification for exactly this.
+const PLANTED_DSN = [
+	"https://",
+	"a".repeat(16),
+	"@ingest.example.invalid/",
+	"1",
+].join("");
+const PLANTED_TOKEN = [
+	"TELEMETRY_UPLOAD_TOKEN",
+	' = "',
+	"b1".repeat(20),
+	'"',
+].join("");
+
+describe("credential literals", () => {
+	test("finds a planted literal and stays quiet on one that only looks like one", async () => {
+		const { root } = await activeWorkspace({
+			prefix: "devenv-telemetry-literals-",
+		});
+		const planted = resolve(root, "docs/planted.md");
+		try {
+			// A tree-wide scan that finds nothing is only meaningful when something
+			// proves it WOULD find something.
+			expect(await validateTelemetryContract(root)).toEqual([]);
+			await mkdir(dirname(planted), { recursive: true });
+			await Bun.write(planted, `${PLANTED_DSN}\n`);
+			expect(await validateTelemetryContract(root)).toContain(
+				"telemetry: docs/planted.md carries a committed ingest DSN literal; a credential belongs to the environment that supplies it",
+			);
+			await Bun.write(planted, `${PLANTED_TOKEN}\n`);
+			expect(await validateTelemetryContract(root)).toContain(
+				"telemetry: docs/planted.md assigns a long opaque value to a credential-named binding; a credential belongs to the environment that supplies it",
+			);
+			// The near-misses. A documentation example with placeholders and a long
+			// descriptive placeholder are both harmless, and a rule that cried wolf
+			// on either would be turned off within a week.
+			await Bun.write(
+				planted,
+				"https://<key>@ingest.example.invalid/<project>\n" +
+					'TELEMETRY_UPLOAD_TOKEN = "replace-this-with-the-value-from-your-provider"\n',
+			);
+			expect(await validateTelemetryContract(root)).toEqual([]);
+		} finally {
+			await rm(planted, { force: true });
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("the committed tree carries no credential literal at all", () => {
+		expect(validateCredentialLiterals(ROOT)).toEqual([]);
+	});
+});
+
+describe("scrubbing policy", () => {
+	test("requires a pure scrubber every declared tier routes through", async () => {
+		const { root } = await activeWorkspace({
+			prefix: "devenv-telemetry-scrub-",
+		});
+		try {
+			await mutate(
+				root,
+				CONFIG_MODULE_PATH,
+				(source) => source.replace("\t\tbeforeSend: scrub,\n", ""),
+				`telemetry: ${CONFIG_MODULE_PATH} declares no beforeSend hook; a payload nothing scrubs is a payload nothing checked`,
+			);
+			await mutate(
+				root,
+				CONFIG_MODULE_PATH,
+				(source) =>
+					source.replace("sendDefaultPii: false", "sendDefaultPii: true"),
+				`telemetry: ${CONFIG_MODULE_PATH} must pin sendDefaultPii to false; there is no configuration in which a template collects default PII`,
+			);
+			await mutate(
+				root,
+				CONFIG_MODULE_PATH,
+				(source) => source.replace('import { scrub } from "./scrub";\n', ""),
+				`telemetry: ${CONFIG_MODULE_PATH} never imports ${SCRUB_MODULE_PATH}; a declared scrubber nothing routes through scrubs nothing`,
+			);
+			// The scrubber is shared by every tier, and that is only possible while
+			// it stays pure.
+			await mutate(
+				root,
+				SCRUB_MODULE_PATH,
+				(source) => `${SDK_IMPORT}${source}`,
+				`telemetry: ${SCRUB_MODULE_PATH} imports the telemetry SDK; the scrubber is shared by every tier and must stay pure`,
+			);
+			// NON-SECRECY, in both directions. The ingest DSN ships inside the
+			// client bundle and may not read like a secret; the upload token never
+			// reaches one and must.
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) =>
+					source.replace(
+						'"dsnVariable": "TELEMETRY_DSN"',
+						'"dsnVariable": "TELEMETRY_DSN_SECRET"',
+					),
+				"telemetry: TELEMETRY_DSN_SECRET is declared as the client-visible ingest variable and reads like a credential; a value that ships inside a bundle may not be named as a secret",
+			);
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) =>
+					source.replace(
+						'"tokenVariable": "TELEMETRY_UPLOAD_TOKEN"',
+						'"tokenVariable": "TELEMETRY_UPLOAD_HANDLE"',
+					),
+				"telemetry: TELEMETRY_UPLOAD_HANDLE is the upload credential and is not named as one; a secret that does not read like a secret is a secret nobody protects",
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("the host allowlist", () => {
+	test("accepts exact origins and refuses anything wider", () => {
+		const base = { ...SKELETON, mode: "active" as const };
+		expect(
+			validateAllowlist({
+				...base,
+				allowedHosts: ["https://git.example.invalid"],
+				writes: [declaredWrite()],
+			}),
+		).toEqual([]);
+		// A wildcard is a denylist wearing an allowlist's name.
+		expect(
+			validateAllowlist({
+				...base,
+				allowedHosts: ["https://*.example.invalid"],
+				writes: [],
+			}),
+		).toContain(
+			"telemetry: the allowed host https://*.example.invalid is a wildcard; an allowlist that can match a host nobody enumerated is a denylist wearing an allowlist's name",
+		);
+		// An entry with a path is not an origin: the path is not what a socket
+		// connects to, so listing one narrows nothing while looking like it does.
+		expect(
+			validateAllowlist({
+				...base,
+				allowedHosts: ["https://git.example.invalid/org/repo"],
+				writes: [],
+			}),
+		).toContain(
+			"telemetry: the allowed host https://git.example.invalid/org/repo carries a path, a query or a fragment; an allowlist entry is an origin",
+		);
+		expect(
+			validateAllowlist({
+				...base,
+				allowedHosts: ["http://git.example.invalid"],
+				writes: [],
+			}),
+		).toContain(
+			"telemetry: the allowed host http://git.example.invalid is not https and is not loopback",
+		);
+		// A write may only reach a host the union lists.
+		expect(
+			validateAllowlist({
+				...base,
+				allowedHosts: ["https://git.example.invalid"],
+				writes: [
+					declaredWrite({ allowedHosts: ["https://other.example.invalid"] }),
+				],
+			}),
+		).toContain(
+			`telemetry: the write deploy allows the host https://other.example.invalid, which ${REGISTRY_PATH} does not list; every write's hosts are a subset of the declared union`,
+		);
+		// A declared tunnel is same-origin or it is a second ingest endpoint.
+		expect(
+			validateAllowlist({
+				...base,
+				allowedHosts: [],
+				telemetry: declaredTelemetry({
+					tunnel: "https://tunnel.example.invalid/relay",
+				}),
+			}),
+		).toContain(
+			"telemetry: the declared tunnel https://tunnel.example.invalid/relay is not a same-origin path; a tunnel that names a host is a second ingest endpoint",
+		);
+		// ... and an empty allowlist beside a declared write is not a narrow one.
+		expect(
+			validateAllowlist({
+				...base,
+				allowedHosts: [],
+				writes: [
+					declaredWrite({ allowedHosts: ["https://git.example.invalid"] }),
+				],
+			}),
+		).toContain(
+			`telemetry: ${REGISTRY_PATH} declares a write and no allowed host; an empty allowlist is not a narrow one`,
 		);
 	});
 });
