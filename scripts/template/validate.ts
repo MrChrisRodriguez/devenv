@@ -5,6 +5,7 @@ import { validateBrowserContract } from "./browser-contract";
 import { validateCiContract } from "./ci-contract";
 import { validateCloudContract } from "./cloud-contract";
 import { validateStageZeroEvidence } from "./evidence";
+import { validateExperimentContract } from "./experiment-contract";
 import { validateFormsContract } from "./forms-contract";
 import { validateStageTwoEvidence } from "./image-evidence";
 import { validateJsonSchema } from "./json-schema";
@@ -29,6 +30,7 @@ import { validateStageTenAEvidence } from "./stage-ten-a-evidence";
 import { validateStageTenBEvidence } from "./stage-ten-b-evidence";
 import { validateStageTenCEvidence } from "./stage-ten-c-evidence";
 import { validateStageTenDEvidence } from "./stage-ten-d-evidence";
+import { validateStageTenEEvidence } from "./stage-ten-e-evidence";
 import { validateStageThreeEvidence } from "./stage-three-evidence";
 import { validateStartContract } from "./start-contract";
 import { validateTelemetryContract } from "./telemetry-contract";
@@ -78,6 +80,10 @@ export interface ValidationReport {
 	startRegistrySchemaFile: string;
 	startEvidenceFile: string;
 	startEvidenceSchemaFile: string;
+	experimentRegistryFile: string;
+	experimentRegistrySchemaFile: string;
+	experimentEvidenceFile: string;
+	experimentEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -127,6 +133,10 @@ export async function validateAll(
 		startRegistrySchemaFile: "start-surface.schema.json",
 		startEvidenceFile: "evidence/stage-10d-start.json",
 		startEvidenceSchemaFile: "evidence/stage-10d-start.schema.json",
+		experimentRegistryFile: "experiments.json",
+		experimentRegistrySchemaFile: "experiments.schema.json",
+		experimentEvidenceFile: "evidence/stage-10e-experiments.json",
+		experimentEvidenceSchemaFile: "evidence/stage-10e-experiments.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -254,6 +264,17 @@ export async function validateAll(
 			report.status = "fail";
 			report.errors.push(...startErrors);
 		}
+		// The experiment lifecycle contract. The first of these guards that is
+		// CORE rather than gated: `apps/**` and `libs/**` ship in every render, so
+		// the rule that governs what may appear in them ships in every render too.
+		// Hermetic for the fifth time and for a fifth reason: it reads a committed
+		// declaration and the seven exception surfaces that declaration names, so
+		// it needs no experiment, no package and no dead-code oracle to answer.
+		const experimentErrors = await validateExperimentContract(root);
+		if (experimentErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...experimentErrors);
+		}
 		// Hermetic again: the vendor-artifact leg spawns the pinned CLI, which
 		// `rules:check` owns.
 		const agentRulesErrors = await validateAgentRulesContract(root, {
@@ -372,6 +393,15 @@ export async function validateAll(
 				...startEvidenceErrors.map((error) => `stage-10d evidence: ${error}`),
 			);
 		}
+		const experimentEvidenceErrors = await validateStageTenEEvidence(root);
+		if (experimentEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...experimentEvidenceErrors.map(
+					(error) => `stage-10e evidence: ${error}`,
+				),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -390,7 +420,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, ${report.graphEvidenceFile}, ${report.affectedEvidenceFile}, ${report.openspecEvidenceFile}, ${report.contractEvidenceFile}, ${report.telemetryEvidenceFile}, ${report.proxyEvidenceFile}, ${report.startEvidenceFile}, and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, ${report.graphEvidenceFile}, ${report.affectedEvidenceFile}, ${report.openspecEvidenceFile}, ${report.contractEvidenceFile}, ${report.telemetryEvidenceFile}, ${report.proxyEvidenceFile}, ${report.startEvidenceFile}, ${report.experimentEvidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(

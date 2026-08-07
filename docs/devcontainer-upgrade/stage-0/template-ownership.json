@@ -359,6 +359,20 @@
 			"sourceOfTruth": "start-surface.json"
 		},
 		{
+			"pattern": "scripts/template/validate-experiment.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "experiment lifecycle contract entrypoint"
+		},
+		{
+			"pattern": "scripts/template/experiment-contract.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "experiments.json"
+		},
+		{
 			"pattern": "scripts/worktree/**",
 			"classification": "template-owned",
 			"syncPolicy": "merge",
@@ -525,6 +539,20 @@
 			"syncPolicy": "merge",
 			"renderPolicy": "copy",
 			"sourceOfTruth": "start-surface.schema.json"
+		},
+		{
+			"pattern": "experiments.json",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "experiments.json"
+		},
+		{
+			"pattern": "experiments.schema.json",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "experiments.schema.json"
 		},
 		{
 			"pattern": "*",

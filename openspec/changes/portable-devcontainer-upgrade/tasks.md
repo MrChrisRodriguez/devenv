@@ -1,4 +1,4 @@
-**Current status (2026-08-07):** 74 of 82 tasks are complete. Stages 0 through 10D have merged; Stage 10E is next.
+**Current status (2026-08-07):** 77 of 82 tasks are complete. Stages 0 through 10E have merged; Stage 11 is next.
 
 ## 1. Stage 0 PR — Inventory, Parameters, and Baseline
 
@@ -158,9 +158,9 @@ This stage makes the TanStack Start stack strict and reproducible, aligns its Cl
 
 This stage defines how experiments are created, removed, or promoted without weakening dependency, graph, CI, dead-code, or release hygiene.
 
-- [ ] 17.1 Add disposable/promoted experiment metadata and guards that preserve Moon, dead-code, manifest, typecheck, universe, and CI strictness
-- [ ] 17.2 Add removal and promotion fixtures proving dependencies/registrations are removed or full ownership/graph/universe/tests/docs are added
-- [ ] 17.3 Record reusable findings separately, validate mutation failures, document rollback/evidence, and update rules/docs/`CHANGES.md`
+- [x] 17.1 Add disposable/promoted experiment metadata and guards that preserve Moon, dead-code, manifest, typecheck, universe, and CI strictness
+- [x] 17.2 Add removal and promotion fixtures proving dependencies/registrations are removed or full ownership/graph/universe/tests/docs are added
+- [x] 17.3 Record reusable findings separately, validate mutation failures, document rollback/evidence, and update rules/docs/`CHANGES.md`
 
 ## 18. Stage 11 PR — Final Template Release
 

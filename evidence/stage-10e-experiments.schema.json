@@ -1,0 +1,783 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "Stage 10E experiment hygiene evidence",
+	"description": "The exact-command, raw-log record for the experiment lifecycle contract. It is the first record in this program whose `repository.capability` is null, and that is the fact the whole stage turns on: `apps/**` and `libs/**` ship in every render of every profile, so the rule that governs what may appear in them is core rather than gated. What the record seals is therefore inverted from its four predecessors — not that a disabled render carries no trace of a capability, but that all three renders carry the four files, the package script and one UNFENCED step, and that the anti-residue scan finds nothing about any of them because there is no signature to match. The other sealed value that is not a list of things found is `source.policy`: with `experiments: []` the deliverable is the seven exception surfaces at their measured values, and a record that sealed the count of experiments would seal zero and prove nothing.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"stage",
+		"capturedAt",
+		"run",
+		"source",
+		"host",
+		"repository",
+		"commands",
+		"guards",
+		"surfaces",
+		"suites",
+		"renderFixtures",
+		"live",
+		"coverage",
+		"rollback"
+	],
+	"properties": {
+		"schemaVersion": {
+			"type": "integer",
+			"const": 1
+		},
+		"stage": {
+			"type": "string",
+			"const": "stage-10e-experiments"
+		},
+		"capturedAt": {
+			"type": "string",
+			"format": "date-time"
+		},
+		"run": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "logRoot"],
+			"properties": {
+				"id": {
+					"type": "string",
+					"minLength": 1
+				},
+				"logRoot": {
+					"type": "string",
+					"const": "evidence/stage-10e-experiments-run"
+				}
+			}
+		},
+		"source": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"baseSha",
+				"implementationSha",
+				"treeClean",
+				"declaredMode",
+				"policy",
+				"reservedDirectories",
+				"surfaceCount",
+				"lockfileBytesChanged",
+				"workspaceDirectoriesAdded"
+			],
+			"properties": {
+				"baseSha": {
+					"$ref": "#/$defs/gitSha"
+				},
+				"implementationSha": {
+					"$ref": "#/$defs/gitSha"
+				},
+				"treeClean": {
+					"type": "boolean",
+					"const": true
+				},
+				"declaredMode": {
+					"type": "string",
+					"const": "skeleton"
+				},
+				"policy": {
+					"description": "The seven exception surfaces at the values this capture measured. This is the stage's deliverable: an experiment cannot weaken a guard by existing, only by adding an exception, and every exception surface here is a short committed list. The validator reconciles this block against the committed registry AND runs the guard's own inspection over the tree, because sealing a declaration only proves somebody typed it.",
+					"type": "object"
+				},
+				"reservedDirectories": {
+					"description": "The three directories a capability's ownership pattern already reserves, identified by PATTERN rather than by capability name. One of the three capability names contains its own residue token as a substring, and a path signature is matched by a file's location while a token signature is matched by its contents.",
+					"type": "array",
+					"minItems": 3,
+					"maxItems": 3,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["directory", "ownershipPattern"],
+						"properties": {
+							"directory": {
+								"type": "string",
+								"minLength": 1
+							},
+							"ownershipPattern": {
+								"type": "string",
+								"minLength": 1
+							}
+						}
+					}
+				},
+				"surfaceCount": {
+					"description": "The anti-vacuity anchor, and it is deliberately not the number of experiments. `apps/` and `libs/` hold a .gitkeep here and in every rendered project, so an experiment count would be zero and a green run over it would be indistinguishable from an absent rule.",
+					"type": "integer",
+					"const": 7
+				},
+				"lockfileBytesChanged": {
+					"description": "Zero, for the fifth consecutive stage, and sealed as bytes rather than as a boolean because `changed: false` hides the size of what changed.",
+					"type": "integer",
+					"const": 0
+				},
+				"workspaceDirectoriesAdded": {
+					"description": "Zero. A template that ships an experiment ships a directory every downstream project has to delete, so the executed lifecycles run over Git-backed temporary trees instead.",
+					"type": "integer",
+					"const": 0
+				}
+			}
+		},
+		"host": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"os",
+				"architecture",
+				"kernel",
+				"insideDevcontainer",
+				"bunVersion",
+				"gitVersion",
+				"ghVersion"
+			],
+			"properties": {
+				"os": {
+					"type": "string",
+					"minLength": 1
+				},
+				"architecture": {
+					"type": "string",
+					"minLength": 1
+				},
+				"kernel": {
+					"type": "string",
+					"minLength": 1
+				},
+				"insideDevcontainer": {
+					"type": "boolean"
+				},
+				"bunVersion": {
+					"$ref": "#/$defs/version"
+				},
+				"gitVersion": {
+					"$ref": "#/$defs/version"
+				},
+				"ghVersion": {
+					"$ref": "#/$defs/version"
+				}
+			}
+		},
+		"repository": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"nameWithOwner",
+				"workflowFile",
+				"gateJobId",
+				"gateContext",
+				"gateNeeds",
+				"experimentGuardScript",
+				"ciGuardScript",
+				"registryFile",
+				"capability",
+				"addedJobs",
+				"devcontainerFilesChanged",
+				"huskyFilesChanged"
+			],
+			"properties": {
+				"nameWithOwner": {
+					"type": "string",
+					"minLength": 1
+				},
+				"workflowFile": {
+					"type": "string",
+					"const": ".github/workflows/ci.yml"
+				},
+				"gateJobId": {
+					"type": "string",
+					"const": "ci-gate"
+				},
+				"gateContext": {
+					"type": "string",
+					"minLength": 1
+				},
+				"gateNeeds": {
+					"type": "array",
+					"minItems": 2,
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"experimentGuardScript": {
+					"type": "string",
+					"const": "experiments:check"
+				},
+				"ciGuardScript": {
+					"type": "string",
+					"const": "ci:check"
+				},
+				"registryFile": {
+					"type": "string",
+					"const": "experiments.json"
+				},
+				"capability": {
+					"description": "Null, and pinned null. Every record since Stage 10A named a capability here. This surface has none — no fence, no signature, no residue token, no packageRules entry — because the directories it governs ship in every render of every profile, and a hygiene rule that a project could switch off would be absent from exactly the trees that have them.",
+					"type": "null"
+				},
+				"addedJobs": {
+					"description": "Zero. Stage 8A added a job and turned a green historical capture into a reported fabrication; every sealed record from Stage 7 onward anchors its run-shape assertions on the gate's own needs.",
+					"type": "integer",
+					"const": 0
+				},
+				"devcontainerFilesChanged": {
+					"description": "Zero. `scripts/worktree/contract.toml` names `.devcontainer` — the whole directory — as a definition fingerprint input, so a comment-only edit to a file the image never reads costs every downstream developer a rebuild.",
+					"type": "integer",
+					"const": 0
+				},
+				"huskyFilesChanged": {
+					"description": "Zero, and counted rather than merely absent because this is the edit the stage was most tempted to make: the graphify staging guard makes `.husky/pre-commit` look like the natural home for a hygiene refusal. It is not a fingerprint input, so it would have cost no rebuild — it is refused because both hooks already belong to the worktree contract.",
+					"type": "integer",
+					"const": 0
+				}
+			}
+		},
+		"commands": {
+			"type": "array",
+			"minItems": 17,
+			"maxItems": 17,
+			"items": {
+				"$ref": "#/$defs/commandResult"
+			}
+		},
+		"guards": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["experiment", "ci"],
+			"properties": {
+				"experiment": {
+					"$ref": "#/$defs/guardSummary"
+				},
+				"ci": {
+					"$ref": "#/$defs/guardSummary"
+				}
+			}
+		},
+		"surfaces": {
+			"description": "The seven exception surfaces, as the guard's own inspection reported them. `scanned` is the number the guard refuses zero of.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "scanned", "inspected", "paths"],
+			"properties": {
+				"commandId": {
+					"type": "string",
+					"const": "surface-lock"
+				},
+				"scanned": {
+					"type": "integer",
+					"const": 7
+				},
+				"inspected": {
+					"type": "array",
+					"minItems": 7,
+					"maxItems": 7,
+					"uniqueItems": true,
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"paths": {
+					"type": "array",
+					"minItems": 7,
+					"maxItems": 7,
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				}
+			}
+		},
+		"suites": {
+			"type": "array",
+			"minItems": 12,
+			"maxItems": 12,
+			"items": {
+				"$ref": "#/$defs/suiteCounts"
+			}
+		},
+		"renderFixtures": {
+			"description": "What each fixture actually received, and this probe asks the INVERSE of every one before it. There is no capability, so every measurement here is positive except the last: the four files, the package script, the unfenced step and a real verdict with all seven surfaces inspected must be present in all three renders, and the residue scan must report nothing about any of them.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "fixtures"],
+			"properties": {
+				"commandId": {
+					"type": "string",
+					"const": "rendered-experiments"
+				},
+				"fixtures": {
+					"type": "array",
+					"minItems": 3,
+					"maxItems": 3,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"name",
+							"corePaths",
+							"guardScriptPresent",
+							"guardStepPresent",
+							"guardStepFenced",
+							"experimentErrors",
+							"surfacesScanned",
+							"residueFindings",
+							"coreResidueFindings"
+						],
+						"properties": {
+							"name": {
+								"type": "string",
+								"enum": ["minimal", "cloud", "full"]
+							},
+							"corePaths": {
+								"type": "array",
+								"minItems": 4,
+								"maxItems": 4,
+								"items": {
+									"type": "string",
+									"minLength": 1
+								}
+							},
+							"guardScriptPresent": {
+								"type": "boolean",
+								"const": true
+							},
+							"guardStepPresent": {
+								"type": "boolean",
+								"const": true
+							},
+							"guardStepFenced": {
+								"type": "boolean",
+								"const": false
+							},
+							"experimentErrors": {
+								"type": "array",
+								"maxItems": 0,
+								"items": {
+									"type": "string",
+									"minLength": 1
+								}
+							},
+							"surfacesScanned": {
+								"type": "integer",
+								"const": 7
+							},
+							"residueFindings": {
+								"type": "array",
+								"maxItems": 0
+							},
+							"coreResidueFindings": {
+								"description": "Always empty, and automatically so: there is no capability signature to match. The assertion exists so a future stage that DOES gate this surface has a failing probe to notice rather than a silent behaviour change.",
+								"type": "array",
+								"maxItems": 0
+							}
+						}
+					}
+				}
+			}
+		},
+		"live": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["live-gate"],
+			"properties": {
+				"live-gate": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["commandId", "heavyLaneRan", "run"],
+					"properties": {
+						"commandId": {
+							"type": "string",
+							"const": "live-gate"
+						},
+						"heavyLaneRan": {
+							"type": "boolean",
+							"const": true
+						},
+						"run": {
+							"type": "object",
+							"additionalProperties": false,
+							"required": [
+								"runId",
+								"url",
+								"event",
+								"headBranch",
+								"headSha",
+								"conclusion",
+								"gateJobId",
+								"gateConclusion",
+								"gateLogSha256",
+								"upstreamResults",
+								"jobs"
+							],
+							"properties": {
+								"runId": {
+									"type": "integer",
+									"minimum": 1
+								},
+								"url": {
+									"type": "string",
+									"minLength": 1
+								},
+								"event": {
+									"type": "string",
+									"const": "pull_request"
+								},
+								"headBranch": {
+									"type": "string",
+									"minLength": 1
+								},
+								"headSha": {
+									"$ref": "#/$defs/gitSha"
+								},
+								"conclusion": {
+									"type": "string",
+									"const": "success"
+								},
+								"gateJobId": {
+									"type": "integer",
+									"minimum": 1
+								},
+								"gateConclusion": {
+									"type": "string",
+									"const": "success"
+								},
+								"gateLogSha256": {
+									"$ref": "#/$defs/sha256"
+								},
+								"upstreamResults": {
+									"type": "string",
+									"minLength": 1
+								},
+								"jobs": {
+									"type": "array",
+									"minItems": 1,
+									"items": {
+										"$ref": "#/$defs/jobResult"
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"coverage": {
+			"type": "array",
+			"minItems": 11,
+			"maxItems": 11,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["id", "task", "reason", "commandIds"],
+				"properties": {
+					"id": {
+						"type": "string",
+						"enum": [
+							"declared-registry",
+							"exception-surface-lock",
+							"derived-scope-floor",
+							"containment",
+							"graph-and-universe",
+							"promotion-artifacts",
+							"retirement-residue",
+							"findings-outlive-the-code",
+							"core-not-capability",
+							"executed-lifecycles",
+							"rollback"
+						]
+					},
+					"task": {
+						"type": "string",
+						"minLength": 1
+					},
+					"reason": {
+						"type": "string",
+						"minLength": 40
+					},
+					"commandIds": {
+						"type": "array",
+						"minItems": 1,
+						"items": {
+							"type": "string",
+							"minLength": 1
+						}
+					}
+				}
+			}
+		},
+		"rollback": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"mode",
+				"command",
+				"outsideTheTree",
+				"containerRebuildRequired",
+				"scope",
+				"proof"
+			],
+			"properties": {
+				"mode": {
+					"type": "string",
+					"const": "atomic"
+				},
+				"command": {
+					"$ref": "#/$defs/command"
+				},
+				"outsideTheTree": {
+					"description": "Empty. There is no repository variable, no branch-protection change and no operator step, so the revert is order-independent.",
+					"type": "array",
+					"maxItems": 0
+				},
+				"containerRebuildRequired": {
+					"description": "Pinned false, and the pin is the point. `.devcontainer` is a whole-directory definition fingerprint input, so a stage that touches any file under it costs every downstream developer a rebuild — Stage 10B paid exactly that for a comment-only edit. This stage touches nothing under it and nothing under `.husky/` either, and both counts are sealed beside this flag so the claim is checkable rather than asserted.",
+					"type": "boolean",
+					"const": false
+				},
+				"scope": {
+					"type": "string",
+					"minLength": 200
+				},
+				"proof": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"commandId",
+						"predecessorSha",
+						"implementationSha",
+						"syntheticMergeSha",
+						"syntheticMergeTree",
+						"syntheticMergeParents",
+						"predecessorTree",
+						"revertedTree",
+						"treeMatchesPredecessor",
+						"operations",
+						"addedPaths",
+						"addedPathsRemoved"
+					],
+					"properties": {
+						"commandId": {
+							"type": "string",
+							"const": "rollback-proof"
+						},
+						"predecessorSha": {
+							"$ref": "#/$defs/gitSha"
+						},
+						"implementationSha": {
+							"$ref": "#/$defs/gitSha"
+						},
+						"syntheticMergeSha": {
+							"$ref": "#/$defs/gitSha"
+						},
+						"syntheticMergeTree": {
+							"$ref": "#/$defs/gitSha"
+						},
+						"syntheticMergeParents": {
+							"description": "The two parents of the synthetic merge, in order: the predecessor and the implementation boundary. Recorded so the revert's `-m 1` is checkable rather than assumed — reverting the wrong parent produces a tree that looks plausible and is not the predecessor's.",
+							"type": "array",
+							"minItems": 2,
+							"maxItems": 2,
+							"items": {
+								"$ref": "#/$defs/gitSha"
+							}
+						},
+						"predecessorTree": {
+							"$ref": "#/$defs/gitSha"
+						},
+						"revertedTree": {
+							"$ref": "#/$defs/gitSha"
+						},
+						"treeMatchesPredecessor": {
+							"type": "boolean",
+							"const": true
+						},
+						"operations": {
+							"type": "array",
+							"minItems": 1,
+							"items": {
+								"$ref": "#/$defs/command"
+							}
+						},
+						"addedPaths": {
+							"type": "array",
+							"minItems": 4,
+							"maxItems": 4,
+							"items": {
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"addedPathsRemoved": {
+							"type": "boolean",
+							"const": true
+						}
+					}
+				}
+			}
+		}
+	},
+	"$defs": {
+		"gitSha": {
+			"type": "string",
+			"pattern": "^[0-9a-f]{40}$"
+		},
+		"sha256": {
+			"type": "string",
+			"pattern": "^[0-9a-f]{64}$"
+		},
+		"version": {
+			"type": "string",
+			"minLength": 1
+		},
+		"command": {
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"type": "string"
+			}
+		},
+		"commandResult": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"command",
+				"runId",
+				"startedAt",
+				"completedAt",
+				"durationMs",
+				"stdoutPath",
+				"stderrPath",
+				"stdoutSha256",
+				"stderrSha256",
+				"exitCode",
+				"status"
+			],
+			"properties": {
+				"id": {
+					"type": "string",
+					"enum": [
+						"experiment-guard",
+						"ci-guard",
+						"experiment-mutations",
+						"mode-reconciliation",
+						"surface-lock",
+						"containment",
+						"manifest-registration",
+						"moon-registration",
+						"universe-reconciliation",
+						"promotion-artifacts",
+						"retirement-residue",
+						"findings",
+						"removal-fixture",
+						"promotion-fixture",
+						"rendered-experiments",
+						"live-gate",
+						"rollback-proof"
+					]
+				},
+				"command": {
+					"$ref": "#/$defs/command"
+				},
+				"runId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"startedAt": {
+					"type": "string",
+					"format": "date-time"
+				},
+				"completedAt": {
+					"type": "string",
+					"format": "date-time"
+				},
+				"durationMs": {
+					"type": "number",
+					"minimum": 1
+				},
+				"stdoutPath": {
+					"type": "string",
+					"minLength": 1
+				},
+				"stderrPath": {
+					"type": "string",
+					"minLength": 1
+				},
+				"stdoutSha256": {
+					"$ref": "#/$defs/sha256"
+				},
+				"stderrSha256": {
+					"$ref": "#/$defs/sha256"
+				},
+				"exitCode": {
+					"type": "number",
+					"const": 0
+				},
+				"status": {
+					"type": "string",
+					"const": "pass"
+				}
+			}
+		},
+		"guardSummary": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "command", "summary"],
+			"properties": {
+				"commandId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"command": {
+					"type": "string",
+					"minLength": 1
+				},
+				"summary": {
+					"type": "string",
+					"minLength": 20
+				}
+			}
+		},
+		"suiteCounts": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "testFile", "passCount", "failCount"],
+			"properties": {
+				"commandId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"testFile": {
+					"type": "string",
+					"minLength": 1
+				},
+				"passCount": {
+					"type": "number",
+					"minimum": 1
+				},
+				"failCount": {
+					"type": "number",
+					"const": 0
+				}
+			}
+		},
+		"jobResult": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["name", "conclusion"],
+			"properties": {
+				"name": {
+					"type": "string",
+					"minLength": 1
+				},
+				"conclusion": {
+					"type": "string",
+					"minLength": 1
+				}
+			}
+		}
+	}
+}
