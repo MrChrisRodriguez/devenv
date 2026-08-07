@@ -35,6 +35,8 @@
 #   6 the change selection is ambiguous or unknown
 #   7 the change still has remaining tasks
 #   8 the archive destination is already occupied
+#   9 the archive did not verify and was rolled back
+#  10 the push was refused
 
 set -euo pipefail
 
@@ -53,7 +55,7 @@ ROOT_ARGUMENT=""
 DRY_RUN="false"
 
 usage() {
-	sed -n '/^# Usage:/,/^#   8 /p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+	sed -n '/^# Usage:/,/^#  10 /p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
 }
 
 die() {

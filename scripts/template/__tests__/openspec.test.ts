@@ -10,6 +10,16 @@ import {
 	inspectOpenspec,
 	validateOpenspecContract,
 } from "../openspec-contract";
+import {
+	loadFixtureDefinition,
+	loadTemplateParameters,
+	resolveFixtureParameters,
+} from "../parameters";
+import {
+	loadTemplateOwnership,
+	renderFixture,
+	scanDisabledResidue,
+} from "../render-fixture";
 import { validateOpenspec } from "../validate-openspec";
 import {
 	type FakeOpenspecMode,
@@ -31,9 +41,9 @@ const PROPOSAL = [
 	"",
 ].join("\n");
 
-function deltaSpec(requirement: string): string {
+function deltaSpec(requirement: string, capability = "probe-cap"): string {
 	return [
-		"# probe-cap",
+		`# ${capability}`,
 		"",
 		"## ADDED Requirements",
 		"",
@@ -72,6 +82,8 @@ interface ChangeFixture {
 	remaining?: number;
 	complete?: number;
 	requirement?: string;
+	/** The delta spec's capability. Two changes may not both own one. */
+	capability?: string;
 	omit?: string[];
 }
 
@@ -114,10 +126,11 @@ async function writeRoot(root: string, fixture: RootFixture): Promise<void> {
 				tasks(change.complete ?? 1, change.remaining ?? 1),
 			);
 		if (change.requirement) {
-			await mkdir(resolve(directory, "specs/probe-cap"), { recursive: true });
+			const capability = change.capability ?? "probe-cap";
+			await mkdir(resolve(directory, "specs", capability), { recursive: true });
 			await Bun.write(
-				resolve(directory, "specs/probe-cap/spec.md"),
-				deltaSpec(change.requirement),
+				resolve(directory, "specs", capability, "spec.md"),
+				deltaSpec(change.requirement, capability),
 			);
 		}
 	}
@@ -352,6 +365,33 @@ async function wrapperHarness(
 	return { root, origin, home: base };
 }
 
+/**
+ * Every outcome the wrapper documents, and the exit code that reports it.
+ *
+ * The list is the point rather than the individual cases: a refusal that has a
+ * documented code and no test is a refusal nobody has seen happen, and a code
+ * the suite triggers but the usage block does not mention is a number an
+ * operator has to guess at. The final test in this file closes both directions.
+ */
+const REFUSAL_MATRIX: ReadonlyArray<{ code: number; meaning: string }> = [
+	{ code: 0, meaning: "archived (or, with --dry-run, reported)" },
+	{ code: 2, meaning: "unsupported argument" },
+	{
+		code: 3,
+		meaning:
+			"wrong environment: a Codex Cloud task or inside the development container",
+	},
+	{ code: 4, meaning: "this checkout's container is not ready" },
+	{ code: 5, meaning: "a git precondition refused the run" },
+	{ code: 6, meaning: "the change selection is ambiguous or unknown" },
+	{ code: 7, meaning: "the change still has remaining tasks" },
+	{ code: 8, meaning: "the archive destination is already occupied" },
+	{ code: 9, meaning: "the archive did not verify and was rolled back" },
+	{ code: 10, meaning: "the push was refused" },
+];
+
+const OBSERVED_EXIT_CODES = new Set<number>();
+
 function runWrapper(
 	harness: WrapperHarness,
 	args: string[] = ["--dry-run"],
@@ -376,8 +416,10 @@ function runWrapper(
 			stderr: "pipe",
 		},
 	);
+	const exitCode = result.exitCode ?? 1;
+	OBSERVED_EXIT_CODES.add(exitCode);
 	return {
-		exitCode: result.exitCode ?? 1,
+		exitCode,
 		stdout: result.stdout.toString(),
 		stderr: result.stderr.toString(),
 	};
@@ -1433,4 +1475,282 @@ describe("openspec lifecycle contract", () => {
 			);
 		});
 	});
+});
+
+describe("one disposable lifecycle, end to end", () => {
+	// The real change in this repository — portable-devcontainer-upgrade — must
+	// stay ACTIVE until Stage 11. Nothing here touches it: the whole lifecycle
+	// runs in a throwaway clone with its own bare origin, driven by the same
+	// pinned CLI through a shim inside that clone's own node_modules.
+	test("a merged, complete change is archived, synced, committed and pushed", async () => {
+		await withWrapper(
+			async (harness) => {
+				const originHead = (): string =>
+					gitOrThrow(harness.origin, "rev-parse", "refs/heads/main").trim();
+				const beforePush = originHead();
+
+				const result = runWrapper(harness, [
+					"--change",
+					"disposable-archive-probe",
+				]);
+				expect(result.stderr).not.toContain("restoring");
+				expect(result.exitCode).toBe(0);
+
+				const date = new Date().toISOString().slice(0, 10);
+				const archived = resolve(
+					harness.root,
+					`openspec/changes/archive/${date}-disposable-archive-probe`,
+				);
+				expect(await Bun.file(resolve(archived, "proposal.md")).exists()).toBe(
+					true,
+				);
+				expect(await Bun.file(resolve(archived, "tasks.md")).exists()).toBe(
+					true,
+				);
+				expect(
+					await Bun.file(resolve(archived, ".openspec.yaml")).exists(),
+				).toBe(true);
+
+				// The half of an archive that is not a directory move: the delta spec's
+				// ADDED requirement has to have reached the main specs.
+				const mainSpec = await Bun.file(
+					resolve(harness.root, "openspec/specs/probe-cap/spec.md"),
+				).text();
+				expect(mainSpec).toContain("### Requirement: Disposable Probe");
+
+				// The second change is untouched, which is the property that makes this
+				// safe to run against a tree with work in flight.
+				expect(
+					await Bun.file(
+						resolve(harness.root, "openspec/changes/still-open/tasks.md"),
+					).text(),
+				).toBe(
+					await Bun.file(
+						resolve(harness.root, "openspec/changes/still-open/tasks.md"),
+					).text(),
+				);
+				expect(
+					await Bun.file(
+						resolve(harness.root, "openspec/changes/still-open/proposal.md"),
+					).exists(),
+				).toBe(true);
+
+				expect(
+					gitOrThrow(harness.root, "log", "-1", "--format=%s").trim(),
+				).toBe("chore(openspec): archive disposable-archive-probe");
+				expect(originHead()).not.toBe(beforePush);
+				expect(originHead()).toBe(
+					gitOrThrow(harness.root, "rev-parse", "HEAD").trim(),
+				);
+				expect(gitOrThrow(harness.root, "status", "--porcelain")).toBe("");
+
+				// A second run over a re-created change refuses on the destination the
+				// first one occupied, before the CLI can rewrite the main specs.
+				await writeRoot(harness.root, {
+					changes: [
+						{
+							name: "disposable-archive-probe",
+							complete: 2,
+							remaining: 0,
+							requirement: "Disposable Probe",
+						},
+					],
+				});
+				gitOrThrow(harness.root, "add", "-A");
+				gitOrThrow(
+					harness.root,
+					"commit",
+					"--quiet",
+					"--no-verify",
+					"-m",
+					"chore: restore the probe",
+				);
+				gitOrThrow(harness.root, "push", "--quiet", "origin", "main");
+				const second = runWrapper(harness, [
+					"--change",
+					"disposable-archive-probe",
+				]);
+				expect(second.exitCode).toBe(8);
+				expect(second.stderr).toContain(
+					`openspec/changes/archive/${date}-disposable-archive-probe already exists`,
+				);
+				expect(gitOrThrow(harness.root, "status", "--porcelain")).toBe("");
+			},
+			{
+				cli: "real",
+				changes: [
+					{
+						name: "disposable-archive-probe",
+						complete: 3,
+						remaining: 0,
+						requirement: "Disposable Probe",
+					},
+					{
+						name: "still-open",
+						complete: 1,
+						remaining: 2,
+						requirement: "Still Open",
+						capability: "still-open-cap",
+					},
+				],
+			},
+		);
+	}, 120_000);
+
+	test("this repository's own active change is still active", async () => {
+		// The standing constraint, stated as an assertion rather than as care.
+		const inspection = await inspectOpenspec(ROOT);
+		expect(inspection.roots[0]?.changes.map((change) => change.name)).toEqual([
+			"portable-devcontainer-upgrade",
+		]);
+		expect(inspection.roots[0]?.archived).toEqual([]);
+	});
+});
+
+describe("the wrapper's refusal matrix is complete in both directions", () => {
+	// Declaration order matters here: this test reads what the cases above
+	// observed. Run the file, not a filtered subset.
+	test("every documented exit code is documented and exercised", async () => {
+		const usage = await Bun.file(
+			resolve(ROOT, "scripts/openspec/archive.sh"),
+		).text();
+		for (const entry of REFUSAL_MATRIX)
+			expect(usage).toContain(`${entry.code} ${entry.meaning}`);
+		expect(OBSERVED_EXIT_CODES.size).toBeGreaterThan(0);
+		expect([...OBSERVED_EXIT_CODES].sort((a, b) => a - b)).toEqual(
+			REFUSAL_MATRIX.map((entry) => entry.code).sort((a, b) => a - b),
+		);
+	});
+});
+
+describe("rendered fixtures carry the lifecycle only where it is enabled", () => {
+	const OPENSPEC_SURFACE = [
+		"openspec/config.yaml",
+		"scripts/openspec/archive.sh",
+		"scripts/template/openspec-contract.ts",
+		"scripts/template/validate-openspec.ts",
+		"scripts/template/agent-rules/archive-delegation.md",
+		".claude/commands/opsx/archive.md",
+		".claude/skills/openspec-archive-change/SKILL.md",
+	];
+
+	test("minimal receives the whole surface and cloud receives none of it", async () => {
+		const temporary = await mkdtemp(
+			resolve(tmpdir(), "devenv-openspec-render-"),
+		);
+		try {
+			for (const fixtureName of ["minimal", "cloud"]) {
+				await renderFixture({
+					root: ROOT,
+					fixtureName,
+					output: resolve(temporary, fixtureName),
+				});
+			}
+			const minimal = resolve(temporary, "minimal");
+			const cloud = resolve(temporary, "cloud");
+			for (const path of OPENSPEC_SURFACE) {
+				expect(
+					`minimal:${path}:${await Bun.file(resolve(minimal, path)).exists()}`,
+				).toBe(`minimal:${path}:true`);
+				expect(
+					`cloud:${path}:${await Bun.file(resolve(cloud, path)).exists()}`,
+				).toBe(`cloud:${path}:false`);
+			}
+
+			// The fenced step and the package script have to move together: the
+			// render test that walks `bun run <script>` in a workflow would
+			// otherwise pass while the rendered project had no such script.
+			const minimalPackage = await Bun.file(
+				resolve(minimal, "package.json"),
+			).json();
+			const cloudPackage = await Bun.file(
+				resolve(cloud, "package.json"),
+			).json();
+			expect(minimalPackage.scripts["openspec:check"]).toBe(
+				"bun scripts/template/validate-openspec.ts",
+			);
+			expect(cloudPackage.scripts["openspec:check"]).toBeUndefined();
+			// `rules:check` is core and belongs to every project.
+			for (const rendered of [minimalPackage, cloudPackage]) {
+				expect(rendered.scripts["rules:check"]).toBe(
+					"bun scripts/template/validate-agent-rules.ts",
+				);
+				expect(rendered.scripts["rules:sync"]).toBe(
+					"bun scripts/template/sync-agent-rules.ts",
+				);
+			}
+			const minimalCi = await Bun.file(
+				resolve(minimal, ".github/workflows/ci.yml"),
+			).text();
+			const cloudCi = await Bun.file(
+				resolve(cloud, ".github/workflows/ci.yml"),
+			).text();
+			expect(minimalCi).toContain("bun run openspec:check");
+			expect(cloudCi).not.toContain("openspec:check");
+			for (const workflow of [minimalCi, cloudCi])
+				expect(workflow).toContain("bun run rules:check");
+
+			// The cloud fixture's agent rule files lose the canonical block and its
+			// mirrors together, which is what lets `rules:check` stay ungated.
+			for (const file of ["AGENTS.md", "CLAUDE.md", "GEMINI.md"]) {
+				expect(
+					`${file}:${(await Bun.file(resolve(cloud, file)).text()).includes("OpenSpec Lifecycle Ownership")}`,
+				).toBe(`${file}:false`);
+				expect(
+					`${file}:${(await Bun.file(resolve(minimal, file)).text()).includes("OpenSpec Lifecycle Ownership")}`,
+				).toBe(`${file}:true`);
+			}
+
+			// A10: the graphify mirror blocks are fenced now, so a project without
+			// graphify carries none of their prose in any agent rule file. The
+			// remaining `Graphify` mentions in the image-ownership rules are a
+			// separate surface whose capability signature is deferred to Stage 11.
+			for (const file of [
+				"AGENTS.md",
+				"CLAUDE.md",
+				"GEMINI.md",
+				".claude/CLAUDE.md",
+			]) {
+				const source = await Bun.file(resolve(minimal, file)).text();
+				for (const token of [
+					"graphify query",
+					"graphify update",
+					"graphify-out/",
+					'invoke the Skill tool with `skill: "graphify"`',
+				])
+					expect(`${file}:${token}:${source.includes(token)}`).toBe(
+						`${file}:${token}:false`,
+					);
+			}
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 120_000);
+
+	test("a leaked wrapper in the cloud render is named by the residue scan", async () => {
+		const temporary = await mkdtemp(resolve(tmpdir(), "devenv-openspec-leak-"));
+		try {
+			const output = resolve(temporary, "cloud");
+			await renderFixture({ root: ROOT, fixtureName: "cloud", output });
+			await mkdir(resolve(output, "scripts/openspec"), { recursive: true });
+			await Bun.write(
+				resolve(output, "scripts/openspec/archive.sh"),
+				"#!/usr/bin/env bash\nexit 0\n",
+			);
+			const parameters = await loadTemplateParameters(ROOT);
+			const fixture = await loadFixtureDefinition(ROOT, "cloud", parameters);
+			const resolved = resolveFixtureParameters(parameters, fixture);
+			const ownership = await loadTemplateOwnership(ROOT);
+			const report = await scanDisabledResidue(output, resolved, ownership);
+			expect(report.status).toBe("fail");
+			expect(report.findings).toContainEqual({
+				capability: "openspec",
+				path: "scripts/openspec/archive.sh",
+				signature: "scripts/openspec/**",
+				kind: "path",
+			});
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 120_000);
 });
