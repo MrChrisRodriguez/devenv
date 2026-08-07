@@ -1,0 +1,1109 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"stage",
+		"capturedAt",
+		"run",
+		"source",
+		"host",
+		"repository",
+		"commands",
+		"guards",
+		"selection",
+		"selector",
+		"renderFixtures",
+		"live",
+		"coverage",
+		"rollback"
+	],
+	"properties": {
+		"schemaVersion": {
+			"const": 1
+		},
+		"stage": {
+			"const": "stage-8b-affected-selection"
+		},
+		"capturedAt": {
+			"type": "string",
+			"format": "date-time"
+		},
+		"run": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "logRoot"],
+			"properties": {
+				"id": {
+					"type": "string",
+					"minLength": 1
+				},
+				"logRoot": {
+					"type": "string",
+					"const": "evidence/stage-8b-affected-selection-run"
+				}
+			}
+		},
+		"source": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"baseSha",
+				"implementationSha",
+				"treeClean",
+				"prototoolsMoon"
+			],
+			"properties": {
+				"baseSha": {
+					"$ref": "#/$defs/gitSha"
+				},
+				"implementationSha": {
+					"$ref": "#/$defs/gitSha"
+				},
+				"treeClean": {
+					"type": "boolean",
+					"const": true
+				},
+				"prototoolsMoon": {
+					"$ref": "#/$defs/version"
+				}
+			}
+		},
+		"host": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"os",
+				"architecture",
+				"kernel",
+				"insideDevcontainer",
+				"moonVersion",
+				"bunVersion",
+				"ghVersion"
+			],
+			"properties": {
+				"os": {
+					"type": "string",
+					"minLength": 1
+				},
+				"architecture": {
+					"type": "string",
+					"minLength": 1
+				},
+				"kernel": {
+					"type": "string",
+					"minLength": 1
+				},
+				"insideDevcontainer": {
+					"type": "boolean",
+					"const": true
+				},
+				"moonVersion": {
+					"$ref": "#/$defs/version"
+				},
+				"bunVersion": {
+					"$ref": "#/$defs/version"
+				},
+				"ghVersion": {
+					"$ref": "#/$defs/version"
+				}
+			}
+		},
+		"repository": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"nameWithOwner",
+				"workflowFile",
+				"gateJobId",
+				"gateContext",
+				"gateNeeds",
+				"selectorJobId",
+				"selectorJobName",
+				"projectJobId",
+				"projectJobName",
+				"modeVariable",
+				"initialMode",
+				"capability"
+			],
+			"properties": {
+				"nameWithOwner": {
+					"type": "string",
+					"minLength": 1
+				},
+				"workflowFile": {
+					"type": "string",
+					"const": ".github/workflows/ci.yml"
+				},
+				"gateJobId": {
+					"type": "string",
+					"const": "ci-gate"
+				},
+				"gateContext": {
+					"type": "string",
+					"minLength": 1
+				},
+				"gateNeeds": {
+					"type": "array",
+					"minItems": 2,
+					"items": {
+						"type": "string"
+					}
+				},
+				"selectorJobId": {
+					"type": "string",
+					"const": "affected"
+				},
+				"selectorJobName": {
+					"type": "string",
+					"minLength": 1
+				},
+				"projectJobId": {
+					"type": "string",
+					"const": "project"
+				},
+				"projectJobName": {
+					"type": "string",
+					"minLength": 1
+				},
+				"modeVariable": {
+					"type": "string",
+					"const": "MOON_AFFECTED_MODE"
+				},
+				"initialMode": {
+					"type": "string",
+					"const": "full"
+				},
+				"capability": {
+					"type": "string",
+					"const": "moon_affected_selection"
+				}
+			}
+		},
+		"commands": {
+			"type": "array",
+			"minItems": 12,
+			"maxItems": 12,
+			"items": {
+				"$ref": "#/$defs/commandResult"
+			}
+		},
+		"guards": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["affected", "affectedMutations", "ci", "ciMutations"],
+			"properties": {
+				"affected": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["commandId", "command", "summary"],
+					"properties": {
+						"commandId": {
+							"type": "string",
+							"minLength": 1
+						},
+						"command": {
+							"type": "string",
+							"minLength": 1
+						},
+						"summary": {
+							"type": "string",
+							"minLength": 1
+						}
+					}
+				},
+				"affectedMutations": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["commandId", "testFile", "passCount", "failCount"],
+					"properties": {
+						"commandId": {
+							"type": "string",
+							"minLength": 1
+						},
+						"testFile": {
+							"type": "string",
+							"minLength": 1
+						},
+						"passCount": {
+							"type": "number",
+							"minimum": 1
+						},
+						"failCount": {
+							"type": "number",
+							"const": 0
+						}
+					}
+				},
+				"ci": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["commandId", "command", "summary"],
+					"properties": {
+						"commandId": {
+							"type": "string",
+							"minLength": 1
+						},
+						"command": {
+							"type": "string",
+							"minLength": 1
+						},
+						"summary": {
+							"type": "string",
+							"minLength": 1
+						}
+					}
+				},
+				"ciMutations": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["commandId", "testFile", "passCount", "failCount"],
+					"properties": {
+						"commandId": {
+							"type": "string",
+							"minLength": 1
+						},
+						"testFile": {
+							"type": "string",
+							"minLength": 1
+						},
+						"passCount": {
+							"type": "number",
+							"minimum": 1
+						},
+						"failCount": {
+							"type": "number",
+							"const": 0
+						}
+					}
+				}
+			}
+		},
+		"selection": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"commandId",
+				"queryArgv",
+				"workspaceProjects",
+				"leafProjects",
+				"deepProjects",
+				"emptyStdinProjects",
+				"emptyStdinDirtyProjects",
+				"jsonFlagExitCode"
+			],
+			"properties": {
+				"commandId": {
+					"type": "string",
+					"const": "moon-affected-query"
+				},
+				"queryArgv": {
+					"type": "array",
+					"minItems": 4,
+					"items": {
+						"type": "string"
+					}
+				},
+				"workspaceProjects": {
+					"type": "string",
+					"minLength": 1
+				},
+				"leafProjects": {
+					"type": "string",
+					"minLength": 1
+				},
+				"deepProjects": {
+					"type": "string",
+					"minLength": 1
+				},
+				"emptyStdinProjects": {
+					"type": "string"
+				},
+				"emptyStdinDirtyProjects": {
+					"type": "string",
+					"minLength": 1
+				},
+				"jsonFlagExitCode": {
+					"type": "number",
+					"minimum": 1
+				}
+			}
+		},
+		"selector": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "cases"],
+			"properties": {
+				"commandId": {
+					"type": "string",
+					"const": "selector-live"
+				},
+				"cases": {
+					"type": "array",
+					"minItems": 5,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"name",
+							"mode",
+							"reason",
+							"selected",
+							"universe",
+							"moonConsulted"
+						],
+						"properties": {
+							"name": {
+								"type": "string",
+								"minLength": 1
+							},
+							"mode": {
+								"type": "string",
+								"enum": ["full", "narrow"]
+							},
+							"reason": {
+								"type": "string",
+								"minLength": 1
+							},
+							"selected": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							},
+							"universe": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							},
+							"moonConsulted": {
+								"type": "boolean"
+							}
+						}
+					}
+				}
+			}
+		},
+		"renderFixtures": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["commandId", "fixtures"],
+			"properties": {
+				"commandId": {
+					"type": "string",
+					"const": "rendered-affected"
+				},
+				"fixtures": {
+					"type": "array",
+					"minItems": 3,
+					"maxItems": 3,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": [
+							"name",
+							"capabilityEnabled",
+							"gatedPaths",
+							"packageScripts",
+							"jobs",
+							"gateNeeds",
+							"gateContext",
+							"modeTokenPresent",
+							"selectorStepPresent",
+							"heavyLanePresent",
+							"workflowErrors",
+							"contractErrors"
+						],
+						"properties": {
+							"name": {
+								"type": "string",
+								"minLength": 1
+							},
+							"capabilityEnabled": {
+								"type": "boolean"
+							},
+							"gatedPaths": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							},
+							"packageScripts": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							},
+							"jobs": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							},
+							"gateNeeds": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							},
+							"gateContext": {
+								"type": "string",
+								"minLength": 1
+							},
+							"modeTokenPresent": {
+								"type": "boolean"
+							},
+							"selectorStepPresent": {
+								"type": "boolean"
+							},
+							"heavyLanePresent": {
+								"type": "boolean"
+							},
+							"workflowErrors": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							},
+							"contractErrors": {
+								"type": "array",
+								"items": {
+									"type": "string"
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"live": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["live-gate-full", "live-gate-moon", "live-gate-docs"],
+			"properties": {
+				"live-gate-full": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"commandId",
+						"mode",
+						"reason",
+						"selectionLine",
+						"universeLine",
+						"shadowNarration",
+						"heavyLaneRan",
+						"run"
+					],
+					"properties": {
+						"commandId": {
+							"type": "string",
+							"minLength": 1
+						},
+						"mode": {
+							"type": "string",
+							"enum": ["full", "narrow"]
+						},
+						"reason": {
+							"type": "string",
+							"minLength": 1
+						},
+						"selectionLine": {
+							"type": "string",
+							"minLength": 1
+						},
+						"universeLine": {
+							"type": "string",
+							"minLength": 1
+						},
+						"shadowNarration": {
+							"type": "boolean"
+						},
+						"heavyLaneRan": {
+							"type": "boolean"
+						},
+						"run": {
+							"type": "object",
+							"additionalProperties": false,
+							"required": [
+								"runId",
+								"url",
+								"event",
+								"headBranch",
+								"headSha",
+								"baseSha",
+								"conclusion",
+								"gateJobId",
+								"gateConclusion",
+								"gateLogSha256",
+								"selectorJobId",
+								"selectorLogSha256",
+								"upstreamResults",
+								"jobs"
+							],
+							"properties": {
+								"runId": {
+									"type": "number",
+									"minimum": 1
+								},
+								"url": {
+									"type": "string",
+									"minLength": 1
+								},
+								"event": {
+									"type": "string",
+									"const": "pull_request"
+								},
+								"headBranch": {
+									"type": "string",
+									"minLength": 1
+								},
+								"headSha": {
+									"$ref": "#/$defs/gitSha"
+								},
+								"baseSha": {
+									"$ref": "#/$defs/gitSha"
+								},
+								"conclusion": {
+									"type": "string",
+									"const": "success"
+								},
+								"gateJobId": {
+									"type": "number",
+									"minimum": 1
+								},
+								"gateConclusion": {
+									"type": "string",
+									"const": "success"
+								},
+								"gateLogSha256": {
+									"$ref": "#/$defs/sha256"
+								},
+								"selectorJobId": {
+									"type": "number",
+									"minimum": 1
+								},
+								"selectorLogSha256": {
+									"$ref": "#/$defs/sha256"
+								},
+								"upstreamResults": {
+									"type": "string",
+									"minLength": 1
+								},
+								"jobs": {
+									"type": "array",
+									"minItems": 1,
+									"items": {
+										"type": "object",
+										"additionalProperties": false,
+										"required": ["name", "conclusion"],
+										"properties": {
+											"name": {
+												"type": "string",
+												"minLength": 1
+											},
+											"conclusion": {
+												"type": "string",
+												"minLength": 1
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"live-gate-moon": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"commandId",
+						"mode",
+						"reason",
+						"selectionLine",
+						"universeLine",
+						"shadowNarration",
+						"heavyLaneRan",
+						"run"
+					],
+					"properties": {
+						"commandId": {
+							"type": "string",
+							"minLength": 1
+						},
+						"mode": {
+							"type": "string",
+							"enum": ["full", "narrow"]
+						},
+						"reason": {
+							"type": "string",
+							"minLength": 1
+						},
+						"selectionLine": {
+							"type": "string",
+							"minLength": 1
+						},
+						"universeLine": {
+							"type": "string",
+							"minLength": 1
+						},
+						"shadowNarration": {
+							"type": "boolean"
+						},
+						"heavyLaneRan": {
+							"type": "boolean"
+						},
+						"run": {
+							"type": "object",
+							"additionalProperties": false,
+							"required": [
+								"runId",
+								"url",
+								"event",
+								"headBranch",
+								"headSha",
+								"baseSha",
+								"conclusion",
+								"gateJobId",
+								"gateConclusion",
+								"gateLogSha256",
+								"selectorJobId",
+								"selectorLogSha256",
+								"upstreamResults",
+								"jobs"
+							],
+							"properties": {
+								"runId": {
+									"type": "number",
+									"minimum": 1
+								},
+								"url": {
+									"type": "string",
+									"minLength": 1
+								},
+								"event": {
+									"type": "string",
+									"const": "pull_request"
+								},
+								"headBranch": {
+									"type": "string",
+									"minLength": 1
+								},
+								"headSha": {
+									"$ref": "#/$defs/gitSha"
+								},
+								"baseSha": {
+									"$ref": "#/$defs/gitSha"
+								},
+								"conclusion": {
+									"type": "string",
+									"const": "success"
+								},
+								"gateJobId": {
+									"type": "number",
+									"minimum": 1
+								},
+								"gateConclusion": {
+									"type": "string",
+									"const": "success"
+								},
+								"gateLogSha256": {
+									"$ref": "#/$defs/sha256"
+								},
+								"selectorJobId": {
+									"type": "number",
+									"minimum": 1
+								},
+								"selectorLogSha256": {
+									"$ref": "#/$defs/sha256"
+								},
+								"upstreamResults": {
+									"type": "string",
+									"minLength": 1
+								},
+								"jobs": {
+									"type": "array",
+									"minItems": 1,
+									"items": {
+										"type": "object",
+										"additionalProperties": false,
+										"required": ["name", "conclusion"],
+										"properties": {
+											"name": {
+												"type": "string",
+												"minLength": 1
+											},
+											"conclusion": {
+												"type": "string",
+												"minLength": 1
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				},
+				"live-gate-docs": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"commandId",
+						"mode",
+						"reason",
+						"selectionLine",
+						"universeLine",
+						"shadowNarration",
+						"heavyLaneRan",
+						"run"
+					],
+					"properties": {
+						"commandId": {
+							"type": "string",
+							"minLength": 1
+						},
+						"mode": {
+							"type": "string",
+							"enum": ["full", "narrow"]
+						},
+						"reason": {
+							"type": "string",
+							"minLength": 1
+						},
+						"selectionLine": {
+							"type": "string",
+							"minLength": 1
+						},
+						"universeLine": {
+							"type": "string",
+							"minLength": 1
+						},
+						"shadowNarration": {
+							"type": "boolean"
+						},
+						"heavyLaneRan": {
+							"type": "boolean"
+						},
+						"run": {
+							"type": "object",
+							"additionalProperties": false,
+							"required": [
+								"runId",
+								"url",
+								"event",
+								"headBranch",
+								"headSha",
+								"baseSha",
+								"conclusion",
+								"gateJobId",
+								"gateConclusion",
+								"gateLogSha256",
+								"selectorJobId",
+								"selectorLogSha256",
+								"upstreamResults",
+								"jobs"
+							],
+							"properties": {
+								"runId": {
+									"type": "number",
+									"minimum": 1
+								},
+								"url": {
+									"type": "string",
+									"minLength": 1
+								},
+								"event": {
+									"type": "string",
+									"const": "pull_request"
+								},
+								"headBranch": {
+									"type": "string",
+									"minLength": 1
+								},
+								"headSha": {
+									"$ref": "#/$defs/gitSha"
+								},
+								"baseSha": {
+									"$ref": "#/$defs/gitSha"
+								},
+								"conclusion": {
+									"type": "string",
+									"const": "success"
+								},
+								"gateJobId": {
+									"type": "number",
+									"minimum": 1
+								},
+								"gateConclusion": {
+									"type": "string",
+									"const": "success"
+								},
+								"gateLogSha256": {
+									"$ref": "#/$defs/sha256"
+								},
+								"selectorJobId": {
+									"type": "number",
+									"minimum": 1
+								},
+								"selectorLogSha256": {
+									"$ref": "#/$defs/sha256"
+								},
+								"upstreamResults": {
+									"type": "string",
+									"minLength": 1
+								},
+								"jobs": {
+									"type": "array",
+									"minItems": 1,
+									"items": {
+										"type": "object",
+										"additionalProperties": false,
+										"required": ["name", "conclusion"],
+										"properties": {
+											"name": {
+												"type": "string",
+												"minLength": 1
+											},
+											"conclusion": {
+												"type": "string",
+												"minLength": 1
+											}
+										}
+									}
+								}
+							}
+						}
+					}
+				}
+			}
+		},
+		"coverage": {
+			"type": "array",
+			"minItems": 8,
+			"maxItems": 8,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["id", "task", "reason", "commandIds"],
+				"properties": {
+					"id": {
+						"type": "string",
+						"minLength": 1
+					},
+					"task": {
+						"type": "string",
+						"minLength": 1
+					},
+					"reason": {
+						"type": "string",
+						"minLength": 40
+					},
+					"commandIds": {
+						"type": "array",
+						"minItems": 1,
+						"items": {
+							"type": "string"
+						}
+					}
+				}
+			}
+		},
+		"rollback": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"mode",
+				"command",
+				"outsideTheTree",
+				"containerRebuildRequired",
+				"scope",
+				"proof"
+			],
+			"properties": {
+				"mode": {
+					"type": "string",
+					"const": "atomic"
+				},
+				"command": {
+					"$ref": "#/$defs/command"
+				},
+				"outsideTheTree": {
+					"type": "array",
+					"minItems": 1,
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"containerRebuildRequired": {
+					"type": "boolean",
+					"const": false
+				},
+				"scope": {
+					"type": "string",
+					"minLength": 80
+				},
+				"proof": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": [
+						"commandId",
+						"predecessorSha",
+						"implementationSha",
+						"syntheticMergeSha",
+						"syntheticMergeTree",
+						"syntheticMergeParents",
+						"predecessorTree",
+						"revertedTree",
+						"treeMatchesPredecessor",
+						"operations",
+						"addedPaths",
+						"addedPathsRemoved"
+					],
+					"properties": {
+						"commandId": {
+							"type": "string",
+							"const": "rollback-proof"
+						},
+						"predecessorSha": {
+							"$ref": "#/$defs/gitSha"
+						},
+						"implementationSha": {
+							"$ref": "#/$defs/gitSha"
+						},
+						"syntheticMergeSha": {
+							"$ref": "#/$defs/gitSha"
+						},
+						"syntheticMergeTree": {
+							"$ref": "#/$defs/gitSha"
+						},
+						"syntheticMergeParents": {
+							"type": "array",
+							"minItems": 2,
+							"maxItems": 2,
+							"items": {
+								"$ref": "#/$defs/gitSha"
+							}
+						},
+						"predecessorTree": {
+							"$ref": "#/$defs/gitSha"
+						},
+						"revertedTree": {
+							"$ref": "#/$defs/gitSha"
+						},
+						"treeMatchesPredecessor": {
+							"type": "boolean",
+							"const": true
+						},
+						"operations": {
+							"type": "array",
+							"minItems": 1,
+							"items": {
+								"$ref": "#/$defs/command"
+							}
+						},
+						"addedPaths": {
+							"type": "array",
+							"minItems": 4,
+							"maxItems": 4,
+							"items": {
+								"type": "string"
+							}
+						},
+						"addedPathsRemoved": {
+							"type": "boolean",
+							"const": true
+						}
+					}
+				}
+			}
+		}
+	},
+	"$defs": {
+		"gitSha": {
+			"type": "string",
+			"pattern": "^[0-9a-f]{40}$"
+		},
+		"sha256": {
+			"type": "string",
+			"pattern": "^[0-9a-f]{64}$"
+		},
+		"version": {
+			"type": "string",
+			"minLength": 1
+		},
+		"command": {
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"type": "string"
+			}
+		},
+		"commandResult": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"command",
+				"runId",
+				"startedAt",
+				"completedAt",
+				"durationMs",
+				"stdoutPath",
+				"stderrPath",
+				"stdoutSha256",
+				"stderrSha256",
+				"exitCode",
+				"status"
+			],
+			"properties": {
+				"id": {
+					"type": "string",
+					"minLength": 1
+				},
+				"command": {
+					"$ref": "#/$defs/command"
+				},
+				"runId": {
+					"type": "string",
+					"minLength": 1
+				},
+				"startedAt": {
+					"type": "string",
+					"format": "date-time"
+				},
+				"completedAt": {
+					"type": "string",
+					"format": "date-time"
+				},
+				"durationMs": {
+					"type": "number",
+					"minimum": 1
+				},
+				"stdoutPath": {
+					"type": "string",
+					"minLength": 1
+				},
+				"stderrPath": {
+					"type": "string",
+					"minLength": 1
+				},
+				"stdoutSha256": {
+					"$ref": "#/$defs/sha256"
+				},
+				"stderrSha256": {
+					"$ref": "#/$defs/sha256"
+				},
+				"exitCode": {
+					"type": "number",
+					"const": 0
+				},
+				"status": {
+					"type": "string",
+					"const": "pass"
+				}
+			}
+		}
+	}
+}

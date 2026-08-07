@@ -1,0 +1,6 @@
+workspaceProjects=admin,base,root,ui,web
+leafProjects=root,web
+deepProjects=base,root,ui,web
+emptyStdinProjects=
+emptyStdinDirtyProjects=admin,root
+jsonFlagExitCode=2

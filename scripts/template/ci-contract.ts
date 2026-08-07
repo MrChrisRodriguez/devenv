@@ -48,6 +48,28 @@ const MOON_ACTION_DIRECTORY = `${ACTION_DIRECTORY}/setup-moon`;
 const MOON_ACTION = `${MOON_ACTION_DIRECTORY}/action.yml`;
 const GRAPH_JOB = "moon-graph";
 
+// The job that decides which entries the heavy lane's matrix has, and the job
+// ids that must never read it.
+//
+// Only the ID is named here, never the capability or the mode variable: this
+// file is copied into EVERY rendered project, and the anti-residue scan is a
+// plain substring search for a disabled capability's signature tokens over
+// every file of that render. A job id is not a signature token; the mode
+// variable is, which is why every mode-aware rule lives in the gated
+// affected-contract module instead.
+const SELECTOR_JOB = "affected";
+
+// A selection decides what is CHECKED. A job that ships, tags or promotes
+// something must run against the whole tree, because "this pull request did not
+// touch that project" is a statement about a diff and not about a release. The
+// rule is a negative requirement: no such job exists here today, and it is
+// encoded so that adding one wired to the selector is rejected rather than
+// reviewed.
+const DELIVERY_JOB = /deploy|release|publish|promote/;
+
+const NEEDS_OUTPUT = /needs\.([A-Za-z0-9_-]+)\.outputs\./g;
+const FROM_JSON = /fromJSON\s*\(/g;
+
 // Jobs that are allowed to claim ownership of repository history. `fetch-depth`
 // is cheap to add and expensive to reason about: a second job that deepens its
 // clone means two jobs now depend on ancestry and neither says why. Every entry
@@ -58,6 +80,18 @@ const HISTORY_OWNERS = [
 		job: "ci",
 		reason:
 			"template:validate re-checks sealed ancestry with git merge-base --is-ancestor",
+	},
+	{
+		workflow: ".github/workflows/ci.yml",
+		job: "affected",
+		reason:
+			"the affected diff needs the pull request's true merge base, which a shallow clone cannot resolve",
+	},
+	{
+		workflow: ".github/workflows/ci.yml",
+		job: "project",
+		reason:
+			"the suite this job runs re-checks sealed evidence ancestry with git merge-base --is-ancestor and builds synthetic merges, neither of which a shallow clone can answer",
 	},
 ] as const;
 
@@ -82,6 +116,12 @@ const FOREIGN_RUNTIMES = [
 // is over every file under .github rather than over a job's `env:` block alone.
 const REMOTE_EXECUTION = /MOON_REMOTE_[A-Z0-9_]*/;
 
+// The runner variable a job's outputs are written through, assembled at
+// runtime so this file is not itself a match for the scan below. A guard that
+// matched its own source would need a path exemption, and a path exemption is a
+// hole somebody eventually widens.
+const OUTPUT_VARIABLE = ["GITHUB", "OUTPUT"].join("_");
+
 const IMMUTABLE_REFERENCE = /@[0-9a-f]{40}$/;
 const RUNNER_EXPRESSION = /\$\{\{\s*(?:env|secrets|vars|needs|matrix)\./;
 const BUN_CACHE_PATH = /^\s+~\/\.bun\/install\/cache\s*$/m;
@@ -104,6 +144,7 @@ interface Job {
 	needs?: string | string[];
 	if?: string;
 	steps?: Step[];
+	strategy?: unknown;
 	"timeout-minutes"?: unknown;
 }
 
@@ -461,6 +502,52 @@ function trackedFiles(root: string, pattern: string): string[] | undefined {
 	return result.stdout.toString().split("\0").filter(Boolean);
 }
 
+// Every tracked file that writes a value into a job's outputs. `git grep`
+// rather than a directory walk for the same reason `trackedFiles` uses Git: the
+// scan has to see exactly what a clone receives. Exit 1 is "no match", exit 0
+// is "these files"; anything else means this tree is not a repository and the
+// scan abstains rather than reporting a clean result it never established.
+// The scope is the file types a runner can EXECUTE. That is not an exemption
+// list — prose cannot write a job output, so a changelog entry explaining this
+// very rule is not a second selector, and narrowing to executables is what lets
+// the rule stay free of per-path escapes.
+const EXECUTABLE_PATHSPECS = [
+	"*.sh",
+	"*.bash",
+	"*.ts",
+	"*.tsx",
+	"*.js",
+	"*.mjs",
+	"*.cjs",
+	"*.py",
+	"*.yml",
+	"*.yaml",
+] as const;
+
+function outputWriters(root: string, needle: string): string[] | undefined {
+	const result = Bun.spawnSync(
+		[
+			"git",
+			"-C",
+			root,
+			"grep",
+			"-I",
+			"-l",
+			"-F",
+			needle,
+			"--",
+			...EXECUTABLE_PATHSPECS,
+		],
+		{
+			stdout: "pipe",
+			stderr: "pipe",
+		},
+	);
+	if (result.exitCode === 1) return [];
+	if (result.exitCode !== 0) return undefined;
+	return result.stdout.toString().split("\n").filter(Boolean).sort();
+}
+
 export async function validateCiContract(
 	root = resolve(import.meta.dir, "../.."),
 ): Promise<string[]> {
@@ -627,6 +714,46 @@ export async function validateCiContract(
 				errors.push(
 					`ci: ${path} job ${GRAPH_JOB} must reach moon through the committed action`,
 				);
+
+			// --- Outputs, and who may read them ------------------------------
+			// A job that reads another job's outputs but does not declare it in
+			// `needs` reads EMPTY rather than failing: GitHub populates the
+			// context from declared dependencies only. So the lane starts
+			// silently, with a matrix built from nothing, and looks exactly like
+			// a lane that had nothing to do.
+			const consumed = new Set<string>();
+			for (const match of JSON.stringify(job).matchAll(NEEDS_OUTPUT))
+				if (match[1]) consumed.add(match[1]);
+			const declared = new Set(needsOf(job));
+			for (const producer of consumed) {
+				if (!declared.has(producer))
+					errors.push(
+						`ci: ${path} job ${id} reads outputs from ${producer} without declaring it in needs`,
+					);
+			}
+			// A selection decides what is CHECKED, never what is SHIPPED. "This
+			// pull request did not touch that project" is a statement about a
+			// diff, and a delivery lane that believed it would ship a tree
+			// nothing verified.
+			if (
+				consumed.has(SELECTOR_JOB) &&
+				(DELIVERY_JOB.test(id) || Object.hasOwn(job, "environment"))
+			)
+				errors.push(
+					`ci: ${path} job ${id} delivers and must not select what it runs`,
+				);
+			// `fromJSON` turns a string into structure. Anywhere but a matrix
+			// value that is a decision made from data the job did not compute,
+			// and the one place it is legitimate is the place a selection is
+			// consumed.
+			const strategy = isRecord(job["strategy"]) ? job["strategy"] : {};
+			const matrix = isRecord(strategy["matrix"]) ? strategy["matrix"] : {};
+			const calls = (text: string): number =>
+				[...text.matchAll(FROM_JSON)].length;
+			if (calls(JSON.stringify(job)) !== calls(JSON.stringify(matrix)))
+				errors.push(
+					`ci: ${path} job ${id} may only call fromJSON in a matrix value`,
+				);
 		}
 	}
 
@@ -747,6 +874,14 @@ export async function validateCiContract(
 			errors.push(
 				"ci: the aggregate gate must depend on the moon graph oracle",
 			);
+		// Named separately for the same reason, and it is the sharper case. A
+		// selector that failed makes the lanes below it SKIP, and a skipped lane
+		// reads as a pass to the verdict script — so a selection nothing gates on
+		// is a page that goes green precisely when the selection was wrong.
+		if (Object.hasOwn(jobs, SELECTOR_JOB) && !declared.includes(SELECTOR_JOB))
+			errors.push(
+				"ci: the aggregate gate must depend on the affected selector",
+			);
 		const verdict = stepsOf(gate).at(-1);
 		const environment = isRecord(verdict?.env) ? verdict.env : {};
 		// The verdict is derived from join(needs.*.result) rather than from a
@@ -864,6 +999,18 @@ export async function validateCiContract(
 			}
 		}
 	}
+
+	// One selector, or none. A job's outputs decide what the lanes downstream of
+	// it run, so two files writing them are two authorities on "what must be
+	// checked" — and they disagree exactly once, quietly, in the direction of
+	// running less. The rule is deliberately "at most one" rather than "exactly
+	// one": a project that selects nothing has no writer at all, and demanding
+	// one would make the absence of a feature a contract violation.
+	const writers = outputWriters(root, OUTPUT_VARIABLE);
+	if (writers !== undefined && writers.length > 1)
+		errors.push(
+			`ci: only one committed file may write job outputs; found ${writers.join(", ")}`,
+		);
 
 	// Wiring. The guard is only a guard if something runs it.
 	for (const path of [GUARD_CONTRACT, GUARD_ENTRYPOINT]) {

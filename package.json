@@ -64,6 +64,8 @@
 		"cloud:check": "bun scripts/template/validate-cloud.ts",
 		"worktree:check": "bun scripts/template/validate-worktree.ts",
 		"toolchain:check": "bun scripts/template/validate-toolchain.ts",
+		"affected:check": "bun scripts/template/validate-affected.ts",
+		"affected:select": "bun scripts/template/select-affected.ts",
 		"graph:check": "bun scripts/template/validate-graph.ts",
 		"graph:generate": "bun scripts/template/generate-graph.ts"
 	},

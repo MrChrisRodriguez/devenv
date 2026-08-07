@@ -1,0 +1,698 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-8b-affected-selection",
+	"capturedAt": "2026-08-07T03:23:09.690Z",
+	"run": {
+		"id": "stage8b-20260807t032252z-dfe440a0",
+		"logRoot": "evidence/stage-8b-affected-selection-run"
+	},
+	"source": {
+		"baseSha": "70b3690ec038088db03b66c57e5d4d3e72710f0b",
+		"implementationSha": "dfe440a098fdbb85b335dfe42a0f6974ed3a5483",
+		"treeClean": true,
+		"prototoolsMoon": "2.3.5"
+	},
+	"host": {
+		"os": "linux",
+		"architecture": "aarch64",
+		"kernel": "7.0.11-orbstack-00360-gc9bc4d96ac70",
+		"insideDevcontainer": true,
+		"moonVersion": "2.3.5",
+		"bunVersion": "1.3.13",
+		"ghVersion": "2.97.0"
+	},
+	"repository": {
+		"nameWithOwner": "MrChrisRodriguez/devenv",
+		"workflowFile": ".github/workflows/ci.yml",
+		"gateJobId": "ci-gate",
+		"gateContext": "CI gate",
+		"gateNeeds": [
+			"ci",
+			"image",
+			"affected",
+			"project",
+			"moon-graph",
+			"browser"
+		],
+		"selectorJobId": "affected",
+		"selectorJobName": "Select affected projects",
+		"projectJobId": "project",
+		"projectJobName": "Lint, Typecheck & Test",
+		"modeVariable": "MOON_AFFECTED_MODE",
+		"initialMode": "full",
+		"capability": "moon_affected_selection"
+	},
+	"commands": [
+		{
+			"id": "affected-guard",
+			"command": ["bun", "run", "affected:check"],
+			"runId": "stage8b-20260807t032252z-dfe440a0",
+			"startedAt": "2026-08-07T03:22:52.164Z",
+			"completedAt": "2026-08-07T03:22:52.240Z",
+			"durationMs": 76,
+			"stdoutPath": "evidence/stage-8b-affected-selection-run/affected-guard.stdout",
+			"stderrPath": "evidence/stage-8b-affected-selection-run/affected-guard.stderr",
+			"stdoutSha256": "5535571a19fb6364dfd25a7ba1cbbf6f2440f30f480c20edf1ea8d54bdaa7be0",
+			"stderrSha256": "007757b75b2084dd7c9f2725aefeb8ae463df37c36259baefe5ea95ff4f16c77",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "affected-mutations",
+			"command": ["bun", "test", "scripts/template/__tests__/affected.test.ts"],
+			"runId": "stage8b-20260807t032252z-dfe440a0",
+			"startedAt": "2026-08-07T03:22:52.241Z",
+			"completedAt": "2026-08-07T03:22:54.253Z",
+			"durationMs": 2012,
+			"stdoutPath": "evidence/stage-8b-affected-selection-run/affected-mutations.stdout",
+			"stderrPath": "evidence/stage-8b-affected-selection-run/affected-mutations.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "bf0ea8e4493d175935f8092f8fa361dfe00e865308a8bb975092908c33ff20e5",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "ci-guard",
+			"command": ["bun", "run", "ci:check"],
+			"runId": "stage8b-20260807t032252z-dfe440a0",
+			"startedAt": "2026-08-07T03:22:54.253Z",
+			"completedAt": "2026-08-07T03:22:54.287Z",
+			"durationMs": 34,
+			"stdoutPath": "evidence/stage-8b-affected-selection-run/ci-guard.stdout",
+			"stderrPath": "evidence/stage-8b-affected-selection-run/ci-guard.stderr",
+			"stdoutSha256": "9cfe650e97435463f535e1a81f5b30b1ab521cfb458af04688f901be57a294f9",
+			"stderrSha256": "d183538a63c244d8ba196aa5a8eb1eb4cfc636414a9ba546e4cfb9b3537e4088",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "workflow-policy-mutations",
+			"command": ["bun", "test", "scripts/template/__tests__/ci.test.ts"],
+			"runId": "stage8b-20260807t032252z-dfe440a0",
+			"startedAt": "2026-08-07T03:22:54.287Z",
+			"completedAt": "2026-08-07T03:22:57.986Z",
+			"durationMs": 3699,
+			"stdoutPath": "evidence/stage-8b-affected-selection-run/workflow-policy-mutations.stdout",
+			"stderrPath": "evidence/stage-8b-affected-selection-run/workflow-policy-mutations.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "a9836daff7ff4fb9f463ab2b525c257e3c6cede27484a5033092e5897629487f",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "moon-toolchain",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nprintf 'moonVersion=%s\\n' \"$(moon --version | awk '{ print $2 }')\"\nprintf 'prototoolsMoon=%s\\n' \"$(sed -n 's/^moon = \"\\([^\"]*\\)\"[[:space:]]*$/\\1/p' .prototools | head -n 1)\"\nprintf 'bunVersion=%s\\n' \"$(bun --version)\""
+			],
+			"runId": "stage8b-20260807t032252z-dfe440a0",
+			"startedAt": "2026-08-07T03:22:57.986Z",
+			"completedAt": "2026-08-07T03:22:58.030Z",
+			"durationMs": 44,
+			"stdoutPath": "evidence/stage-8b-affected-selection-run/moon-toolchain.stdout",
+			"stderrPath": "evidence/stage-8b-affected-selection-run/moon-toolchain.stderr",
+			"stdoutSha256": "b5f427f2513988c532e7d0b7eb115b68cd01240807db2c20932f1a161ffc5591",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "moon-affected-query",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-eight-b-evidence.ts",
+				"probe-moon-affected",
+				"--argv",
+				"query projects --affected --downstream deep --quiet",
+				"--workspace",
+				"/tmp/devenv-stage8b-20260807t032252z-dfe440a0-moon"
+			],
+			"runId": "stage8b-20260807t032252z-dfe440a0",
+			"startedAt": "2026-08-07T03:22:58.030Z",
+			"completedAt": "2026-08-07T03:22:58.742Z",
+			"durationMs": 712,
+			"stdoutPath": "evidence/stage-8b-affected-selection-run/moon-affected-query.stdout",
+			"stderrPath": "evidence/stage-8b-affected-selection-run/moon-affected-query.stderr",
+			"stdoutSha256": "34b9dd156eb35fcee650217f40abf3eda13a96a888281f75ecb9c5bd4ad7c89f",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "selector-live",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-eight-b-evidence.ts",
+				"probe-selector",
+				"--workspace",
+				"/tmp/devenv-stage8b-20260807t032252z-dfe440a0-selector"
+			],
+			"runId": "stage8b-20260807t032252z-dfe440a0",
+			"startedAt": "2026-08-07T03:22:58.743Z",
+			"completedAt": "2026-08-07T03:22:59.083Z",
+			"durationMs": 340,
+			"stdoutPath": "evidence/stage-8b-affected-selection-run/selector-live.stdout",
+			"stderrPath": "evidence/stage-8b-affected-selection-run/selector-live.stderr",
+			"stdoutSha256": "edca99905edc1e0f63bc1bcfe39e6896a7ed7ba721e7aef066ff825fdc3559da",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rendered-affected",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-eight-b-evidence.ts",
+				"probe-render-affected",
+				"--workspace",
+				"/tmp/devenv-stage8b-20260807t032252z-dfe440a0-render"
+			],
+			"runId": "stage8b-20260807t032252z-dfe440a0",
+			"startedAt": "2026-08-07T03:22:59.084Z",
+			"completedAt": "2026-08-07T03:22:59.560Z",
+			"durationMs": 476,
+			"stdoutPath": "evidence/stage-8b-affected-selection-run/rendered-affected.stdout",
+			"stderrPath": "evidence/stage-8b-affected-selection-run/rendered-affected.stderr",
+			"stdoutSha256": "eba050063ebc07090838ad10b00b8cc87517794ac8be05871004c2e41c308f40",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-gate-full",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nrun=\"$(gh run view 31143466753 --repo MrChrisRodriguez/devenv --json conclusion,createdAt,databaseId,event,headBranch,headSha,jobs,status,url,workflowName)\"\nprintf 'runJson=%s\\n' \"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\ngate=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; jobs=[job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]]; print(jobs[0] if jobs else \"\")' \"CI gate\")\"\nprintf 'gateJobId=%s\\n' \"$gate\"\nlog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$gate\" --log)\"\nprintf 'gateLogSha256=%s\\n' \"$(printf '%s' \"$log\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'upstreamResults=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*upstream results: //p' | head -n 1)\"\nprintf 'gateGreenLines=%s\\n' \"$(printf '%s\\n' \"$log\" | grep -c 'Every required job passed or was skipped' || true)\"\nselector=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; jobs=[job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]]; print(jobs[0] if jobs else \"\")' \"Select affected projects\")\"\nprintf 'selectorJobId=%s\\n' \"$selector\"\nselectorLog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$selector\" --log)\"\nprintf 'selectorLogSha256=%s\\n' \"$(printf '%s' \"$selectorLog\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'selectionLine=%s\\n' \"$(printf '%s\\n' \"$selectorLog\" | sed -n 's/.*\\(selection: [a-z]* ([a-z-]*)\\).*/\\1/p' | head -n 1)\"\nprintf 'shadowLines=%s\\n' \"$(printf '%s\\n' \"$selectorLog\" | grep -c 'would have selected' || true)\"\nprintf 'universeLine=%s\\n' \"$(printf '%s\\n' \"$selectorLog\" | sed -n 's/.*\\(ci = \\[[^]]*\\]\\).*/\\1/p' | head -n 1)\""
+			],
+			"runId": "stage8b-20260807t032252z-dfe440a0",
+			"startedAt": "2026-08-07T03:22:59.561Z",
+			"completedAt": "2026-08-07T03:23:02.727Z",
+			"durationMs": 3166,
+			"stdoutPath": "evidence/stage-8b-affected-selection-run/live-gate-full.stdout",
+			"stderrPath": "evidence/stage-8b-affected-selection-run/live-gate-full.stderr",
+			"stdoutSha256": "e3e28d7205ede85383e195ba6144b32da639259cf1dab1158747c56b749905a1",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-gate-moon",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nrun=\"$(gh run view 31143704124 --repo MrChrisRodriguez/devenv --json conclusion,createdAt,databaseId,event,headBranch,headSha,jobs,status,url,workflowName)\"\nprintf 'runJson=%s\\n' \"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\ngate=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; jobs=[job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]]; print(jobs[0] if jobs else \"\")' \"CI gate\")\"\nprintf 'gateJobId=%s\\n' \"$gate\"\nlog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$gate\" --log)\"\nprintf 'gateLogSha256=%s\\n' \"$(printf '%s' \"$log\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'upstreamResults=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*upstream results: //p' | head -n 1)\"\nprintf 'gateGreenLines=%s\\n' \"$(printf '%s\\n' \"$log\" | grep -c 'Every required job passed or was skipped' || true)\"\nselector=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; jobs=[job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]]; print(jobs[0] if jobs else \"\")' \"Select affected projects\")\"\nprintf 'selectorJobId=%s\\n' \"$selector\"\nselectorLog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$selector\" --log)\"\nprintf 'selectorLogSha256=%s\\n' \"$(printf '%s' \"$selectorLog\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'selectionLine=%s\\n' \"$(printf '%s\\n' \"$selectorLog\" | sed -n 's/.*\\(selection: [a-z]* ([a-z-]*)\\).*/\\1/p' | head -n 1)\"\nprintf 'shadowLines=%s\\n' \"$(printf '%s\\n' \"$selectorLog\" | grep -c 'would have selected' || true)\"\nprintf 'universeLine=%s\\n' \"$(printf '%s\\n' \"$selectorLog\" | sed -n 's/.*\\(ci = \\[[^]]*\\]\\).*/\\1/p' | head -n 1)\""
+			],
+			"runId": "stage8b-20260807t032252z-dfe440a0",
+			"startedAt": "2026-08-07T03:23:02.727Z",
+			"completedAt": "2026-08-07T03:23:06.461Z",
+			"durationMs": 3734,
+			"stdoutPath": "evidence/stage-8b-affected-selection-run/live-gate-moon.stdout",
+			"stderrPath": "evidence/stage-8b-affected-selection-run/live-gate-moon.stderr",
+			"stdoutSha256": "8645f1bd7e357a5afbe7d6d23dbb6bf4163ca82564c7c52a798c86010bb07b43",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-gate-docs",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nrun=\"$(gh run view 31143745582 --repo MrChrisRodriguez/devenv --json conclusion,createdAt,databaseId,event,headBranch,headSha,jobs,status,url,workflowName)\"\nprintf 'runJson=%s\\n' \"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\ngate=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; jobs=[job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]]; print(jobs[0] if jobs else \"\")' \"CI gate\")\"\nprintf 'gateJobId=%s\\n' \"$gate\"\nlog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$gate\" --log)\"\nprintf 'gateLogSha256=%s\\n' \"$(printf '%s' \"$log\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'upstreamResults=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*upstream results: //p' | head -n 1)\"\nprintf 'gateGreenLines=%s\\n' \"$(printf '%s\\n' \"$log\" | grep -c 'Every required job passed or was skipped' || true)\"\nselector=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; jobs=[job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]]; print(jobs[0] if jobs else \"\")' \"Select affected projects\")\"\nprintf 'selectorJobId=%s\\n' \"$selector\"\nselectorLog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$selector\" --log)\"\nprintf 'selectorLogSha256=%s\\n' \"$(printf '%s' \"$selectorLog\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'selectionLine=%s\\n' \"$(printf '%s\\n' \"$selectorLog\" | sed -n 's/.*\\(selection: [a-z]* ([a-z-]*)\\).*/\\1/p' | head -n 1)\"\nprintf 'shadowLines=%s\\n' \"$(printf '%s\\n' \"$selectorLog\" | grep -c 'would have selected' || true)\"\nprintf 'universeLine=%s\\n' \"$(printf '%s\\n' \"$selectorLog\" | sed -n 's/.*\\(ci = \\[[^]]*\\]\\).*/\\1/p' | head -n 1)\""
+			],
+			"runId": "stage8b-20260807t032252z-dfe440a0",
+			"startedAt": "2026-08-07T03:23:06.462Z",
+			"completedAt": "2026-08-07T03:23:09.305Z",
+			"durationMs": 2843,
+			"stdoutPath": "evidence/stage-8b-affected-selection-run/live-gate-docs.stdout",
+			"stderrPath": "evidence/stage-8b-affected-selection-run/live-gate-docs.stderr",
+			"stdoutSha256": "f4d7e2f9c214f57930fcf27fede002778d31816eecfdd34562510358e08ec588",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rollback-proof",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-eight-b-evidence.ts",
+				"probe-rollback",
+				"--base",
+				"70b3690ec038088db03b66c57e5d4d3e72710f0b",
+				"--implementation",
+				"dfe440a098fdbb85b335dfe42a0f6974ed3a5483",
+				"--workspace",
+				"/tmp/devenv-stage2-stage8b-20260807t032252z-dfe440a0-rollback"
+			],
+			"runId": "stage8b-20260807t032252z-dfe440a0",
+			"startedAt": "2026-08-07T03:23:09.305Z",
+			"completedAt": "2026-08-07T03:23:09.686Z",
+			"durationMs": 381,
+			"stdoutPath": "evidence/stage-8b-affected-selection-run/rollback-proof.stdout",
+			"stderrPath": "evidence/stage-8b-affected-selection-run/rollback-proof.stderr",
+			"stdoutSha256": "9256d95f6534a4337c8111f061e6415424165d7501aa5e3c3a94595c574b426a",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		}
+	],
+	"guards": {
+		"affected": {
+			"commandId": "affected-guard",
+			"command": "bun run affected:check",
+			"summary": "Validated affected-selection guard wiring, matrix universe registry, template ownership, and the recorded initial selection mode."
+		},
+		"affectedMutations": {
+			"commandId": "affected-mutations",
+			"testFile": "scripts/template/__tests__/affected.test.ts",
+			"passCount": 25,
+			"failCount": 0
+		},
+		"ci": {
+			"commandId": "ci-guard",
+			"command": "bun run ci:check",
+			"summary": "Validated workflow trigger policy, bootstrap ownership, action pins, job bounds, failure tolerance, aggregate gate membership, shell injection surface, history ownership, compiler coverage, and guard wiring."
+		},
+		"ciMutations": {
+			"commandId": "workflow-policy-mutations",
+			"testFile": "scripts/template/__tests__/ci.test.ts",
+			"passCount": 17,
+			"failCount": 0
+		}
+	},
+	"selection": {
+		"commandId": "moon-affected-query",
+		"queryArgv": [
+			"query",
+			"projects",
+			"--affected",
+			"--downstream",
+			"deep",
+			"--quiet"
+		],
+		"workspaceProjects": "admin,base,root,ui,web",
+		"leafProjects": "root,web",
+		"deepProjects": "base,root,ui,web",
+		"emptyStdinProjects": "",
+		"emptyStdinDirtyProjects": "admin,root",
+		"jsonFlagExitCode": 2
+	},
+	"selector": {
+		"commandId": "selector-live",
+		"cases": [
+			{
+				"name": "leaf",
+				"mode": "narrow",
+				"reason": "affected",
+				"selected": ["web"],
+				"universe": ["web"],
+				"moonConsulted": true
+			},
+			{
+				"name": "deep",
+				"mode": "narrow",
+				"reason": "affected",
+				"selected": ["base", "ui", "web"],
+				"universe": ["base", "ui", "web"],
+				"moonConsulted": true
+			},
+			{
+				"name": "docs",
+				"mode": "narrow",
+				"reason": "affected",
+				"selected": [],
+				"universe": [],
+				"moonConsulted": false
+			},
+			{
+				"name": "global",
+				"mode": "full",
+				"reason": "global-input",
+				"selected": ["admin", "base", "root", "ui", "web"],
+				"universe": ["admin", "base", "root", "ui", "web"],
+				"moonConsulted": false
+			},
+			{
+				"name": "mode-off",
+				"mode": "full",
+				"reason": "mode-not-selecting",
+				"selected": ["admin", "base", "root", "ui", "web"],
+				"universe": ["admin", "base", "root", "ui", "web"],
+				"moonConsulted": false
+			}
+		]
+	},
+	"renderFixtures": {
+		"commandId": "rendered-affected",
+		"fixtures": [
+			{
+				"name": "minimal",
+				"capabilityEnabled": false,
+				"gatedPaths": [],
+				"packageScripts": [],
+				"jobs": ["affected", "ci", "ci-gate", "image", "project"],
+				"gateNeeds": ["ci", "image", "affected", "project"],
+				"gateContext": "CI gate",
+				"modeTokenPresent": false,
+				"selectorStepPresent": false,
+				"heavyLanePresent": true,
+				"workflowErrors": [],
+				"contractErrors": []
+			},
+			{
+				"name": "cloud",
+				"capabilityEnabled": false,
+				"gatedPaths": [],
+				"packageScripts": [],
+				"jobs": ["affected", "ci", "ci-gate", "image", "project"],
+				"gateNeeds": ["ci", "image", "affected", "project"],
+				"gateContext": "CI gate",
+				"modeTokenPresent": false,
+				"selectorStepPresent": false,
+				"heavyLanePresent": true,
+				"workflowErrors": [],
+				"contractErrors": []
+			},
+			{
+				"name": "full",
+				"capabilityEnabled": true,
+				"gatedPaths": [
+					"scripts/ci/affected-matrices.sh",
+					"scripts/template/affected-contract.ts",
+					"scripts/template/select-affected.ts",
+					"scripts/template/validate-affected.ts"
+				],
+				"packageScripts": ["affected:check", "affected:select"],
+				"jobs": [
+					"affected",
+					"browser",
+					"ci",
+					"ci-gate",
+					"image",
+					"moon-graph",
+					"project"
+				],
+				"gateNeeds": [
+					"ci",
+					"image",
+					"affected",
+					"project",
+					"moon-graph",
+					"browser"
+				],
+				"gateContext": "CI gate",
+				"modeTokenPresent": true,
+				"selectorStepPresent": true,
+				"heavyLanePresent": true,
+				"workflowErrors": [],
+				"contractErrors": []
+			}
+		]
+	},
+	"live": {
+		"live-gate-full": {
+			"commandId": "live-gate-full",
+			"mode": "full",
+			"reason": "mode-not-selecting",
+			"selectionLine": "selection: full (mode-not-selecting)",
+			"universeLine": "ci = [root]",
+			"shadowNarration": true,
+			"heavyLaneRan": true,
+			"run": {
+				"runId": 31143466753,
+				"url": "https://github.com/MrChrisRodriguez/devenv/actions/runs/31143466753",
+				"event": "pull_request",
+				"headBranch": "probe/stage-8b-shadow",
+				"headSha": "dfe440a098fdbb85b335dfe42a0f6974ed3a5483",
+				"baseSha": "70b3690ec038088db03b66c57e5d4d3e72710f0b",
+				"conclusion": "success",
+				"gateJobId": 92758371143,
+				"gateConclusion": "success",
+				"gateLogSha256": "aa803dfd2c6af79691a5d2686d9867c6113ce7af14f4647e81150868dc79baf0",
+				"selectorJobId": 92758014321,
+				"selectorLogSha256": "df6120a7f22d11d7d7b06a33e654f7455183b6b957f91100dc956b2a948188d4",
+				"upstreamResults": "success,success,success,success,success,success",
+				"jobs": [
+					{
+						"name": "Contracts & Baseline",
+						"conclusion": "success"
+					},
+					{
+						"name": "Select affected projects",
+						"conclusion": "success"
+					},
+					{
+						"name": "Launch baked browser payload",
+						"conclusion": "success"
+					},
+					{
+						"name": "Build devcontainer image",
+						"conclusion": "success"
+					},
+					{
+						"name": "Verify Moon project graph",
+						"conclusion": "success"
+					},
+					{
+						"name": "Lint, Typecheck & Test (root)",
+						"conclusion": "success"
+					}
+				]
+			}
+		},
+		"live-gate-moon": {
+			"commandId": "live-gate-moon",
+			"mode": "full",
+			"reason": "global-input",
+			"selectionLine": "selection: full (global-input)",
+			"universeLine": "ci = [root]",
+			"shadowNarration": false,
+			"heavyLaneRan": true,
+			"run": {
+				"runId": 31143704124,
+				"url": "https://github.com/MrChrisRodriguez/devenv/actions/runs/31143704124",
+				"event": "pull_request",
+				"headBranch": "probe/stage-8b-shadow",
+				"headSha": "dfe440a098fdbb85b335dfe42a0f6974ed3a5483",
+				"baseSha": "70b3690ec038088db03b66c57e5d4d3e72710f0b",
+				"conclusion": "success",
+				"gateJobId": 92759132680,
+				"gateConclusion": "success",
+				"gateLogSha256": "5d1e77f1850bd879a5b091f425c38be504dc28cd9e88d386faaac8130344e7c5",
+				"selectorJobId": 92758731187,
+				"selectorLogSha256": "2c5cefef9bc05a693051be7354817f5a609af92876e7cf5932176673a3a83abd",
+				"upstreamResults": "success,success,success,success,success,success",
+				"jobs": [
+					{
+						"name": "Verify Moon project graph",
+						"conclusion": "success"
+					},
+					{
+						"name": "Launch baked browser payload",
+						"conclusion": "success"
+					},
+					{
+						"name": "Select affected projects",
+						"conclusion": "success"
+					},
+					{
+						"name": "Contracts & Baseline",
+						"conclusion": "success"
+					},
+					{
+						"name": "Build devcontainer image",
+						"conclusion": "success"
+					},
+					{
+						"name": "Lint, Typecheck & Test (root)",
+						"conclusion": "success"
+					}
+				]
+			}
+		},
+		"live-gate-docs": {
+			"commandId": "live-gate-docs",
+			"mode": "narrow",
+			"reason": "affected",
+			"selectionLine": "selection: narrow (affected)",
+			"universeLine": "ci = []",
+			"shadowNarration": false,
+			"heavyLaneRan": false,
+			"run": {
+				"runId": 31143745582,
+				"url": "https://github.com/MrChrisRodriguez/devenv/actions/runs/31143745582",
+				"event": "pull_request",
+				"headBranch": "probe/stage-8b-docs",
+				"headSha": "23fbf2194f1e92daf4dc40dd25485c3f66d64920",
+				"baseSha": "dfe440a098fdbb85b335dfe42a0f6974ed3a5483",
+				"conclusion": "success",
+				"gateJobId": 92759181472,
+				"gateConclusion": "success",
+				"gateLogSha256": "37b656c9ef914ed4bb2eb7d02e6253bbe98fa960bfeea1275b2af3bf60f30018",
+				"selectorJobId": 92758852794,
+				"selectorLogSha256": "bb793572c3d893c21290f54e80e129f8e88a4c62bcbefae88e5d4f7b9c3b37b2",
+				"upstreamResults": "success,success,success,skipped,success,success",
+				"jobs": [
+					{
+						"name": "Build devcontainer image",
+						"conclusion": "success"
+					},
+					{
+						"name": "Select affected projects",
+						"conclusion": "success"
+					},
+					{
+						"name": "Contracts & Baseline",
+						"conclusion": "success"
+					},
+					{
+						"name": "Verify Moon project graph",
+						"conclusion": "success"
+					},
+					{
+						"name": "Launch baked browser payload",
+						"conclusion": "success"
+					},
+					{
+						"name": "Lint, Typecheck & Test",
+						"conclusion": "skipped"
+					}
+				]
+			}
+		}
+	},
+	"coverage": [
+		{
+			"id": "derived-selection",
+			"task": "11.1 affected set derived from the committed graph",
+			"reason": "The selector classifies every changed path with the graph oracle's own classifier and closes over reverse reachability, and the live probe shows a leaf reaching only itself while the deepest library reaches both of its transitive dependents in the same synthetic workspace.",
+			"commandIds": ["affected-guard", "affected-mutations", "selector-live"]
+		},
+		{
+			"id": "fail-open",
+			"task": "11.1 every ambiguity resolves to the full matrix",
+			"reason": "Mode, event, a malformed or unknown base or head, a failed merge-base, a failed diff, a global input and an empty diff each widen to the full universe set, and the entrypoint additionally fails open on a selector crash, a syntax error, unreadable output and a selection missing its universes.",
+			"commandIds": ["affected-guard", "affected-mutations"]
+		},
+		{
+			"id": "fail-closed",
+			"task": "11.2 the one deliberate hard failure",
+			"reason": "An unusable universe registry exits non-zero with a byte-empty output file rather than emitting an empty matrix, proved for a missing file, a parse failure, an absent universes key, an empty list, a universe with no projects, and a semantically invalid registry the shell preflight cannot see.",
+			"commandIds": ["affected-guard", "affected-mutations"]
+		},
+		{
+			"id": "moon-reconciliation",
+			"task": "11.1 moon may only widen the selection",
+			"reason": "The pinned argv is issued against the real moon inside the devcontainer and reconciled with the derived answer, the empty-stdin hazard is produced in both directions to show why the file count is guarded, and every abnormal answer including a narrower one is driven to the full matrix through a committed stand-in binary.",
+			"commandIds": ["moon-toolchain", "moon-affected-query", "selector-live"]
+		},
+		{
+			"id": "capability-isolation",
+			"task": "11.2 capability fencing of the selection surface",
+			"reason": "Each fixture is rendered and inspected for the four gated paths, both package scripts, the mode variable and the selector step, and each render is put through the workflow contract on its own terms so a rendered-only defect in the two core jobs would surface here.",
+			"commandIds": ["rendered-affected"]
+		},
+		{
+			"id": "heavy-lane-gating",
+			"task": "11.3 the heavy lane runs from the matrix",
+			"reason": "The workflow contract rejects a gate that does not depend on the selector, a matrix job that does not declare its producer, a fromJSON outside a matrix value and a delivery job wired to the selection, and three real runs show the lane running from the emitted matrix and skipping on an empty one.",
+			"commandIds": [
+				"ci-guard",
+				"workflow-policy-mutations",
+				"live-gate-full",
+				"live-gate-moon",
+				"live-gate-docs"
+			]
+		},
+		{
+			"id": "mode-switch",
+			"task": "11.4 flip the documented single rollback switch",
+			"reason": "The in-tree default is asserted against the recorded parameter, and the three live cycles bracket the flip: the same tree runs full with the shadow narration printed, then runs again with the variable set, and a documentation-only stacked pull request then selects an empty matrix.",
+			"commandIds": ["live-gate-full", "live-gate-moon", "live-gate-docs"]
+		},
+		{
+			"id": "rollback",
+			"task": "11.5 rollback",
+			"reason": "A synthetic merge followed by git revert -m 1 produces a tree identical to the predecessor, and that tree is shown to carry none of the four paths this stage adds while the implementation tree carries all of them; the repository variable is recorded as the one thing outside the tree.",
+			"commandIds": ["rollback-proof"]
+		}
+	],
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-8b-pr-merge-commit>"],
+		"outsideTheTree": [
+			"repository variable MOON_AFFECTED_MODE (set to moon by this stage; flip or delete it BEFORE reverting)"
+		],
+		"containerRebuildRequired": false,
+		"scope": "Revert the affected-selection contract, its entrypoint and selector, the committed matrix script, the two package scripts, the fenced mode variable, the affected and project jobs and their gate dependencies, the workflow contract rules, the setup-moon base-ref step, the ownership wiring, the documentation, and this record as one Stage 8B bundle. ORDER MATTERS: flip or delete the repository variable MOON_AFFECTED_MODE first, then revert. A revert that leaves it set is harmless while the surface is gone — nothing reads it — but it becomes live again the moment the stage is re-applied, which is a selection nobody decided to turn on. Nothing under .devcontainer/** changed, so adopting or reverting this stage costs no container rebuild. Branch protection needs no operator step: the required context is unchanged, because both new jobs reach the gate through needs instead of becoming second required checks.",
+		"proof": {
+			"commandId": "rollback-proof",
+			"predecessorSha": "70b3690ec038088db03b66c57e5d4d3e72710f0b",
+			"implementationSha": "dfe440a098fdbb85b335dfe42a0f6974ed3a5483",
+			"syntheticMergeSha": "bbeb0b18510e1c004e338d73bdc8ea32dee8bcde",
+			"syntheticMergeTree": "2200f89553c207067aa6f0e453f3879a6650d217",
+			"syntheticMergeParents": [
+				"70b3690ec038088db03b66c57e5d4d3e72710f0b",
+				"dfe440a098fdbb85b335dfe42a0f6974ed3a5483"
+			],
+			"predecessorTree": "52becab21c6b44c1f94026fbc25781801fe3d3ce",
+			"revertedTree": "52becab21c6b44c1f94026fbc25781801fe3d3ce",
+			"treeMatchesPredecessor": true,
+			"operations": [
+				["git", "rev-parse", "70b3690ec038088db03b66c57e5d4d3e72710f0b^{tree}"],
+				["git", "rev-parse", "dfe440a098fdbb85b335dfe42a0f6974ed3a5483^{tree}"],
+				[
+					"git",
+					"worktree",
+					"add",
+					"--detach",
+					"/tmp/devenv-stage2-stage8b-20260807t032252z-dfe440a0-rollback",
+					"70b3690ec038088db03b66c57e5d4d3e72710f0b"
+				],
+				[
+					"git",
+					"commit-tree",
+					"2200f89553c207067aa6f0e453f3879a6650d217",
+					"-p",
+					"70b3690ec038088db03b66c57e5d4d3e72710f0b",
+					"-p",
+					"dfe440a098fdbb85b335dfe42a0f6974ed3a5483",
+					"-m",
+					"Stage 2 synthetic merge"
+				],
+				["git", "rev-parse", "bbeb0b18510e1c004e338d73bdc8ea32dee8bcde^{tree}"],
+				[
+					"git",
+					"show",
+					"-s",
+					"--format=%P",
+					"bbeb0b18510e1c004e338d73bdc8ea32dee8bcde"
+				],
+				[
+					"git",
+					"checkout",
+					"--detach",
+					"bbeb0b18510e1c004e338d73bdc8ea32dee8bcde"
+				],
+				[
+					"git",
+					"revert",
+					"--no-edit",
+					"-m",
+					"1",
+					"bbeb0b18510e1c004e338d73bdc8ea32dee8bcde"
+				],
+				["git", "rev-parse", "HEAD^{tree}"]
+			],
+			"addedPaths": [
+				"scripts/ci/affected-matrices.sh",
+				"scripts/template/affected-contract.ts",
+				"scripts/template/select-affected.ts",
+				"scripts/template/validate-affected.ts"
+			],
+			"addedPathsRemoved": true
+		}
+	}
+}

@@ -31,6 +31,7 @@ const CONTRACT_FILES = [
 	"scripts/ci/bun-install-retry.sh",
 	"scripts/ci/run-tests.sh",
 	"scripts/ci/run-typecheck.sh",
+	"scripts/ci/affected-matrices.sh",
 	ACTION_PATH,
 	MOON_ACTION_PATH,
 	CI_WORKFLOW,
@@ -504,7 +505,7 @@ describe("workflow policy contract", () => {
 						"        run: bunx biome check",
 						"        run: npx biome check",
 					),
-				"ci: .github/workflows/ci.yml job ci must not invoke a foreign package runtime",
+				"ci: .github/workflows/ci.yml job project must not invoke a foreign package runtime",
 			);
 
 			// --- Ownership and isolation ------------------------------------------
@@ -547,6 +548,119 @@ describe("workflow policy contract", () => {
 						"",
 					),
 				"ci: the gating workflow must run the workflow policy guard",
+			);
+
+			// --- The selection lane ------------------------------------------------
+			// A selector that failed makes the lanes below it SKIP, and a skipped
+			// lane reads as a pass to the verdict script — so a selection nothing
+			// gates on goes green precisely when the selection was wrong.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) => source.replace("      - affected\n", ""),
+				"ci: the aggregate gate must depend on the affected selector",
+			);
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) => source.replace("      - project\n", ""),
+				"ci: the aggregate gate must depend on every job in .github/workflows/ci.yml",
+			);
+			// A job that reads another job's outputs without declaring it in
+			// `needs` reads EMPTY rather than failing, so the lane starts with a
+			// matrix built from nothing and looks exactly like a lane with nothing
+			// to do.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) => source.replace("    needs: [affected]\n", ""),
+				"ci: .github/workflows/ci.yml job project reads outputs from affected without declaring it in needs",
+			);
+			// `fromJSON` outside a matrix value is a decision made from data the
+			// job did not compute.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"    if: ${{ !github.event.pull_request.draft && needs.affected.outputs.ci != '[]' }}\n    strategy:",
+						"    if: ${{ !github.event.pull_request.draft && fromJSON(needs.affected.outputs.ci)[0] != '' }}\n    strategy:",
+					),
+				"ci: .github/workflows/ci.yml job project may only call fromJSON in a matrix value",
+			);
+			// A selection decides what is CHECKED, never what is SHIPPED: a
+			// delivery lane that skipped a project would ship a tree nothing
+			// verified. No such job exists here, so the rule is proved by adding
+			// one — in both spellings it recognises.
+			for (const [id, extra] of [
+				["deploy", ""],
+				["ship", "    environment: production\n"],
+			] as const) {
+				await mutate(
+					temporary,
+					CI_WORKFLOW,
+					(source) =>
+						source.replace(
+							"  # ── The heavy lane ",
+							[
+								`  ${id}:`,
+								`    name: Ship it`,
+								"    runs-on: ubuntu-latest",
+								"    timeout-minutes: 5",
+								"    needs: [affected]",
+								extra.trimEnd(),
+								"    if: ${{ !github.event.pull_request.draft }}",
+								"    steps:",
+								"      - name: Ship",
+								"        env:",
+								"          SELECTED: ${{ needs.affected.outputs.ci }}",
+								'        run: echo "$SELECTED"',
+								"",
+								"  # ── The heavy lane ",
+							]
+								.filter((line) => line !== "")
+								.join("\n"),
+						),
+					`ci: .github/workflows/ci.yml job ${id} delivers and must not select what it runs`,
+				);
+			}
+			// A job outside the history-owner list may not deepen its clone, and
+			// the two that are on it must actually do so.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"          # recorded in the workflow guard's HISTORY_OWNERS list.\n          fetch-depth: 0\n",
+						"          # recorded in the workflow guard's HISTORY_OWNERS list.\n          fetch-depth: 1\n",
+					),
+				"ci: .github/workflows/ci.yml job affected must check out full history",
+			);
+			// The heavy lane owns history for a different reason, and it earned
+			// the entry the hard way: the three steps moved here out of a job that
+			// had always had full history, and the sealed-evidence tests went red
+			// on the first real run without it.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"          # workflow guard's HISTORY_OWNERS list.\n          fetch-depth: 0\n",
+						"          # workflow guard's HISTORY_OWNERS list.\n          fetch-depth: 1\n",
+					),
+				"ci: .github/workflows/ci.yml job project must check out full history",
+			);
+
+			// --- One selector ------------------------------------------------------
+			// A job's outputs decide what the lanes below it run, so two committed
+			// files writing them are two authorities on "what must be checked" —
+			// and they disagree exactly once, quietly, toward running less. The
+			// variable name is assembled so this test file is not itself a writer.
+			await withTrackedFile(
+				temporary,
+				"scripts/ci/second-selector.sh",
+				`#!/usr/bin/env bash\necho "ci=[]" >> "$\{${["GITHUB", "OUTPUT"].join("_")}}"\n`,
+				"ci: only one committed file may write job outputs; found scripts/ci/affected-matrices.sh, scripts/ci/second-selector.sh",
 			);
 
 			// --- Compiler coverage -------------------------------------------------
@@ -596,11 +710,27 @@ describe("workflow policy contract", () => {
 			expect(minimal).not.toContain("moon-graph");
 			expect(minimal).not.toContain("graph:check");
 			expect(minimal).not.toContain("setup-moon");
+			// The selection lane, both halves. The mode variable and the selector
+			// step are fenced; the `affected` and `project` JOBS are not, because
+			// fencing them would leave a project without the capability with no
+			// lint, no compiler and no suite at all. What such a project renders is
+			// the seam with nothing in it, and the matrix falls back to one entry.
+			expect(minimal).not.toContain("MOON_AFFECTED_MODE");
+			expect(minimal).not.toContain("affected-matrices");
+			expect(minimal).toContain("  affected:");
+			expect(minimal).toContain("  project:");
+			expect(minimal).toContain(
+				"fromJSON(needs.affected.outputs.ci || '[\"repository\"]')",
+			);
+			expect(minimal).toContain("bash scripts/ci/run-tests.sh");
+			expect(minimal).toContain("bun run typecheck");
 			const full = await Bun.file(
 				resolve(temporary, "full/.github/workflows/ci.yml"),
 			).text();
 			expect(full).toContain("moon-graph");
 			expect(full).toContain("bun run graph:check --query");
+			expect(full).toContain("bash scripts/ci/affected-matrices.sh");
+			expect(full).toContain("MOON_AFFECTED_MODE");
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
@@ -671,6 +801,146 @@ describe("CI bootstrap action", () => {
 			await rm(temporary, { recursive: true, force: true });
 		}
 	});
+});
+
+describe("moon bootstrap action", () => {
+	async function moonStepBody(name: string): Promise<string> {
+		const value = Bun.YAML.parse(
+			await Bun.file(resolve(ROOT, MOON_ACTION_PATH)).text(),
+		) as Record<string, unknown>;
+		const runs = value["runs"] as Record<string, unknown>;
+		const step = (runs["steps"] as CompositeStep[]).find(
+			(entry) => entry.name === name,
+		);
+		if (!step?.run) throw new Error(`composite step ${name} has no run body`);
+		return step.run;
+	}
+
+	test("creates the base refs moon resolves before it is installed", async () => {
+		// Under CI, moon resolves `git merge-base <defaultBranch> HEAD` eagerly,
+		// and GitHub's single-branch checkout has no `main` — so the probe dies
+		// with `fatal: ambiguous argument 'main'` before any task runs. The step
+		// is executed here for what it does rather than read for what it says.
+		const body = await moonStepBody("Ensure moon can resolve its VCS base ref");
+		const temporary = await temporaryDirectory();
+		try {
+			const script = resolve(temporary, "ensure-base.sh");
+			await Bun.write(script, body);
+
+			const setup = async (options: {
+				remote?: boolean;
+				defaultBranch?: string;
+			}): Promise<string> => {
+				const workspace = resolve(
+					temporary,
+					`w-${Math.random().toString(36).slice(2)}`,
+				);
+				await mkdir(resolve(workspace, ".moon"), { recursive: true });
+				await Bun.write(
+					resolve(workspace, ".moon/workspace.yml"),
+					`vcs:\n  defaultBranch: '${options.defaultBranch ?? "main"}'\n`,
+				);
+				git(workspace, "init", "-q", "-b", "detached-ci-ref");
+				await Bun.write(resolve(workspace, "file.txt"), "x\n");
+				git(workspace, "add", "-A");
+				git(
+					workspace,
+					"-c",
+					"user.email=a@b.c",
+					"-c",
+					"user.name=a",
+					"commit",
+					"-qm",
+					"base",
+				);
+				if (options.remote)
+					git(workspace, "update-ref", "refs/remotes/origin/main", "HEAD");
+				return workspace;
+			};
+
+			// GitHub's single-branch checkout: no local `main` at all.
+			const bare = await setup({});
+			expect(
+				runScript(script, { cwd: bare, env: { HOME: bare } }).exitCode,
+			).toBe(0);
+			expect(
+				Bun.spawnSync([
+					"git",
+					"-C",
+					bare,
+					"show-ref",
+					"--verify",
+					"refs/heads/main",
+				]).exitCode,
+			).toBe(0);
+
+			// A remote-tracking ref is preferred over HEAD when one exists.
+			const withRemote = await setup({ remote: true });
+			expect(
+				runScript(script, { cwd: withRemote, env: { HOME: withRemote } })
+					.exitCode,
+			).toBe(0);
+
+			// A stacked pull request needs the base ref GitHub names too, because
+			// moon honours it over the workspace's pinned default branch.
+			const stacked = await setup({});
+			expect(
+				runScript(script, {
+					cwd: stacked,
+					env: { HOME: stacked, GITHUB_BASE_REF: "feature/parent" },
+				}).exitCode,
+			).toBe(0);
+			expect(
+				Bun.spawnSync([
+					"git",
+					"-C",
+					stacked,
+					"show-ref",
+					"--verify",
+					"refs/heads/feature/parent",
+				]).exitCode,
+			).toBe(0);
+
+			// ... and a base ref that is not a branch name is refused rather than
+			// handed to `git branch`.
+			const hostile = await setup({});
+			const refused = runScript(script, {
+				cwd: hostile,
+				env: { HOME: hostile, GITHUB_BASE_REF: "--force" },
+			});
+			expect(refused.exitCode).toBe(1);
+			expect(refused.output).toContain("::error::");
+
+			// The default branch is read from the workspace declaration, not
+			// assumed: a repository that gates on `trunk` gets `trunk`.
+			const trunk = await setup({ defaultBranch: "trunk" });
+			expect(
+				runScript(script, { cwd: trunk, env: { HOME: trunk } }).exitCode,
+			).toBe(0);
+			expect(
+				Bun.spawnSync([
+					"git",
+					"-C",
+					trunk,
+					"show-ref",
+					"--verify",
+					"refs/heads/trunk",
+				]).exitCode,
+			).toBe(0);
+
+			// A workspace with no declared default branch is a hard failure, not a
+			// silently skipped step: the ref it would have created is the one moon
+			// is about to ask for.
+			const undeclared = await setup({});
+			await Bun.write(resolve(undeclared, ".moon/workspace.yml"), "vcs: {}\n");
+			expect(
+				runScript(script, { cwd: undeclared, env: { HOME: undeclared } })
+					.exitCode,
+			).toBe(1);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 60_000);
 });
 
 describe("bounded dependency install", () => {
@@ -824,7 +1094,14 @@ describe("aggregate gate", () => {
 		expect(jobs[gateId]?.["name"]).toBe("CI gate");
 		for (const [id, job] of Object.entries(jobs)) {
 			if (id === gateId) continue;
-			expect(job["if"]).toBe("${{ !github.event.pull_request.draft }}");
+			// Every gating job carries the draft guard. The heavy lane carries one
+			// more clause — an empty matrix means there is nothing to run — so the
+			// assertion is "starts with the draft guard" rather than "is only the
+			// draft guard", which would forbid the selection outright.
+			expect([id, job["if"]]).toEqual([
+				id,
+				expect.stringContaining("${{ !github.event.pull_request.draft"),
+			]);
 		}
 	});
 });
@@ -835,10 +1112,19 @@ describe("failure tolerance", () => {
 			await Bun.file(resolve(ROOT, CI_WORKFLOW)).text(),
 		) as Record<string, unknown>;
 		const jobs = value["jobs"] as Record<string, Record<string, unknown>>;
-		const steps = jobs["ci"]?.["steps"] as CompositeStep[];
+		// The three steps whose cost scales with the project graph live in the
+		// matrix job; the contract job keeps every fixed-cost guard and nothing
+		// that a selection could ever skip.
+		const steps = jobs["project"]?.["steps"] as CompositeStep[];
 		const bodies = steps.map((step) => step.run ?? "");
 		expect(bodies).toContain("bash scripts/ci/run-tests.sh");
 		expect(bodies).toContain("bun run typecheck");
+		const contractBodies = (jobs["ci"]?.["steps"] as CompositeStep[]).map(
+			(step) => step.run ?? "",
+		);
+		expect(contractBodies).toContain("bun run ci:check");
+		expect(contractBodies).not.toContain("bun run typecheck");
+		expect(contractBodies).not.toContain("bash scripts/ci/run-tests.sh");
 		// bun test through the wrapper is a superset of the template suite, so
 		// listing template:test as well ran the same tests twice.
 		expect(bodies.join("\n")).not.toContain("bun run template:test");

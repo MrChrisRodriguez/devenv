@@ -1,4 +1,4 @@
-**Current status (2026-08-06):** 50 of 82 tasks are complete. Stages 0 through 8A have merged; Stage 8B is next.
+**Current status (2026-08-06):** 55 of 82 tasks are complete. Stages 0 through 8B have merged; Stage 9 is next.
 
 ## 1. Stage 0 PR — Inventory, Parameters, and Baseline
 
@@ -104,11 +104,11 @@ This stage introduces Moon's project graph and a validated CI universe while kee
 
 This stage enables Moon-based affected-project selection after shadow comparison, with conservative full-run fallbacks for risky or uncertain changes.
 
-- [ ] 11.1 Add the single `full|moon` switch and select full for default-branch pushes, schedules, deployments, manual full runs, root/global/unknown inputs, or selector/diff/Moon/query failure
-- [ ] 11.2 Diff PR/merge-queue events against the actual base with sufficient history, include deep dependents, and intersect results with validated explicit universes
-- [ ] 11.3 Make affected selection and graph oracle direct aggregate dependencies, prevent affected-only deployment paths, and fail loudly without output on invalid universe metadata
-- [ ] 11.4 Compare shadow results, flip only the mode variable after representative proof, observe PR and full cycles, then remove every second selector/shadow path
-- [ ] 11.5 Run full/docs/leaf/fan-out/deep/global/error/universe/stacked-PR mutations, document `full` rollback and evidence, and update rules/docs/`CHANGES.md`
+- [x] 11.1 Add the single `full|moon` switch and select full for default-branch pushes, schedules, deployments, manual full runs, root/global/unknown inputs, or selector/diff/Moon/query failure
+- [x] 11.2 Diff PR/merge-queue events against the actual base with sufficient history, include deep dependents, and intersect results with validated explicit universes
+- [x] 11.3 Make affected selection and graph oracle direct aggregate dependencies, prevent affected-only deployment paths, and fail loudly without output on invalid universe metadata
+- [x] 11.4 Compare shadow results, flip only the mode variable after representative proof, observe PR and full cycles, then remove every second selector/shadow path
+- [x] 11.5 Run full/docs/leaf/fan-out/deep/global/error/universe/stacked-PR mutations, document `full` rollback and evidence, and update rules/docs/`CHANGES.md`
 
 ## 12. Stage 9 PR — OpenSpec and Agent Lifecycle
 

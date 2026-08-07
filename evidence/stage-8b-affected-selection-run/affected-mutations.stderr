@@ -1,0 +1,32 @@
+
+scripts/template/__tests__/affected.test.ts:
+(pass) affected selection > walks the graph backwards, cycle-safe, and keeps the seeds [21.00ms]
+(pass) affected selection > narrows a leaf change to the leaf [29.00ms]
+(pass) affected selection > fans a deep library change out to every dependent [25.00ms]
+(pass) affected selection > selects nothing for a documentation-only change [23.00ms]
+(pass) affected selection > widens to full for a global input, including a root rule file [103.00ms]
+(pass) affected selection > widens to full for every event that carries no usable base [41.00ms]
+(pass) affected selection > widens to full for every spelling of a mode that is not moon [63.00ms]
+(pass) affected selection > widens to full when either endpoint is not a commit this clone has [42.00ms]
+(pass) affected selection > widens to full when the diff finds nothing [16.00ms]
+(pass) affected selection > diffs a stacked pull request from its own merge base [27.00ms]
+(pass) affected selection > counts a rename against both the old and the new owner [18.00ms]
+(pass) affected selection > intersects each universe independently [20.00ms]
+(pass) affected selection > fails CLOSED on an unusable universe registry [140.00ms]
+(pass) affected selection contract > passes the real tree and rejects known-bad mutations [114.00ms]
+(pass) affected selection contract > selects for real inside a rendered project [286.00ms]
+(pass) moon reconciliation > lets the narrow selection stand when moon agrees, and records the invocation [43.00ms]
+(pass) moon reconciliation > widens to full on every abnormal answer [277.00ms]
+(pass) moon reconciliation > widens to full when the binary is not there at all [24.00ms]
+(pass) moon reconciliation > never invokes moon with an empty file list [23.00ms]
+(pass) moon reconciliation > hands moon the stacked pull request's own merge base [44.00ms]
+(pass) moon reconciliation > leaves a full selection alone [22.00ms]
+(pass) affected matrix entrypoint > emits the matrices, and narrates the shadow selection in both modes [158.00ms]
+(pass) affected matrix entrypoint > emits an empty matrix for a documentation-only change [75.00ms]
+(pass) affected matrix entrypoint > fails OPEN to the full matrix on every fault [174.00ms]
+(pass) affected matrix entrypoint > fails CLOSED with a byte-empty output file on an unusable registry [171.00ms]
+
+ 25 pass
+ 0 fail
+ 190 expect() calls
+Ran 25 tests across 1 file. [2.01s]
