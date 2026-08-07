@@ -1,7 +1,7 @@
 {
 	"schemaVersion": 1,
 	"stage": "stage-11-release",
-	"capturedAt": "2026-08-07T20:02:56Z",
+	"capturedAt": "2026-08-07T20:06:27Z",
 	"run": {
 		"id": "stage11-20260807t193030z-decc5016",
 		"logRoot": "evidence/stage-11-release-run",
@@ -9,7 +9,7 @@
 	},
 	"source": {
 		"baseSha": "28f69975f133fb04b203e61709fa543614ede89d",
-		"implementationSha": "decc5016c7d28304c4cabc12d90f398f19798bd4",
+		"implementationSha": "0ed8066a309af92caaebc820b9f074e26b66b969",
 		"treeClean": true
 	},
 	"host": {
@@ -57,17 +57,17 @@
 		"goldenDigests": [
 			{
 				"path": "fixtures/golden/cloud.json",
-				"sha256": "af20242401b2058900dcab37b56ef1d5ad01737a70f91a354945f3db443dc899",
+				"sha256": "ca1dead73498e256a362af5a5e13dee7c40f0392f849f1dc6e82447eb0af60ef",
 				"fileCount": 122
 			},
 			{
 				"path": "fixtures/golden/full.json",
-				"sha256": "a7dcedd87f83336e154fe6b61dafc962814f8ed6fd6030a284d6c5794638a42c",
+				"sha256": "9a0aee88c76707e545e98612605fd794b67aa62631bfc82a888c07f63d9dfe21",
 				"fileCount": 171
 			},
 			{
 				"path": "fixtures/golden/minimal.json",
-				"sha256": "8897d8631a22901363c46870a68cdb327d7077b2e857755d58f5be7f05e93a46",
+				"sha256": "3766a9e111e0a178ab2ad5b137bfe362bbed5f0e10a87a39c1e02b9a2317b71f",
 				"fileCount": 120
 			}
 		],

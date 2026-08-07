@@ -1,4 +1,4 @@
-**Current status (2026-08-07):** 77 of 82 tasks are complete. Stages 0 through 10E have merged; Stage 11 is next.
+**Current status (2026-08-07):** 82 of 82 tasks are complete. Stages 0 through 11 have merged; the change is ready to archive.
 
 ## 1. Stage 0 PR — Inventory, Parameters, and Baseline
 
@@ -166,8 +166,8 @@ This stage defines how experiments are created, removed, or promoted without wea
 
 This stage runs the complete release gate across generated fixtures and live environments, resolves baseline regressions, finalizes documentation, and tags only a clean, green template.
 
-- [ ] 18.1 Add deterministic generation golden tests for minimal, cloud, and full capability fixtures plus disabled-residue/source-identifier/mutable-pin/duplicate-rule scans
-- [ ] 18.2 Run clean/incremental image builds, simultaneous worktrees, doctor security, full and affected CI modes, cloud profiles, browser preflight, OpenSpec lifecycle, dependency guards, and enabled stack tests
-- [ ] 18.3 Compare final performance/storage/reliability with Stage 0 and resolve or explicitly approve every regression
-- [ ] 18.4 Finalize onboarding, troubleshooting, generated README, legacy cleanup, canonical agent rules, and release rollback documentation
-- [ ] 18.5 Require exact-head green PR CI plus full default-branch/nightly evidence, verify a clean tree, update `CHANGES.md`, and only then tag/release the template
+- [x] 18.1 Add deterministic generation golden tests for minimal, cloud, and full capability fixtures plus disabled-residue/source-identifier/mutable-pin/duplicate-rule scans
+- [x] 18.2 Run clean/incremental image builds, simultaneous worktrees, doctor security, full and affected CI modes, cloud profiles, browser preflight, OpenSpec lifecycle, dependency guards, and enabled stack tests
+- [x] 18.3 Compare final performance/storage/reliability with Stage 0 and resolve or explicitly approve every regression
+- [x] 18.4 Finalize onboarding, troubleshooting, generated README, legacy cleanup, canonical agent rules, and release rollback documentation
+- [x] 18.5 Require exact-head green PR CI plus full default-branch/nightly evidence, verify a clean tree, update `CHANGES.md`, and only then tag/release the template
