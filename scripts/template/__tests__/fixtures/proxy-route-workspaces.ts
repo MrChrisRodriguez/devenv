@@ -6,6 +6,7 @@ import {
 	type ProxyRoute,
 	type ProxyRoutes,
 	type ProxyServer,
+	renderViteConfig,
 } from "../../proxy-contract";
 
 export const ROOT = resolve(import.meta.dir, "../../../..");
@@ -162,6 +163,13 @@ export function activeContract(
 		mode: "active",
 		server: declaredServer(),
 		preview: declaredServer(),
+		// The declared runtime forwards upgrades under a waiver, because the
+		// combination this template ships was measured broken in the reference and
+		// is proved here by an executed handshake rather than by assumption.
+		wsRuntimeWaiver: {
+			reason:
+				"The forwarded upgrade is proved end to end by this repository's own executed handshake suite.",
+		},
 		routes: [declaredRoute(), socketRoute()],
 		upstreams: [
 			{
@@ -189,32 +197,7 @@ export function activeContract(
  * and the two tables are identical, because that is what the registry declares
  * and a hand edit is exactly what the drift leg exists to catch.
  */
-export const ACTIVE_CONFIG_SOURCE = [
-	"// Generated from proxy-routes.json. Edit the registry, never this file.",
-	"export default {",
-	`\t${NEEDLES.server}: {`,
-	`\t\tport: ${PUBLISHED_CONTAINER_PORT},`,
-	"\t\thost: true,",
-	"\t\tstrictPort: true,",
-	'\t\tallowedHosts: ["localhost", "127.0.0.1", ".localhost", "workspace.project.localhost"],',
-	`\t\t${NEEDLES.proxy}: {`,
-	`\t\t\t"/api": { target: "http://127.0.0.1:${API_UPSTREAM_PORT}", ws: false, changeOrigin: true, secure: true },`,
-	`\t\t\t"/socket": { target: "http://127.0.0.1:${SOCKET_UPSTREAM_PORT}", ws: true, changeOrigin: true, secure: true },`,
-	"\t\t},",
-	"\t},",
-	`\t${NEEDLES.preview}: {`,
-	`\t\tport: ${PUBLISHED_CONTAINER_PORT},`,
-	"\t\thost: true,",
-	"\t\tstrictPort: true,",
-	'\t\tallowedHosts: ["localhost", "127.0.0.1", ".localhost", "workspace.project.localhost"],',
-	`\t\t${NEEDLES.proxy}: {`,
-	`\t\t\t"/api": { target: "http://127.0.0.1:${API_UPSTREAM_PORT}", ws: false, changeOrigin: true, secure: true },`,
-	`\t\t\t"/socket": { target: "http://127.0.0.1:${SOCKET_UPSTREAM_PORT}", ws: true, changeOrigin: true, secure: true },`,
-	"\t\t},",
-	"\t},",
-	"};",
-	"",
-].join("\n");
+export const ACTIVE_CONFIG_SOURCE = renderViteConfig(activeContract());
 
 /** An `active` workspace with a real registry and a real configuration file. */
 export async function activeWorkspace(options?: {
@@ -228,7 +211,7 @@ export async function activeWorkspace(options?: {
 		contract,
 		prefix: options?.prefix ?? "devenv-proxy-active-",
 		files: {
-			[contract.configPath]: options?.config ?? ACTIVE_CONFIG_SOURCE,
+			[contract.configPath]: options?.config ?? renderViteConfig(contract),
 			...options?.files,
 		},
 	});

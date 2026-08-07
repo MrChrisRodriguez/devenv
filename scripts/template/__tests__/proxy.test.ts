@@ -4,12 +4,15 @@ import { describe, expect, test } from "bun:test";
 import { link, mkdir, rm, symlink } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import {
+	configRoutes,
 	deriveTreeState,
 	inspectProxyContract,
 	NEEDLES,
 	type ProxyRoutes,
 	REGISTRY_PATH,
+	readEffectiveConfig,
 	readProxyRoutes,
+	renderViteConfig,
 	validateProxyContract,
 	validateSoleDeclarations,
 } from "../proxy-contract";
@@ -29,6 +32,7 @@ import {
 	ROOT,
 	SKELETON,
 	SOCKET_UPSTREAM_PORT,
+	socketRoute,
 	WORKTREE_CONTRACT_PATH,
 	writeRegistry,
 } from "./fixtures/proxy-route-workspaces";
@@ -534,42 +538,53 @@ describe("configuration identity and shape", () => {
 		}
 	});
 
-	test("accepts the helper form only when its binding is unambiguous", async () => {
-		const { root, contract } = await activeWorkspace({
-			prefix: "devenv-proxy-helper-",
-			config: `import { defineConfig } from "vite";\n${ACTIVE_CONFIG_SOURCE.replace(
-				"export default {",
-				"export default defineConfig({",
-			).replace(/^};$/m, "});")}`,
-		});
-		try {
-			// The helper form is legal, and so is the import-free form the renderer
-			// emits. A template that forced the import would force a dependency on
-			// every generated project for no behaviour at all.
-			expect(await validateProxyContract(root)).toEqual([]);
-			await mutate(
-				root,
-				contract.configPath,
-				(source) =>
-					source.replace(
-						'import { defineConfig } from "vite";',
-						'import { defineConfig as build } from "vite";\nconst defineConfig = build;',
-					),
-				`proxy: ${contract.configPath} defineConfig must have exactly one unaliased runtime named import from the build tool and no conflicting local runtime binding`,
-			);
-			await mutate(
-				root,
-				contract.configPath,
-				(source) =>
-					source.replace(
-						'import { defineConfig } from "vite";',
-						"function defineConfig(value: unknown) {\n\treturn value;\n}",
-					),
-				`proxy: ${contract.configPath} defineConfig must have exactly one unaliased runtime named import from the build tool and no conflicting local runtime binding`,
-			);
-		} finally {
-			await rm(root, { recursive: true, force: true });
-		}
+	test("accepts the helper form only when its binding is unambiguous", () => {
+		// The AST leg and the drift leg answer two different questions. This one
+		// asks what a configuration may LOOK like, so it drives the parse directly:
+		// the helper form is legal, and so is the import-free form the renderer
+		// emits, because a template that forced the import would force a dependency
+		// on every generated project for no behaviour at all.
+		const helper = `import { defineConfig } from "vite";\n${ACTIVE_CONFIG_SOURCE.replace(
+			"export default {",
+			"export default defineConfig({",
+		).replace(/^};$/m, "});")}`;
+		expect(readEffectiveConfig(CONFIG_PATH, helper).problems).toEqual([]);
+		expect(readEffectiveConfig(CONFIG_PATH, helper).config).toBeDefined();
+		// ... and the import-free form the renderer actually emits.
+		expect(
+			readEffectiveConfig(CONFIG_PATH, ACTIVE_CONFIG_SOURCE).problems,
+		).toEqual([]);
+
+		const ambiguous = `proxy: ${CONFIG_PATH} defineConfig must have exactly one unaliased runtime named import from the build tool and no conflicting local runtime binding`;
+		expect(
+			readEffectiveConfig(
+				CONFIG_PATH,
+				helper.replace(
+					'import { defineConfig } from "vite";',
+					'import { defineConfig as build } from "vite";\nconst defineConfig = build;',
+				),
+			).problems,
+		).toEqual([ambiguous]);
+		expect(
+			readEffectiveConfig(
+				CONFIG_PATH,
+				helper.replace(
+					'import { defineConfig } from "vite";',
+					"function defineConfig(value: unknown) {\n\treturn value;\n}",
+				),
+			).problems,
+		).toEqual([ambiguous]);
+		// A type-only import binds no runtime value, so the helper it names is not
+		// the helper that runs.
+		expect(
+			readEffectiveConfig(
+				CONFIG_PATH,
+				helper.replace(
+					'import { defineConfig } from "vite";',
+					'import type { defineConfig } from "vite";',
+				),
+			).problems,
+		).toEqual([ambiguous]);
 	});
 });
 
@@ -625,12 +640,16 @@ describe("route shape", () => {
 			);
 			// ... and the toleration that makes the rule a rule rather than a ban on
 			// rewriting. A rewrite beside a route that does NOT forward the upgrade
-			// is exactly what a rewrite is for.
-			const withRewrite = ACTIVE_CONFIG_SOURCE.replaceAll(
-				", ws: false, changeOrigin: true, secure: true }",
-				', ws: false, changeOrigin: true, secure: true, rewrite: (p: string) => p.replace(/^\\/api/, "") }',
+			// is exactly what a rewrite is for — declared in the registry and
+			// rendered, because a hand-edited file is what the drift leg refuses.
+			const tolerant = activeContract({
+				routes: [declaredRoute({ rewrite: "^/api" }), socketRoute()],
+			});
+			await writeRegistry(root, tolerant);
+			await Bun.write(
+				resolve(root, contract.configPath),
+				renderViteConfig(tolerant),
 			);
-			await Bun.write(resolve(root, contract.configPath), withRewrite);
 			expect(await validateProxyContract(root)).toEqual([]);
 		} finally {
 			await rm(root, { recursive: true, force: true });
@@ -734,18 +753,18 @@ describe("route shape", () => {
 				"proxy: the route socket rewrites its path and forwards the upgrade; path rewriting and WebSocket upgrade forwarding do not compose",
 			);
 			// ... and the toleration: a rewrite beside a route that does NOT forward
-			// the upgrade is exactly what a rewrite is for.
-			const registry = resolve(root, REGISTRY_PATH);
-			const original = await Bun.file(registry).text();
+			// the upgrade is exactly what a rewrite is for. The configuration is
+			// re-rendered with it, because a registry edit without a re-render is
+			// precisely the drift the renderer's own leg refuses.
+			const tolerant = activeContract({
+				routes: [declaredRoute({ rewrite: "^/api" }), socketRoute()],
+			});
+			await writeRegistry(root, tolerant);
 			await Bun.write(
-				registry,
-				original.replace(
-					'"ws": false,\n\t\t\t"changeOrigin": true,\n\t\t\t"secure": true,\n\t\t\t"rewrite": null',
-					'"ws": false,\n\t\t\t"changeOrigin": true,\n\t\t\t"secure": true,\n\t\t\t"rewrite": "^/api"',
-				),
+				resolve(root, tolerant.configPath),
+				renderViteConfig(tolerant),
 			);
 			expect(await validateProxyContract(root)).toEqual([]);
-			await Bun.write(registry, original);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}
@@ -1018,6 +1037,208 @@ describe("hot reload and asset origin policy", () => {
 					source.replaceAll("strictPort: true,", "strictPort: false,"),
 				`proxy: ${contract.configPath} ${NEEDLES.server} sets strictPort to false; a server that silently takes the next free port maps the published port to nothing`,
 			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("the renderer and its drift leg", () => {
+	test("renders object form, aligned tables and no import, by construction", () => {
+		const contract = activeContract();
+		const rendered = renderViteConfig(contract);
+		// Three properties that are structural rather than checked. The shorthand
+		// this stage exists to refuse cannot be produced at all; the dev/preview
+		// drift the reference shipped cannot be produced either; and a generated
+		// configuration that names no module needs no dependency, which is what
+		// lets this capability ship without touching the lock file.
+		expect(rendered).not.toContain("import");
+		for (const route of contract.routes) {
+			expect(rendered).toContain(`${JSON.stringify(route.path)}: { target:`);
+			expect(rendered).toContain(`ws: ${route.ws}`);
+		}
+		const { config, problems } = readEffectiveConfig(CONFIG_PATH, rendered);
+		expect(problems).toEqual([]);
+		if (!config) throw new Error("the rendered configuration did not parse");
+		const development = configRoutes(config, NEEDLES.server) ?? [];
+		const preview = configRoutes(config, NEEDLES.preview) ?? [];
+		expect(development.length).toBe(contract.routes.length);
+		expect(development.map((route) => ({ ...route, table: "" }))).toEqual(
+			preview.map((route) => ({ ...route, table: "" })),
+		);
+		// Render, parse the rendered bytes back into route facts, and re-render:
+		// the round trip is what makes "the registry is the source of truth" a
+		// claim rather than a comment.
+		expect(
+			development.map((route) => ({
+				path: route.path,
+				shorthand: route.shorthand,
+				target: route.target,
+				ws: route.ws,
+				changeOrigin: route.changeOrigin,
+				secure: route.secure,
+			})),
+		).toEqual(
+			contract.routes.map((route) => ({
+				path: route.path,
+				shorthand: false,
+				target: route.target,
+				ws: route.ws,
+				changeOrigin: route.changeOrigin,
+				secure: route.secure,
+			})),
+		);
+		expect(renderViteConfig(contract)).toBe(rendered);
+	});
+
+	test("renders the optional blocks only when the registry declares them", () => {
+		expect(
+			renderViteConfig(
+				activeContract({
+					routes: [declaredRoute({ rewrite: "^/api" }), socketRoute()],
+				}),
+			),
+		).toContain(
+			'rewrite: (path: string) => path.replace(new RegExp("^/api"), "")',
+		);
+		// Absent rather than null when there is nothing to say: an explicit null
+		// would be a value the build tool has to interpret, and the whole point of
+		// the policy is that the client derives the socket URL from `location`.
+		expect(renderViteConfig(activeContract())).not.toContain("hmr");
+		expect(renderViteConfig(activeContract())).not.toContain("origin");
+		expect(
+			renderViteConfig(
+				activeContract({
+					server: declaredServer({
+						hmr: {
+							protocol: "ws",
+							host: null,
+							clientPort: null,
+							reason:
+								"The friendly host terminates plain HTTP, so the client must not infer wss.",
+						},
+					}),
+				}),
+			),
+		).toContain('hmr: { protocol: "ws" },');
+		// A skeleton renders nothing, because there is nothing to render.
+		expect(renderViteConfig(SKELETON)).toBe("");
+	});
+
+	test("a rendered configuration passes every structural leg unaltered", async () => {
+		const { root } = await activeWorkspace({ prefix: "devenv-proxy-render-" });
+		try {
+			expect(await validateProxyContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("refuses a hand-edited configuration even when it is still legal", async () => {
+		const { root, contract } = await activeWorkspace({
+			prefix: "devenv-proxy-drift-",
+		});
+		try {
+			// A route REMOVED rather than malformed is the case every other leg in
+			// this guard would wave through: the file still parses, every remaining
+			// entry is object form, and the two tables still agree with each other.
+			await mutate(
+				root,
+				contract.configPath,
+				(source) =>
+					source.replaceAll(
+						`\t\t\t"/api": { target: "http://127.0.0.1:${API_UPSTREAM_PORT}", ws: false, changeOrigin: true, secure: true },\n`,
+						"",
+					),
+				`proxy: ${contract.configPath} does not match the bytes ${REGISTRY_PATH} renders; edit the registry and re-render rather than the generated file`,
+			);
+			// ... and a change so small nothing else could see it.
+			await mutate(
+				root,
+				contract.configPath,
+				(source) => `${source}\n`,
+				`proxy: ${contract.configPath} does not match the bytes ${REGISTRY_PATH} renders; edit the registry and re-render rather than the generated file`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("the runtime policy", () => {
+	test("refuses a runtime whose upgrade forwarding was measured broken", async () => {
+		const { root } = await activeWorkspace({
+			prefix: "devenv-proxy-runtime-",
+			contract: { wsRuntimeWaiver: null },
+		});
+		try {
+			expect(await validateProxyContract(root)).toContain(
+				`proxy: ${REGISTRY_PATH} declares the runtime bun beside 1 forwarding routes; that combination was measured to accept the upgrade and never flush a byte back, which presents as a hang and not as an error`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("a waiver lifts the refusal and prints the reason it was given", async () => {
+		const { root, contract } = await activeWorkspace({
+			prefix: "devenv-proxy-runtime-waived-",
+		});
+		try {
+			const report = await inspectProxyContract(root);
+			expect(report.errors).toEqual([]);
+			// A waiver keeps the finding a decision rather than an obstacle, which
+			// only works if the reason is printed where somebody reads it.
+			expect(report.notices).toEqual([
+				`proxy: the runtime bun forwards 1 routes under a declared waiver: ${contract.wsRuntimeWaiver?.reason}`,
+			]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("refuses a waiver that lifts nothing", async () => {
+		// A stale exemption widens itself: the next forwarding route to land is
+		// waived before anybody reads the waiver.
+		const { root } = await activeWorkspace({
+			prefix: "devenv-proxy-runtime-stale-",
+			contract: {
+				routes: [declaredRoute()],
+				upstreams: [
+					{
+						id: "api",
+						port: API_UPSTREAM_PORT,
+						description: "The HTTP surface",
+					},
+				],
+			},
+		});
+		try {
+			expect(await validateProxyContract(root)).toContain(
+				`proxy: ${REGISTRY_PATH} carries a runtime waiver that lifts nothing; a stale exemption widens itself`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("a runtime with no forwarding route needs no waiver at all", async () => {
+		const { root } = await activeWorkspace({
+			prefix: "devenv-proxy-runtime-none-",
+			contract: {
+				wsRuntimeWaiver: null,
+				routes: [declaredRoute()],
+				upstreams: [
+					{
+						id: "api",
+						port: API_UPSTREAM_PORT,
+						description: "The HTTP surface",
+					},
+				],
+			},
+		});
+		try {
+			expect(await validateProxyContract(root)).toEqual([]);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}

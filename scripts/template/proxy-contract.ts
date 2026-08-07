@@ -1621,6 +1621,165 @@ export function validateConfigServerForm(
 	return [...new Set(errors)].sort();
 }
 
+// ── The renderer, its drift leg, and the runtime policy ────────────────────
+
+/** The first two lines of every generated configuration, and its identity. */
+export const RENDER_HEADER = [
+	`// Generated from ${REGISTRY_PATH}. Edit the registry, never this file.`,
+];
+
+function renderHostValue(host: boolean | string): string {
+	return typeof host === "boolean" ? String(host) : JSON.stringify(host);
+}
+
+function renderRoute(route: ProxyRoute): string {
+	const fields = [
+		`target: ${JSON.stringify(route.target)}`,
+		`ws: ${route.ws}`,
+		`changeOrigin: ${route.changeOrigin}`,
+		`secure: ${route.secure}`,
+	];
+	// A rewrite is emitted through `new RegExp` rather than a literal, because a
+	// declared prefix is a string in the registry and a string that happened to
+	// contain a slash would otherwise close the literal and produce a file that
+	// does not parse.
+	if (route.rewrite !== null)
+		fields.push(
+			`rewrite: (path: string) => path.replace(new RegExp(${JSON.stringify(route.rewrite)}), "")`,
+		);
+	return `\t\t\t${JSON.stringify(route.path)}: { ${fields.join(", ")} },`;
+}
+
+function renderServer(
+	name: string,
+	server: ProxyServer,
+	routes: ProxyRoute[],
+): string[] {
+	const lines = [
+		`\t${name}: {`,
+		`\t\tport: ${server.port},`,
+		`\t\thost: ${renderHostValue(server.host)},`,
+		`\t\tstrictPort: ${server.strictPort},`,
+		`\t\tallowedHosts: [${server.allowedHosts.map((host) => JSON.stringify(host)).join(", ")}],`,
+	];
+	// Absent rather than null when there is nothing to say. An explicit null
+	// would be a value the build tool has to interpret, and the whole point of
+	// the policy is that the client derives the socket URL from `location`.
+	if (server.hmr !== null) {
+		const fields: string[] = [];
+		if (server.hmr.protocol !== null)
+			fields.push(`protocol: ${JSON.stringify(server.hmr.protocol)}`);
+		if (server.hmr.host !== null)
+			fields.push(`host: ${JSON.stringify(server.hmr.host)}`);
+		if (server.hmr.clientPort !== null)
+			fields.push(`clientPort: ${server.hmr.clientPort}`);
+		lines.push(`\t\thmr: { ${fields.join(", ")} },`);
+	}
+	if (server.origin !== null)
+		lines.push(`\t\torigin: ${JSON.stringify(server.origin)},`);
+	lines.push(`\t\t${PROXY_KEY}: {`);
+	for (const route of routes) lines.push(renderRoute(route));
+	lines.push("\t\t},", "\t},");
+	return lines;
+}
+
+/**
+ * The configuration this registry describes, as bytes.
+ *
+ * Three properties are structural rather than checked. It emits **object form
+ * with `ws` on every route**, so the string shorthand this stage exists to
+ * refuse cannot be produced at all. It emits the **same table for both
+ * servers**, so the reference's dev/preview drift cannot be produced either. And
+ * it emits **no import**, so a generated configuration needs no dependency —
+ * which is what lets this capability ship without touching the lock file, the
+ * catalog, or the compiler's include list.
+ */
+export function renderViteConfig(contract: ProxyRoutes): string {
+	if (contract.server === null || contract.preview === null) return "";
+	const lines = [
+		...RENDER_HEADER,
+		"export default {",
+		...renderServer(DEV_SERVER_KEY, contract.server, contract.routes),
+		...renderServer(PREVIEW_SERVER_KEY, contract.preview, contract.routes),
+		"};",
+		"",
+	];
+	return lines.join("\n");
+}
+
+/**
+ * The committed configuration against the bytes the registry renders.
+ *
+ * This is the leg that makes every rule above it enforceable rather than
+ * advisory: a project can satisfy the route policy today and hand-edit the file
+ * tomorrow, and nothing else in this guard would notice a route that was
+ * removed rather than malformed.
+ */
+export function validateRendererDrift(
+	root: string,
+	contract: ProxyRoutes,
+): string[] {
+	if (contract.mode !== "active") return [];
+	const path = resolve(root, contract.configPath);
+	if (!exists(path)) return [];
+	const rendered = renderViteConfig(contract);
+	if (rendered === "") return [];
+	if (textOf(path) !== rendered)
+		return [
+			`proxy: ${contract.configPath} does not match the bytes ${REGISTRY_PATH} renders; edit the registry and re-render rather than the generated file`,
+		];
+	return [];
+}
+
+/**
+ * The runtime a forwarded upgrade actually works under, declared and not
+ * assumed.
+ *
+ * The measurement this rule exists for is the reference implementation's, in
+ * its own words: under Bun's `node:http` compatibility layer the upgrade event
+ * fires and the socket handed over never flushes a byte back to the real client
+ * connection, so every proxied upgrade SILENTLY HANGS — identical handshakes
+ * that answer 101 under Node dead-air under Bun. Its harness is bundled for
+ * Node and launched under Node for exactly that reason. The development
+ * server's own proxy is `http-proxy` over `node:http`, so a project that runs
+ * it under Bun with a forwarding route is in the configuration that was
+ * measured broken.
+ *
+ * This is a collision with a house rule that says to use Bun and never the
+ * build tool, which is why it is a waivable refusal rather than a silent
+ * notice: a waiver keeps the finding a decision, and the guard prints the
+ * reason it was given so the next reader inherits the argument. The waiver is
+ * reconciled in both directions — one that lifts nothing is a stale exemption,
+ * and a stale exemption widens itself.
+ */
+export function validateRuntimePolicy(contract: ProxyRoutes): ProxyReport {
+	const forwarding = contract.routes.filter((route) => route.ws);
+	const exposed = contract.runtime === "bun" && forwarding.length > 0;
+	if (!exposed)
+		return {
+			errors:
+				contract.wsRuntimeWaiver === null
+					? []
+					: [
+							`proxy: ${REGISTRY_PATH} carries a runtime waiver that lifts nothing; a stale exemption widens itself`,
+						],
+			notices: [],
+		};
+	if (contract.wsRuntimeWaiver === null)
+		return {
+			errors: [
+				`proxy: ${REGISTRY_PATH} declares the runtime bun beside ${forwarding.length} forwarding routes; that combination was measured to accept the upgrade and never flush a byte back, which presents as a hang and not as an error`,
+			],
+			notices: [],
+		};
+	return {
+		errors: [],
+		notices: [
+			`proxy: the runtime bun forwards ${forwarding.length} routes under a declared waiver: ${contract.wsRuntimeWaiver.reason}`,
+		],
+	};
+}
+
 /**
  * The whole development server and proxy contract, with the notices the caller
  * prints.
@@ -1651,6 +1810,8 @@ export async function inspectProxyContract(
 	notices.push(...worktree.notices);
 	const reachability = validateReachability(root, contract);
 	notices.push(...reachability.notices);
+	const runtime = validateRuntimePolicy(contract);
+	notices.push(...runtime.notices);
 
 	const errors = [
 		...registryErrors,
@@ -1666,6 +1827,8 @@ export async function inspectProxyContract(
 		...reachability.errors,
 		...validateHmrPolicy(contract),
 		...validateConfigServerForm(root, contract),
+		...validateRendererDrift(root, contract),
+		...runtime.errors,
 	];
 	return { errors: [...new Set(errors)].sort(), notices };
 }
