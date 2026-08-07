@@ -123,6 +123,20 @@ function parseYaml(source: string): JsonRecord | undefined {
 	}
 }
 
+// A project config that is entirely comments is a VALID YAML document with no
+// keys, and it is exactly what the generator writes for a project with no
+// derived dependency. Reading that as a parse failure would make the generator's
+// own output fail the guard that checks it.
+function parseProjectConfig(source: string): JsonRecord | undefined {
+	try {
+		const value = Bun.YAML.parse(source) as unknown;
+		if (value === null || value === undefined) return {};
+		return isRecord(value) ? value : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
 function strings(value: unknown): string[] {
 	if (typeof value === "string") return [value];
 	if (!Array.isArray(value)) return [];
@@ -412,7 +426,7 @@ export async function buildProjectGraph(root: string): Promise<ProjectGraph> {
 		);
 		const hasConfig = await exists(configPath);
 		const config = hasConfig
-			? parseYaml(await readText(configPath))
+			? parseProjectConfig(await readText(configPath))
 			: undefined;
 		if (hasConfig && !config)
 			errors.push(

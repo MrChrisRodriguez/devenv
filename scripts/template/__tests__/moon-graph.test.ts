@@ -17,6 +17,7 @@ import {
 	MOON_QUERY_ARGV,
 	validateUniverseRegistry,
 } from "../graph-contract";
+import { renderFixture } from "../render-fixture";
 import { reconcileWithMoon, validateGraphContract } from "../validate-graph";
 
 const ROOT = resolve(import.meta.dir, "../../..");
@@ -685,4 +686,210 @@ describe("live moon reconciliation", () => {
 		// on synthetic fixtures.
 		expect(await validateGraphContract(ROOT)).toEqual([]);
 	});
+});
+
+describe("graph contract mutations", () => {
+	// A workspace the whole contract accepts, so every mutation below starts
+	// from silence: `web` depends on `ui` through its manifest, both project
+	// configs are generated, and the registry claims all three projects.
+	async function healthyWorkspace(): Promise<string> {
+		const root = await workspace({
+			projects: [
+				{ source: "libs/ui", packageName: "@synthetic/ui" },
+				{
+					source: "apps/web",
+					packageName: "@synthetic/web",
+					dependencies: { "@synthetic/ui": "workspace:*" },
+					files: { "src/index.ts": "import '@synthetic/ui';\n" },
+				},
+			],
+		});
+		await writeGeneratedConfigs(root);
+		await Bun.write(
+			resolve(root, "ci-matrix-universes.json"),
+			`${JSON.stringify(
+				{
+					schemaVersion: 1,
+					universes: [{ id: "ci", projects: ["root", "ui", "web"] }],
+				},
+				null,
+				"\t",
+			)}\n`,
+		);
+		return root;
+	}
+
+	// The house shape, applied to the graph contract: change one file, demand
+	// the named verdict, put it back, and demand silence again. The restore leg
+	// is what proves the verdict came from the mutation rather than from
+	// something the fixture was already carrying.
+	async function mutate(
+		root: string,
+		path: string,
+		transform: (source: string) => string,
+		expected: string,
+	): Promise<void> {
+		const target = resolve(root, path);
+		const original = await Bun.file(target).text();
+		const changed = transform(original);
+		if (changed === original)
+			throw new Error(`Mutation did not change ${path}`);
+		await Bun.write(target, changed);
+		expect([path, await validateGraphContract(root)]).toEqual([
+			path,
+			expect.arrayContaining([expected]),
+		]);
+		await Bun.write(target, original);
+		expect([path, await validateGraphContract(root)]).toEqual([path, []]);
+	}
+
+	// The other half of a non-vacuous scan: an edit that merely looks like the
+	// forbidden one has to be accepted, or the rule is a substring search
+	// wearing a contract's clothes.
+	async function tolerate(
+		root: string,
+		path: string,
+		transform: (source: string) => string,
+	): Promise<void> {
+		const target = resolve(root, path);
+		const original = await Bun.file(target).text();
+		const changed = transform(original);
+		if (changed === original)
+			throw new Error(`Mutation did not change ${path}`);
+		await Bun.write(target, changed);
+		expect([path, await validateGraphContract(root)]).toEqual([path, []]);
+		await Bun.write(target, original);
+	}
+
+	test("names every way the committed graph can drift", async () => {
+		const root = await healthyWorkspace();
+		try {
+			expect(await validateGraphContract(root)).toEqual([]);
+
+			// A hand-edited generated block is drift, not a customization.
+			await mutate(
+				root,
+				"apps/web/moon.yml",
+				(source) => source.replace("  - 'ui'\n", ""),
+				"graph: apps/web/moon.yml: generated moon.yml is stale — run bun run graph:generate",
+			);
+			// A dependency the manifest drops but the config still claims.
+			await mutate(
+				root,
+				"apps/web/package.json",
+				(source) =>
+					source.replace(
+						'"@synthetic/ui": "workspace:*"',
+						'"left-pad": "1.3.0"',
+					),
+				"graph: web imports @synthetic/ui from ui without declaring it in package.json",
+			);
+			// A project the registry forgets is a project no lane ever builds.
+			await mutate(
+				root,
+				"ci-matrix-universes.json",
+				(source) => source.replace(',\n\t\t\t\t"web"', ""),
+				"graph: the project web belongs to no universe in ci-matrix-universes.json",
+			);
+			// A default branch that disagrees with the one branch protection
+			// gates would make every later affected query diff against nothing.
+			await mutate(
+				root,
+				".moon/workspace.yml",
+				(source) =>
+					source.replace("defaultBranch: 'main'", "defaultBranch: ''"),
+				"graph: .moon/workspace.yml must declare vcs.defaultBranch",
+			);
+
+			// ... and the edits that only look like those. A commented-out import
+			// creates no edge, and a hand-written key outside the generated block
+			// survives untouched.
+			await tolerate(
+				root,
+				"apps/web/src/index.ts",
+				(source) =>
+					`// import '@synthetic/ghost';\n/* import '@synthetic/other'; */\n${source}`,
+			);
+			await tolerate(
+				root,
+				"apps/web/moon.yml",
+				(source) => `${source}\ntags:\n  - 'app'\nlanguage: 'typescript'\n`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("classifies a change by who owns it", async () => {
+		const root = await healthyWorkspace();
+		try {
+			const { projects } = await buildProjectGraph(root);
+			// Global: changing any of these changes what EVERY project builds or
+			// how every project is checked, so the honest answer is "everything".
+			for (const path of [
+				".prototools",
+				"package.json",
+				"bun.lock",
+				"tsconfig.base.json",
+				".moon/workspace.yml",
+				".github/workflows/ci.yml",
+				"ci-matrix-universes.json",
+				"scripts/ci/run-tests.sh",
+			])
+				expect([path, classifyPath(path, projects)]).toEqual([
+					path,
+					{ scope: "global" },
+				]);
+
+			// Documentation changes no build output — including under a directory
+			// the global list would otherwise claim, and inside a project.
+			for (const path of [
+				"README.md",
+				"docs/devcontainer-upgrade/stage-8a/README.md",
+				"openspec/specs/whatever.md",
+				".github/PULL_REQUEST_TEMPLATE.md",
+				"apps/web/README.md",
+			])
+				expect([path, classifyPath(path, projects)]).toEqual([
+					path,
+					{ scope: "docs" },
+				]);
+
+			// Project-scoped, attributed to the deepest owner.
+			expect(classifyPath("apps/web/src/index.ts", projects)).toEqual({
+				scope: "project",
+				project: "web",
+			});
+			expect(classifyPath("libs/ui/src/button.ts", projects)).toEqual({
+				scope: "project",
+				project: "ui",
+			});
+			// Anything the root project contains and no rule claims falls to the
+			// root project rather than to nobody.
+			expect(classifyPath("evidence/stage-7-ci.json", projects)).toEqual({
+				scope: "project",
+				project: "root",
+			});
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("accepts the rendered full fixture on its own terms", async () => {
+		// The guard ships downstream, so it has to hold over a rendered project
+		// rather than only over the tree it was written in: different slug,
+		// different path alias, no template-parameters.toml, and no Git index for
+		// the sole-registry scan to read.
+		const temporary = await mkdtemp(resolve(tmpdir(), "devenv-graph-render-"));
+		try {
+			const output = resolve(temporary, "full");
+			await renderFixture({ root: ROOT, fixtureName: "full", output });
+			expect(await validateGraphContract(output)).toEqual([]);
+			const graph = await buildProjectGraph(output);
+			expect(graph.projects.map((project) => project.id)).toEqual(["root"]);
+			expect(graph.defaultBranch).toBe("main");
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 120_000);
 });
