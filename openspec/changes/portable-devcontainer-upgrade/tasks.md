@@ -1,4 +1,4 @@
-**Current status (2026-08-06):** 45 of 82 tasks are complete. Stages 0 through 7 have merged; Stage 8A is next.
+**Current status (2026-08-06):** 50 of 82 tasks are complete. Stages 0 through 8A have merged; Stage 8B is next.
 
 ## 1. Stage 0 PR — Inventory, Parameters, and Baseline
 
@@ -94,11 +94,11 @@ This stage makes CI bootstrap deterministic and workflows fail closed, with corr
 
 This stage introduces Moon's project graph and a validated CI universe while keeping execution in full-matrix mode, so dependency metadata can be proved before it affects selection.
 
-- [ ] 10.1 Exact-pin/configure Moon and generate project `moon.yml` files whose `dependsOn` matches workspace manifests and relevant source imports
-- [ ] 10.2 Define the sole non-empty CI universe registry and require every generated CI-covered project to be registered exactly as intended
-- [ ] 10.3 Implement an independent workspace/import graph oracle that rejects missing/extra/unknown edges/projects and query failure
-- [ ] 10.4 Add leaf, fan-out, deepest-transitive, root/global, project-manifest, docs-only, and universe corruption fixtures while CI remains full-matrix
-- [ ] 10.5 Run graph/universe mutation proof and full CI, record rollback/evidence, and update rules/docs/`CHANGES.md`
+- [x] 10.1 Exact-pin/configure Moon and generate project `moon.yml` files whose `dependsOn` matches workspace manifests and relevant source imports
+- [x] 10.2 Define the sole non-empty CI universe registry and require every generated CI-covered project to be registered exactly as intended
+- [x] 10.3 Implement an independent workspace/import graph oracle that rejects missing/extra/unknown edges/projects and query failure
+- [x] 10.4 Add leaf, fan-out, deepest-transitive, root/global, project-manifest, docs-only, and universe corruption fixtures while CI remains full-matrix
+- [x] 10.5 Run graph/universe mutation proof and full CI, record rollback/evidence, and update rules/docs/`CHANGES.md`
 
 ## 11. Stage 8B PR — Moon Affected Selection
 
