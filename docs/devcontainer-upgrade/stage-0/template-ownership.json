@@ -331,6 +331,20 @@
 			"sourceOfTruth": "external-writes.json"
 		},
 		{
+			"pattern": "scripts/template/validate-proxy.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "development server and proxy contract entrypoint"
+		},
+		{
+			"pattern": "scripts/template/proxy-contract.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "proxy-routes.json"
+		},
+		{
 			"pattern": "scripts/worktree/**",
 			"classification": "template-owned",
 			"syncPolicy": "merge",
@@ -471,6 +485,20 @@
 			"sourceOfTruth": "external-writes.schema.json"
 		},
 		{
+			"pattern": "proxy-routes.json",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "proxy-routes.json"
+		},
+		{
+			"pattern": "proxy-routes.schema.json",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "proxy-routes.schema.json"
+		},
+		{
 			"pattern": "*",
 			"classification": "template-owned",
 			"syncPolicy": "merge",
@@ -585,6 +613,20 @@
 			"requiresAll": ["sentry"]
 		},
 		{ "pattern": "libs/observability/**", "requiresAll": ["sentry"] },
+		{ "pattern": "proxy-routes.json", "requiresAll": ["vite_websocket_proxy"] },
+		{
+			"pattern": "proxy-routes.schema.json",
+			"requiresAll": ["vite_websocket_proxy"]
+		},
+		{
+			"pattern": "scripts/template/proxy-contract.ts",
+			"requiresAll": ["vite_websocket_proxy"]
+		},
+		{
+			"pattern": "scripts/template/validate-proxy.ts",
+			"requiresAll": ["vite_websocket_proxy"]
+		},
+		{ "pattern": "vite.config.ts", "requiresAll": ["vite_websocket_proxy"] },
 		{ "pattern": "scripts/worktree/**", "requiresAll": ["devcontainer"] },
 		{
 			"pattern": "scripts/template/worktree-contract.ts",
@@ -718,6 +760,12 @@
 			"sections": [],
 			"packages": [],
 			"scripts": ["telemetry:check"]
+		},
+		{
+			"capability": "vite_websocket_proxy",
+			"sections": [],
+			"packages": [],
+			"scripts": ["proxy:check"]
 		}
 	],
 	"capabilitySignatures": {
@@ -829,8 +877,15 @@
 			"tokens": ["@tanstack/start"]
 		},
 		"vite_websocket_proxy": {
-			"paths": ["vite.config.ts"],
-			"tokens": ["ws: true"]
+			"paths": [
+				"vite.config.ts",
+				"**/vite.config.*",
+				"proxy-routes.json",
+				"proxy-routes.schema.json",
+				"scripts/template/proxy-contract.ts",
+				"scripts/template/validate-proxy.ts"
+			],
+			"tokens": ["ws: true", "proxy:check"]
 		}
 	},
 	"initOverrides": [
@@ -1085,7 +1140,7 @@
 			"claude_warp"
 		],
 		"advertisedOnly": ["cloudflare_workers", "tanstack_start"],
-		"absent": ["playwright", "better_auth", "vite_websocket_proxy"]
+		"absent": ["playwright", "better_auth"]
 	},
 	"knownBoundaryRisks": [
 		"scripts/sync-devcontainer.sh excludes every scripts/* path except itself and the scripts/worktree/* runtime, which the isolated-worktree cutover added explicitly alongside its template-owned ownership rule. Any further template-owned script under scripts/ still requires the same paired cutover — an is_excluded include plus an ownershipRules entry ahead of scripts/template/** — or its declared syncPolicy merge is a lie.",

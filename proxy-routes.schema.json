@@ -1,0 +1,227 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "Development server and proxy route registry",
+	"description": "The enumerated declaration `scripts/template/proxy-contract.ts` validates. A development proxy can be structurally perfect and silently nonfunctional: a string-shorthand target never forwards a WebSocket upgrade, a route that rewrites its path cannot forward one either, and a server bound to the container's loopback is unreachable through the one published port. So the surface is declared here — the server, the preview server, the HMR policy, the host allowlist, the route table and its upstreams — and reconciled against the tree and against the worktree runtime contract. `mode` is the load-bearing field: `skeleton` asserts, positively, that no Vite configuration and no proxy surface exists anywhere in the tracked tree; `active` asserts the declared config file exists and runs every rule over it.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"mode",
+		"configPath",
+		"runtime",
+		"wsRuntimeWaiver",
+		"publishedContainerPort",
+		"friendlyDomainPattern",
+		"server",
+		"preview",
+		"routes",
+		"upstreams"
+	],
+	"properties": {
+		"schemaVersion": {
+			"type": "integer",
+			"const": 1
+		},
+		"mode": {
+			"description": "The declared tree state. It is compared with the derived state before any other rule runs, and a disagreement in either direction is the first error.",
+			"type": "string",
+			"enum": ["skeleton", "active"]
+		},
+		"configPath": {
+			"description": "The one Vite configuration file this registry governs. In `active` mode it must exist, be an ordinary in-tree file with exactly one hard link, and canonicalize inside the repository — a guard that reads a symlink or a hardlinked twin validates a file it does not own.",
+			"$ref": "#/$defs/relativePath"
+		},
+		"runtime": {
+			"description": "The runtime the development server runs under. It is declared rather than inferred because a WebSocket proxy's correctness depends on it: a forwarder built on `node:http` compatibility can fire its upgrade event and then never flush a byte back to the real client, which presents as a hang and not as an error. A runtime whose upgrade forwarding is unproven, declared beside a route that forwards WebSockets, is a refusal that a reasoned waiver may lift.",
+			"type": "string",
+			"enum": ["bun", "node"]
+		},
+		"wsRuntimeWaiver": {
+			"description": "The reasoned waiver that lifts the runtime refusal, or null. A waiver keeps the finding a decision rather than an obstacle: the guard prints the reason it was given, so the next reader inherits the argument instead of rediscovering the defect.",
+			"type": ["object", "null"],
+			"additionalProperties": false,
+			"required": ["reason"],
+			"properties": {
+				"reason": {
+					"type": "string",
+					"minLength": 24
+				}
+			}
+		},
+		"publishedContainerPort": {
+			"description": "The single container port that crosses the host boundary. Declared here and reconciled with `scripts/worktree/contract.toml` when that file exists, because a gated guard must not hard-depend on a file another capability owns.",
+			"type": "integer",
+			"minimum": 1,
+			"maximum": 65535
+		},
+		"friendlyDomainPattern": {
+			"description": "The friendly host pattern the worktree runtime publishes alongside the direct origin. Both origins are browser-visible at once, which is why a pinned HMR client port is a refusal rather than a convenience.",
+			"type": "string",
+			"minLength": 1
+		},
+		"server": {
+			"description": "The development server, or null in skeleton mode.",
+			"$ref": "#/$defs/serverOrNull"
+		},
+		"preview": {
+			"description": "The preview server, or null in skeleton mode. Its route table must match the development server's exactly: a route present in one and absent from the other is a surface that works in development and disappears in preview.",
+			"$ref": "#/$defs/serverOrNull"
+		},
+		"routes": {
+			"description": "The one route table both servers declare. It is shared rather than duplicated so that alignment is a property of the declaration rather than a rule somebody has to remember.",
+			"type": "array",
+			"uniqueItems": true,
+			"items": { "$ref": "#/$defs/route" }
+		},
+		"upstreams": {
+			"description": "Every loopback port a route may target. A route whose target port is not declared here is a route to a service nothing in this project owns.",
+			"type": "array",
+			"uniqueItems": true,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["id", "port", "description"],
+				"properties": {
+					"id": { "$ref": "#/$defs/identifier" },
+					"port": {
+						"type": "integer",
+						"minimum": 1,
+						"maximum": 65535
+					},
+					"description": {
+						"type": "string",
+						"minLength": 1
+					}
+				}
+			}
+		}
+	},
+	"$defs": {
+		"relativePath": {
+			"type": "string",
+			"minLength": 1,
+			"pattern": "^[A-Za-z0-9._][A-Za-z0-9._/-]*$"
+		},
+		"identifier": {
+			"type": "string",
+			"minLength": 1,
+			"pattern": "^[a-z][a-z0-9-]*$"
+		},
+		"route": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": [
+				"id",
+				"path",
+				"target",
+				"ws",
+				"changeOrigin",
+				"secure",
+				"rewrite"
+			],
+			"properties": {
+				"id": { "$ref": "#/$defs/identifier" },
+				"path": {
+					"description": "The path prefix this route matches, always absolute.",
+					"type": "string",
+					"minLength": 1,
+					"pattern": "^/"
+				},
+				"target": {
+					"description": "An absolute loopback origin. A target that names a public host is an unintended external call, and one bound to 0.0.0.0 is not an address a client connects to.",
+					"type": "string",
+					"minLength": 1
+				},
+				"ws": {
+					"description": "Whether this route forwards the WebSocket upgrade. Declared explicitly on every route and never defaulted, because the defect this registry exists to catch is invisible: a route that answers HTTP correctly and drops every upgrade.",
+					"type": "boolean"
+				},
+				"changeOrigin": {
+					"description": "Declared explicitly rather than defaulted. A route that never states whether it rewrites the Host header has not decided.",
+					"type": "boolean"
+				},
+				"secure": {
+					"description": "Declared explicitly rather than defaulted. Disabling certificate verification against an https target is a refusal.",
+					"type": "boolean"
+				},
+				"rewrite": {
+					"description": "The path rewrite, or null. A rewrite beside a forwarded upgrade is structurally valid and nonfunctional: path rewriting and WebSocket upgrade forwarding do not compose.",
+					"type": ["string", "null"],
+					"minLength": 1
+				}
+			}
+		},
+		"serverOrNull": {
+			"type": ["object", "null"],
+			"additionalProperties": false,
+			"required": [
+				"port",
+				"host",
+				"strictPort",
+				"allowedHosts",
+				"hmr",
+				"origin",
+				"frontedBy"
+			],
+			"properties": {
+				"port": {
+					"type": "integer",
+					"minimum": 1,
+					"maximum": 65535
+				},
+				"host": {
+					"description": "The bind address. A server bound to the container's loopback is unreachable through a published port, so this is `true` or the wide bind — and the pairing of a wide bind with a strict host allowlist is the whole safety argument.",
+					"oneOf": [{ "type": "boolean" }, { "type": "string", "minLength": 1 }]
+				},
+				"strictPort": {
+					"description": "Pinned true. Without it the server silently takes the next free port and the container publish maps to nothing, which is why a stale listener can pass a health gate against the wrong server.",
+					"type": "boolean"
+				},
+				"allowedHosts": {
+					"description": "The host allowlist. It is a Cross-Site WebSocket Hijacking defense and not a convenience: a WebSocket handshake is not subject to CORS, so a cross-site page can open an authenticated socket unless the server checks the host itself.",
+					"type": "array",
+					"uniqueItems": true,
+					"items": {
+						"type": "string",
+						"minLength": 1
+					}
+				},
+				"hmr": {
+					"description": "The HMR override, or null. Null is the correct value in this runtime and the inverse of the advice everybody gives: two origins are browser-visible at once, a pinned client port is a single number, and it can match at most one of them while silently breaking the other. A non-null override carries the reason it was needed.",
+					"type": ["object", "null"],
+					"additionalProperties": false,
+					"required": ["protocol", "host", "clientPort", "reason"],
+					"properties": {
+						"protocol": {
+							"type": ["string", "null"],
+							"enum": ["ws", "wss", null]
+						},
+						"host": {
+							"type": ["string", "null"],
+							"minLength": 1
+						},
+						"clientPort": {
+							"type": ["integer", "null"],
+							"minimum": 1,
+							"maximum": 65535
+						},
+						"reason": {
+							"type": "string",
+							"minLength": 24
+						}
+					}
+				},
+				"origin": {
+					"description": "The asset origin override, or null. It carries the same defect a pinned HMR client port does, one layer over: a single absolute origin written into generated asset URLs is wrong for whichever of the two published origins it is not.",
+					"type": ["string", "null"],
+					"minLength": 1
+				},
+				"frontedBy": {
+					"description": "The declared service that binds the published container port in front of this server, or null when the server binds it itself. Exactly one process binds that port, and a service named here must exist in the worktree runtime contract's service list.",
+					"type": ["string", "null"],
+					"minLength": 1
+				}
+			}
+		}
+	}
+}

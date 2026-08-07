@@ -150,6 +150,20 @@ jobs:
         run: bun run telemetry:check
       # capability:end sentry
 
+      # capability:start vite_websocket_proxy
+      # Unconditional, and in THIS job for the same reason the three contract
+      # guards above are. The development server and proxy guard reads a
+      # committed declaration and reconciles it with the tracked tree, so its
+      # cost is fixed rather than scaling with the project graph, and a gate on
+      # proxy routes living in a lane a selection can narrow would be skipped by
+      # exactly the pull requests that add one. There is deliberately NO new
+      # job: every sealed evidence record's run-shape assertions are anchored on
+      # the gate's own `needs`, and a stage that adds no lane cannot re-open
+      # that wound.
+      - name: Validate development server and proxy contract
+        run: bun run proxy:check
+      # capability:end vite_websocket_proxy
+
       # Ungated. Every project has agent rule files and a canonical AGENTS.md,
       # whatever else it disables, and the guard checks the mirrors only for
       # blocks the canonical file still declares — so a project that fenced a

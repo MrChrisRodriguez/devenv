@@ -16,6 +16,7 @@ import {
 	parseToml,
 	resolveFixtureParameters,
 } from "./parameters";
+import { validateProxyContract } from "./proxy-contract";
 import { validateStageEightAEvidence } from "./stage-eight-a-evidence";
 import { validateStageEightBEvidence } from "./stage-eight-b-evidence";
 import { validateStageFiveBEvidence } from "./stage-five-b-evidence";
@@ -66,6 +67,8 @@ export interface ValidationReport {
 	contractEvidenceSchemaFile: string;
 	telemetryEvidenceFile: string;
 	telemetryEvidenceSchemaFile: string;
+	proxyRegistryFile: string;
+	proxyRegistrySchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -107,6 +110,8 @@ export async function validateAll(
 		contractEvidenceSchemaFile: "evidence/stage-10a-api-contract.schema.json",
 		telemetryEvidenceFile: "evidence/stage-10b-telemetry.json",
 		telemetryEvidenceSchemaFile: "evidence/stage-10b-telemetry.schema.json",
+		proxyRegistryFile: "proxy-routes.json",
+		proxyRegistrySchemaFile: "proxy-routes.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -214,6 +219,15 @@ export async function validateAll(
 		if (telemetryErrors.length > 0) {
 			report.status = "fail";
 			report.errors.push(...telemetryErrors);
+		}
+		// The development server and proxy contract. Hermetic for the third time
+		// and for the third reason: it reads a committed declaration and the
+		// TypeScript AST of whatever configuration that declaration names, so it
+		// needs no development server, no browser and no socket to answer.
+		const proxyErrors = await validateProxyContract(root);
+		if (proxyErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...proxyErrors);
 		}
 		// Hermetic again: the vendor-artifact leg spawns the pinned CLI, which
 		// `rules:check` owns.

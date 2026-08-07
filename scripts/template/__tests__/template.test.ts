@@ -1183,6 +1183,120 @@ describe("deterministic fixture renderer", () => {
 		}
 	});
 
+	test("known-bad development server and proxy residue is detected and named", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const output = resolve(temporary, "minimal");
+			await renderFixture({ root: ROOT, fixtureName: "minimal", output });
+			// A project without the capability receives neither the declaration,
+			// nor its schema, nor either guard module, nor the package script, nor
+			// the workflow step that runs it.
+			for (const path of [
+				"proxy-routes.json",
+				"proxy-routes.schema.json",
+				"scripts/template/proxy-contract.ts",
+				"scripts/template/validate-proxy.ts",
+			])
+				expect(await Bun.file(resolve(output, path)).exists()).toBe(false);
+			const minimalPackage = await Bun.file(
+				resolve(output, "package.json"),
+			).json();
+			expect(minimalPackage.scripts["proxy:check"]).toBeUndefined();
+			const minimalCi = await Bun.file(
+				resolve(output, ".github/workflows/ci.yml"),
+			).text();
+			expect(minimalCi).not.toContain("proxy:check");
+
+			const parameters = await loadTemplateParameters(ROOT);
+			const fixture = await loadFixtureDefinition(ROOT, "minimal", parameters);
+			const resolved = resolveFixtureParameters(parameters, fixture);
+			const ownership = await loadTemplateOwnership(ROOT);
+			for (const path of [
+				"proxy-routes.json",
+				"proxy-routes.schema.json",
+				"scripts/template/proxy-contract.ts",
+				"scripts/template/validate-proxy.ts",
+			]) {
+				await Bun.write(resolve(output, path), "export const leaked = 1;\n");
+				const leaked = await scanDisabledResidue(output, resolved, ownership);
+				expect(leaked.status).toBe("fail");
+				expect(leaked.findings).toContainEqual({
+					capability: "vite_websocket_proxy",
+					path,
+					signature: path,
+					kind: "path",
+				});
+				await rm(resolve(output, path));
+			}
+			// `vite.config.ts` was pre-reserved by Stage 0 before anything existed
+			// to put in it, and it is gated in the same commit that adds the guard.
+			await Bun.write(
+				resolve(output, "vite.config.ts"),
+				"export default {};\n",
+			);
+			const reserved = await scanDisabledResidue(output, resolved, ownership);
+			expect(reserved.findings).toContainEqual({
+				capability: "vite_websocket_proxy",
+				path: "vite.config.ts",
+				signature: "vite.config.ts",
+				kind: "path",
+			});
+			await rm(resolve(output, "vite.config.ts"));
+
+			// ... and the reservation is an exact filename with no glob, so a nested
+			// configuration slipped past it. The widened glob joins the reserved
+			// string rather than replacing it, and it is what catches this one.
+			await Bun.write(
+				resolve(output, "apps/web/vite.config.mts"),
+				"export default {};\n",
+			);
+			const nested = await scanDisabledResidue(output, resolved, ownership);
+			expect(nested.status).toBe("fail");
+			expect(nested.findings).toContainEqual({
+				capability: "vite_websocket_proxy",
+				path: "apps/web/vite.config.mts",
+				signature: "**/vite.config.*",
+				kind: "path",
+			});
+			await rm(resolve(output, "apps/web/vite.config.mts"));
+
+			// The package script is a pre-declared signature TOKEN, and a token is
+			// a plain substring search: a leaked script name is caught wherever it
+			// lands, not only in the manifest it belongs to.
+			await Bun.write(
+				resolve(output, "scripts/ci/leaked.sh"),
+				"#!/usr/bin/env bash\nbun run proxy:check\n",
+			);
+			const token = await scanDisabledResidue(output, resolved, ownership);
+			expect(token.status).toBe("fail");
+			expect(token.findings).toContainEqual({
+				capability: "vite_websocket_proxy",
+				path: "scripts/ci/leaked.sh",
+				signature: "proxy:check",
+				kind: "token",
+			});
+			await rm(resolve(output, "scripts/ci/leaked.sh"));
+
+			// The Stage 0 token is a CODE SHAPE rather than a package name, and it
+			// is whitespace-sensitive: that is exactly why it is fit for this scan
+			// and unfit as the guard's own mechanism.
+			await Bun.write(
+				resolve(output, "apps/web/leaked.ts"),
+				"export const route = { ws: true };\n",
+			);
+			const shape = await scanDisabledResidue(output, resolved, ownership);
+			expect(shape.status).toBe("fail");
+			expect(shape.findings).toContainEqual({
+				capability: "vite_websocket_proxy",
+				path: "apps/web/leaked.ts",
+				signature: "ws: true",
+				kind: "token",
+			});
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	});
+
 	test("full fixture still rejects global source identity residue", async () => {
 		const temporary = await temporaryDirectory();
 		try {

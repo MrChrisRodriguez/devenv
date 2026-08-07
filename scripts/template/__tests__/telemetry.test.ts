@@ -331,8 +331,8 @@ describe("external write registry", () => {
 				ownership,
 				(source) =>
 					source.replace(
-						'"absent": ["playwright", "better_auth", "vite_websocket_proxy"]',
-						'"absent": ["playwright", "better_auth", "sentry", "vite_websocket_proxy"]',
+						'"absent": ["playwright", "better_auth"]',
+						'"absent": ["playwright", "better_auth", "sentry"]',
 					),
 				"telemetry: sentry ships a guard surface and must leave the absent inventory",
 			);
