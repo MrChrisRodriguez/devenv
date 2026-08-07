@@ -205,6 +205,20 @@
 			"sourceOfTruth": "workflow policy contract"
 		},
 		{
+			"pattern": "scripts/template/graph-contract.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "moon project graph contract"
+		},
+		{
+			"pattern": "scripts/template/generate-graph.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "moon project config generator"
+		},
+		{
 			"pattern": "scripts/worktree/**",
 			"classification": "template-owned",
 			"syncPolicy": "merge",
@@ -353,6 +367,14 @@
 			"pattern": "scripts/template/validate-cloud.ts",
 			"requiresAll": ["codex_cloud"]
 		},
+		{
+			"pattern": "scripts/template/graph-contract.ts",
+			"requiresAll": ["moon_affected_selection"]
+		},
+		{
+			"pattern": "scripts/template/generate-graph.ts",
+			"requiresAll": ["moon_affected_selection"]
+		},
 		{ "pattern": "scripts/worktree/**", "requiresAll": ["devcontainer"] },
 		{
 			"pattern": "scripts/template/worktree-contract.ts",
@@ -453,6 +475,12 @@
 			"scripts": ["cloud:check"]
 		},
 		{
+			"capability": "moon_affected_selection",
+			"sections": [],
+			"packages": [],
+			"scripts": ["graph:check", "graph:generate"]
+		},
+		{
 			"capability": "openspec",
 			"sections": ["workspaces.catalog", "devDependencies"],
 			"packages": ["@fission-ai/openspec"]
@@ -516,7 +544,12 @@
 			"tokens": ["warp_payload", "WARP_COMMIT", "Claude Code Warp"]
 		},
 		"moon_affected_selection": {
-			"paths": ["ci-matrix-universes.json", "scripts/ci/affected-matrices.sh"],
+			"paths": [
+				"ci-matrix-universes.json",
+				"scripts/ci/affected-matrices.sh",
+				"scripts/template/graph-contract.ts",
+				"scripts/template/generate-graph.ts"
+			],
 			"tokens": ["MOON_AFFECTED_MODE"]
 		},
 		"openspec": { "paths": [], "tokens": ["@fission-ai/openspec"] },
@@ -577,6 +610,11 @@
 			"source": "template-parameters.toml#services,routing,worktrees",
 			"destination": "scripts/worktree/contract.toml",
 			"generator": "scripts/template/render-fixture.ts"
+		},
+		{
+			"source": "package.json manifests and source imports",
+			"destination": "apps/*/moon.yml and libs/*/moon.yml",
+			"generator": "scripts/template/generate-graph.ts"
 		},
 		{
 			"source": ".prototools",
@@ -790,7 +828,6 @@
 		],
 		"advertisedOnly": ["cloudflare_workers", "tanstack_start"],
 		"absent": [
-			"moon_affected_selection",
 			"playwright",
 			"better_auth",
 			"rhf_zod",

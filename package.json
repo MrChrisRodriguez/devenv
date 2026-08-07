@@ -63,7 +63,8 @@
 		"browser:preflight": "bun scripts/browser-preflight.ts",
 		"cloud:check": "bun scripts/template/validate-cloud.ts",
 		"worktree:check": "bun scripts/template/validate-worktree.ts",
-		"toolchain:check": "bun scripts/template/validate-toolchain.ts"
+		"toolchain:check": "bun scripts/template/validate-toolchain.ts",
+		"graph:generate": "bun scripts/template/generate-graph.ts"
 	},
 	"lint-staged": {
 		"*": [
