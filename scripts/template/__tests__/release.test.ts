@@ -11,6 +11,7 @@ import {
 	declaredPorts,
 	forbiddenIdentifierTokens,
 	GOLDEN_ROOT,
+	type GoldenFile,
 	GUARD_SCRIPT,
 	inspectReleaseContract,
 	type ReleaseRegistry,
@@ -39,6 +40,7 @@ import {
 	validateVersionAuthorities,
 	validateWiring,
 } from "../release-contract";
+import { renderFixture } from "../render-fixture";
 import {
 	COMMITTED,
 	MANIFEST_PATH,
@@ -1168,4 +1170,146 @@ describe("every refusal and every toleration", () => {
 			await rm(root, { recursive: true, force: true });
 		}
 	}, 60_000);
+});
+
+describe("the goldens catch renderer drift", () => {
+	/** One golden mutated on disk, asserted against, and restored. */
+	async function withGolden(
+		fixture: string,
+		transform: (golden: GoldenFile) => GoldenFile,
+		expected: string,
+	): Promise<void> {
+		const declared = COMMITTED.goldens.fixtures.find(
+			(entry) => entry.fixture === fixture,
+		);
+		if (!declared) throw new Error(`${fixture} declares no golden`);
+		await withMutatedFile(
+			declared.manifest,
+			(source) =>
+				`${JSON.stringify(transform(JSON.parse(source) as GoldenFile), null, "\t")}\n`,
+			async () => {
+				const report = await validateGoldens(ROOT, COMMITTED);
+				expect(report.errors.join("\n")).toContain(expected);
+			},
+		);
+		expect((await validateGoldens(ROOT, COMMITTED)).errors).toEqual([]);
+	}
+
+	test("catches a corrupted digest and calls it a content change", async () => {
+		// The single most mirror-worthy thing in the reference implementation is
+		// a hole it had to close after the fact: a ledger there pinned a sha256
+		// whose SHAPE was checked and whose VALUE was never compared to anything,
+		// so it could name a hash matching no file in the tree and stay green
+		// forever. Flipping one hex digit is what makes the comparison
+		// machine-enforced rather than a promise in prose. Without this case the
+		// three golden manifests are decoration.
+		await withGolden(
+			"minimal",
+			(golden) => {
+				const first = golden.manifest.files[0];
+				if (!first) throw new Error("the golden pins no file");
+				const digit = first.sha256[0] === "0" ? "1" : "0";
+				return {
+					...golden,
+					manifest: {
+						...golden.manifest,
+						files: [
+							{ ...first, sha256: `${digit}${first.sha256.slice(1)}` },
+							...golden.manifest.files.slice(1),
+						],
+					},
+				};
+			},
+			"renders different bytes for a file the golden carries",
+		);
+	}, 180_000);
+
+	test("catches a dropped entry and calls it a removal", async () => {
+		await withGolden(
+			"cloud",
+			(golden) => ({
+				...golden,
+				manifest: {
+					...golden.manifest,
+					files: golden.manifest.files.slice(1),
+				},
+			}),
+			"renders a file the golden does not carry",
+		);
+	}, 180_000);
+
+	test("catches an invented entry and calls it an addition", async () => {
+		await withGolden(
+			"cloud",
+			(golden) => ({
+				...golden,
+				manifest: {
+					...golden.manifest,
+					files: [
+						...golden.manifest.files,
+						{
+							path: "zzz-a-file-no-render-emits.txt",
+							mode: "0644" as const,
+							sha256: "0".repeat(64),
+						},
+					],
+				},
+			}),
+			"no longer renders a file the golden carries",
+		);
+	}, 180_000);
+
+	test("catches a changed mode and calls it a mode change", async () => {
+		// The one class a digest cannot see. A script that stops being executable
+		// renders byte-identical content and does not run.
+		await withGolden(
+			"full",
+			(golden) => {
+				const index = golden.manifest.files.findIndex(
+					(entry) => entry.mode === "0755",
+				);
+				if (index < 0) throw new Error("the golden pins no executable file");
+				const files = [...golden.manifest.files];
+				const entry = files[index];
+				if (!entry) throw new Error("unreachable");
+				files[index] = { ...entry, mode: "0644" };
+				return { ...golden, manifest: { ...golden.manifest, files } };
+			},
+			"renders a different mode for a file the golden carries",
+		);
+	}, 180_000);
+
+	test("renders every fixture twice and matches the committed goldens byte for byte", async () => {
+		const temporary = await mkdtemp(
+			resolve(tmpdir(), "devenv-release-golden-"),
+		);
+		try {
+			for (const declared of COMMITTED.goldens.fixtures) {
+				const first = await renderFixture({
+					root: ROOT,
+					fixtureName: declared.fixture,
+					output: resolve(temporary, `${declared.fixture}-a`),
+					force: true,
+				});
+				const second = await renderFixture({
+					root: ROOT,
+					fixtureName: declared.fixture,
+					output: resolve(temporary, `${declared.fixture}-b`),
+					force: true,
+				});
+				// Determinism, now for all three fixtures rather than for `minimal`
+				// alone: a renderer that is deterministic for the profile with the
+				// fewest capabilities is not thereby deterministic for the one with
+				// all nineteen.
+				expect(first.manifest).toEqual(second.manifest);
+				const golden = (await Bun.file(
+					resolve(ROOT, declared.manifest),
+				).json()) as GoldenFile;
+				expect(first.manifest).toEqual(golden.manifest);
+				expect(first.manifest.files.length).toBe(declared.fileCount);
+			}
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 180_000);
 });
