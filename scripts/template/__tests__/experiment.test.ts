@@ -9,6 +9,7 @@ import {
 	GUARD_SCRIPT,
 	inspectExperimentContract,
 	inspectSurfaces,
+	type RetiredExperiment,
 	readExperimentRegistry,
 	reconcileMode,
 	SURFACE_COUNT,
@@ -27,6 +28,7 @@ import {
 	declaredExperiment,
 	experimentFiles,
 	experimentWorkspace,
+	FINDINGS_PATH,
 	IGNORE_PATH,
 	MANIFEST_PATH,
 	MOON_WORKSPACE_PATH,
@@ -1170,5 +1172,221 @@ describe("the retirement residue scan", () => {
 		expect(
 			probe.errors.some((error) => error.startsWith("experiment: evidence/")),
 		).toBe(false);
+	});
+});
+
+describe("promotion and findings", () => {
+	/** A promoted experiment with all five registrations in place. */
+	async function promotedWorkspace(): Promise<string> {
+		const { root } = await activeWorkspace({
+			registry: {
+				experiments: [
+					declaredExperiment({
+						status: "promoted",
+						promotion: {
+							ownershipRule: "apps/**",
+							universeId: "ci",
+							testGlob: "**/*.test.ts",
+							documentation: "docs/spike-alpha.md",
+						},
+					}),
+				],
+			},
+			files: {
+				[`${APP_DIRECTORY}/src/index.test.ts`]:
+					'import { expect, test } from "bun:test";\ntest("holds", () => expect(1).toBe(1));\n',
+				"docs/spike-alpha.md": "# spike-alpha\n\nWhy this was promoted.\n",
+			},
+			prefix: "devenv-experiment-promoted-",
+		});
+		// Universe membership is a registration too, and the fixture adds it the
+		// way a promotion would.
+		const universe = resolve(root, UNIVERSE_PATH);
+		const parsed = (await Bun.file(universe).json()) as {
+			universes: Array<{ id: string; projects: string[] }>;
+		};
+		parsed.universes[0]?.projects.push(APP_ID);
+		await Bun.write(universe, `${JSON.stringify(parsed, null, "\t")}\n`);
+		return root;
+	}
+
+	test("a complete promotion is accepted", async () => {
+		const root = await promotedWorkspace();
+		try {
+			expect(await validateExperimentContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("each of the five promotion artefacts is refused when it is missing", async () => {
+		const root = await promotedWorkspace();
+		try {
+			// (i) ownership
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) =>
+					source.replace(
+						'"ownershipRule": "apps/**"',
+						'"ownershipRule": "libs/**"',
+					),
+				`experiment: ${APP_ID} declares the ownership rule libs/**, which does not cover ${APP_DIRECTORY}`,
+			);
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) =>
+					source.replace(
+						'"ownershipRule": "apps/**"',
+						'"ownershipRule": "invented/**"',
+					),
+				`experiment: ${APP_ID} declares the ownership rule invented/**, which ${OWNERSHIP_PATH} does not declare`,
+			);
+			// (ii) graph
+			await mutate(
+				root,
+				`${APP_DIRECTORY}/moon.yml`,
+				() => "$schema: 'https://moonrepo.dev/schemas/project.json'\n",
+				`experiment: ${APP_DIRECTORY}/moon.yml carries no generated dependency block; run graph:generate rather than writing dependsOn by hand`,
+			);
+			// (iii) universe
+			await mutate(
+				root,
+				UNIVERSE_PATH,
+				(source) =>
+					source
+						.replace(`\n\t\t\t\t"${APP_ID}"`, "")
+						.replace('"root",', '"root"'),
+				`experiment: ${APP_ID} declares the CI universe ci, which does not list the project ${APP_ID}`,
+			);
+			// (iv) tests. Not redundant with the CI wrapper: that wrapper absorbs
+			// "no test files matched" and exits 0 by design, so a promoted
+			// experiment with no tests is green forever in a project that has none.
+			const test = resolve(root, `${APP_DIRECTORY}/src/index.test.ts`);
+			const testSource = await Bun.file(test).text();
+			await rm(test);
+			expect(await validateExperimentContract(root)).toContain(
+				`experiment: ${APP_ID} is promoted and no file under ${APP_DIRECTORY} matches **/*.test.ts; the CI test wrapper absorbs an empty match by design, so nothing else would ever say so`,
+			);
+			await Bun.write(test, testSource);
+			expect(await validateExperimentContract(root)).toEqual([]);
+			// (v) documentation
+			const document = resolve(root, "docs/spike-alpha.md");
+			const documentSource = await Bun.file(document).text();
+			await rm(document);
+			expect(await validateExperimentContract(root)).toContain(
+				`experiment: ${APP_ID} documents itself at docs/spike-alpha.md, which does not exist`,
+			);
+			await Bun.write(document, documentSource);
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) =>
+					source.replace(
+						'"documentation": "docs/spike-alpha.md"',
+						`"documentation": "${APP_DIRECTORY}/README.md"`,
+					),
+				`experiment: ${APP_ID} documents itself at ${APP_DIRECTORY}/README.md, which is under none of ${JSON.stringify(SKELETON.policy.findingsRoots)}`,
+			);
+			// And the block itself.
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) =>
+					source.replace(
+						/"promotion": \{[\s\S]*?\n\t\t\t\}/,
+						'"promotion": null',
+					),
+				`experiment: ${APP_ID} is promoted and declares no promotion block; promotion adds ownership, a graph entry, universe membership, tests and documentation, and each of them is named`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("a disposable experiment needs no tests and no documents", async () => {
+		// The other half of the rule, and the half that keeps it from being "every
+		// directory must be a finished library". A disposable experiment is still a
+		// workspace member and a moon project — it has no choice about that — and it
+		// is required to be nothing else.
+		const { root } = await activeWorkspace();
+		try {
+			expect(await validateExperimentContract(root)).toEqual([]);
+			const { registry } = await readExperimentRegistry(root);
+			expect(registry?.experiments[0]?.status).toBe("disposable");
+			expect(registry?.experiments[0]?.promotion).toBeNull();
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("a retired experiment must name findings or waive them with a reason", async () => {
+		const root = await skeletonWorkspace();
+		try {
+			const registryFile = resolve(root, REGISTRY_PATH);
+			const original = await Bun.file(registryFile).text();
+			const write = async (entry: Partial<RetiredExperiment>) => {
+				const declared = JSON.parse(original) as ExperimentRegistry;
+				declared.retired = [retiredExperiment(entry)];
+				await Bun.write(
+					registryFile,
+					`${JSON.stringify(declared, null, "\t")}\n`,
+				);
+			};
+			try {
+				await write({ findings: null });
+				expect(await validateExperimentContract(root)).toContain(
+					`experiment: ${APP_ID} is retired with no findings artefact and no waiver; the record and the findings die together or not at all`,
+				);
+				// Inside the deleted directory is the case this whole rule exists for.
+				await write({ findings: `${APP_DIRECTORY}/FINDINGS.md` });
+				expect(await validateExperimentContract(root)).toContain(
+					`experiment: ${APP_ID} names findings at ${APP_DIRECTORY}/FINDINGS.md, which is inside ${APP_DIRECTORY}; a findings file inside the directory dies with it`,
+				);
+				await write({ findings: "notes/spike-alpha.md" });
+				expect(await validateExperimentContract(root)).toContain(
+					`experiment: ${APP_ID} names findings at notes/spike-alpha.md, which is under none of ${JSON.stringify(SKELETON.policy.findingsRoots)}`,
+				);
+				await write({ findings: "docs/never-written.md" });
+				expect(await validateExperimentContract(root)).toContain(
+					`experiment: ${APP_ID} names findings at docs/never-written.md, which does not exist`,
+				);
+				// A waiver is a recorded claim, honoured and reported, never silently
+				// absent: "this spike taught us nothing" is a real outcome, and forcing
+				// a lie is worse than recording a reason.
+				await write({
+					findings: null,
+					findingsWaiver: {
+						reason:
+							"The spike was abandoned before it produced a result worth keeping.",
+					},
+				});
+				expect(await validateExperimentContract(root)).toEqual([]);
+				// A waiver standing beside the thing it would lift is refused in turn.
+				await write({
+					findingsWaiver: {
+						reason:
+							"The spike was abandoned before it produced a result worth keeping.",
+					},
+				});
+				expect(await validateExperimentContract(root)).toContain(
+					`experiment: ${APP_ID} names findings at ${FINDINGS_PATH} and also waives them; a waiver lifts a requirement it is not standing beside`,
+				);
+				// And an empty reason is not a reason. The schema owns that sentence.
+				await write({
+					findings: null,
+					findingsWaiver: { reason: "" },
+				});
+				expect(await validateExperimentContract(root)).toContain(
+					"experiment: experiments.json $.retired[0].findingsWaiver must satisfy exactly one oneOf branch (matched 0)",
+				);
+			} finally {
+				await Bun.write(registryFile, original);
+			}
+			expect(await validateExperimentContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
 	});
 });

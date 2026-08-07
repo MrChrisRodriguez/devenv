@@ -81,6 +81,15 @@ export const APP_DIRECTORY = "apps/spike-alpha";
 export const APP_ID = "spike-alpha";
 export const APP_PACKAGE = "@devenv/spike-alpha";
 
+/**
+ * The findings artefact every fixture's retired record points at.
+ *
+ * It lives OUTSIDE the experiment's directory and under a declared findings
+ * root, because that is the whole rule: a findings file inside the directory
+ * dies with it, which is what actually happens.
+ */
+export const FINDINGS_PATH = "docs/spike-alpha-findings.md";
+
 /** A synthetic workspace carrying the committed declaration and its surfaces. */
 export async function experimentWorkspace(options?: {
 	registry?: ExperimentRegistry;
@@ -98,6 +107,15 @@ export async function experimentWorkspace(options?: {
 	}
 	if (options?.withoutUniverseRegistry)
 		await rm(resolve(temporary, UNIVERSE_PATH));
+	await writeFiles(temporary, {
+		// The CONTENT deliberately does not name the experiment. The residue
+		// scan reads contents rather than paths, and a findings artefact is
+		// allow-listed only while the retired record still points at it — so a
+		// fixture whose findings file named the experiment would fail the moment
+		// a case replaced the findings path with a waiver.
+		[FINDINGS_PATH]:
+			"# Findings\n\nWhat the throwaway branch established, kept after the code went.\n",
+	});
 	if (options?.registry) await writeRegistry(temporary, options.registry);
 	if (options?.files) await writeFiles(temporary, options.files);
 	return temporary;
@@ -133,7 +151,7 @@ export function retiredExperiment(
 		id: APP_ID,
 		directory: APP_DIRECTORY,
 		retiredAt: "2026-08-07T00:00:00Z",
-		findings: "CHANGES.md",
+		findings: FINDINGS_PATH,
 		findingsWaiver: null,
 		aliases: [APP_ID, APP_DIRECTORY, APP_PACKAGE],
 		...overrides,

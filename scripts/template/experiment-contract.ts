@@ -1432,6 +1432,167 @@ export function validateRetirementResidue(
 	return { errors: errors.sort(), notices: notices.sort() };
 }
 
+function underAnyRoot(path: string, roots: readonly string[]): boolean {
+	return roots.some((root) =>
+		root.endsWith("/") ? path.startsWith(root) : path === root,
+	);
+}
+
+/**
+ * Promotion, which is a checklist of registrations rather than a ceremony.
+ *
+ * The requirement names five and the guard asks for all five by name, so the
+ * refusal says which one is missing: normal ownership, a graph entry, universe
+ * membership, tests and documentation. Two of them are already asserted for
+ * every experiment — a `disposable` one is a workspace member and a moon project
+ * whether anyone likes it or not — and the two that are new here are the two a
+ * promotion actually adds.
+ *
+ * The test requirement is not redundant with the CI test wrapper, and that is
+ * worth knowing before it reads as a style rule: `scripts/ci/run-tests.sh`
+ * absorbs "no test files matched" as a notice and exits 0 by design, so a
+ * freshly rendered project is not red on its first commit. That absorption is
+ * correct and stays — but it means a promoted experiment with no tests is green
+ * forever in a project that has no other tests. The per-experiment assertion is
+ * what closes it.
+ */
+export async function validatePromotion(
+	root: string,
+	registry: ExperimentRegistry,
+	files: string[],
+): Promise<ExperimentReport> {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	const ownershipPath = resolve(root, OWNERSHIP_PATH);
+	const ownership = exists(ownershipPath)
+		? ((await Bun.file(ownershipPath).json()) as JsonRecord)
+		: undefined;
+	for (const entry of registry.experiments) {
+		if (entry.status !== "promoted") continue;
+		const promotion = entry.promotion;
+		if (promotion === null) {
+			errors.push(
+				`experiment: ${entry.id} is promoted and declares no promotion block; promotion adds ownership, a graph entry, universe membership, tests and documentation, and each of them is named`,
+			);
+			continue;
+		}
+		if (ownership === undefined)
+			notices.push(
+				`experiment: ${OWNERSHIP_PATH} is absent, so the ownership rule ${promotion.ownershipRule} declared by ${entry.id} was not reconciled`,
+			);
+		else {
+			const rules = records(ownership["ownershipRules"]);
+			const rule = rules.find(
+				(candidate) => candidate["pattern"] === promotion.ownershipRule,
+			);
+			if (rule === undefined)
+				errors.push(
+					`experiment: ${entry.id} declares the ownership rule ${promotion.ownershipRule}, which ${OWNERSHIP_PATH} does not declare`,
+				);
+			else if (!matchesDirectory(promotion.ownershipRule, entry.directory))
+				errors.push(
+					`experiment: ${entry.id} declares the ownership rule ${promotion.ownershipRule}, which does not cover ${entry.directory}`,
+				);
+		}
+		const tests = files.filter(
+			(path) =>
+				path.startsWith(`${entry.directory}/`) &&
+				new Bun.Glob(promotion.testGlob).match(
+					path.slice(entry.directory.length + 1),
+				),
+		);
+		if (tests.length === 0)
+			errors.push(
+				`experiment: ${entry.id} is promoted and no file under ${entry.directory} matches ${promotion.testGlob}; the CI test wrapper absorbs an empty match by design, so nothing else would ever say so`,
+			);
+		if (!underAnyRoot(promotion.documentation, registry.policy.findingsRoots))
+			errors.push(
+				`experiment: ${entry.id} documents itself at ${promotion.documentation}, which is under none of ${JSON.stringify(registry.policy.findingsRoots)}`,
+			);
+		else if (!exists(resolve(root, promotion.documentation)))
+			errors.push(
+				`experiment: ${entry.id} documents itself at ${promotion.documentation}, which does not exist`,
+			);
+	}
+	return { errors: errors.sort(), notices: notices.sort() };
+}
+
+/**
+ * The findings artefact, which is the only part of an experiment a removal is
+ * allowed to leave behind.
+ *
+ * The scenario's own words are "reusable findings MAY remain in a decision or
+ * backlog artifact", and that clause is the only part of it describing something
+ * that SURVIVES — so it is the only part a removal guard can hold onto. The rule
+ * that makes it non-trivial is the location: a findings file inside the deleted
+ * directory dies with it, which is what actually happens, which is why this
+ * stage exists.
+ *
+ * A waiver is the alternative, and it is a waiver rather than an optional field
+ * on purpose. "This spike taught us nothing" is a real and legitimate outcome
+ * and forcing a lie is worse than recording a claim — but the claim has to be
+ * made, with a reason, honoured and reported and never silently absent.
+ */
+export function validateFindings(
+	root: string,
+	registry: ExperimentRegistry,
+): string[] {
+	const errors: string[] = [];
+	const roots = registry.policy.findingsRoots;
+	const check = (
+		id: string,
+		directory: string,
+		findings: string | null,
+		waiver: Waiver | null,
+		required: boolean,
+	): void => {
+		if (findings !== null && waiver !== null)
+			errors.push(
+				`experiment: ${id} names findings at ${findings} and also waives them; a waiver lifts a requirement it is not standing beside`,
+			);
+		if (findings === null) {
+			if (required && waiver === null)
+				errors.push(
+					`experiment: ${id} is retired with no findings artefact and no waiver; the record and the findings die together or not at all`,
+				);
+			return;
+		}
+		if (findings.startsWith(`${directory}/`) || findings === directory) {
+			errors.push(
+				`experiment: ${id} names findings at ${findings}, which is inside ${directory}; a findings file inside the directory dies with it`,
+			);
+			return;
+		}
+		if (!underAnyRoot(findings, roots)) {
+			errors.push(
+				`experiment: ${id} names findings at ${findings}, which is under none of ${JSON.stringify(roots)}`,
+			);
+			return;
+		}
+		if (!exists(resolve(root, findings)))
+			errors.push(
+				`experiment: ${id} names findings at ${findings}, which does not exist`,
+			);
+	};
+	for (const entry of registry.experiments)
+		check(
+			entry.id,
+			entry.directory,
+			entry.findings,
+			entry.findingsWaiver,
+			false,
+		);
+	for (const entry of registry.retired)
+		check(
+			entry.id,
+			entry.directory,
+			entry.findings,
+			entry.findingsWaiver,
+			true,
+		);
+	return errors.sort();
+}
+
 /**
  * Every leg, in the order the requirement enumerates them, with the notices kept
  * separate from the refusals.
@@ -1484,9 +1645,15 @@ export async function inspectExperimentContract(
 	errors.push(...universes.errors);
 	notices.push(...universes.notices);
 
+	const promotion = await validatePromotion(root, registry, files);
+	errors.push(...promotion.errors);
+	notices.push(...promotion.notices);
+
 	const residue = validateRetirementResidue(root, registry, files);
 	errors.push(...residue.errors);
 	notices.push(...residue.notices);
+
+	errors.push(...validateFindings(root, registry));
 
 	return {
 		errors: [...new Set(errors)].sort(),
