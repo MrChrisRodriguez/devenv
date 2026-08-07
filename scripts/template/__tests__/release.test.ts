@@ -87,15 +87,25 @@ const SCAN_CONTEXT = {
 	ports: declaredPorts(await loadTemplateParameters(ROOT)),
 };
 
+/**
+ * This tree's own HEAD, which is the one commit the signal cases can rely on
+ * NOT being contained by v1.0.0 — every tree they run in descends from the tag.
+ */
+const HEAD_SHA = Bun.spawnSync(["git", "-C", ROOT, "rev-parse", "HEAD"])
+	.stdout.toString()
+	.trim();
+
 describe("the release gate registry", () => {
 	test("accepts the source tree and its own committed declaration", async () => {
 		expect(await validateReleaseContract(ROOT)).toEqual([]);
 		const { registry, errors } = await readReleaseRegistry(ROOT);
 		expect(errors).toEqual([]);
 		expect(registry?.schemaVersion).toBe(1);
-		// The pull request that introduces this file ships `candidate`. The
-		// runbook's final step is what flips it, on `main` or not at all.
-		expect(registry?.decision).toBe("candidate");
+		// The pull request that introduced this file shipped `candidate`; the
+		// runbook's post-merge step flipped it once v1.0.0 existed. Both halves
+		// of that transition are asserted below, so this line pins the state the
+		// tree is actually in rather than the one it was born in.
+		expect(registry?.decision).toBe("released");
 		expect(registry?.release.plannedTag).toMatch(/^v\d+\.\d+\.\d+$/);
 		expect(registry?.release.changeName).toBe("portable-devcontainer-upgrade");
 		expect(registry?.goldens.regenerateWith).toBe(`bun run ${SYNC_SCRIPT}`);
@@ -150,9 +160,26 @@ describe("the release gate registry", () => {
 
 describe("the release decision", () => {
 	test("refuses a released decision while the planned tag does not exist", async () => {
-		const registry = registryWith({ decision: "released" });
+		// v1.0.0 exists now, so the refusal has to be provoked with a tag nobody
+		// cut. The rule is about the artefact being real, not about which name
+		// the record happens to carry.
+		const registry = registryWith({
+			decision: "released",
+			release: { ...COMMITTED.release, plannedTag: "v99.99.99" },
+		});
 		expect(reconcileDecision(ROOT, registry)).toContain(
-			`release: ${"release.json"} declares the released decision but ${registry.release.plannedTag} is not a tag in this repository; a record never upgrades its own gate`,
+			`release: ${"release.json"} declares the released decision but v99.99.99 is not a tag in this repository; a record never upgrades its own gate`,
+		);
+	});
+
+	test("refuses a candidate decision once the planned tag exists", async () => {
+		// The other half, and the one that fired on `main`: a tree that has been
+		// tagged and still calls itself a candidate is a record that stopped
+		// describing its own repository. The two refusals together are what make
+		// the flip mandatory rather than optional.
+		const registry = registryWith({ decision: "candidate" });
+		expect(reconcileDecision(ROOT, registry)).toContain(
+			`release: ${registry.release.plannedTag} already exists but release.json still declares the candidate decision`,
 		);
 	});
 
@@ -944,26 +971,41 @@ describe("18.3's budget table", () => {
 });
 
 describe("the two declared CI signals", () => {
-	test("accepts a pending signal and refuses a released decision beside it", () => {
+	// The committed tree now ships both signals CAPTURED, so every case that is
+	// about a pending one has to put it back rather than inherit it.
+	function withPending(kind: string): ReleaseRegistry {
+		return {
+			...COMMITTED,
+			signals: COMMITTED.signals.map((entry) =>
+				entry.kind === kind
+					? {
+							...entry,
+							status: "pending" as const,
+							sha: null,
+							runId: null,
+							capturedAt: null,
+						}
+					: entry,
+			),
+		};
+	}
+
+	test("accepts the captured signals and refuses a pending one beside released", () => {
 		expect(validateSignals(ROOT, COMMITTED).errors).toEqual([]);
-		const registry: ReleaseRegistry = { ...COMMITTED, decision: "released" };
-		expect(validateSignals(ROOT, registry).errors.join("\n")).toContain(
+		expect(
+			validateSignals(ROOT, withPending("pr-exact-head")).errors.join("\n"),
+		).toContain(
 			"declares the released decision while the pr-exact-head signal is still pending",
 		);
 	});
 
-	test("refuses a captured signal that names a commit other than HEAD", () => {
+	test("keeps the exact-head anchor on HEAD while the tree is a candidate", () => {
 		const registry: ReleaseRegistry = {
 			...COMMITTED,
+			decision: "candidate",
 			signals: COMMITTED.signals.map((entry) =>
 				entry.kind === "pr-exact-head"
-					? {
-							...entry,
-							status: "captured" as const,
-							sha: COMMITTED.auditedSource.commit,
-							runId: "1",
-							capturedAt: "2026-08-07T00:00:00Z",
-						}
+					? { ...entry, sha: COMMITTED.auditedSource.commit }
 					: entry,
 			),
 		};
@@ -974,10 +1016,28 @@ describe("the two declared CI signals", () => {
 		);
 	});
 
-	test("refuses a pending signal that carries a run id anyway", () => {
+	test("refuses a released exact-head signal the tag does not contain", () => {
+		// The released anchor is the tag, and HEAD is the one commit guaranteed
+		// to sit OUTSIDE it here: every tree this case runs in — the flip branch,
+		// the pull request's merge ref, `main` after the merge — descends from
+		// v1.0.0 rather than being contained by it. So a green run recorded for
+		// HEAD is a green run for a tree the release does not carry.
 		const registry: ReleaseRegistry = {
 			...COMMITTED,
 			signals: COMMITTED.signals.map((entry) =>
+				entry.kind === "pr-exact-head" ? { ...entry, sha: HEAD_SHA } : entry,
+			),
+		};
+		expect(validateSignals(ROOT, registry).errors.join("\n")).toContain(
+			`which ${COMMITTED.release.plannedTag} does not contain; a release cut from a commit its own green run does not cover is not an exact-head release`,
+		);
+	});
+
+	test("refuses a pending signal that carries a run id anyway", () => {
+		const pending = withPending("default-branch-full");
+		const registry: ReleaseRegistry = {
+			...pending,
+			signals: pending.signals.map((entry) =>
 				entry.kind === "default-branch-full"
 					? { ...entry, runId: "123" }
 					: entry,
@@ -1605,7 +1665,13 @@ describe("the refusals this stage's record seals", () => {
 				...COMMITTED,
 				signals: COMMITTED.signals.map((entry) =>
 					entry.kind === "default-branch-full"
-						? { ...entry, runId: "123" }
+						? {
+								...entry,
+								status: "pending" as const,
+								sha: null,
+								runId: "123",
+								capturedAt: null,
+							}
 						: entry,
 				),
 			}).errors,
@@ -1614,19 +1680,23 @@ describe("the refusals this stage's record seals", () => {
 		observed(
 			validateSignals(ROOT, {
 				...COMMITTED,
+				decision: "candidate" as const,
 				signals: COMMITTED.signals.map((entry) =>
 					entry.kind === "pr-exact-head"
-						? {
-								...entry,
-								status: "captured" as const,
-								sha: COMMITTED.auditedSource.commit,
-								runId: "1",
-								capturedAt: "2026-08-07T00:00:00Z",
-							}
+						? { ...entry, sha: COMMITTED.auditedSource.commit }
 						: entry,
 				),
 			}).errors,
 			"a green run for a different commit is not an exact-head signal",
+		);
+		observed(
+			validateSignals(ROOT, {
+				...COMMITTED,
+				signals: COMMITTED.signals.map((entry) =>
+					entry.kind === "pr-exact-head" ? { ...entry, sha: HEAD_SHA } : entry,
+				),
+			}).errors,
+			"is not an exact-head release",
 		);
 
 		observed(
