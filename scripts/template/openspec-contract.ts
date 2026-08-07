@@ -1,4 +1,5 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Parsed YAML and JSON are strict records.
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: The guard matches a shell parameter expansion verbatim.
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve, sep } from "node:path";
 
@@ -473,6 +474,61 @@ export async function inspectOpenspec(
 	return { roots, errors, notices, gitTracked: tracked !== undefined };
 }
 
+// The wrapper's one injection point, asserted verbatim. `${VAR-default}` and
+// not `${VAR:-default}`: an explicitly empty value means "run in place", which
+// is what a throwaway clone and the tests use, and a `:-` would silently send
+// them back through a bridge they do not have. It is the MOON_BIN pattern — a
+// failure path nothing can execute is a failure path nobody has checked.
+export const WRAPPER_BRIDGE_DEFAULT =
+	"${OPENSPEC_BRIDGE-bash scripts/worktree/exec.sh --require-ready}";
+
+/**
+ * Rules about the wrapper itself.
+ *
+ * Every one of them exists because the alternative fails quietly: a bridge
+ * spelled a second way drifts from the hooks, `--no-verify` turns the archive
+ * commit into the one commit in the repository nothing checked, a local date
+ * pre-checks a destination the CLI will not use, and unset telemetry makes a
+ * required lane depend on a PostHog endpoint being reachable.
+ */
+async function validateWrapperPolicy(root: string): Promise<string[]> {
+	const errors: string[] = [];
+	const path = resolve(root, ARCHIVE_WRAPPER);
+	if (!(await Bun.file(path).exists())) return errors;
+	const source = textOf(path);
+	if (!source.includes(WRAPPER_BRIDGE_DEFAULT))
+		errors.push(
+			`openspec: ${ARCHIVE_WRAPPER} must spell the default bridge exactly once, as ${WRAPPER_BRIDGE_DEFAULT}`,
+		);
+	if (source.includes("--no-verify"))
+		errors.push(
+			`openspec: ${ARCHIVE_WRAPPER} must never bypass the git hooks with --no-verify`,
+		);
+	if (!/\bdate\s+-u\b/.test(source))
+		errors.push(
+			`openspec: ${ARCHIVE_WRAPPER} must compute the archive date in UTC, as the CLI does`,
+		);
+	if (!source.includes("OPENSPEC_TELEMETRY=0"))
+		errors.push(
+			`openspec: ${ARCHIVE_WRAPPER} must disable CLI telemetry on every invocation`,
+		);
+	const manifest = resolve(root, "package.json");
+	if (await Bun.file(manifest).exists()) {
+		const value = (await Bun.file(manifest).json()) as JsonRecord;
+		const scripts = isRecord(value["scripts"]) ? value["scripts"] : {};
+		for (const [name, command] of Object.entries(scripts)) {
+			// The wrapper is host-only. A package script for it is an invitation to
+			// run it through the bridge, from inside the container it refuses to run
+			// in, where the git remote and its credentials do not exist.
+			if (typeof command === "string" && command.includes(ARCHIVE_WRAPPER))
+				errors.push(
+					`openspec: the package script ${name} must not invoke the host-only ${ARCHIVE_WRAPPER}`,
+				);
+		}
+	}
+	return errors;
+}
+
 // The step has to be unconditional inside the required lane. `openspec/**`
 // classifies as documentation in the affected-selection oracle, so a lifecycle
 // guard living in a job a selection can narrow would be skipped by exactly the
@@ -540,6 +596,7 @@ export async function validateOpenspecContract(
 	const inspection = await inspectOpenspec(root, now);
 	return [
 		...inspection.errors,
+		...(await validateWrapperPolicy(root)),
 		...(await validateWorkflowPolicy(root)),
 		...(await validateWiring(root)),
 	].sort();

@@ -53,6 +53,7 @@ is_excluded() {
     scripts/sync-devcontainer.sh)              return 1 ;;  # always include
     scripts/worktree/*)                        return 1 ;;  # template-owned runtime
     scripts/ci/*)                              return 1 ;;  # template-owned CI helpers
+    scripts/openspec/*)                        return 1 ;;  # template-owned lifecycle wrapper
     apps/*|libs/*|scripts/*|graphify-out/*)    return 0 ;;
     openspec/changes/*|openspec/specs/*)       return 0 ;;
     README.md|README.template.md)             return 0 ;;  # project-owned / template-only

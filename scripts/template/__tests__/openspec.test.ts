@@ -1,6 +1,6 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Parsed JSON is a strict record.
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import {
@@ -216,6 +216,152 @@ async function withFakeCli(
 	} finally {
 		if (previous === undefined) delete process.env["OPENSPEC_BIN"];
 		else process.env["OPENSPEC_BIN"] = previous;
+	}
+}
+
+interface WrapperHarness {
+	root: string;
+	origin: string;
+	home: string;
+}
+
+interface RunResult {
+	exitCode: number;
+	stdout: string;
+	stderr: string;
+}
+
+const GIT_IDENTITY = [
+	"-c",
+	"user.email=archive@example.invalid",
+	"-c",
+	"user.name=Archive Fixture",
+	"-c",
+	"commit.gpgsign=false",
+];
+
+function gitOrThrow(root: string, ...args: string[]): string {
+	const result = Bun.spawnSync(["git", "-C", root, ...GIT_IDENTITY, ...args], {
+		env: { PATH: process.env["PATH"] ?? "", HOME: root },
+		stdout: "pipe",
+		stderr: "pipe",
+	});
+	if (result.exitCode !== 0)
+		throw new Error(
+			`git ${args.join(" ")} failed: ${result.stderr.toString()}`,
+		);
+	return result.stdout.toString();
+}
+
+/**
+ * A synthetic clone with a real bare origin, and the real wrapper inside it.
+ *
+ * Both halves are load bearing. Every precondition the wrapper checks is a
+ * question about Git — branch, cleanliness, whether `origin/<default>` exists,
+ * and whether HEAD is exactly it — so the only honest fixture is a repository
+ * with a remote. No container is involved anywhere: `OPENSPEC_BRIDGE=""` is the
+ * declared "run in place" value, and every case below refuses before a single
+ * bridged call would have been made.
+ */
+async function wrapperHarness(
+	changes: ChangeFixture[] = [{ name: "probe-one", complete: 2, remaining: 0 }],
+): Promise<WrapperHarness> {
+	const base = await mkdtemp(resolve(tmpdir(), "devenv-archive-"));
+	const root = resolve(base, "clone");
+	const origin = resolve(base, "origin.git");
+	await mkdir(root, { recursive: true });
+	await mkdir(resolve(root, "scripts/openspec"), { recursive: true });
+	await mkdir(resolve(root, ".moon"), { recursive: true });
+	await Bun.write(
+		resolve(root, ".moon/workspace.yml"),
+		[
+			"projects:",
+			"  sources:",
+			"    root: '.'",
+			"vcs:",
+			"  defaultBranch: 'main'",
+			"",
+		].join("\n"),
+	);
+	await Bun.write(
+		resolve(root, "scripts/openspec/archive.sh"),
+		Bun.file(resolve(ROOT, "scripts/openspec/archive.sh")),
+	);
+	await chmod(resolve(root, "scripts/openspec/archive.sh"), 0o755);
+	await writeRoot(root, { changes });
+	Bun.spawnSync(
+		["git", "init", "--quiet", "--bare", "--initial-branch=main", origin],
+		{
+			env: { PATH: process.env["PATH"] ?? "", HOME: base },
+			stdout: "pipe",
+			stderr: "pipe",
+		},
+	);
+	gitOrThrow(root, "init", "--quiet", "--initial-branch=main");
+	gitOrThrow(root, "add", "-A");
+	gitOrThrow(root, "commit", "--quiet", "--no-verify", "-m", "chore: fixture");
+	gitOrThrow(root, "remote", "add", "origin", origin);
+	gitOrThrow(root, "push", "--quiet", "-u", "origin", "main");
+	return { root, origin, home: base };
+}
+
+function runWrapper(
+	harness: WrapperHarness,
+	args: string[] = ["--dry-run"],
+	overrides: Record<string, string> = {},
+): RunResult {
+	const result = Bun.spawnSync(
+		["bash", resolve(harness.root, "scripts/openspec/archive.sh"), ...args],
+		{
+			cwd: harness.root,
+			// A deliberately narrow environment: the wrapper branches on
+			// CODEX_CLOUD and DEVCONTAINER, so inheriting the ambient environment
+			// would make these tests pass or fail depending on where they run.
+			env: {
+				PATH: process.env["PATH"] ?? "",
+				HOME: harness.home,
+				LANG: "C",
+				OPENSPEC_BRIDGE: "",
+				...overrides,
+			},
+			stdin: "ignore",
+			stdout: "pipe",
+			stderr: "pipe",
+		},
+	);
+	return {
+		exitCode: result.exitCode ?? 1,
+		stdout: result.stdout.toString(),
+		stderr: result.stderr.toString(),
+	};
+}
+
+/** Every tracked and untracked path plus HEAD, so "nothing changed" is checkable. */
+function treeState(root: string): string {
+	const listing = Bun.spawnSync(
+		["git", "-C", root, "status", "--porcelain", "--untracked-files=all"],
+		{ env: { PATH: process.env["PATH"] ?? "", HOME: root }, stdout: "pipe" },
+	).stdout.toString();
+	const head = Bun.spawnSync(["git", "-C", root, "rev-parse", "HEAD"], {
+		env: { PATH: process.env["PATH"] ?? "", HOME: root },
+		stdout: "pipe",
+	}).stdout.toString();
+	const files = Bun.spawnSync(
+		["find", resolve(root, "openspec"), "-type", "f"],
+		{ stdout: "pipe" },
+	).stdout.toString();
+	return `${listing}\n${head}\n${files.split("\n").sort().join("\n")}`;
+}
+
+async function withWrapper(
+	body: (harness: WrapperHarness) => Promise<void>,
+	changes?: ChangeFixture[],
+): Promise<void> {
+	const harness = await wrapperHarness(changes);
+	try {
+		await body(harness);
+	} finally {
+		await rm(harness.home, { recursive: true, force: true });
 	}
 }
 
@@ -628,6 +774,266 @@ describe("openspec lifecycle contract", () => {
 					}
 				},
 			);
+		});
+	});
+
+	describe("the archive wrapper refuses before it touches anything", () => {
+		// Every case asserts two things: the exact refusal, and that the tree is
+		// byte-for-byte what it was. A guard that refuses AFTER moving a directory
+		// has not refused — it has failed halfway.
+		async function refuses(
+			harness: WrapperHarness,
+			args: string[],
+			overrides: Record<string, string>,
+			exitCode: number,
+			fragment: string,
+		): Promise<void> {
+			const before = treeState(harness.root);
+			const result = runWrapper(harness, args, overrides);
+			expect(result.stderr).toContain(fragment);
+			expect(result.exitCode).toBe(exitCode);
+			expect(treeState(harness.root)).toBe(before);
+		}
+
+		test("an unsupported argument prints usage and runs nothing", async () => {
+			await withWrapper(async (harness) => {
+				await refuses(harness, ["--force"], {}, 2, "Usage:");
+			});
+		});
+
+		test("a Codex Cloud task is refused before any git work", async () => {
+			await withWrapper(async (harness) => {
+				await refuses(
+					harness,
+					["--dry-run"],
+					{ CODEX_CLOUD: "true" },
+					3,
+					"a Codex Cloud task must not archive",
+				);
+			});
+		});
+
+		test("running inside the development container is refused", async () => {
+			await withWrapper(async (harness) => {
+				await refuses(
+					harness,
+					["--dry-run"],
+					{ DEVCONTAINER: "true" },
+					3,
+					"run this on the host, not inside the development container",
+				);
+			});
+		});
+
+		test("a container that is not ready refuses instead of stranding an archive", async () => {
+			await withWrapper(async (harness) => {
+				// The bridge's own exit 7. A `--require-ready` hook refuses the same
+				// way, which is exactly why the wrapper preflights: without this
+				// check the archive would be applied and then fail at `git commit`.
+				const bridge = resolve(harness.root, "not-ready.sh");
+				await Bun.write(bridge, "#!/usr/bin/env bash\nexit 7\n");
+				await chmod(bridge, 0o755);
+				await refuses(
+					harness,
+					["--dry-run"],
+					{ OPENSPEC_BRIDGE: `bash ${bridge}` },
+					4,
+					"container is not ready; run bash scripts/worktree/up.sh",
+				);
+			});
+		});
+
+		test("a feature branch is refused by name", async () => {
+			await withWrapper(async (harness) => {
+				gitOrThrow(harness.root, "checkout", "--quiet", "-b", "feat/probe");
+				await refuses(
+					harness,
+					["--dry-run"],
+					{},
+					5,
+					"archive runs on main only; this checkout is on feat/probe",
+				);
+			});
+		});
+
+		test("a modified tracked file is refused", async () => {
+			await withWrapper(async (harness) => {
+				await Bun.write(
+					resolve(harness.root, "openspec/changes/probe-one/proposal.md"),
+					`${PROPOSAL}\nedited\n`,
+				);
+				await refuses(
+					harness,
+					["--dry-run"],
+					{},
+					5,
+					"the working tree is not clean",
+				);
+			});
+		});
+
+		test("an untracked file is refused", async () => {
+			await withWrapper(async (harness) => {
+				await Bun.write(resolve(harness.root, "stray.txt"), "stray\n");
+				await refuses(
+					harness,
+					["--dry-run"],
+					{},
+					5,
+					"the working tree is not clean",
+				);
+			});
+		});
+
+		test("a dirty graphify-out names both ways out", async () => {
+			await withWrapper(async (harness) => {
+				await mkdir(resolve(harness.root, "graphify-out"), { recursive: true });
+				await Bun.write(
+					resolve(harness.root, "graphify-out/graph.json"),
+					"{}\n",
+				);
+				const result = runWrapper(harness);
+				expect(result.exitCode).toBe(5);
+				expect(result.stderr).toContain("git restore graphify-out");
+				expect(result.stderr).toContain("git stash");
+			});
+		});
+
+		test("a missing origin ref is refused", async () => {
+			await withWrapper(async (harness) => {
+				gitOrThrow(harness.root, "remote", "remove", "origin");
+				await refuses(
+					harness,
+					["--dry-run"],
+					{},
+					5,
+					"origin/main does not exist in this clone",
+				);
+			});
+		});
+
+		test("a stale checkout is refused and told how to catch up", async () => {
+			await withWrapper(async (harness) => {
+				const other = resolve(harness.home, "other");
+				gitOrThrow(harness.home, "clone", "--quiet", harness.origin, other);
+				await Bun.write(resolve(other, "advance.txt"), "advance\n");
+				gitOrThrow(other, "add", "-A");
+				gitOrThrow(
+					other,
+					"commit",
+					"--quiet",
+					"--no-verify",
+					"-m",
+					"chore: advance",
+				);
+				gitOrThrow(other, "push", "--quiet", "origin", "main");
+				await refuses(
+					harness,
+					["--dry-run"],
+					{},
+					5,
+					"HEAD is behind origin/main; run `git pull --ff-only`",
+				);
+			});
+		});
+
+		test("an unpushed local commit is refused", async () => {
+			await withWrapper(async (harness) => {
+				await Bun.write(resolve(harness.root, "local.txt"), "local\n");
+				gitOrThrow(harness.root, "add", "-A");
+				gitOrThrow(
+					harness.root,
+					"commit",
+					"--quiet",
+					"--no-verify",
+					"-m",
+					"chore: local",
+				);
+				await refuses(
+					harness,
+					["--dry-run"],
+					{},
+					5,
+					"HEAD is ahead of origin/main",
+				);
+			});
+		});
+
+		test("a diverged checkout is refused", async () => {
+			await withWrapper(async (harness) => {
+				const other = resolve(harness.home, "other");
+				gitOrThrow(harness.home, "clone", "--quiet", harness.origin, other);
+				await Bun.write(resolve(other, "remote.txt"), "remote\n");
+				gitOrThrow(other, "add", "-A");
+				gitOrThrow(
+					other,
+					"commit",
+					"--quiet",
+					"--no-verify",
+					"-m",
+					"chore: remote",
+				);
+				gitOrThrow(other, "push", "--quiet", "origin", "main");
+				await Bun.write(resolve(harness.root, "local.txt"), "local\n");
+				gitOrThrow(harness.root, "add", "-A");
+				gitOrThrow(
+					harness.root,
+					"commit",
+					"--quiet",
+					"--no-verify",
+					"-m",
+					"chore: local",
+				);
+				await refuses(
+					harness,
+					["--dry-run"],
+					{},
+					5,
+					"HEAD and origin/main have diverged",
+				);
+			});
+		});
+
+		test("more than one active change demands an explicit selection", async () => {
+			await withWrapper(
+				async (harness) => {
+					const result = runWrapper(harness);
+					expect(result.exitCode).toBe(6);
+					expect(result.stderr).toContain(
+						"pass --change <name> to say which one",
+					);
+					expect(result.stderr).toContain("openspec -> probe-one");
+					expect(result.stderr).toContain("openspec -> probe-two");
+				},
+				[
+					{ name: "probe-one", complete: 1, remaining: 0 },
+					{ name: "probe-two", complete: 1, remaining: 0 },
+				],
+			);
+		});
+
+		test("an unknown change name is refused and the real ones are listed", async () => {
+			await withWrapper(async (harness) => {
+				await refuses(
+					harness,
+					["--change", "not-a-change", "--dry-run"],
+					{},
+					6,
+					"no active change named not-a-change",
+				);
+			});
+		});
+
+		test("an unknown --root is refused", async () => {
+			await withWrapper(async (harness) => {
+				await refuses(
+					harness,
+					["--root", "packages/nope", "--dry-run"],
+					{},
+					6,
+					"is not an OpenSpec root in this checkout",
+				);
+			});
 		});
 	});
 

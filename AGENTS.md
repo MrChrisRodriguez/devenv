@@ -8,6 +8,10 @@ Decide **where** a command runs before deciding what to type.
 
 - Unless you are already inside this repository's development container or in a verified cloud task, route every project command through `bash scripts/worktree/exec.sh <command> [args...]`. That includes `bun`, `bunx`, `moon`, `tsc`, test runners, and every `package.json` script. The bridge is safe to call from either side: inside the container it executes in place.
 - Stay on the host for host-owned work: `docker`, the `devcontainer` CLI, Git worktree management, remote pushes, every `scripts/worktree/*.sh` lifecycle script, and every `.devcontainer/host/*.sh` script. Starting a container from inside one is never correct.
+<!-- capability:start openspec -->
+- `scripts/openspec/*.sh` is host-owned too, and refuses to run inside the container or in a cloud task. It does its own git work and reaches this repository's pinned tooling through the bridge itself.
+<!-- capability:end openspec -->
+
 - Read-only Git commands and file editing stay on the host too: the checkout is bind mounted, so both sides see the same bytes and the host answer is faster.
 - Git commands that fire hooks — `git commit`, `git merge`, `git rebase` without `--no-verify` — reach the container through the hooks themselves, so run them on the host and let `.husky/*` do the routing.
 - Never install project dependencies on the host. `bun install` belongs inside the container (`bash scripts/worktree/exec.sh bun install`); a host install writes host-platform binaries into the bind-mounted `node_modules`.

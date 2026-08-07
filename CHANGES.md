@@ -4,7 +4,7 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
-## 2026-08-07 — Add: OpenSpec lifecycle validation
+## 2026-08-07 — Add: OpenSpec lifecycle validation and a refusing archive wrapper
 
 **Goal:** Make "the specs are fine" a claim something can fail. The OpenSpec CLI is helpful right up to the moment it is not: `validate --all` exits 0 over zero items, `list --specs` prints prose instead of JSON when there are none, and every command resolves against `'.'` because the CLI has no notion of where a project's roots are. A guard built on those answers reports green for a tree somebody emptied.
 
@@ -24,7 +24,15 @@ This file documents changes made to this template repository. Each entry provide
 
 **Where the step lives is a constraint.** `openspec/**` classifies as documentation in the affected-selection oracle, so a lifecycle guard in a lane a selection can narrow would be skipped by exactly the pull requests that change a change. The fenced `bun run openspec:check` step is in the `ci` job, unconditional, and the contract asserts both facts.
 
-**Why downstream cares:** If a tool's success path is compatible with "there was nothing to check", its exit code is not a result. Enumerate the inputs yourself, make the tool agree with your enumeration, and treat every ambiguous answer as a failure.
+**Archiving is a host script that refuses first.** `scripts/openspec/archive.sh` is deliberately not a package script: it does Git work — branch, status, fetch, commit, push — which is host work by definition, and a package script for it would be an invitation to run it through the bridge from inside the container it refuses to run in. The contract rejects a package script that names it.
+
+The order of its checks is the safety property. Usage, then the two environment refusals (a Codex Cloud task and the development container are both the wrong side of the remote), then a readiness preflight, then every Git precondition, and only then anything that needs the CLI. **The readiness preflight is not decoration**: the git hooks route through `scripts/worktree/exec.sh --require-ready`, which exits 7 rather than starting a container, so a checkout whose container is down would archive the tree and then fail at `git commit` — leaving the change moved, the specs rewritten, and nothing committed. That is the one state this script exists to prevent, so it is checked before the first mutation rather than discovered after it.
+
+"Clean" includes untracked files and `graphify-out/`, and the refusal names both ways out (`git restore graphify-out`, `git stash`) because a dirty graph directory is the ordinary state after a hook run and the pre-commit guard would reject it staged alongside anything else. HEAD must equal `origin/<default>` **exactly** after a fresh `git fetch --prune`; behind, ahead and diverged are three different refusals with three different instructions. Selection must be explicit the moment it is ambiguous — more than one active change, or one name present in more than one root — because "pick the only one" silently becomes "pick the first one" the day a second appears.
+
+`OPENSPEC_BRIDGE` is the one injection point, spelled `${OPENSPEC_BRIDGE-bash scripts/worktree/exec.sh --require-ready}` and asserted verbatim by the contract. It uses `-` and not `:-`: an explicitly empty value means "run in place", which is what the tests and a throwaway clone use, and `:-` would silently send them back through a bridge they do not have.
+
+**Why downstream cares:** If a tool's success path is compatible with "there was nothing to check", its exit code is not a result. Enumerate the inputs yourself, make the tool agree with your enumeration, and treat every ambiguous answer as a failure. And when a script mutates a tree, put every refusal it will ever make ahead of its first write — a guard that refuses halfway has not refused.
 
 ---
 
