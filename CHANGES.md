@@ -50,6 +50,12 @@ This file documents changes made to this template repository. Each entry provide
 
 **13.1's "remove superseded validators atomically" ships as a refusal.** There is no handwritten validator in this repository to supersede. Rather than record the clause as vacuous, the registry declares exactly one validator per surface and a second module claiming the same surface is a named error. Atomicity is enforced going forward instead of asserted about a past that does not exist.
 
+**No seed package, and `libs/forms/**` is gated anyway.** A `libs/forms` package would be a moon project, so it would have to appear in `ci-matrix-universes.json` — a file gated on a *different* capability, with no comment syntax to fence it line by line — and the combination `moon_affected_selection=true, rhf_zod=false` would then render a registry naming a project that does not exist. `design.md` forbids seeding by name and Stages 8A and 8B both recorded the same decision. The reserved root is gated in the same commit that adds the guard, even though nothing creates it, so the first downstream project to use it is governed from its first commit rather than from the commit somebody noticed.
+
+**Evidence.** `evidence/stage-10a-api-contract.json` seals twelve exact commands with sha256-bound raw logs under `evidence/stage-10a-api-contract-run/`. Six of them are the refusal matrix run one leg at a time — a suite-wide green says the *file* passed, and what a record has to be able to say is that a named rule was exercised — and each leg's filter is the test's own name, so a renamed test fails the capture rather than quietly covering nothing. The record seals `addedJobs: 0`, and `rollback.outsideTheTree` is empty: the revert is atomic and **order-independent**, unlike Stage 7's, whose recorded list was also empty but whose branch-protection change made its rollback order-dependent in fact. The capture runs on the host, because unlike the moon and OpenSpec stages this one owns no container-only binary.
+
+**Adopting this costs no container rebuild.** Nothing under `.devcontainer/**` changed, `bun.lock` is untouched, `[capabilities.defaults].rhf_zod` stays `false`, and no fixture file changed — which is what makes "validate generated enabled/disabled fixtures" a validation task rather than an authoring one. Full reasoning, the decision table and every deviation are in `docs/devcontainer-upgrade/stage-10a/README.md`.
+
 ---
 
 ## 2026-08-07 — Add: OpenSpec lifecycle validation and a refusing archive wrapper

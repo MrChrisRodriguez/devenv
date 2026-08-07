@@ -199,6 +199,24 @@ Secrets are host-mounted, not environment variables in the image:
 
 See `.devcontainer/secrets.example` for a list of expected keys.
 
+<!-- capability:start rhf_zod -->
+## Shared Schema and API Contract Ownership
+
+- `api-contract.json` is the enumerated declaration of this project's contract surface, and `bun run forms:check` validates it against `api-contract.schema.json` before anything else. A query over an empty tree is trivially true, so the guard never asks the tree what exists — it asks this file what should exist and reconciles the two in both directions.
+- `mode` is the load-bearing field. `skeleton` asserts, positively and over the whole tracked tree, that no file lives under `libs/forms/`, imports the schema library, binds a form resolver, or opens with a generated-artifact banner. `active` asserts the converse. A tree that grows a surface while the registry still says `skeleton` fails by name; so does a registry that declares a surface the tree does not carry.
+- `libs/forms/**` is reserved and empty in the template, and gated anyway, so the first downstream project to create it is governed from its first commit. A reservation is where an artifact would live, not a promise to create one.
+- Shared schema packages are scanned with an ALLOWLIST, never a denylist. A package may name the schema library plus whatever `allowedSpecifiers` declares, and relative paths that resolve inside its own root — `../../shared/src/x` looks local and is not. Zero files under a declared root is a failure, not a pass.
+- Generated artifacts are byte-compared against what their declared generator emits, so `biome.jsonc` turns the linter, the formatter AND the assist actions off for them. A reformatted artifact is a correct artifact whose gate is red.
+- The published contract must stay lenient on the wire: no `additionalProperties: false` on a response body. Strictness belongs in the tests, because a browser that strict-parses a live response breaks on the first purely additive deploy.
+- Contract evolution is additive-only against the merge base. A removed field, a removed operation, a newly required field or a changed type is refused unless `evolution[]` names that operation with a staged `add`, `migrate` or `remove`.
+- Response types come from the generated client and from nowhere else. An inline shape, an app-local type, a non-contract type and the wrong contract type are four named refusals, over a covered surface derived from the artifact's own paths.
+- Authorization decisions live in the declared `policySeam` or nowhere. The banned denial messages are read from the seam's own module, and a branch that reads a caller role bit and answers with a refusal is refused wherever it is written.
+- Every module that binds a form resolver must appear in `formModules[]` — the exemption set is empty — and every bound field must exist in the declared schema. `root` and `root.*` are the form library's reserved namespace for an error that belongs to no field.
+- A server rejection must be VISIBLE. A declared parser imports the shared schema rather than re-declaring the shape, answers with the declared envelope, handles a malformed body distinctly from a schema rejection, and declares the client mapping that renders it.
+- `forms:check` runs unconditionally in the `ci` job, inside one capability fence and never as a job of its own. Its cost is fixed rather than scaling with the project graph, and a contract gate in a lane a selection can narrow would be skipped by exactly the pull requests that change a contract.
+- Run `bun run forms:check` after changing the registry, a declared schema package, a generated artifact, a form module, a server parser, or the policy seam.
+
+<!-- capability:end rhf_zod -->
 <!-- capability:start openspec -->
 ## OpenSpec Lifecycle Ownership
 

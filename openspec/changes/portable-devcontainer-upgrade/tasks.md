@@ -1,4 +1,4 @@
-**Current status (2026-08-07):** 60 of 82 tasks are complete. Stages 0 through 9 have merged; Stage 10A is next.
+**Current status (2026-08-07):** 64 of 82 tasks are complete. Stages 0 through 10A have merged; Stage 10B is next.
 
 ## 1. Stage 0 PR — Inventory, Parameters, and Baseline
 
@@ -124,10 +124,10 @@ This stage makes OpenSpec validation and archival safe and reproducible, and con
 
 This stage generates shared request and response contracts for forms, servers, and APIs, eliminating parallel handwritten types and making contract drift block deployment.
 
-- [ ] 13.1 Add capability-gated browser-safe shared request schemas/types, server parsing, RHF/Zod catalog family, visible business-rejection mapping, and remove superseded validators atomically
-- [ ] 13.2 Generate response types from authoritative OpenAPI/contracts and block handwritten parallel response types plus inline authorization outside the policy seam
-- [ ] 13.3 Make OpenAPI drift block every deployment path and add browser/server, malformed HTTP, deployment-skew, authorization, mutation, and anti-vacuity tests
-- [ ] 13.4 Validate generated enabled/disabled fixtures, record rollback/evidence, and update rules/docs/`CHANGES.md`
+- [x] 13.1 Add capability-gated browser-safe shared request schemas/types, server parsing, RHF/Zod catalog family, visible business-rejection mapping, and remove superseded validators atomically
+- [x] 13.2 Generate response types from authoritative OpenAPI/contracts and block handwritten parallel response types plus inline authorization outside the policy seam
+- [x] 13.3 Make OpenAPI drift block every deployment path and add browser/server, malformed HTTP, deployment-skew, authorization, mutation, and anti-vacuity tests
+- [x] 13.4 Validate generated enabled/disabled fixtures, record rollback/evidence, and update rules/docs/`CHANGES.md`
 
 ## 14. Stage 10B PR — Sentry and External-write Safety
 
