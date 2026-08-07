@@ -310,7 +310,19 @@ function typescript(): TypeScriptApi | undefined {
 	if (compilerResolved) return compiler;
 	compilerResolved = true;
 	try {
-		compiler = createRequire(import.meta.url)("typescript") as TypeScriptApi;
+		const loaded = createRequire(import.meta.url)("typescript") as
+			| Partial<TypeScriptApi>
+			| undefined;
+		// The SHAPE is checked and not merely the resolution. A rendered project
+		// has no `node_modules` until it installs, and a resolver that answers with
+		// something that is not the compiler would make every AST leg below return
+		// "found nothing" — which is the vacuous pass this guard exists to refuse.
+		compiler =
+			typeof loaded?.createSourceFile === "function" &&
+			typeof loaded.forEachChild === "function" &&
+			loaded.ScriptTarget !== undefined
+				? (loaded as TypeScriptApi)
+				: undefined;
 	} catch {
 		compiler = undefined;
 	}

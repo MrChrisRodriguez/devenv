@@ -9,6 +9,7 @@ import {
 	deriveTreeState,
 	inspectProxyContract,
 	NEEDLES,
+	type ProxyRoute,
 	type ProxyRoutes,
 	REGISTRY_PATH,
 	readEffectiveConfig,
@@ -18,6 +19,7 @@ import {
 	validateProxyContract,
 	validateSoleDeclarations,
 } from "../proxy-contract";
+import { renderFixture } from "../render-fixture";
 import {
 	ACTIVE_CONFIG_SOURCE,
 	API_UPSTREAM_PORT,
@@ -38,6 +40,15 @@ import {
 	WORKTREE_CONTRACT_PATH,
 	writeRegistry,
 } from "./fixtures/proxy-route-workspaces";
+import {
+	buildProxyForwardHeaders,
+	deadline,
+	handshake,
+	startPortMap,
+	startProxy,
+	startUpstream,
+	WAIT,
+} from "./fixtures/websocket-harness";
 
 async function skeletonFixture(): Promise<string> {
 	return await proxyWorkspace({ prefix: "devenv-proxy-skeleton-" });
@@ -1356,4 +1367,386 @@ describe("the guard's own non-vacuity", () => {
 			await rm(root, { recursive: true, force: true });
 		}
 	});
+});
+
+/**
+ * The rendered route table, parsed back out of the generated configuration and
+ * pointed at an injected upstream port.
+ *
+ * Going through the renderer and the AST reader is the point: the harness
+ * drives the bytes this stage generates rather than a route list a test wrote,
+ * so a renderer that emitted a shorthand would fail here as well as in the
+ * structural suite.
+ */
+function renderedRoutes(
+	contract: ProxyRoutes,
+	upstreamPort: number,
+): ProxyRoute[] {
+	const { config, problems } = readEffectiveConfig(
+		contract.configPath,
+		renderViteConfig(contract),
+	);
+	if (!config) throw new Error(problems.join("; "));
+	const parsed = configRoutes(config, NEEDLES.server) ?? [];
+	return parsed.map((route) => {
+		const declared = contract.routes.find((entry) => entry.path === route.path);
+		if (!declared) throw new Error(`the rendered table invented ${route.path}`);
+		if (route.shorthand)
+			throw new Error(`the renderer emitted a shorthand for ${route.path}`);
+		// The declared port is never dialled. Every listener binds :0 and its port
+		// is injected, because a harness that assumed a port would pass on a laptop
+		// and collide in a worktree.
+		return {
+			...declared,
+			ws: route.ws === true,
+			target: `http://127.0.0.1:${upstreamPort}`,
+		};
+	});
+}
+
+const ALLOWED = ["localhost", "127.0.0.1", ".localhost"];
+const FRIENDLY = "workspace.project.localhost";
+
+describe("an executed websocket handshake", () => {
+	test("http and a real socket both reach the upstream through a declared route", async () => {
+		const upstream = startUpstream();
+		const proxy = startProxy({
+			routes: renderedRoutes(activeContract(), upstream.port),
+			upstreamPort: upstream.port,
+			allowedHosts: ALLOWED,
+		});
+		try {
+			// The deliberate success first. A harness proves nothing about the
+			// failures it reports until something proves it can report a pass.
+			const response = await deadline(
+				fetch(`http://127.0.0.1:${proxy.port}/api/health`),
+				WAIT,
+				"http through the proxy",
+			);
+			expect(response.status).toBe(200);
+			expect(await response.text()).toBe("upstream:/api/health");
+
+			const result = await handshake(`ws://127.0.0.1:${proxy.port}/socket`);
+			expect(result.opened).toBe(true);
+			expect(result.echoed).toBe("echo:ping");
+			expect(result.readyState).toBe(WebSocket.OPEN);
+
+			// Counters read immediately after the case and BEFORE teardown: "the
+			// proxy saw nothing" and "the proxy was already gone" produce the same
+			// empty array.
+			const seen = proxy.counts();
+			expect(seen.requests).toEqual(["/api/health"]);
+			expect(seen.upgrades).toEqual(["/socket"]);
+			expect(seen.refusedUpgrades).toEqual([]);
+			const served = upstream.counts();
+			expect(served.requests).toEqual(["/api/health"]);
+			expect(served.upgrades).toEqual(["/socket"]);
+			expect(served.frames).toEqual(["ping"]);
+		} finally {
+			proxy.stop();
+			upstream.stop();
+		}
+	});
+
+	test("the same route with the upgrade dropped never opens", async () => {
+		const upstream = startUpstream();
+		// The missing-`ws` mutation EXECUTED rather than asserted about: a route
+		// whose `ws` is false never calls upgrade, so the client's socket simply
+		// fails while the HTTP path beside it stays perfectly green.
+		const routes = renderedRoutes(activeContract(), upstream.port).map(
+			(route) => (route.path === "/socket" ? { ...route, ws: false } : route),
+		);
+		const proxy = startProxy({
+			routes,
+			upstreamPort: upstream.port,
+			allowedHosts: ALLOWED,
+		});
+		try {
+			const result = await handshake(`ws://127.0.0.1:${proxy.port}/socket`);
+			expect(result.opened).toBe(false);
+			expect(result.echoed).toBeUndefined();
+			const seen = proxy.counts();
+			expect(seen.upgrades).toEqual([]);
+			expect(seen.refusedUpgrades).toEqual(["/socket"]);
+			// ... and the HTTP half of the very same route still works, which is
+			// exactly why this defect is invisible without an executed proof.
+			const response = await deadline(
+				fetch(`http://127.0.0.1:${proxy.port}/socket`),
+				WAIT,
+				"http through the non-forwarding route",
+			);
+			expect(await response.text()).toBe("upstream:/socket");
+			expect(upstream.counts().upgrades).toEqual([]);
+		} finally {
+			proxy.stop();
+			upstream.stop();
+		}
+	});
+
+	test("a shorthand and a rewriting route are refused before a socket exists", async () => {
+		// Two of the structural refusals, restated where their cost is visible: the
+		// guard answers before anything binds a port, so a project never reaches
+		// the handshake that would have failed silently.
+		const { root, contract } = await activeWorkspace({
+			prefix: "devenv-proxy-before-socket-",
+		});
+		try {
+			const shorthand = renderViteConfig(contract).replaceAll(
+				`"/socket": { target: "${contract.routes[1]?.target}", ws: true, changeOrigin: true, secure: true },`,
+				`"/socket": "${contract.routes[1]?.target}",`,
+			);
+			await Bun.write(resolve(root, contract.configPath), shorthand);
+			expect(await validateProxyContract(root)).toContain(
+				`proxy: ${contract.configPath} ${NEEDLES.server} route /socket is a string shorthand; a string target never proxies a WebSocket upgrade, so the object form is not a style preference`,
+			);
+			const rewriting = activeContract({
+				routes: [declaredRoute(), socketRoute({ rewrite: "^/socket" })],
+			});
+			await writeRegistry(root, rewriting);
+			await Bun.write(
+				resolve(root, contract.configPath),
+				renderViteConfig(rewriting),
+			);
+			expect(await validateProxyContract(root)).toContain(
+				"proxy: the route socket rewrites its path and forwards the upgrade; path rewriting and WebSocket upgrade forwarding do not compose",
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("a forwarder that drops the hop-by-hop connection header breaks the handshake", async () => {
+		// `Connection` is hop-by-hop, so a correct stripper breaks every upgrade
+		// while leaving the HTTP path green — the reference restores it explicitly
+		// and says so. The policy is asserted as a function, because Bun's native
+		// upgrade path owns the handshake headers itself, which is the whole reason
+		// this harness uses it instead of hand-rolling a forwarder.
+		const source = new Headers({
+			connection: "Upgrade, keep-alive",
+			upgrade: "websocket",
+			"sec-websocket-version": "13",
+			host: FRIENDLY,
+		});
+		const restored = buildProxyForwardHeaders(source);
+		expect(restored.get("upgrade")).toBe("websocket");
+		expect(restored.get("connection")).toBe("Upgrade");
+		expect(restored.get("host")).toBe(FRIENDLY);
+		expect(restored.get("keep-alive")).toBeNull();
+		const naive = buildProxyForwardHeaders(source, {
+			restoreConnection: false,
+		});
+		expect(naive.get("upgrade")).toBe("websocket");
+		expect(naive.get("connection")).toBeNull();
+		// A plain request carries no upgrade, so neither header is invented.
+		const plain = buildProxyForwardHeaders(
+			new Headers({ connection: "keep-alive" }),
+		);
+		expect(plain.get("connection")).toBeNull();
+		expect(plain.get("upgrade")).toBeNull();
+	});
+
+	test("the host check refuses a socket the CORS rules would have allowed", async () => {
+		const upstream = startUpstream();
+		const proxy = startProxy({
+			routes: renderedRoutes(activeContract(), upstream.port),
+			upstreamPort: upstream.port,
+			allowedHosts: ALLOWED,
+		});
+		try {
+			// A cross-site page's socket carries the user's ambient cookies whatever
+			// any access-control header says, so the server has to check the host
+			// itself. Executed: the allowed host opens, the attacker's does not.
+			const allowed = await handshake(`ws://127.0.0.1:${proxy.port}/socket`, {
+				headers: { host: FRIENDLY },
+			});
+			expect(allowed.opened).toBe(true);
+			const refused = await handshake(`ws://127.0.0.1:${proxy.port}/socket`, {
+				headers: { host: "attacker.example.invalid" },
+			});
+			expect(refused.opened).toBe(false);
+			const seen = proxy.counts();
+			expect(seen.refusedHosts).toEqual(["attacker.example.invalid"]);
+			expect(seen.upgrades).toEqual(["/socket"]);
+		} finally {
+			proxy.stop();
+			upstream.stop();
+		}
+	});
+});
+
+describe("an executed hot reload handshake", () => {
+	test("an unpinned client derives the socket from its own origin and connects", async () => {
+		const upstream = startUpstream();
+		const internal = startProxy({
+			routes: renderedRoutes(activeContract(), upstream.port),
+			upstreamPort: upstream.port,
+			allowedHosts: [".localhost"],
+		});
+		// Exactly one port crosses the boundary. The internal port is the container's
+		// and no browser ever sees it, which is the fact a pinned client port
+		// contradicts.
+		const published = startPortMap({
+			targetPort: internal.port,
+			hostHeader: FRIENDLY,
+		});
+		try {
+			const reachable = await deadline(
+				fetch(`http://127.0.0.1:${published.port}/socket`, {
+					headers: { upgrade: "websocket" },
+				}),
+				WAIT,
+				"reload socket through the published boundary",
+			);
+			// With no override the client derives the socket URL from `location`, so
+			// it dials the port it loaded from and crosses the boundary.
+			expect(reachable.status).toBe(101);
+			expect(published.counts().forwarded).toEqual(["/socket"]);
+			expect(internal.counts().upgrades).toEqual(["/socket"]);
+		} finally {
+			published.stop();
+			internal.stop();
+			upstream.stop();
+		}
+	});
+
+	test("a pinned client port dials a port no browser can reach", async () => {
+		const upstream = startUpstream();
+		const internal = startProxy({
+			routes: renderedRoutes(activeContract(), upstream.port),
+			upstreamPort: upstream.port,
+			allowedHosts: [".localhost"],
+		});
+		try {
+			// This is what `hmr.clientPort` pinned to the internal port makes the
+			// client do: dial the container's own port directly, bypassing the one
+			// boundary that exists. The page loads, the application renders, and the
+			// reload socket goes nowhere — silently.
+			const pinned = await handshake(`ws://127.0.0.1:${internal.port}/socket`, {
+				headers: { host: `127.0.0.1:${internal.port}` },
+			});
+			expect(pinned.opened).toBe(false);
+			const seen = internal.counts();
+			expect(seen.refusedHosts).toEqual([`127.0.0.1:${internal.port}`]);
+			expect(seen.upgrades).toEqual([]);
+		} finally {
+			internal.stop();
+			upstream.stop();
+		}
+	});
+});
+
+describe("the harness's own hygiene", () => {
+	test("every socket pair is torn down in both directions", async () => {
+		for (const pass of [1, 2]) {
+			const upstream = startUpstream();
+			const proxy = startProxy({
+				routes: renderedRoutes(activeContract(), upstream.port),
+				upstreamPort: upstream.port,
+				allowedHosts: ALLOWED,
+			});
+			try {
+				const result = await handshake(`ws://127.0.0.1:${proxy.port}/socket`);
+				expect(result.opened).toBe(true);
+				// Read before teardown, on purpose, and asserted on both passes: with
+				// `:0` binding a leaked listener is completely silent, so the second
+				// pass is what proves the first one really let go.
+				expect(proxy.counts().upgrades.length).toBe(1);
+				expect(upstream.counts().frames).toEqual(["ping"]);
+			} finally {
+				proxy.stop();
+				upstream.stop();
+			}
+			expect(proxy.counts().openPairs).toBe(0);
+			expect(pass).toBeLessThan(3);
+		}
+	});
+
+	test("a bounded wait turns a hang into a failed assertion", async () => {
+		// The failure mode this whole file exists for is a hang, not an error, so
+		// an unbounded await would turn a regression into a suite that never
+		// finishes rather than a suite that fails.
+		const never = new Promise<void>(() => {});
+		await expect(
+			deadline(never, 50, "a listener that never answers"),
+		).rejects.toThrow("timed out waiting for a listener that never answers");
+	});
+});
+
+/**
+ * The rendered guard's own verdict, spawned ASYNCHRONOUSLY.
+ *
+ * A synchronous spawn against a server in the test's own process blocks the
+ * loop that has to answer, and it presents as a hang rather than as an error.
+ * Nothing in this file spawns any other way.
+ */
+async function runGuard(
+	cwd: string,
+): Promise<{ code: number; output: string; errors: string[] }> {
+	const run = Bun.spawn(["bun", "scripts/template/validate-proxy.ts"], {
+		cwd,
+		stdout: "pipe",
+		stderr: "pipe",
+	});
+	const [code, output, stderr] = await Promise.all([
+		run.exited,
+		new Response(run.stdout).text(),
+		new Response(run.stderr).text(),
+	]);
+	return {
+		code,
+		output,
+		errors: stderr.split("\n").filter((line) => line.startsWith("proxy: ")),
+	};
+}
+
+describe("the rendered fixtures", () => {
+	test("the guard runs for real in an enabled render and is absent from a disabled one", async () => {
+		const temporary = await mkdtemp(resolve(tmpdir(), "devenv-proxy-render-"));
+		try {
+			const enabled = resolve(temporary, "full");
+			await renderFixture({ root: ROOT, fixtureName: "full", output: enabled });
+
+			// A fresh render has not installed anything yet, and the AST legs need
+			// the compiler. The verdict has to be a DISTINCT failure rather than a
+			// pass, because "found no proxy table" and "could not look" are the same
+			// answer to a guard that does not check.
+			const uninstalled = await runGuard(enabled);
+			expect(uninstalled.code).toBe(1);
+			expect(uninstalled.errors).toContain(
+				"proxy: the TypeScript compiler API is unavailable; run bun install before proxy:check",
+			);
+
+			// ... and the same render, once it has what the guard needs, returns a
+			// real green verdict rather than a skipped leg.
+			await symlink(
+				resolve(ROOT, "node_modules"),
+				resolve(enabled, "node_modules"),
+				"dir",
+			);
+			const installed = await runGuard(enabled);
+			expect(installed.errors).toEqual([]);
+			expect(installed.code).toBe(0);
+			expect(installed.output).toContain("Validated the proxy route registry");
+
+			for (const name of ["minimal", "cloud"]) {
+				const disabled = resolve(temporary, name);
+				await renderFixture({
+					root: ROOT,
+					fixtureName: name,
+					output: disabled,
+				});
+				for (const path of [
+					"proxy-routes.json",
+					"scripts/template/validate-proxy.ts",
+				])
+					expect(await Bun.file(resolve(disabled, path)).exists()).toBe(false);
+				const manifest = await Bun.file(
+					resolve(disabled, "package.json"),
+				).json();
+				expect(manifest.scripts["proxy:check"]).toBeUndefined();
+			}
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 180000);
 });
