@@ -181,7 +181,11 @@ export async function validateAll(
 			report.status = "fail";
 			report.errors.push(...openspecErrors);
 		}
-		const agentRulesErrors = await validateAgentRulesContract(root);
+		// Hermetic again: the vendor-artifact leg spawns the pinned CLI, which
+		// `rules:check` owns.
+		const agentRulesErrors = await validateAgentRulesContract(root, {
+			vendor: false,
+		});
 		if (agentRulesErrors.length > 0) {
 			report.status = "fail";
 			report.errors.push(...agentRulesErrors);

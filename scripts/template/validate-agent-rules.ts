@@ -10,5 +10,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-	"Validated the canonical agent rules, every generated mirror region, the required surface table, and the agents that receive no OpenSpec artifacts.",
+	"Validated the canonical agent rules, every generated mirror region, the fourteen artifacts regenerated from the pinned CLI, the required surface table, and the agents that receive no OpenSpec artifacts.",
 );

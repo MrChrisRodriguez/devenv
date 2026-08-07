@@ -247,6 +247,13 @@
 			"sourceOfTruth": "affected selection entrypoint"
 		},
 		{
+			"pattern": "scripts/template/agent-rules/**",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "OpenSpec archive delegation body"
+		},
+		{
 			"pattern": "scripts/template/validate-agent-rules.ts",
 			"classification": "template-owned",
 			"syncPolicy": "merge",
@@ -411,6 +418,10 @@
 	"artifactRules": [
 		{ "pattern": "openspec/config.yaml", "requiresAll": ["openspec"] },
 		{ "pattern": "scripts/openspec/**", "requiresAll": ["openspec"] },
+		{
+			"pattern": "scripts/template/agent-rules/**",
+			"requiresAll": ["openspec"]
+		},
 		{
 			"pattern": "scripts/template/openspec-contract.ts",
 			"requiresAll": ["openspec"]
@@ -687,6 +698,7 @@
 				".claude/commands/opsx/**",
 				".claude/skills/openspec-*/**",
 				"scripts/openspec/**",
+				"scripts/template/agent-rules/**",
 				"scripts/template/openspec-contract.ts",
 				"scripts/template/validate-openspec.ts"
 			],

@@ -3,6 +3,9 @@ name: openspec-apply-change
 description: Implement tasks from an OpenSpec change. Use when the user wants to start implementing, continue implementation, or work through tasks.
 ---
 
+<!-- Generated from @fission-ai/openspec by `openspec artifact-experimental-setup`. -->
+<!-- Canonical rules live in AGENTS.md. Regenerate with `bun run rules:sync`; never edit by hand. -->
+
 Implement tasks from an OpenSpec change.
 
 **Input**: Optionally specify a change name. If omitted, MUST prompt for available changes.

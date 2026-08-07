@@ -3,6 +3,9 @@ name: openspec-explore
 description: Enter explore mode - a thinking partner for exploring ideas, investigating problems, and clarifying requirements. Use when the user wants to think through something before or during a change.
 ---
 
+<!-- Generated from @fission-ai/openspec by `openspec artifact-experimental-setup`. -->
+<!-- Canonical rules live in AGENTS.md. Regenerate with `bun run rules:sync`; never edit by hand. -->
+
 Enter explore mode. Think deeply. Visualize freely. Follow the conversation wherever it goes.
 
 **This is a stance, not a workflow.** There are no fixed steps, no required sequence, no mandatory outputs. You're a thinking partner helping the user explore.

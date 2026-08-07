@@ -1,12 +1,16 @@
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import {
 	AGENT_SURFACES,
 	CANONICAL_FILE,
+	DELEGATION_SOURCE,
 	generatedBlocks,
+	REPLACED_ARTIFACTS,
+	regenerateVendorArtifacts,
 	sharedBlocks,
+	VENDOR_ARTIFACTS,
 	validateAgentRulesContract,
 } from "../agent-rules-contract";
 import {
@@ -36,7 +40,9 @@ const COPIED = [
  * agrees today: a synthetic fixture with two invented blocks would prove that
  * the comparison works, not that these files are wired to it.
  */
-async function rulesRepository(): Promise<string> {
+async function rulesRepository(
+	options: { openspec?: boolean } = {},
+): Promise<string> {
 	const root = await mkdtemp(resolve(tmpdir(), "devenv-agent-rules-"));
 	await mkdir(resolve(root, ".claude"), { recursive: true });
 	await mkdir(resolve(root, "scripts/template"), { recursive: true });
@@ -53,11 +59,35 @@ async function rulesRepository(): Promise<string> {
 			"export const placeholder = 1;\n",
 		);
 	await Bun.write(resolve(root, ".codex/hooks.json"), "{}\n");
+	if (options.openspec) {
+		await Bun.write(
+			resolve(root, "openspec/config.yaml"),
+			Bun.file(resolve(ROOT, "openspec/config.yaml")),
+		);
+		await Bun.write(
+			resolve(root, DELEGATION_SOURCE),
+			Bun.file(resolve(ROOT, DELEGATION_SOURCE)),
+		);
+		for (const path of VENDOR_ARTIFACTS)
+			await Bun.write(resolve(root, path), Bun.file(resolve(ROOT, path)));
+		// A shim inside the fixture's own node_modules, so the regeneration runs
+		// the same pinned binary this repository does.
+		await mkdir(resolve(root, "node_modules/.bin"), { recursive: true });
+		const shim = resolve(root, "node_modules/.bin/openspec");
+		await Bun.write(
+			shim,
+			`#!/usr/bin/env bash\nexec node ${resolve(ROOT, "node_modules/@fission-ai/openspec/bin/openspec.js")} "$@"\n`,
+		);
+		await chmod(shim, 0o755);
+	}
 	return root;
 }
 
-async function withRules(body: (root: string) => Promise<void>): Promise<void> {
-	const root = await rulesRepository();
+async function withRules(
+	body: (root: string) => Promise<void>,
+	options: { openspec?: boolean } = {},
+): Promise<void> {
+	const root = await rulesRepository(options);
 	try {
 		await body(root);
 	} finally {
@@ -253,5 +283,121 @@ describe("canonical cross-agent rules", () => {
 			for (const [id, body] of mirror.blocks)
 				expect(body).toBe(canonical.blocks.get(id) as string);
 		}
+	});
+});
+
+describe("generated OpenSpec commands and skills", () => {
+	test("all fourteen match the pinned CLI plus the declared overlay", async () => {
+		const regenerated = regenerateVendorArtifacts(ROOT);
+		expect(regenerated.errors).toEqual([]);
+		expect([...regenerated.files.keys()].sort()).toEqual(
+			[...VENDOR_ARTIFACTS].sort(),
+		);
+		for (const [path, content] of regenerated.files)
+			expect(`${path}:${await text(ROOT, path)}`).toBe(`${path}:${content}`);
+	}, 60_000);
+
+	test("regeneration is byte-identical across two runs", async () => {
+		const first = regenerateVendorArtifacts(ROOT);
+		const second = regenerateVendorArtifacts(ROOT);
+		expect(first.errors).toEqual([]);
+		expect(second.errors).toEqual([]);
+		expect([...second.files.entries()]).toEqual([...first.files.entries()]);
+	}, 60_000);
+
+	test("every artifact carries the regeneration header", async () => {
+		for (const path of VENDOR_ARTIFACTS) {
+			const source = await text(ROOT, path);
+			expect(source).toContain(
+				"<!-- Canonical rules live in AGENTS.md. Regenerate with `bun run rules:sync`; never edit by hand. -->",
+			);
+			// After the frontmatter, never before it: a comment above the opening
+			// `---` makes the frontmatter invisible to everything that reads it.
+			expect(source.startsWith("---\n")).toBe(true);
+			expect(source.indexOf("<!-- Generated from")).toBeGreaterThan(
+				source.indexOf("\n---\n", 4),
+			);
+		}
+	});
+
+	test("both archive surfaces delegate to the wrapper", async () => {
+		expect(REPLACED_ARTIFACTS).toEqual([
+			".claude/commands/opsx/archive.md",
+			".claude/skills/openspec-archive-change/SKILL.md",
+		]);
+		for (const path of REPLACED_ARTIFACTS) {
+			const source = await text(ROOT, path);
+			expect(source).toContain("bash scripts/openspec/archive.sh --change");
+			expect(source).toContain("do not call `openspec archive` yourself");
+		}
+	});
+
+	test("the vendor archive procedure appears nowhere in this tree", async () => {
+		// Assembled, so this assertion is not itself the thing it forbids.
+		const procedure = ["mv", "openspec/changes"].join(" ");
+		const result = Bun.spawnSync(
+			["git", "-C", ROOT, "grep", "-lI", "-F", "-e", procedure],
+			{ stdout: "pipe", stderr: "pipe" },
+		);
+		expect(result.stdout.toString().trim()).toBe("");
+		expect(result.exitCode).toBe(1);
+	});
+
+	test("a hand-edited artifact is named by the guard", async () => {
+		await withRules(
+			async (root) => {
+				expect(await validateAgentRulesContract(root)).toEqual([]);
+				await Bun.write(
+					resolve(root, ".claude/commands/opsx/new.md"),
+					`${await text(root, ".claude/commands/opsx/new.md")}\n\nHand written.\n`,
+				);
+				expect(await validateAgentRulesContract(root)).toContain(
+					"agent-rules: .claude/commands/opsx/new.md does not match the pinned CLI plus this repository's declared overlay; run `bun run rules:sync`",
+				);
+			},
+			{ openspec: true },
+		);
+	}, 60_000);
+
+	test("a deleted artifact names the generator", async () => {
+		await withRules(
+			async (root) => {
+				await rm(resolve(root, ".claude/skills/openspec-explore/SKILL.md"));
+				expect(await validateAgentRulesContract(root)).toContain(
+					"agent-rules: .claude/skills/openspec-explore/SKILL.md is missing; run `bun run rules:sync`",
+				);
+			},
+			{ openspec: true },
+		);
+	}, 60_000);
+
+	test("an artifact in a project with no OpenSpec marker is rejected", async () => {
+		await withRules(async (root) => {
+			await mkdir(resolve(root, ".claude/commands/opsx"), { recursive: true });
+			await Bun.write(
+				resolve(root, ".claude/commands/opsx/archive.md"),
+				"---\nname: leaked\n---\n",
+			);
+			expect(await validateAgentRulesContract(root)).toContain(
+				"agent-rules: .claude/commands/opsx/archive.md exists in a project that has no openspec/config.yaml",
+			);
+		});
+	});
+
+	test("the vendor procedure is rejected wherever it reappears", async () => {
+		await withRules(async (root) => {
+			await Bun.write(
+				resolve(root, "scripts/reminder.md"),
+				`Then run ${["mv", "openspec/changes"].join(" ")}/<name> archive/.\n`,
+			);
+			const errors = await validateAgentRulesContract(root);
+			expect(
+				errors.some(
+					(error) =>
+						error.includes("scripts/reminder.md") &&
+						error.includes("archiving goes through the wrapper"),
+				),
+			).toBe(true);
+		});
 	});
 });

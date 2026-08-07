@@ -3,6 +3,9 @@ name: openspec-continue-change
 description: Continue working on an OpenSpec change by creating the next artifact. Use when the user wants to progress their change, create the next artifact, or continue their workflow.
 ---
 
+<!-- Generated from @fission-ai/openspec by `openspec artifact-experimental-setup`. -->
+<!-- Canonical rules live in AGENTS.md. Regenerate with `bun run rules:sync`; never edit by hand. -->
+
 Continue working on a change by creating the next artifact.
 
 **Input**: Optionally specify a change name. If omitted, MUST prompt for available changes.

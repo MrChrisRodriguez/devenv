@@ -5,6 +5,9 @@ category: Workflow
 tags: [workflow, artifacts, experimental]
 ---
 
+<!-- Generated from @fission-ai/openspec by `openspec artifact-experimental-setup`. -->
+<!-- Canonical rules live in AGENTS.md. Regenerate with `bun run rules:sync`; never edit by hand. -->
+
 Fast-forward through artifact creation - generate everything needed to start implementation.
 
 **Input**: The argument after `/opsx:ff` is the change name (kebab-case), OR a description of what the user wants to build.
