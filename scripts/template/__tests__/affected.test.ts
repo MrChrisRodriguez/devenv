@@ -1160,7 +1160,14 @@ async function runMatrices(
 		cwd: root,
 		env: {
 			PATH: process.env["PATH"] ?? "",
-			HOME: root,
+			// HOME is deliberately NOT redirected here, unlike in `git()`. The
+			// script under test shells out to the real toolchain, and inside this
+			// repository's devcontainer `jq` and `bun` are proto SHIMS that resolve
+			// through $HOME/.proto — so a redirected HOME makes them silently
+			// resolve nothing, the universe preflight reads an empty registry, and
+			// the entrypoint fails closed for a reason that has nothing to do with
+			// the code. It passed on a laptop and on the runners, and only the
+			// in-container evidence capture ever saw it.
 			MOON_BIN: moon,
 			[OUTPUT_VARIABLE]: outputPath,
 			[SUMMARY_VARIABLE]: summaryPath,
