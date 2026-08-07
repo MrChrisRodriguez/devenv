@@ -1393,6 +1393,773 @@ export function validateEvolution(
 	return { errors: [...new Set(errors)].sort(), notices };
 }
 
+// Files nobody ships. A test may hand-write any shape it likes, because the
+// shape is the thing under test; a story and a mock exist to stand in for one.
+const UNSHIPPED = [
+	/\.test\.[cm]?[jt]sx?$/,
+	/\.spec\.[cm]?[jt]sx?$/,
+	/\.stories\.[cm]?[jt]sx?$/,
+	/(?:^|\/)__mocks__\//,
+	/(?:^|\/)__tests__\//,
+];
+
+function isShipped(path: string): boolean {
+	return !UNSHIPPED.some((pattern) => pattern.test(path));
+}
+
+// The four refusals, named exactly as the reference names them. They are
+// assembled from their words rather than written out because this guard scans
+// source files for its own vocabulary elsewhere, and one rule that has to
+// exempt a path teaches the next one to.
+const CATEGORY = {
+	inline: ["INLINE", "RESPONSE", "SHAPE"].join("_"),
+	appLocal: ["APP", "LOCAL", "RESPONSE", "TYPE"].join("_"),
+	nonContract: ["NON", "CONTRACT", "RESPONSE", "TYPE"].join("_"),
+	wrongContract: ["WRONG", "CONTRACT", "RESPONSE", "TYPE"].join("_"),
+} as const;
+
+// Type expressions that are not a claim about a response body at all.
+const OPAQUE_TYPES = new Set([
+	"unknown",
+	"any",
+	"void",
+	"never",
+	"Response",
+	"Request",
+	"Blob",
+	"ArrayBuffer",
+	"ReadableStream",
+	"FormData",
+	"URLSearchParams",
+]);
+
+interface Operation {
+	id: string;
+	route: string;
+	operationId: string;
+	pattern: RegExp;
+}
+
+/**
+ * The covered surface, DERIVED from the published artifact.
+ *
+ * This is the property the whole rule stands on: adding an operation to the
+ * contract extends the ban with no guard edit, and removing one narrows it. A
+ * hardcoded route list would be a second contract, maintained by hand, wrong
+ * from the first merge that forgot it.
+ */
+export function coveredOperations(artifact: string): Operation[] {
+	let value: unknown;
+	try {
+		value = JSON.parse(artifact) as unknown;
+	} catch {
+		return [];
+	}
+	const paths =
+		isRecord(value) && isRecord(value["paths"]) ? value["paths"] : {};
+	const operations: Operation[] = [];
+	for (const [route, item] of Object.entries(paths)) {
+		if (!isRecord(item)) continue;
+		for (const method of HTTP_METHODS) {
+			const operation = item[method];
+			if (!isRecord(operation)) continue;
+			const operationId =
+				typeof operation["operationId"] === "string"
+					? operation["operationId"]
+					: "";
+			operations.push({
+				id: `${method.toUpperCase()} ${route}`,
+				route,
+				operationId,
+				// `{id}` in a route is a hole a caller fills, so the literal a call
+				// site carries is only ever the route's SHAPE.
+				pattern: new RegExp(
+					`^${route
+						.split(/\{[^}]*\}/)
+						.map((part) => part.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+						.join("[^/]*")}$`,
+				),
+			});
+		}
+	}
+	return operations;
+}
+
+type Node = import("typescript").Node;
+
+interface ParsedModule {
+	path: string;
+	source: string;
+	file: import("typescript").SourceFile;
+}
+
+function parseModule(root: string, path: string): ParsedModule | undefined {
+	const api = typescript();
+	if (!api) return undefined;
+	const source = textOf(resolve(root, path));
+	if (source === "") return undefined;
+	return {
+		path,
+		source,
+		file: api.createSourceFile(
+			path,
+			source,
+			api.ScriptTarget.Latest,
+			true,
+			path.endsWith("x") ? api.ScriptKind.TSX : api.ScriptKind.TS,
+		),
+	};
+}
+
+function eachNode(node: Node, visit: (node: Node) => void): void {
+	const api = typescript();
+	if (!api) return;
+	const walk = (current: Node): void => {
+		visit(current);
+		api.forEachChild(current, walk);
+	};
+	walk(node);
+}
+
+/**
+ * Module-level string constants, resolved one hop.
+ *
+ * A call site almost never carries its route as a literal; it carries a name
+ * that was assigned one. One hop covers the three spellings the reference
+ * found in practice — a plain const, a property of a const object, and a
+ * template literal with nothing substituted into it — and stops there, because
+ * a resolver that followed arbitrary expressions would be a partial evaluator
+ * pretending to be a lint rule.
+ */
+export function stringConstants(module: ParsedModule): Map<string, string> {
+	const api = typescript();
+	const found = new Map<string, string>();
+	if (!api) return found;
+	const literal = (node: Node | undefined): string | undefined => {
+		if (!node) return undefined;
+		if (api.isStringLiteral(node)) return node.text;
+		if (api.isNoSubstitutionTemplateLiteral(node)) return node.text;
+		return undefined;
+	};
+	eachNode(module.file, (node) => {
+		if (!api.isVariableDeclaration(node) || !api.isIdentifier(node.name))
+			return;
+		const value = literal(node.initializer);
+		if (value !== undefined) {
+			found.set(node.name.text, value);
+			return;
+		}
+		if (node.initializer && api.isObjectLiteralExpression(node.initializer)) {
+			for (const property of node.initializer.properties) {
+				if (!api.isPropertyAssignment(property)) continue;
+				const key = property.name;
+				const name = api.isIdentifier(key)
+					? key.text
+					: api.isStringLiteral(key)
+						? key.text
+						: undefined;
+				const value_ = literal(property.initializer);
+				if (name !== undefined && value_ !== undefined)
+					found.set(`${node.name.text}.${name}`, value_);
+			}
+		}
+	});
+	return found;
+}
+
+function resolveArgument(
+	node: Node,
+	constants: Map<string, string>,
+): string | undefined {
+	const api = typescript();
+	if (!api) return undefined;
+	if (api.isStringLiteral(node) || api.isNoSubstitutionTemplateLiteral(node))
+		return node.text;
+	if (api.isIdentifier(node)) return constants.get(node.text);
+	if (api.isPropertyAccessExpression(node) && api.isIdentifier(node.expression))
+		return constants.get(`${node.expression.text}.${node.name.text}`);
+	// A path-baking helper: `orderUrl(id)` where the helper is a const string.
+	if (api.isCallExpression(node) && api.isIdentifier(node.expression))
+		return constants.get(node.expression.text);
+	if (api.isTemplateExpression(node)) {
+		// `${BASE}/orders/${id}` — the literal spans carry the shape.
+		const head = node.head.text;
+		const spans = node.templateSpans.map((span) => span.literal.text).join("*");
+		return `${head}${spans === "" ? "" : `*${spans}`}`;
+	}
+	return undefined;
+}
+
+interface ResponseClaim {
+	path: string;
+	operation: Operation;
+	/** The type expression's source text, for the message. */
+	text: string;
+	category: string;
+}
+
+function unwrapType(node: Node): Node {
+	const api = typescript();
+	if (!api) return node;
+	let current = node;
+	for (let depth = 0; depth < 6; depth += 1) {
+		if (api.isParenthesizedTypeNode(current)) {
+			current = current.type;
+			continue;
+		}
+		if (
+			api.isTypeReferenceNode(current) &&
+			api.isIdentifier(current.typeName) &&
+			(current.typeName.text === "Promise" ||
+				current.typeName.text === "Array" ||
+				current.typeName.text === "Readonly") &&
+			current.typeArguments?.[0]
+		) {
+			current = current.typeArguments[0];
+			continue;
+		}
+		if (api.isArrayTypeNode(current)) {
+			current = current.elementType;
+			continue;
+		}
+		break;
+	}
+	return current;
+}
+
+/**
+ * Every place a call site states what a covered response looks like.
+ *
+ * Three spellings, because the reference found all three in a real codebase:
+ * the wrapper's type argument (`useQuery<T>`), the cast (`as T`), and the
+ * annotation on the binding the call result lands in.
+ */
+function responseTypes(
+	module: ParsedModule,
+	call: import("typescript").CallExpression,
+): Node[] {
+	const api = typescript();
+	if (!api) return [];
+	const found: Node[] = [];
+	if (call.typeArguments?.[0]) found.push(call.typeArguments[0]);
+	let current: Node | undefined = call.parent;
+	for (let depth = 0; current && depth < 4; depth += 1) {
+		if (api.isAsExpression(current)) {
+			found.push(current.type);
+			break;
+		}
+		if (api.isVariableDeclaration(current)) {
+			if (current.type) found.push(current.type);
+			break;
+		}
+		if (
+			api.isAwaitExpression(current) ||
+			api.isParenthesizedExpression(current) ||
+			api.isPropertyAccessExpression(current) ||
+			api.isCallExpression(current)
+		) {
+			current = current.parent;
+			continue;
+		}
+		break;
+	}
+	return found;
+}
+
+function localTypeNames(module: ParsedModule): Set<string> {
+	const api = typescript();
+	const names = new Set<string>();
+	if (!api) return names;
+	eachNode(module.file, (node) => {
+		if (api.isInterfaceDeclaration(node) || api.isTypeAliasDeclaration(node))
+			names.add(node.name.text);
+	});
+	return names;
+}
+
+function importedFrom(module: ParsedModule): Map<string, string> {
+	const api = typescript();
+	const found = new Map<string, string>();
+	if (!api) return found;
+	eachNode(module.file, (node) => {
+		if (!api.isImportDeclaration(node)) return;
+		if (!api.isStringLiteralLike(node.moduleSpecifier)) return;
+		const specifier = node.moduleSpecifier.text;
+		const bindings = node.importClause?.namedBindings;
+		if (bindings && api.isNamedImports(bindings)) {
+			for (const element of bindings.elements)
+				found.set(element.name.text, specifier);
+		}
+		if (node.importClause?.name)
+			found.set(node.importClause.name.text, specifier);
+	});
+	return found;
+}
+
+function typeParameterNames(module: ParsedModule): Set<string> {
+	const api = typescript();
+	const names = new Set<string>();
+	if (!api) return names;
+	eachNode(module.file, (node) => {
+		const parameters = (
+			node as { typeParameters?: ReadonlyArray<{ name: { text: string } }> }
+		).typeParameters;
+		if (!Array.isArray(parameters)) return;
+		for (const parameter of parameters) names.add(parameter.name.text);
+	});
+	return names;
+}
+
+/**
+ * No second set of response types, anywhere.
+ *
+ * A handwritten response shape beside a generated one is not a duplicate, it is
+ * a FORK: it keeps compiling after the contract changes, and the first thing
+ * that notices is production. The four refusals are the four ways the reference
+ * saw that fork appear.
+ */
+export function validateParallelResponseTypes(
+	root: string,
+	contract: ApiContract,
+): string[] {
+	const api = typescript();
+	const openapi = contract.openapi;
+	if (!api || openapi === null) return [];
+	const operations = coveredOperations(textOf(resolve(root, openapi.artifact)));
+	if (operations.length === 0)
+		return [
+			`forms: ${openapi.artifact} declares no operation; the parallel-type ban would cover nothing`,
+		];
+	const clientPaths = openapi.clients.map((client) => client.path);
+	// The declared client path and the same path without its extension. A bare
+	// basename is deliberately NOT accepted: `../../lib/api` would end with it
+	// and the rule would wave through a second type set living next door.
+	const clientSpecifiers = new Set(
+		clientPaths.flatMap((path) => [path, path.replace(/\.[cm]?tsx?$/, "")]),
+	);
+	const packageRoots = contract.schemaPackages.map((entry) => entry.root);
+	const claims: ResponseClaim[] = [];
+
+	for (const path of enumerateFiles(root)) {
+		if (!isSourceFile(path) || !isShipped(path)) continue;
+		if (clientPaths.includes(path)) continue;
+		if (packageRoots.some((entry) => insidePackage(entry, path))) continue;
+		const module = parseModule(root, path);
+		if (!module) continue;
+		const constants = stringConstants(module);
+		const locals = localTypeNames(module);
+		const imports = importedFrom(module);
+		const generics = typeParameterNames(module);
+		eachNode(module.file, (node) => {
+			if (!api.isCallExpression(node)) return;
+			let operation: Operation | undefined;
+			for (const argument of node.arguments) {
+				const value = resolveArgument(argument, constants);
+				if (value === undefined) continue;
+				operation = operations.find((candidate) =>
+					candidate.pattern.test(value),
+				);
+				if (operation) break;
+			}
+			if (!operation) return;
+			for (const annotation of responseTypes(module, node)) {
+				const type = unwrapType(annotation);
+				const text = type.getText(module.file);
+				if (api.isTypeLiteralNode(type)) {
+					claims.push({
+						path,
+						operation,
+						text: text.replace(/\s+/g, " "),
+						category: CATEGORY.inline,
+					});
+					continue;
+				}
+				if (!api.isTypeReferenceNode(type) || !api.isIdentifier(type.typeName))
+					continue;
+				const name = type.typeName.text;
+				if (OPAQUE_TYPES.has(name) || generics.has(name)) continue;
+				const specifier = imports.get(name);
+				if (specifier !== undefined) {
+					const fromContract = [...clientSpecifiers].some((candidate) =>
+						specifier.endsWith(candidate),
+					);
+					if (!fromContract) {
+						claims.push({
+							path,
+							operation,
+							text: name,
+							category: CATEGORY.nonContract,
+						});
+						continue;
+					}
+					// A contract type, but the wrong one. The expected name is derived
+					// from the artifact's own operationId, so a renamed operation
+					// re-points the rule without a guard edit.
+					const expected = operation.operationId.toLowerCase();
+					if (expected !== "" && !name.toLowerCase().includes(expected)) {
+						claims.push({
+							path,
+							operation,
+							text: name,
+							category: CATEGORY.wrongContract,
+						});
+					}
+					continue;
+				}
+				if (locals.has(name)) {
+					claims.push({
+						path,
+						operation,
+						text: name,
+						category: CATEGORY.appLocal,
+					});
+				}
+			}
+		});
+	}
+	return [
+		...new Set(
+			claims.map(
+				(claim) =>
+					`forms: ${claim.category} ${claim.path} states the response of ${claim.operation.id} as ${claim.text}; the generated contract types are the only ones`,
+			),
+		),
+	].sort();
+}
+
+// The status a refusal answers with, and the words that mean "who is asking".
+// Both are assembled because this guard scans source files for them and would
+// otherwise be its own first finding.
+const FORBIDDEN_STATUS = String(400 + 3);
+const ROLE_HINTS = [
+	`${"r"}ole`,
+	`${"is"}Admin`,
+	`${"is"}Owner`,
+	`${"permis"}sion`,
+	`${"member"}ship`,
+];
+// A local initialised from one of these is seam-DERIVED, not a role bit, and a
+// branch on it is the policy seam doing its job.
+const SEAM_CALLS = [/\bdecide\s*\(/, /\bapplyDecision\s*\(/, /\w+Gate\s*\(/];
+
+function readsRoleBit(text: string): boolean {
+	if (SEAM_CALLS.some((pattern) => pattern.test(text))) return false;
+	return ROLE_HINTS.some((hint) =>
+		new RegExp(`\\b\\w*${hint}\\w*\\b`, "i").test(text),
+	);
+}
+
+function answersForbidden(text: string): boolean {
+	return text.includes(FORBIDDEN_STATUS);
+}
+
+/**
+ * Authorization decisions live in one place, or they live everywhere.
+ *
+ * Rule one: the seam's denial messages are the seam's. The banned set is READ
+ * from the declared denial module rather than written here, so a new reason
+ * extends the ban the moment it is added — a hardcoded list would be a copy
+ * that goes stale silently, which is the exact failure mode the rule exists to
+ * prevent one level up.
+ *
+ * Rule two: a branch that reads who is asking and answers with a refusal is an
+ * authorization decision, wherever it is written. Resolution stops at a seam
+ * call, because a local initialised from `decide()` is a DECISION and not a
+ * role bit — without that stop the rule would flag the seam's own callers for
+ * using it correctly.
+ */
+export function validateInlineAuthorization(
+	root: string,
+	contract: ApiContract,
+): string[] {
+	const api = typescript();
+	if (!api) return [];
+	const errors: string[] = [];
+	const seam = contract.policySeam;
+	const banned = new Set<string>();
+	if (seam) {
+		const module = parseModule(root, seam.denialModule);
+		const exempt = new Set(seam.exemptMessages ?? []);
+		if (module) {
+			eachNode(module.file, (node) => {
+				if (!api.isStringLiteralLike(node)) return;
+				const text = node.text.trim();
+				// One-word strings are identifiers, not wire messages, and banning
+				// them by text would ban the vocabulary rather than the message.
+				if (text.length < 8 || !text.includes(" ")) return;
+				if (exempt.has(text)) return;
+				banned.add(text);
+			});
+		}
+		if (banned.size === 0)
+			errors.push(
+				`forms: ${seam.denialModule} declares no denial message; the inline-authorization ban would derive an empty set`,
+			);
+	}
+
+	for (const path of enumerateFiles(root)) {
+		if (!isSourceFile(path) || !isShipped(path)) continue;
+		// The seam is never scanned. It is the one place both rules describe.
+		if (seam && insidePackage(seam.root, path)) continue;
+		const module = parseModule(root, path);
+		if (!module) continue;
+		for (const message of banned) {
+			if (module.source.includes(message))
+				errors.push(
+					`forms: ${path} redeclares the seam denial message ${JSON.stringify(message)}; ${seam?.denialModule} is where it is written`,
+				);
+		}
+		eachNode(module.file, (node) => {
+			let condition: Node | undefined;
+			let branch: Node | undefined;
+			if (api.isIfStatement(node)) {
+				condition = node.expression;
+				branch = node.thenStatement;
+			} else if (api.isConditionalExpression(node)) {
+				condition = node.condition;
+				// BOTH arms. `isAdmin ? ok : refuse` and `isAdmin ? refuse : ok` are
+				// the same decision written two ways, and a rule that only read one
+				// of them would be defeated by a `!`.
+				branch = node;
+			} else if (api.isSwitchStatement(node)) {
+				condition = node.expression;
+				branch = node.caseBlock;
+			}
+			if (!condition || !branch) return;
+			const conditionText = condition.getText(module.file);
+			if (!readsRoleBit(conditionText)) return;
+			const branchText = branch.getText(module.file);
+			if (!answersForbidden(branchText)) return;
+			errors.push(
+				`forms: ${path} answers a caller-role branch with a refusal; ${seam ? `${seam.root} is the only place that decides` : "no file may decide authorization while the registry declares no policy seam"}`,
+			);
+		});
+	}
+	return [...new Set(errors)].sort();
+}
+
+// The RHF surface that names a field, plus the component that does it in JSX.
+const BINDING_METHODS = new Set([
+	"clearErrors",
+	"getFieldState",
+	"getValues",
+	"register",
+	"resetField",
+	"setError",
+	"setFocus",
+	"setValue",
+	"trigger",
+	"unregister",
+	"watch",
+]);
+
+function topLevelSegment(field: string): string {
+	return field.split(/[.[]/)[0] ?? field;
+}
+
+/** Top-level keys of a declared schema, unwrapping unions and compositions. */
+export function schemaKeys(
+	root: string,
+	contract: ApiContract,
+	name: string,
+): Set<string> | undefined {
+	const api = typescript();
+	if (!api) return undefined;
+	for (const entry of contract.schemaPackages) {
+		for (const path of enumerateFiles(root).filter(
+			(candidate) =>
+				isSourceFile(candidate) && insidePackage(entry.root, candidate),
+		)) {
+			const module = parseModule(root, path);
+			if (!module) continue;
+			let found: Set<string> | undefined;
+			eachNode(module.file, (node) => {
+				if (found) return;
+				if (!api.isVariableDeclaration(node) || !api.isIdentifier(node.name))
+					return;
+				if (node.name.text !== name || !node.initializer) return;
+				const keys = new Set<string>();
+				eachNode(node.initializer, (child) => {
+					if (!api.isCallExpression(child)) return;
+					const callee = child.expression;
+					if (
+						!api.isPropertyAccessExpression(callee) ||
+						callee.name.text !== "object"
+					)
+						return;
+					const shape = child.arguments[0];
+					if (!shape || !api.isObjectLiteralExpression(shape)) return;
+					for (const property of shape.properties) {
+						const key = property.name;
+						if (!key) continue;
+						if (api.isIdentifier(key) || api.isStringLiteral(key))
+							keys.add(key.text);
+					}
+				});
+				found = keys;
+			});
+			if (found) return found;
+		}
+	}
+	return undefined;
+}
+
+/**
+ * Every form is registered, and every registered form binds fields that exist.
+ *
+ * The loud half is the important one: a module that binds a resolver and is not
+ * in the registry is a form nothing checks, and the exemption set is empty on
+ * purpose. The quiet half catches the typo that a runtime never reports —
+ * `register("emial")` is a field the schema does not have, and the form simply
+ * never validates it.
+ */
+export function validateFormBindings(
+	root: string,
+	contract: ApiContract,
+): string[] {
+	const api = typescript();
+	if (!api) return [];
+	const errors: string[] = [];
+	const declared = new Map(
+		contract.formModules.map((entry) => [entry.path, entry]),
+	);
+	for (const path of enumerateFiles(root)) {
+		if (!isSourceFile(path) || !isShipped(path)) continue;
+		const source = textOf(resolve(root, path));
+		if (!source.includes(RESOLVER_BINDING)) continue;
+		if (!declared.has(path))
+			errors.push(
+				`forms: ${path} binds a form resolver and is not declared in ${REGISTRY_PATH}`,
+			);
+	}
+	for (const entry of contract.formModules) {
+		const module = parseModule(root, entry.path);
+		if (!module) continue;
+		const keys = new Set<string>();
+		let known = false;
+		for (const name of entry.schemas) {
+			const found = schemaKeys(root, contract, name);
+			if (!found) {
+				errors.push(
+					`forms: ${entry.path} binds ${name}, which no declared schema package exports`,
+				);
+				continue;
+			}
+			known = true;
+			for (const key of found) keys.add(key);
+		}
+		if (!known) continue;
+		const bound = new Set<string>();
+		eachNode(module.file, (node) => {
+			if (api.isCallExpression(node)) {
+				const callee = node.expression;
+				const name = api.isIdentifier(callee)
+					? callee.text
+					: api.isPropertyAccessExpression(callee)
+						? callee.name.text
+						: undefined;
+				if (name && BINDING_METHODS.has(name)) {
+					const first = node.arguments[0];
+					if (first && api.isStringLiteralLike(first)) bound.add(first.text);
+				}
+			}
+			if (
+				api.isJsxAttribute(node) &&
+				node.name.getText(module.file) === "name"
+			) {
+				const value = node.initializer;
+				if (value && api.isStringLiteralLike(value)) bound.add(value.text);
+			}
+		});
+		for (const field of bound) {
+			const segment = topLevelSegment(field);
+			// `root` and `root.*` are the library's own reserved namespace for an
+			// error that belongs to no field, which is exactly where a server's
+			// business rejection lands.
+			if (segment === "root" || keys.has(segment)) continue;
+			errors.push(
+				`forms: ${entry.path} binds the field ${field}, which ${entry.schemas.join(" or ")} does not declare`,
+			);
+		}
+	}
+	return [...new Set(errors)].sort();
+}
+
+// A malformed body is not a schema rejection, and a parser that answers both
+// the same way tells a caller to fix a field in a request that never parsed.
+// Assembled: this guard searches for the phrase and contains it.
+const MALFORMED_MARKER = ["Invalid", "JSON"].join(" ");
+
+/**
+ * The server parses the SHARED schema, refuses visibly, and is the only one.
+ *
+ * "A client-side valid state followed by a server rejection SHALL always
+ * produce a visible error — never a silent failure" is the invariant, and a
+ * declared parser without a declared client mapping is precisely the silent
+ * failure: the request is refused, the form clears, and nothing on the page
+ * changed.
+ */
+export function validateServerParsers(
+	root: string,
+	contract: ApiContract,
+): string[] {
+	const api = typescript();
+	if (!api) return [];
+	const errors: string[] = [];
+	const packageRoots = contract.schemaPackages.map((entry) => entry.root);
+	for (const parser of contract.serverParsers) {
+		const module = parseModule(root, parser.path);
+		if (!module) continue;
+		const specifiers = moduleSpecifiers(parser.path, module.source) ?? [];
+		const reachesShared = specifiers.some((specifier) => {
+			const resolved = specifier.startsWith(".")
+				? resolveRelative(parser.path, specifier)
+				: specifier;
+			return packageRoots.some(
+				(entry) =>
+					insidePackage(entry, resolved) ||
+					resolved.includes(entry.slice(entry.lastIndexOf("/") + 1)),
+			);
+		});
+		if (!reachesShared)
+			errors.push(
+				`forms: ${parser.path} declares no import of a shared schema package; a re-declared shape is a second contract`,
+			);
+		if (/\.\s*object\s*\(/.test(module.source))
+			errors.push(
+				`forms: ${parser.path} re-declares an object schema; ${parser.surface} is parsed with the shared one`,
+			);
+		if (!module.source.includes(parser.envelope))
+			errors.push(
+				`forms: ${parser.path} must answer a rejection of ${parser.surface} with the declared ${parser.envelope} envelope`,
+			);
+		if (!module.source.includes(MALFORMED_MARKER))
+			errors.push(
+				`forms: ${parser.path} must answer a malformed body distinctly from a schema rejection`,
+			);
+		if (parser.clientMapping === undefined) {
+			errors.push(
+				`forms: ${parser.path} declares no clientMapping; a server rejection nothing renders is a silent failure`,
+			);
+			continue;
+		}
+		const mapping = parseModule(root, parser.clientMapping);
+		if (!mapping) continue;
+		if (!/\bsetError\s*\(/.test(mapping.source))
+			errors.push(
+				`forms: ${parser.clientMapping} must set a field error for every mappable issue path`,
+			);
+		// `root` and `root.<name>` are the form library's reserved namespace for an
+		// error that belongs to no field, which is exactly where a business
+		// rejection with no matching input lands.
+		if (!/["'`]root(?:\.[^"'`]*)?["'`]/.test(mapping.source))
+			errors.push(
+				`forms: ${parser.clientMapping} must set a root-level error for an issue that maps to no field`,
+			);
+	}
+	return [...new Set(errors)].sort();
+}
+
 /**
  * The whole shared-schema and API contract, with the notices the caller prints.
  *
@@ -1429,6 +2196,10 @@ export async function inspectFormsContract(
 		...validateBrowserSafety(root, contract, state),
 		...(await validateGeneratedOutputPolicy(root, contract)),
 		...validateGeneratedBanners(root, contract),
+		...validateParallelResponseTypes(root, contract),
+		...validateInlineAuthorization(root, contract),
+		...validateFormBindings(root, contract),
+		...validateServerParsers(root, contract),
 		...drift.errors,
 		...evolution.errors,
 	];

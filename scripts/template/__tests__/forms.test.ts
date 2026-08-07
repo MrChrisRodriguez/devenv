@@ -693,6 +693,394 @@ describe("shared schema and API contract registry", () => {
 		}
 	}, 60_000);
 
+	test("bans a second set of response types, in all four spellings", async () => {
+		const { root, contract } = await activeWorkspace();
+		const CLIENT = "../../../libs/api-client/src/generated/api";
+		try {
+			// Legal by construction, and deliberately similar to every refusal
+			// below: an uncovered route, an opaque annotation, a generic type
+			// parameter, and the right contract type for the right operation.
+			await writeFiles(root, {
+				"apps/web/src/legal.ts": [
+					`import type { CreateOrder } from "${CLIENT}";`,
+					"declare function fetchJson(path: string): Promise<unknown>;",
+					'const uncovered = (await fetchJson("/health")) as { ok: boolean };',
+					'const opaque: unknown = await fetchJson("/orders");',
+					'const right = (await fetchJson("/orders")) as CreateOrder;',
+					"export async function load<T>(): Promise<T> {",
+					'\treturn (await fetchJson("/orders")) as T;',
+					"}",
+					"export const surface = [uncovered, opaque, right];",
+					"",
+				].join("\n"),
+			});
+			expect(await validateFormsContract(root)).toEqual([]);
+
+			for (const [category, body, text] of [
+				[
+					"INLINE_RESPONSE_SHAPE",
+					'const row = (await fetchJson("/orders")) as { id: string };\nexport const use = row;\n',
+					"{ id: string }",
+				],
+				[
+					"APP_LOCAL_RESPONSE_TYPE",
+					'interface OrderRow { id: string }\nconst row: OrderRow = await fetchJson("/orders");\nexport const use = row;\n',
+					"OrderRow",
+				],
+				[
+					"NON_CONTRACT_RESPONSE_TYPE",
+					'import type { OrderRow } from "../types";\nconst row: OrderRow = await fetchJson("/orders");\nexport const use = row;\n',
+					"OrderRow",
+				],
+				[
+					"WRONG_CONTRACT_RESPONSE_TYPE",
+					`import type { ReadOrder } from "${CLIENT}";\nconst row: ReadOrder = await fetchJson("/orders");\nexport const use = row;\n`,
+					"ReadOrder",
+				],
+			] as const) {
+				await writeFiles(root, {
+					"apps/web/src/bad.ts": `declare function fetchJson(path: string): Promise<unknown>;\n${body}`,
+				});
+				expect(await validateFormsContract(root)).toContain(
+					`forms: ${category} apps/web/src/bad.ts states the response of POST /orders as ${text}; the generated contract types are the only ones`,
+				);
+			}
+			await rm(resolve(root, "apps/web/src/bad.ts"));
+			expect(await validateFormsContract(root)).toEqual([]);
+
+			// The route reaches the call site through a module-level constant, an
+			// object property and a template literal, because that is how a real
+			// call site spells it.
+			for (const spelling of [
+				'const ORDERS = "/orders";\nconst row = (await fetchJson(ORDERS)) as { id: string };\nexport const use = row;\n',
+				'const ROUTES = { orders: "/orders" };\nconst row = (await fetchJson(ROUTES.orders)) as { id: string };\nexport const use = row;\n',
+				'const row = (await fetchJson(`/orders/${"1"}`)) as { id: string };\nexport const use = row;\n',
+			]) {
+				await writeFiles(root, {
+					"apps/web/src/hop.ts": `declare function fetchJson(path: string): Promise<unknown>;\n${spelling}`,
+				});
+				expect((await validateFormsContract(root)).join("\n")).toContain(
+					"apps/web/src/hop.ts states the response of",
+				);
+			}
+			await rm(resolve(root, "apps/web/src/hop.ts"));
+
+			// Derive-the-surface: the ban follows the artifact. Removing the covered
+			// operation removes the refusal with no guard edit, and adding one back
+			// restores it.
+			await writeFiles(root, {
+				"apps/web/src/bad.ts":
+					'declare function fetchJson(path: string): Promise<unknown>;\nconst row = (await fetchJson("/audits")) as { id: string };\nexport const use = row;\n',
+			});
+			expect(await validateFormsContract(root)).toEqual([]);
+			const widened = JSON.parse(
+				await Bun.file(resolve(root, ARTIFACT_PATH)).text(),
+			) as { paths: Record<string, unknown> };
+			widened.paths["/audits"] = {
+				get: { operationId: "readAudit", responses: {} },
+			};
+			const document = `${JSON.stringify(widened, null, "\t")}\n`;
+			await writeFiles(root, {
+				[ARTIFACT_PATH]: document,
+				"scripts/generate.ts": generatorScript(document, clientTypes()),
+			});
+			expect((await validateFormsContract(root)).join("\n")).toContain(
+				"apps/web/src/bad.ts states the response of GET /audits",
+			);
+
+			// An artifact with no operation at all covers nothing, and a rule that
+			// covers nothing has to say so rather than return an empty list.
+			const empty = `${JSON.stringify({ openapi: "3.1.0", info: { title: "api", version: "1" }, paths: {} }, null, "\t")}\n`;
+			await writeFiles(root, {
+				[ARTIFACT_PATH]: empty,
+				"scripts/generate.ts": generatorScript(empty, clientTypes()),
+			});
+			expect(await validateFormsContract(root)).toContain(
+				`forms: ${ARTIFACT_PATH} declares no operation; the parallel-type ban would cover nothing`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+		expect(contract.openapi?.artifact).toBe(ARTIFACT_PATH);
+	}, 60_000);
+
+	test("bans inline authorization outside the declared policy seam", async () => {
+		const { root, contract } = await activeWorkspace();
+		try {
+			const seamed: ApiContract = {
+				...contract,
+				policySeam: {
+					root: "libs/authz",
+					denialModule: "libs/authz/src/model.ts",
+					exemptMessages: ["Forbidden"],
+				},
+			};
+			await writeFiles(root, {
+				"libs/authz/src/model.ts": [
+					'export type DenialReason = "not_member" | "not_self";',
+					"export const denialEnvelope = (reason: DenialReason) =>",
+					'\treason === "not_member"',
+					'\t\t? { message: "You are not a member of this organization" }',
+					'\t\t: { message: "Forbidden" };',
+					"",
+				].join("\n"),
+				// Legal: a branch on a seam DECISION, and a role branch that answers
+				// something other than a refusal.
+				"apps/api/src/legal.ts": [
+					"declare function decide(caller: unknown): boolean;",
+					"declare function json(body: unknown, status: number): unknown;",
+					"export function handler(caller: { role: string }) {",
+					"\tif (decide(caller)) return json({}, 403);",
+					'\tif (caller.role === "guest") return json({}, 404);',
+					"\treturn json({}, 200);",
+					"}",
+					"",
+				].join("\n"),
+			});
+			await writeRegistry(root, seamed);
+			expect(await validateFormsContract(root)).toEqual([]);
+
+			await writeFiles(root, {
+				"apps/api/src/bad.ts": [
+					"declare function json(body: unknown, status: number): unknown;",
+					"export function handler(caller: { role: string }) {",
+					'\tif (caller.role !== "admin") return json({}, 403);',
+					"\treturn json({}, 200);",
+					"}",
+					"",
+				].join("\n"),
+			});
+			expect(await validateFormsContract(root)).toContain(
+				"forms: apps/api/src/bad.ts answers a caller-role branch with a refusal; libs/authz is the only place that decides",
+			);
+
+			// The banned message set is READ from the seam, so a new reason extends
+			// the ban with no guard edit — and the generic one the seam exempts
+			// stays legal, because it collides with an unrelated refusal.
+			await writeFiles(root, {
+				"apps/api/src/bad.ts": [
+					"declare function json(body: unknown, status: number): unknown;",
+					"export const refuse = () =>",
+					'\tjson({ message: "You are not a member of this organization" }, 403);',
+					'export const generic = () => json({ message: "Forbidden" }, 403);',
+					"",
+				].join("\n"),
+			});
+			const errors = await validateFormsContract(root);
+			expect(errors).toContain(
+				'forms: apps/api/src/bad.ts redeclares the seam denial message "You are not a member of this organization"; libs/authz/src/model.ts is where it is written',
+			);
+			expect(errors.join("\n")).not.toContain('"Forbidden"');
+			await rm(resolve(root, "apps/api/src/bad.ts"));
+			expect(await validateFormsContract(root)).toEqual([]);
+
+			// A seam whose denial module declares nothing would derive an empty ban.
+			await writeFiles(root, {
+				"libs/authz/src/model.ts":
+					"export const denialEnvelope = () => null;\n",
+			});
+			expect(await validateFormsContract(root)).toContain(
+				"forms: libs/authz/src/model.ts declares no denial message; the inline-authorization ban would derive an empty set",
+			);
+
+			// With no seam declared, nothing at all may decide.
+			await writeRegistry(root, contract);
+			await writeFiles(root, {
+				"apps/api/src/bad.ts": [
+					"declare function json(body: unknown, status: number): unknown;",
+					"export function handler(caller: { isAdmin: boolean }) {",
+					"\treturn caller.isAdmin ? json({}, 200) : json({}, 403);",
+					"}",
+					"",
+				].join("\n"),
+			});
+			expect((await validateFormsContract(root)).join("\n")).toContain(
+				"no file may decide authorization while the registry declares no policy seam",
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("registers every form and refuses a field no schema declares", async () => {
+		const { root, contract } = await activeWorkspace();
+		try {
+			const formPath = "apps/web/src/order-form.tsx";
+			await writeFiles(root, {
+				"libs/forms/src/index.ts": [
+					SCHEMA_IMPORT.trimEnd(),
+					"export const OrderForm = z.object({",
+					"\ttotal: z.number(),",
+					"\tnote: z.string(),",
+					"});",
+					"",
+				].join("\n"),
+				[formPath]: [
+					"declare function useForm(options: unknown): {",
+					"\tregister: (name: string) => void;",
+					"\tsetError: (name: string, error: unknown) => void;",
+					"};",
+					"declare const Schema: unknown;",
+					`const form = useForm({ resolver: ${RESOLVER_BINDING}Schema) });`,
+					'form.register("total");',
+					'form.setError("root.server", { message: "rejected" });',
+					"export const bound = form;",
+					"",
+				].join("\n"),
+			});
+			// The loud half: a form nothing registered is a form nothing checks,
+			// and the exemption set is empty on purpose.
+			expect(await validateFormsContract(root)).toContain(
+				`forms: ${formPath} binds a form resolver and is not declared in ${REGISTRY_PATH}`,
+			);
+
+			const registered: ApiContract = {
+				...contract,
+				formModules: [{ path: formPath, schemas: ["OrderForm"] }],
+			};
+			await writeRegistry(root, registered);
+			expect(await validateFormsContract(root)).toEqual([]);
+
+			// The typo a runtime never reports: the field simply never validates.
+			await writeFiles(root, {
+				[formPath]: (await Bun.file(resolve(root, formPath)).text()).replace(
+					'form.register("total")',
+					'form.register("noet")',
+				),
+			});
+			expect(await validateFormsContract(root)).toContain(
+				`forms: ${formPath} binds the field noet, which OrderForm does not declare`,
+			);
+
+			await writeRegistry(root, {
+				...registered,
+				formModules: [{ path: formPath, schemas: ["MissingForm"] }],
+			});
+			expect(await validateFormsContract(root)).toContain(
+				`forms: ${formPath} binds MissingForm, which no declared schema package exports`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("requires a server parser to be shared, distinct, and visible", async () => {
+		const { root, contract } = await activeWorkspace();
+		const parserPath = "apps/api/src/validate.ts";
+		const mappingPath = "apps/web/src/apply-server-error.ts";
+		try {
+			await writeFiles(root, {
+				"libs/forms/src/index.ts": [
+					SCHEMA_IMPORT.trimEnd(),
+					"export const OrderForm = z.object({ total: z.number() });",
+					"",
+				].join("\n"),
+				[parserPath]: [
+					'import { OrderForm } from "../../../libs/forms/src/index";',
+					"export function validateBody(body: unknown, requestId: string) {",
+					'\tif (body === undefined) return { error: { code: "BAD_REQUEST", message: "Invalid JSON body" }, requestId };',
+					"\tconst parsed = OrderForm.safeParse(body);",
+					"\tif (parsed.success) return { data: parsed.data, requestId };",
+					'\treturn { error: { code: "VALIDATION_ERROR", message: "Validation failed" }, requestId };',
+					"}",
+					"",
+				].join("\n"),
+				[mappingPath]: [
+					"export function applyServerError(",
+					"\tissues: Array<{ path: string; message: string }>,",
+					"\tsetError: (name: string, error: { message: string }) => void,",
+					"\tfields: string[],",
+					") {",
+					"\tfor (const issue of issues) {",
+					"\t\tif (fields.includes(issue.path)) setError(issue.path, issue);",
+					'\t\telse setError("root.server", issue);',
+					"\t}",
+					"}",
+					"",
+				].join("\n"),
+			});
+			const declared: ApiContract = {
+				...contract,
+				serverParsers: [
+					{
+						path: parserPath,
+						surface: "POST /orders",
+						envelope: "VALIDATION_ERROR",
+						clientMapping: mappingPath,
+					},
+				],
+			};
+			await writeRegistry(root, declared);
+			expect(await validateFormsContract(root)).toEqual([]);
+
+			// A rejection nothing renders is the silent failure the spec forbids.
+			await writeRegistry(root, {
+				...declared,
+				serverParsers: [
+					{
+						path: parserPath,
+						surface: "POST /orders",
+						envelope: "VALIDATION_ERROR",
+					},
+				],
+			});
+			expect(await validateFormsContract(root)).toContain(
+				`forms: ${parserPath} declares no clientMapping; a server rejection nothing renders is a silent failure`,
+			);
+			await writeRegistry(root, declared);
+
+			const original = await Bun.file(resolve(root, parserPath)).text();
+			for (const [transform, expected] of [
+				[
+					(source: string) =>
+						source.replace(
+							'import { OrderForm } from "../../../libs/forms/src/index";',
+							"const OrderForm = { safeParse: (value: unknown) => ({ success: true, data: value }) };",
+						),
+					`forms: ${parserPath} declares no import of a shared schema package; a re-declared shape is a second contract`,
+				],
+				[
+					(source: string) =>
+						source.replace(
+							"const parsed = OrderForm.safeParse(body);",
+							"const parsed = z.object({ total: z.number() }).safeParse(body);",
+						),
+					`forms: ${parserPath} re-declares an object schema; POST /orders is parsed with the shared one`,
+				],
+				[
+					(source: string) => source.replaceAll("VALIDATION_ERROR", "OOPS"),
+					`forms: ${parserPath} must answer a rejection of POST /orders with the declared VALIDATION_ERROR envelope`,
+				],
+				[
+					(source: string) =>
+						source.replace("Invalid JSON body", "Validation failed"),
+					`forms: ${parserPath} must answer a malformed body distinctly from a schema rejection`,
+				],
+			] as const) {
+				await writeFiles(root, { [parserPath]: transform(original) });
+				expect(await validateFormsContract(root)).toContain(expected);
+				await writeFiles(root, { [parserPath]: original });
+			}
+			expect(await validateFormsContract(root)).toEqual([]);
+
+			const mapping = await Bun.file(resolve(root, mappingPath)).text();
+			await writeFiles(root, {
+				[mappingPath]: mapping.replaceAll("setError", "record"),
+			});
+			expect(await validateFormsContract(root)).toContain(
+				`forms: ${mappingPath} must set a field error for every mappable issue path`,
+			);
+			await writeFiles(root, {
+				[mappingPath]: mapping.replace('"root.server"', "issue.path"),
+			});
+			expect(await validateFormsContract(root)).toContain(
+				`forms: ${mappingPath} must set a root-level error for an issue that maps to no field`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
 	test("renders the contract surface only for the selected capability", async () => {
 		const temporary = await mkdtemp(resolve(tmpdir(), "devenv-forms-render-"));
 		try {

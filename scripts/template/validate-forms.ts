@@ -12,5 +12,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-	"Validated the api contract registry, its declared mode against the tree, guard wiring, template ownership, browser safety, generated-artifact drift, and additive-only evolution.",
+	"Validated the api contract registry, its declared mode against the tree, guard wiring, template ownership, browser safety, generated-artifact drift, additive-only evolution, parallel response types, inline authorization, form bindings, and server parsers.",
 );
