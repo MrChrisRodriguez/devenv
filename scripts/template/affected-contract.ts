@@ -90,6 +90,21 @@ export interface AffectedSelection {
 	seedFiles: string[];
 	/** The closure this selection intersected each universe with. */
 	selected: string[];
+	/**
+	 * The resolved merge base, when one was computed. The moon leg passes it as
+	 * `MOON_BASE` so a stacked pull request is never diffed against the default
+	 * branch behind our back — moon's own base resolution honours
+	 * `GITHUB_BASE_REF` over the workspace's pinned `vcs.defaultBranch`, and a
+	 * second opinion about the base is a second answer about the diff.
+	 */
+	mergeBase?: string;
+	/**
+	 * Projects whose source is the whole repository. Moon reports every one of
+	 * them affected by EVERY changed file, so a comparison that did not exclude
+	 * them would disagree on every pull request and the narrow answer could
+	 * never stand.
+	 */
+	repositoryWide: string[];
 }
 
 export interface AffectedInput {
@@ -202,6 +217,10 @@ export async function selectAffected(
 		]);
 
 	const annotations: string[] = [];
+	const repositoryWide = graph.projects
+		.filter((project) => project.source === ".")
+		.map((project) => project.id)
+		.sort();
 	const full = (reason: AffectedReason, detail: string): AffectedSelection => ({
 		mode: "full",
 		reason,
@@ -211,6 +230,7 @@ export async function selectAffected(
 		selected: [
 			...new Set(universes.flatMap((universe) => universe.projects)),
 		].sort(),
+		repositoryWide,
 	});
 
 	// (2) The switch. Any case, any surrounding whitespace, and unset.
@@ -308,18 +328,14 @@ export async function selectAffected(
 	// rooted at `.` is affected by literally every changed file.
 	const seeds = new Set<string>();
 	const seedFiles: string[] = [];
-	const repositoryWide = new Set(
-		graph.projects
-			.filter((project) => project.source === ".")
-			.map((project) => project.id),
-	);
+	const repositoryWideIds = new Set(repositoryWide);
 	for (const path of changed) {
 		const classification = classifyPath(path, graph.projects);
 		if (classification.scope === "global")
 			return full("global-input", `${path} is a global input`);
 		if (classification.scope === "docs") continue;
 		if (classification.project === undefined) continue;
-		if (repositoryWide.has(classification.project))
+		if (repositoryWideIds.has(classification.project))
 			return full(
 				"global-input",
 				`${path} belongs to ${classification.project}, whose source is the whole repository`,
@@ -348,6 +364,8 @@ export async function selectAffected(
 		annotations,
 		seedFiles: [...seedFiles].sort(),
 		selected: [...selected].sort(),
+		mergeBase: base,
+		repositoryWide,
 	};
 }
 
@@ -378,6 +396,10 @@ export async function widenToFull(
 		selected: [
 			...new Set(universes.flatMap((universe) => universe.projects)),
 		].sort(),
+		...(selection.mergeBase === undefined
+			? {}
+			: { mergeBase: selection.mergeBase }),
+		repositoryWide: selection.repositoryWide,
 	};
 }
 

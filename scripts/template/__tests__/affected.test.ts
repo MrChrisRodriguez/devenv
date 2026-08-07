@@ -1,7 +1,7 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Parsed JSON is a strict record.
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: Fixtures quote TypeScript path templates verbatim.
 import { describe, expect, test } from "bun:test";
-import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { resolve } from "node:path";
 import {
@@ -11,6 +11,7 @@ import {
 	validateAffectedContract,
 } from "../affected-contract";
 import { buildProjectGraph, dependentsOf } from "../graph-contract";
+import { reconcileWithMoon } from "../select-affected";
 
 const ROOT = resolve(import.meta.dir, "../../..");
 
@@ -593,6 +594,198 @@ describe("affected selection contract", () => {
 	});
 });
 
+const FAKE_MOON = resolve(import.meta.dir, "fixtures/fake-moon-affected.ts");
+
+// MOON_BIN takes a path to an executable, so the fixture is reached through a
+// two-line wrapper rather than by committing an executable TypeScript file. The
+// wrapper also proves the pinned argv end to end: the fixture exits 2 on
+// anything other than the six arguments the constant holds, and exits 3 if it is
+// ever handed an empty file list.
+async function fakeMoonBinary(
+	root: string,
+	moonMode: string,
+	record?: string,
+): Promise<string> {
+	const path = resolve(root, "fake-moon-affected");
+	await Bun.write(
+		path,
+		[
+			"#!/usr/bin/env bash",
+			`export FAKE_MOON_AFFECTED_MODE=${moonMode}`,
+			...(record ? [`export FAKE_MOON_RECORD=${record}`] : []),
+			`exec ${process.execPath} ${FAKE_MOON} "$@"`,
+			"",
+		].join("\n"),
+	);
+	await chmod(path, 0o755);
+	return path;
+}
+
+async function reconciled(
+	root: string,
+	moonMode: string,
+	record?: string,
+): Promise<AffectedSelection> {
+	const previous = process.env["MOON_BIN"];
+	try {
+		process.env["MOON_BIN"] = await fakeMoonBinary(root, moonMode, record);
+		return await reconcileWithMoon(
+			root,
+			await selection(root),
+			git(root, "rev-parse", "HEAD"),
+		);
+	} finally {
+		if (previous === undefined) delete process.env["MOON_BIN"];
+		else process.env["MOON_BIN"] = previous;
+	}
+}
+
+describe("moon reconciliation", () => {
+	test("lets the narrow selection stand when moon agrees, and records the invocation", async () => {
+		const root = await chain();
+		try {
+			await commitChange(root, {
+				"libs/base/src/index.ts": "export const base = 9;\n",
+			});
+			const record = resolve(root, ".moon-invocation");
+			const result = await reconciled(root, "agree", record);
+			expect(result.mode).toBe("narrow");
+			expect(result.universes["ci"]).toEqual(["base", "ui", "web"]);
+			expect(result.annotations.at(-1)).toContain("agrees");
+			const invocation = JSON.parse(await Bun.file(record).text()) as {
+				argv: string[];
+				files: string[];
+				base: string | null;
+				head: string | null;
+			};
+			// The pinned argv, verbatim.
+			expect(invocation.argv).toEqual([
+				"query",
+				"projects",
+				"--affected",
+				"--downstream",
+				"deep",
+				"--quiet",
+			]);
+			// The SEED files, not the whole diff.
+			expect(invocation.files).toEqual(["libs/base/src/index.ts"]);
+			// The merge base, so a stacked pull request is never diffed against
+			// the default branch behind the selector's back.
+			expect(invocation.base).toBe(git(root, "rev-parse", "HEAD~1"));
+			expect(invocation.head).toBe(git(root, "rev-parse", "HEAD"));
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("widens to full on every abnormal answer", async () => {
+		for (const [moonMode, fragment] of [
+			["failure", "exited 1"],
+			["silent", "produced no output"],
+			["not-json", "did not produce JSON"],
+			["no-projects-key", "did not report a projects array"],
+			["unexpected-shape", "unexpected shape"],
+			["narrower", "where the committed graph derived"],
+			["wider", "where the committed graph derived"],
+			["only-root", "where the committed graph derived"],
+		] as const) {
+			const root = await chain();
+			try {
+				await commitChange(root, {
+					"libs/base/src/index.ts": "export const base = 10;\n",
+				});
+				const result = await reconciled(root, moonMode);
+				// A narrower moon answer is a widening too. We never adopt moon's
+				// number; we only refuse to be narrower than a disagreement allows.
+				expect([moonMode, result.mode, result.reason]).toEqual([
+					moonMode,
+					"full",
+					"moon-disagreed",
+				]);
+				expect([moonMode, result.universes["ci"]]).toEqual([
+					moonMode,
+					["admin", "base", "root", "ui", "web"],
+				]);
+				expect([
+					moonMode,
+					result.annotations.at(-1)?.includes(fragment) ?? false,
+				]).toEqual([moonMode, true]);
+			} finally {
+				await rm(root, { recursive: true, force: true });
+			}
+		}
+	}, 120_000);
+
+	test("widens to full when the binary is not there at all", async () => {
+		const root = await chain();
+		try {
+			await commitChange(root, {
+				"libs/base/src/index.ts": "export const base = 11;\n",
+			});
+			const previous = process.env["MOON_BIN"];
+			process.env["MOON_BIN"] = resolve(root, "no-such-binary");
+			try {
+				const result = await reconcileWithMoon(
+					root,
+					await selection(root),
+					git(root, "rev-parse", "HEAD"),
+				);
+				expect(result.mode).toBe("full");
+				expect(result.reason).toBe("moon-disagreed");
+			} finally {
+				if (previous === undefined) delete process.env["MOON_BIN"];
+				else process.env["MOON_BIN"] = previous;
+			}
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("never invokes moon with an empty file list", async () => {
+		const root = await chain();
+		try {
+			// Documentation only: a real query here would fall back to working-tree
+			// detection and answer a different question with exit 0.
+			await commitChange(root, { "docs/guide.md": "# guide\n" });
+			const previous = process.env["MOON_BIN"];
+			// A binary that fails if it is ever called at all.
+			process.env["MOON_BIN"] = resolve(root, "no-such-binary");
+			try {
+				const derived = await selection(root);
+				expect(derived.seedFiles).toEqual([]);
+				const result = await reconcileWithMoon(
+					root,
+					derived,
+					git(root, "rev-parse", "HEAD"),
+				);
+				expect(result.mode).toBe("narrow");
+				expect(result.universes["ci"]).toEqual([]);
+				expect(result.annotations.at(-1)).toContain("not consulted");
+			} finally {
+				if (previous === undefined) delete process.env["MOON_BIN"];
+				else process.env["MOON_BIN"] = previous;
+			}
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("leaves a full selection alone", async () => {
+		const root = await chain();
+		try {
+			await commitChange(root, { "AGENTS.md": "# agents\n" });
+			const derived = await selection(root);
+			expect(derived.mode).toBe("full");
+			const result = await reconcileWithMoon(root, derived, undefined);
+			// Moon has nothing to say about an answer that is already the whole
+			// set, and asking it could only widen a widening.
+			expect(result).toBe(derived);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
+});
+
 // The committed entrypoint, executed for what it does rather than read for
 // what it says. The synthetic workspace receives the same four files a render
 // carries, so the script resolves its own root exactly as it does downstream.
@@ -635,12 +828,17 @@ async function runMatrices(
 	const summaryPath = resolve(root, ".matrix-summary");
 	await Bun.write(outputPath, "");
 	await Bun.write(summaryPath, "");
+	// A moon that agrees, unless a case asks for another one. Without it the
+	// reconciliation leg would widen every narrow answer here to FULL on a
+	// missing binary, and the entrypoint cases would be testing that instead.
+	const moon = await fakeMoonBinary(root, environment["FAKE_MOON"] ?? "agree");
 	const result = Bun.spawnSync({
 		cmd: ["bash", resolve(root, MATRIX_SCRIPT)],
 		cwd: root,
 		env: {
 			PATH: process.env["PATH"] ?? "",
 			HOME: root,
+			MOON_BIN: moon,
 			[OUTPUT_VARIABLE]: outputPath,
 			[SUMMARY_VARIABLE]: summaryPath,
 			...environment,

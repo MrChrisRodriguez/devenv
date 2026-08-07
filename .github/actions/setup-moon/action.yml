@@ -38,6 +38,63 @@ description: >
 runs:
   using: composite
   steps:
+    # FIRST, before moon exists on this runner, because the failure it prevents
+    # happens the moment moon is asked anything.
+    #
+    # Under CI, moon eagerly resolves its VCS base by shelling out to
+    # `git merge-base <vcs.defaultBranch> HEAD`. GitHub checks the repository
+    # out SINGLE-BRANCH - only the pull request or push ref, never `main` - and
+    # a non-shallow single-branch clone does not disable affected detection, so
+    # the probe hits a ref that is not there and hard-fails the process with
+    # `exit code 128 / fatal: ambiguous argument 'main': unknown revision`.
+    # Reproduced against moon 2.3.5 with a full-history single-branch clone. It
+    # does not reproduce on a developer host, because a dev checkout has a real
+    # `main` branch - which is exactly why it has to be closed here rather than
+    # discovered once per new moon job.
+    #
+    # Only the REF has to resolve; nothing downstream reads the diff moon
+    # computes from it. Point local `main` - and, on a pull request, the base
+    # ref GitHub names - at their matching remote refs when those exist, else at
+    # HEAD, which is an empty and harmless diff. Moon honours the base ref
+    # environment over the workspace's pinned default branch, so a stacked pull
+    # request needs both names even though an ordinary one needs only `main`.
+    #
+    # Idempotent, and a no-op for refs that already exist.
+    #
+    # The base ref is read from the runner's own GITHUB_BASE_REF environment
+    # variable rather than through an expression, because no expression may
+    # appear in this file at all - see the note above.
+    - name: Ensure moon can resolve its VCS base ref
+      shell: bash
+      run: |
+        set -euo pipefail
+        ensure_local_ref() {
+          local name=$1
+          if git show-ref --verify --quiet "refs/heads/${name}"; then
+            return
+          fi
+          if git show-ref --verify --quiet "refs/remotes/origin/${name}"; then
+            git branch -f -- "$name" "refs/remotes/origin/${name}"
+          else
+            git branch -f -- "$name" HEAD
+          fi
+          echo "setup-moon: local '${name}' -> $(git rev-parse --short "refs/heads/${name}")"
+        }
+        default_branch="$(sed -n "s/^[[:space:]]*defaultBranch:[[:space:]]*'\([^']*\)'.*$/\1/p" .moon/workspace.yml | head -n 1)"
+        if [ -z "$default_branch" ]; then
+          echo "::error::setup-moon: .moon/workspace.yml declares no vcs.defaultBranch." >&2
+          exit 1
+        fi
+        ensure_local_ref "$default_branch"
+        base_ref="${GITHUB_BASE_REF:-}"
+        if [ -n "$base_ref" ] && [ "$base_ref" != "$default_branch" ]; then
+          if ! git check-ref-format --branch "$base_ref" >/dev/null 2>&1; then
+            echo "::error::setup-moon: refusing an invalid base ref." >&2
+            exit 1
+          fi
+          ensure_local_ref "$base_ref"
+        fi
+
     - uses: moonrepo/setup-toolchain@261c62cb5b0f580c7be7c8cd0f023a2e96756095 # v0.6.4
       with:
         auto-install: true

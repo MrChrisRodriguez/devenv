@@ -686,6 +686,146 @@ describe("CI bootstrap action", () => {
 	});
 });
 
+describe("moon bootstrap action", () => {
+	async function moonStepBody(name: string): Promise<string> {
+		const value = Bun.YAML.parse(
+			await Bun.file(resolve(ROOT, MOON_ACTION_PATH)).text(),
+		) as Record<string, unknown>;
+		const runs = value["runs"] as Record<string, unknown>;
+		const step = (runs["steps"] as CompositeStep[]).find(
+			(entry) => entry.name === name,
+		);
+		if (!step?.run) throw new Error(`composite step ${name} has no run body`);
+		return step.run;
+	}
+
+	test("creates the base refs moon resolves before it is installed", async () => {
+		// Under CI, moon resolves `git merge-base <defaultBranch> HEAD` eagerly,
+		// and GitHub's single-branch checkout has no `main` — so the probe dies
+		// with `fatal: ambiguous argument 'main'` before any task runs. The step
+		// is executed here for what it does rather than read for what it says.
+		const body = await moonStepBody("Ensure moon can resolve its VCS base ref");
+		const temporary = await temporaryDirectory();
+		try {
+			const script = resolve(temporary, "ensure-base.sh");
+			await Bun.write(script, body);
+
+			const setup = async (options: {
+				remote?: boolean;
+				defaultBranch?: string;
+			}): Promise<string> => {
+				const workspace = resolve(
+					temporary,
+					`w-${Math.random().toString(36).slice(2)}`,
+				);
+				await mkdir(resolve(workspace, ".moon"), { recursive: true });
+				await Bun.write(
+					resolve(workspace, ".moon/workspace.yml"),
+					`vcs:\n  defaultBranch: '${options.defaultBranch ?? "main"}'\n`,
+				);
+				git(workspace, "init", "-q", "-b", "detached-ci-ref");
+				await Bun.write(resolve(workspace, "file.txt"), "x\n");
+				git(workspace, "add", "-A");
+				git(
+					workspace,
+					"-c",
+					"user.email=a@b.c",
+					"-c",
+					"user.name=a",
+					"commit",
+					"-qm",
+					"base",
+				);
+				if (options.remote)
+					git(workspace, "update-ref", "refs/remotes/origin/main", "HEAD");
+				return workspace;
+			};
+
+			// GitHub's single-branch checkout: no local `main` at all.
+			const bare = await setup({});
+			expect(
+				runScript(script, { cwd: bare, env: { HOME: bare } }).exitCode,
+			).toBe(0);
+			expect(
+				Bun.spawnSync([
+					"git",
+					"-C",
+					bare,
+					"show-ref",
+					"--verify",
+					"refs/heads/main",
+				]).exitCode,
+			).toBe(0);
+
+			// A remote-tracking ref is preferred over HEAD when one exists.
+			const withRemote = await setup({ remote: true });
+			expect(
+				runScript(script, { cwd: withRemote, env: { HOME: withRemote } })
+					.exitCode,
+			).toBe(0);
+
+			// A stacked pull request needs the base ref GitHub names too, because
+			// moon honours it over the workspace's pinned default branch.
+			const stacked = await setup({});
+			expect(
+				runScript(script, {
+					cwd: stacked,
+					env: { HOME: stacked, GITHUB_BASE_REF: "feature/parent" },
+				}).exitCode,
+			).toBe(0);
+			expect(
+				Bun.spawnSync([
+					"git",
+					"-C",
+					stacked,
+					"show-ref",
+					"--verify",
+					"refs/heads/feature/parent",
+				]).exitCode,
+			).toBe(0);
+
+			// ... and a base ref that is not a branch name is refused rather than
+			// handed to `git branch`.
+			const hostile = await setup({});
+			const refused = runScript(script, {
+				cwd: hostile,
+				env: { HOME: hostile, GITHUB_BASE_REF: "--force" },
+			});
+			expect(refused.exitCode).toBe(1);
+			expect(refused.output).toContain("::error::");
+
+			// The default branch is read from the workspace declaration, not
+			// assumed: a repository that gates on `trunk` gets `trunk`.
+			const trunk = await setup({ defaultBranch: "trunk" });
+			expect(
+				runScript(script, { cwd: trunk, env: { HOME: trunk } }).exitCode,
+			).toBe(0);
+			expect(
+				Bun.spawnSync([
+					"git",
+					"-C",
+					trunk,
+					"show-ref",
+					"--verify",
+					"refs/heads/trunk",
+				]).exitCode,
+			).toBe(0);
+
+			// A workspace with no declared default branch is a hard failure, not a
+			// silently skipped step: the ref it would have created is the one moon
+			// is about to ask for.
+			const undeclared = await setup({});
+			await Bun.write(resolve(undeclared, ".moon/workspace.yml"), "vcs: {}\n");
+			expect(
+				runScript(script, { cwd: undeclared, env: { HOME: undeclared } })
+					.exitCode,
+			).toBe(1);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 60_000);
+});
+
 describe("bounded dependency install", () => {
 	test("kills a hung install, caps the attempts, and reports the timeout", async () => {
 		const temporary = await temporaryDirectory();
