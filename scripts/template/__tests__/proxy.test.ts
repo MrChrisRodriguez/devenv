@@ -1,7 +1,8 @@
 // biome-ignore-all lint/suspicious/noTemplateCurlyInString: The mutations write
 // runner expressions into a workflow verbatim.
 import { describe, expect, test } from "bun:test";
-import { link, mkdir, rm, symlink } from "node:fs/promises";
+import { link, mkdir, mkdtemp, rm, symlink } from "node:fs/promises";
+import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
 import {
 	configRoutes,
@@ -12,6 +13,7 @@ import {
 	REGISTRY_PATH,
 	readEffectiveConfig,
 	readProxyRoutes,
+	reconcileMode,
 	renderViteConfig,
 	validateProxyContract,
 	validateSoleDeclarations,
@@ -1239,6 +1241,117 @@ describe("the runtime policy", () => {
 		});
 		try {
 			expect(await validateProxyContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("the guard's own non-vacuity", () => {
+	test("an empty tree is a failure and never a silent pass", async () => {
+		// The failure this asserts is the one every rule in this file is exposed
+		// to: a query over a tree with no development server is trivially true, so
+		// "found nothing, passed" would be the normal outcome and a rule whose
+		// normal outcome is silence is not a rule.
+		const empty = await mkdtemp(resolve(tmpdir(), "devenv-proxy-empty-"));
+		try {
+			const state = deriveTreeState(empty);
+			expect(state.scanned).toBe(0);
+			expect(state.errors).toEqual([
+				`proxy: the tracked-file scan found nothing under ${empty}; a rule with no input has answered nothing`,
+			]);
+			// ... and the reconciliation carries it up rather than swallowing it.
+			expect(reconcileMode(SKELETON, state)).toContain(state.errors[0] ?? "");
+		} finally {
+			await rm(empty, { recursive: true, force: true });
+		}
+	});
+
+	test("a synthetic workspace really is scanned, and a correct one is silent", async () => {
+		const temporary = await skeletonFixture();
+		try {
+			const { contract } = await readProxyRoutes(temporary);
+			const state = deriveTreeState(temporary, contract);
+			expect(state.scanned).toBeGreaterThan(5);
+			expect(state.signals).toEqual([]);
+			const report = await inspectProxyContract(temporary);
+			expect(report.errors).toEqual([]);
+			expect(report.notices).toEqual([]);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+		// ... and the same claim for the world the skeleton is not.
+		const { root } = await activeWorkspace({ prefix: "devenv-proxy-silent-" });
+		try {
+			const report = await inspectProxyContract(root);
+			expect(report.errors).toEqual([]);
+			expect(report.notices.length).toBe(1);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("every refusal is namespaced, distinct and sorted", async () => {
+		// One workspace carrying a defect for every structural leg at once. A guard
+		// that returned the same sentence for two different mistakes, or returned
+		// one twice, or returned them in the order the legs happen to run, would
+		// send the reader to the wrong file — and none of the single-defect cases
+		// above can see any of those three.
+		const { root } = await activeWorkspace({
+			prefix: "devenv-proxy-many-",
+			contract: {
+				wsRuntimeWaiver: null,
+				server: declaredServer({
+					host: "127.0.0.1",
+					strictPort: false,
+					allowedHosts: ["*.localhost"],
+					origin: "http://127.0.0.1:8080",
+					frontedBy: "caddy",
+					hmr: {
+						protocol: null,
+						host: null,
+						clientPort: PUBLISHED_CONTAINER_PORT,
+						reason: "A downstream project pinned it and wrote down why.",
+					},
+				}),
+				routes: [
+					declaredRoute({ target: "http://api.example.invalid:8787" }),
+					socketRoute(),
+				],
+			},
+		});
+		try {
+			const errors = await validateProxyContract(root);
+			expect(errors.length).toBeGreaterThan(8);
+			for (const error of errors)
+				expect(error.startsWith("proxy: ")).toBe(true);
+			expect(new Set(errors).size).toBe(errors.length);
+			expect(errors).toEqual([...errors].sort());
+			// The legs are independent, so the sentences name different subjects.
+			for (const fragment of [
+				"strictPort",
+				"unreachable through the published port",
+				"is a wildcard",
+				"pins the asset origin",
+				"pins the reload client port",
+				"unintended external call",
+				"measured to accept the upgrade and never flush a byte back",
+			])
+				expect(errors.some((error) => error.includes(fragment))).toBe(true);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("the same tree answers the same way twice in a row", async () => {
+		// Nothing in this guard may accumulate state across runs. It caches the
+		// compiler handle and nothing else, and a leg that memoized a tree walk
+		// would report the first answer forever.
+		const { root } = await activeWorkspace({ prefix: "devenv-proxy-twice-" });
+		try {
+			const first = await inspectProxyContract(root);
+			const second = await inspectProxyContract(root);
+			expect(second).toEqual(first);
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}
