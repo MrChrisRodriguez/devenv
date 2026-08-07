@@ -102,9 +102,15 @@ sequence, and the reason for each position.
    bash scripts/openspec/archive.sh --change portable-devcontainer-upgrade
    ```
    It produces its own commit, pushes it, and reads the remote back to confirm.
-5. **Optionally flip `release.json#decision` to `released`** in a follow-up
-   commit on `main`. The guard refuses `released` while the tag does not exist,
-   so this step is only legal after step 3.
+5. **Flip `release.json#decision` to `released`** in a follow-up commit on
+   `main`, and record both CI signals with the run ids that went green. The
+   guard refuses `released` while the tag does not exist, so this step is only
+   legal after step 3 — and it refuses `candidate` once the tag *does* exist, so
+   it is **required** rather than optional from the moment step 3 lands. It was
+   written here as "optionally", which was wrong: `main` is red between step 3
+   and this step. Regenerate the goldens with `bun run template:release-sync`
+   afterwards, because step 4 adds omitted paths and every fixture's
+   `omittedCount` moves.
 
 **Tag before archive, and it is a real decision.** The archive commit adds no
 template behaviour — `openspec/changes/**` and `openspec/specs/**` are both

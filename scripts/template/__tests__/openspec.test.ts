@@ -1752,13 +1752,24 @@ describe("one disposable lifecycle, end to end", () => {
 		);
 	}, 120_000);
 
-	test("this repository's own active change is still active", async () => {
-		// The standing constraint, stated as an assertion rather than as care.
+	test("this repository's own change survived the disposable lifecycle", async () => {
+		// The standing constraint, stated as an assertion rather than as care: a
+		// probe's lifecycle must never touch this repository's own change.
+		//
+		// It counts the change ONCE across active and archived, which is the same
+		// shape the aggregate leg above uses and for the same reason. Asserting it
+		// is active fails on `main` the moment the post-merge archive lands;
+		// asserting it is archived fails inside the pull request that has not
+		// merged yet. Counting it once is green before the archive and after it,
+		// and it still catches the two failures this case exists for — a change
+		// the probe deleted, and the both-active-and-archived state.
 		const inspection = await inspectOpenspec(ROOT);
-		expect(inspection.roots[0]?.changes.map((change) => change.name)).toEqual([
-			"portable-devcontainer-upgrade",
-		]);
-		expect(inspection.roots[0]?.archived).toEqual([]);
+		const root = inspection.roots[0];
+		const appearances = [
+			...(root?.changes ?? []).map((change) => change.name),
+			...(root?.archived ?? []).map((change) => change.name),
+		].filter((name) => name === "portable-devcontainer-upgrade");
+		expect(appearances).toEqual(["portable-devcontainer-upgrade"]);
 	});
 });
 
