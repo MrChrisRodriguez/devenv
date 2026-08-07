@@ -1,14 +1,18 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Parsed JSON is a strict record.
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: The wrapper mutations
+// quote shell parameter expansions verbatim.
 import { describe, expect, test } from "bun:test";
 import { chmod, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import {
 	archiveEntryName,
 	assessArchive,
 	enumerateOpenspecRoots,
 	inspectOpenspec,
+	shellCode,
 	validateOpenspecContract,
+	validateWrapperPolicy,
 } from "../openspec-contract";
 import {
 	loadFixtureDefinition,
@@ -388,6 +392,7 @@ const REFUSAL_MATRIX: ReadonlyArray<{ code: number; meaning: string }> = [
 	{ code: 8, meaning: "the archive destination is already occupied" },
 	{ code: 9, meaning: "the archive did not verify and was rolled back" },
 	{ code: 10, meaning: "the push was refused" },
+	{ code: 11, meaning: "the push did not verify against the remote" },
 ];
 
 const OBSERVED_EXIT_CODES = new Set<number>();
@@ -1199,6 +1204,80 @@ describe("openspec lifecycle contract", () => {
 			);
 		}, 60_000);
 
+		test("a dry run reports and never reaches the write or the readback", async () => {
+			await withWrapper(
+				async (harness) => {
+					const before = originHead(harness);
+					const result = runWrapper(harness, ["--dry-run"]);
+					expect(result.exitCode).toBe(0);
+					expect(result.stdout).toContain("--dry-run, nothing was changed");
+					// Zero network mutations and zero readbacks: the dry run exits
+					// before the archive, so neither the push nor the query that
+					// verifies it is ever reached, and the remote is untouched.
+					expect(result.stderr).not.toContain("did not verify");
+					expect(originHead(harness)).toBe(before);
+					expect(gitOrThrow(harness.root, "status", "--porcelain")).toBe("");
+					expect(
+						await Bun.file(
+							resolve(harness.root, "openspec/changes/probe-one/proposal.md"),
+						).exists(),
+					).toBe(true);
+				},
+				{
+					cli: "faithful",
+					changes: [
+						{
+							name: "probe-one",
+							complete: 2,
+							remaining: 0,
+							requirement: "Probe Requirement",
+						},
+					],
+				},
+			);
+		}, 60_000);
+
+		test("a push the remote did not keep is refused rather than reported", async () => {
+			await withWrapper(
+				async (harness) => {
+					// A remote that accepts the pack and then holds something else.
+					// The pusher sees a zero exit status either way, which is exactly
+					// why a zero exit status is not the claim the wrapper makes.
+					const hook = resolve(harness.origin, "hooks/post-receive");
+					await mkdir(dirname(hook), { recursive: true });
+					await Bun.write(
+						hook,
+						"#!/usr/bin/env bash\ngit update-ref refs/heads/main refs/heads/main^\n",
+					);
+					await chmod(hook, 0o755);
+					const result = runWrapper(harness, []);
+					expect(result.exitCode).toBe(11);
+					expect(result.stderr).toContain(
+						"the archive push did not verify against the remote",
+					);
+					// The self-healing menu, in the same shape the rejection arm
+					// already prints: the commit is kept and every way out is named.
+					expect(result.stderr).toContain("is kept locally. Choose one:");
+					expect(result.stderr).toContain(
+						"discard it:           git reset --hard origin/main",
+					);
+					const head = gitOrThrow(harness.root, "rev-parse", "HEAD").trim();
+					expect(originHead(harness)).not.toBe(head);
+				},
+				{
+					cli: "faithful",
+					changes: [
+						{
+							name: "probe-one",
+							complete: 2,
+							remaining: 0,
+							requirement: "Probe Requirement",
+						},
+					],
+				},
+			);
+		}, 60_000);
+
 		test("a second run refuses on the occupied destination", async () => {
 			await withWrapper(
 				async (harness) => {
@@ -1753,4 +1832,122 @@ describe("rendered fixtures carry the lifecycle only where it is enabled", () =>
 			await rm(temporary, { recursive: true, force: true });
 		}
 	}, 120_000);
+});
+
+describe("the readback is ordered, bound and never superseded", () => {
+	/**
+	 * A directory carrying only what `validateWrapperPolicy` reads.
+	 *
+	 * The rules under test are statements about the wrapper's own text — where
+	 * the readback sits relative to the push, whether its result is bound, and
+	 * whether that binding is ever overwritten — so a fixture that needed a
+	 * remote would be testing something else.
+	 */
+	async function wrapperOnly(
+		transform: (source: string) => string,
+	): Promise<string> {
+		const root = await mkdtemp(resolve(tmpdir(), "devenv-readback-"));
+		await mkdir(resolve(root, "scripts/openspec"), { recursive: true });
+		const source = await Bun.file(
+			resolve(ROOT, "scripts/openspec/archive.sh"),
+		).text();
+		const changed = transform(source);
+		// A mutation that silently stopped matching would pass as a green run of
+		// the unmutated file, which is the one outcome this whole block exists to
+		// make impossible.
+		if (changed === source)
+			throw new Error("Mutation did not change scripts/openspec/archive.sh");
+		await Bun.write(resolve(root, "scripts/openspec/archive.sh"), changed);
+		await Bun.write(
+			resolve(root, "package.json"),
+			`${JSON.stringify({ name: "synthetic", scripts: {} }, null, "\t")}\n`,
+		);
+		return root;
+	}
+
+	async function withWrapperOnly(
+		transform: (source: string) => string,
+		body: (root: string) => Promise<void>,
+	): Promise<void> {
+		const root = await wrapperOnly(transform);
+		try {
+			await body(root);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}
+
+	const READBACK_LINE =
+		'REMOTE_AFTER="$(git ls-remote --exit-code origin "refs/heads/$DEFAULT_BRANCH" 2>/dev/null | awk \'{ print $1 }\' || true)"\n';
+
+	test("the committed wrapper satisfies every readback rule", async () => {
+		expect(await validateWrapperPolicy(ROOT)).toEqual([]);
+	});
+
+	test("a readback that precedes the push establishes nothing about it", async () => {
+		await withWrapperOnly(
+			(source) =>
+				source
+					.replace(READBACK_LINE, "")
+					.replace("# ── 9. Push ", `${READBACK_LINE}# ── 9. Push `),
+			async (root) => {
+				expect(await validateWrapperPolicy(root)).toContain(
+					"openspec: scripts/openspec/archive.sh reads the remote back before it pushes; a query that precedes the write establishes nothing about it",
+				);
+			},
+		);
+	});
+
+	test("a commented-out readback is not a readback", async () => {
+		await withWrapperOnly(
+			(source) => source.replace(READBACK_LINE, `# ${READBACK_LINE}`),
+			async (root) => {
+				expect(await validateWrapperPolicy(root)).toContain(
+					"openspec: scripts/openspec/archive.sh must read the remote back with `git ls-remote --exit-code origin` after it pushes",
+				);
+			},
+		);
+	});
+
+	test("a readback assigned and then overwritten is refused by name", async () => {
+		await withWrapperOnly(
+			(source) =>
+				source.replace(
+					READBACK_LINE,
+					`${READBACK_LINE}REMOTE_AFTER="$ARCHIVE_COMMIT"\n`,
+				),
+			async (root) => {
+				expect(await validateWrapperPolicy(root)).toContain(
+					"openspec: scripts/openspec/archive.sh assigns REMOTE_AFTER 2 times; a superseded readback compares a value the remote never produced",
+				);
+			},
+		);
+	});
+
+	test("a readback nobody binds is a query nobody asked", async () => {
+		await withWrapperOnly(
+			(source) =>
+				source.replace(
+					READBACK_LINE,
+					'git ls-remote --exit-code origin "refs/heads/$DEFAULT_BRANCH" >/dev/null\nREMOTE_AFTER="$ARCHIVE_COMMIT"\n',
+				),
+			async (root) => {
+				expect(await validateWrapperPolicy(root)).toContain(
+					"openspec: scripts/openspec/archive.sh runs the readback without binding its result; a query nobody compares is a query nobody asked",
+				);
+			},
+		);
+	});
+
+	test("a quoted # survives the comment stripper", () => {
+		// The wrapper carries `${#COMMIT_SUBJECT}` inside a double-quoted message.
+		// A stripper that cut at the first `#` would delete the rest of that line
+		// and change what every ordering index above means.
+		const stripped = shellCode(
+			'die "the subject \\"$S\\" is ${#S} characters" 6 # explain\nkeep=1\n',
+		);
+		expect(stripped).toContain("${#S} characters");
+		expect(stripped).not.toContain("explain");
+		expect(stripped).toContain("keep=1");
+	});
 });

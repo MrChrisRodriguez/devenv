@@ -37,6 +37,7 @@
 #   8 the archive destination is already occupied
 #   9 the archive did not verify and was rolled back
 #  10 the push was refused
+#  11 the push did not verify against the remote
 
 set -euo pipefail
 
@@ -55,7 +56,7 @@ ROOT_ARGUMENT=""
 DRY_RUN="false"
 
 usage() {
-	sed -n '/^# Usage:/,/^#  10 /p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+	sed -n '/^# Usage:/,/^#  11 /p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
 }
 
 die() {
@@ -437,6 +438,31 @@ if ! git push --quiet origin "HEAD:refs/heads/$DEFAULT_BRANCH"; then
 	note "  - open a pull request:  git switch -c chore/archive-$CHANGE && git push -u origin HEAD"
 	note "  - discard it:           git reset --hard origin/$DEFAULT_BRANCH"
 	die "push rejected" 10
+fi
+
+# ── 10. Read the remote back ────────────────────────────────────────────────
+# A push that returned 0 is a claim about a local process, not about the
+# remote. Credential presence and a zero exit status are both necessary and
+# neither is sufficient: the only thing that establishes the final state is
+# asking the remote what it now holds and comparing it, exactly, with what this
+# run intended to put there. A hook that rewrote the ref, a mirror that
+# answered for a stale replica and a proxy that accepted and dropped the pack
+# all return 0 to the pusher.
+#
+# The query is read-only and separate from the write on purpose — a verifier
+# folded into the writer can only confirm what the writer already believed —
+# and it is assigned ONCE, because a superseded assignment would compare a
+# value the remote never produced. `|| true` keeps `pipefail` from turning an
+# unreachable remote into an undiagnosed abort: an empty readback is a
+# mismatch, and it is reported as one.
+REMOTE_AFTER="$(git ls-remote --exit-code origin "refs/heads/$DEFAULT_BRANCH" 2>/dev/null | awk '{ print $1 }' || true)"
+if [ "$REMOTE_AFTER" != "$ARCHIVE_COMMIT" ]; then
+	note "the push returned 0 but origin/$DEFAULT_BRANCH reads back as ${REMOTE_AFTER:-<unreadable>}, not $ARCHIVE_COMMIT."
+	note "The archive commit $ARCHIVE_COMMIT is kept locally. Choose one:"
+	note "  - re-run this command once the remote is reachable and settled"
+	note "  - open a pull request:  git switch -c chore/archive-$CHANGE && git push -u origin HEAD"
+	note "  - discard it:           git reset --hard origin/$DEFAULT_BRANCH"
+	die "the archive push did not verify against the remote" 11
 fi
 
 printf '%s\n' "$LABEL: archived $CHANGE to $ARCHIVE_DESTINATION and pushed $ARCHIVE_COMMIT"

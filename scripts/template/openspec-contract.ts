@@ -488,6 +488,51 @@ export const WRAPPER_BRIDGE_DEFAULT =
 export const ARCHIVE_RESTORE =
 	"git restore --source=HEAD --staged --worktree --";
 
+// The read-only query that establishes the remote's final state after the one
+// remote write this repository performs. A push that returned 0 is a claim
+// about a local process; a hook that rewrote the ref, a mirror answering for a
+// stale replica and a proxy that accepted and dropped the pack all return 0 to
+// the pusher, so the write is only verified once the remote has been asked what
+// it now holds.
+export const ARCHIVE_READBACK = "git ls-remote --exit-code origin";
+
+/**
+ * A shell file's executable half, with `#` inside a quoted string preserved.
+ *
+ * The existing negative rules drop whole comment LINES, which is enough for
+ * them. This one is not: the wrapper carries `${#COMMIT_SUBJECT}` inside a
+ * double-quoted message, and a stripper that cut at the first `#` would delete
+ * the rest of that line and change what every ordering index below means. A
+ * comment starts at an unquoted `#` that begins a line or follows whitespace —
+ * everywhere else the character is part of the program.
+ */
+export function shellCode(source: string): string {
+	const output: string[] = [];
+	for (const line of source.split("\n")) {
+		let single = false;
+		let double = false;
+		let cut = -1;
+		for (let index = 0; index < line.length; index += 1) {
+			const character = line[index];
+			if (character === "\\" && double) {
+				index += 1;
+				continue;
+			}
+			if (character === "'" && !double) single = !single;
+			else if (character === '"' && !single) double = !double;
+			else if (character === "#" && !single && !double) {
+				const previous = index === 0 ? " " : (line[index - 1] ?? "");
+				if (previous === " " || previous === "\t") {
+					cut = index;
+					break;
+				}
+			}
+		}
+		output.push(cut < 0 ? line : line.slice(0, cut));
+	}
+	return output.join("\n");
+}
+
 // The archive commit's subject. `chore` because an archive adds no behaviour,
 // and a fixed prefix because the subject has to fit commitlint's 72-character
 // header before the CLI is allowed to move anything.
@@ -502,7 +547,7 @@ export const ARCHIVE_COMMIT_SUBJECT = "chore(openspec): archive ";
  * pre-checks a destination the CLI will not use, and unset telemetry makes a
  * required lane depend on a PostHog endpoint being reachable.
  */
-async function validateWrapperPolicy(root: string): Promise<string[]> {
+export async function validateWrapperPolicy(root: string): Promise<string[]> {
 	const errors: string[] = [];
 	const path = resolve(root, ARCHIVE_WRAPPER);
 	if (!(await Bun.file(path).exists())) return errors;
@@ -556,6 +601,47 @@ async function validateWrapperPolicy(root: string): Promise<string[]> {
 		errors.push(
 			`openspec: ${ARCHIVE_WRAPPER} must never force-push the default branch`,
 		);
+	// The write, then the query, in that order and never the other way round.
+	// The pre-push check already asserts the remote's state BEFORE the push, and
+	// a readback placed there would assert exactly the same thing twice while
+	// establishing nothing about the write. This reads the executable half with
+	// quoted `#` preserved, because the wrapper's own messages carry one.
+	const executable = shellCode(source);
+	const pushIndex = executable.search(/git\s+push\s+--quiet\s+origin/);
+	const readbackIndex = executable.indexOf(ARCHIVE_READBACK);
+	if (readbackIndex < 0)
+		errors.push(
+			`openspec: ${ARCHIVE_WRAPPER} must read the remote back with \`${ARCHIVE_READBACK}\` after it pushes`,
+		);
+	else if (pushIndex >= 0 && readbackIndex < pushIndex)
+		errors.push(
+			`openspec: ${ARCHIVE_WRAPPER} reads the remote back before it pushes; a query that precedes the write establishes nothing about it`,
+		);
+	// ... and the value it produced is the value compared. A second assignment
+	// to the readback variable — a retry, a default, a "fix" that pins it to the
+	// commit it is supposed to be checked against — makes the comparison
+	// trivially true, and a superseded assignment is invisible in a diff that
+	// only reads the first one.
+	const binding = new RegExp(
+		`^[ \\t]*(?:if[ \\t]+![ \\t]+)?([A-Za-z_][A-Za-z0-9_]*)=[^\\n]*${ARCHIVE_READBACK.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
+		"m",
+	).exec(executable);
+	const readbackVariable = binding?.[1];
+	if (readbackVariable !== undefined) {
+		const assignments = [
+			...executable.matchAll(
+				new RegExp(`^[ \\t]*(?:if[ \\t]+![ \\t]+)?${readbackVariable}=`, "gm"),
+			),
+		];
+		if (assignments.length !== 1)
+			errors.push(
+				`openspec: ${ARCHIVE_WRAPPER} assigns ${readbackVariable} ${assignments.length} times; a superseded readback compares a value the remote never produced`,
+			);
+	} else if (readbackIndex >= 0) {
+		errors.push(
+			`openspec: ${ARCHIVE_WRAPPER} runs the readback without binding its result; a query nobody compares is a query nobody asked`,
+		);
+	}
 	const manifest = resolve(root, "package.json");
 	if (await Bun.file(manifest).exists()) {
 		const value = (await Bun.file(manifest).json()) as JsonRecord;
