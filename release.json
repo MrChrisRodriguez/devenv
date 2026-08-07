@@ -1,6 +1,6 @@
 {
 	"schemaVersion": 1,
-	"decision": "candidate",
+	"decision": "released",
 	"auditedSource": {
 		"commit": "28f69975f133fb04b203e61709fa543614ede89d",
 		"tree": "255660d874f8502e18711c0230c830c2a0c61944",
@@ -21,7 +21,7 @@
 				"fixture": "cloud",
 				"manifest": "fixtures/golden/cloud.json",
 				"fileCount": 122,
-				"omittedCount": 929,
+				"omittedCount": 936,
 				"enabledCount": 11,
 				"disabledCount": 8
 			},
@@ -29,7 +29,7 @@
 				"fixture": "full",
 				"manifest": "fixtures/golden/full.json",
 				"fileCount": 171,
-				"omittedCount": 880,
+				"omittedCount": 887,
 				"enabledCount": 19,
 				"disabledCount": 0
 			},
@@ -37,7 +37,7 @@
 				"fixture": "minimal",
 				"manifest": "fixtures/golden/minimal.json",
 				"fileCount": 120,
-				"omittedCount": 931,
+				"omittedCount": 938,
 				"enabledCount": 6,
 				"disabledCount": 13
 			}
@@ -485,18 +485,18 @@
 		{
 			"id": "pr-exact-head",
 			"kind": "pr-exact-head",
-			"status": "pending",
-			"sha": null,
-			"runId": null,
-			"capturedAt": null
+			"status": "captured",
+			"sha": "a8be2fd60c5f3023c0703ba01cc67d603fc56f36",
+			"runId": "31214545642",
+			"capturedAt": "2026-08-07T20:15:53Z"
 		},
 		{
 			"id": "default-branch-full",
 			"kind": "default-branch-full",
-			"status": "pending",
-			"sha": null,
-			"runId": null,
-			"capturedAt": null
+			"status": "captured",
+			"sha": "0e170a0f4b5596a2ed5502d8775ba8cdd1ca8691",
+			"runId": "31215171505",
+			"capturedAt": "2026-08-07T20:19:53Z"
 		}
 	]
 }
