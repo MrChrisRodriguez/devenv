@@ -240,11 +240,25 @@
 			"sourceOfTruth": "affected selection contract"
 		},
 		{
+			"pattern": "scripts/template/select-affected.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "affected selection entrypoint"
+		},
+		{
 			"pattern": "scripts/worktree/**",
 			"classification": "template-owned",
 			"syncPolicy": "merge",
 			"renderPolicy": "copy",
 			"sourceOfTruth": "scripts/worktree/contract.toml"
+		},
+		{
+			"pattern": "scripts/ci/affected-matrices.sh",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "affected selection contract"
 		},
 		{
 			"pattern": "scripts/template/**",
@@ -416,6 +430,14 @@
 			"pattern": "scripts/template/validate-affected.ts",
 			"requiresAll": ["moon_affected_selection"]
 		},
+		{
+			"pattern": "scripts/template/select-affected.ts",
+			"requiresAll": ["moon_affected_selection"]
+		},
+		{
+			"pattern": "scripts/ci/affected-matrices.sh",
+			"requiresAll": ["moon_affected_selection"]
+		},
 		{ "pattern": "scripts/worktree/**", "requiresAll": ["devcontainer"] },
 		{
 			"pattern": "scripts/template/worktree-contract.ts",
@@ -519,7 +541,12 @@
 			"capability": "moon_affected_selection",
 			"sections": [],
 			"packages": [],
-			"scripts": ["affected:check", "graph:check", "graph:generate"]
+			"scripts": [
+				"affected:check",
+				"affected:select",
+				"graph:check",
+				"graph:generate"
+			]
 		},
 		{
 			"capability": "openspec",
@@ -592,10 +619,16 @@
 				"scripts/template/affected-contract.ts",
 				"scripts/template/graph-contract.ts",
 				"scripts/template/generate-graph.ts",
+				"scripts/template/select-affected.ts",
 				"scripts/template/validate-affected.ts",
 				"scripts/template/validate-graph.ts"
 			],
-			"tokens": ["MOON_AFFECTED_MODE", "affected:check", "graph:check"]
+			"tokens": [
+				"MOON_AFFECTED_MODE",
+				"affected:check",
+				"affected:select",
+				"graph:check"
+			]
 		},
 		"openspec": { "paths": [], "tokens": ["@fission-ai/openspec"] },
 		"playwright": {

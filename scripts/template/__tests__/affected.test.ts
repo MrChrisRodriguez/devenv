@@ -592,3 +592,231 @@ describe("affected selection contract", () => {
 		expect(await validateAffectedContract(ROOT)).toEqual([]);
 	});
 });
+
+// The committed entrypoint, executed for what it does rather than read for
+// what it says. The synthetic workspace receives the same four files a render
+// carries, so the script resolves its own root exactly as it does downstream.
+const MATRIX_SCRIPT = "scripts/ci/affected-matrices.sh";
+const CARRIED = [
+	MATRIX_SCRIPT,
+	"scripts/template/select-affected.ts",
+	"scripts/template/affected-contract.ts",
+	"scripts/template/graph-contract.ts",
+] as const;
+
+async function withEntrypoint(root: string): Promise<void> {
+	for (const path of CARRIED) {
+		const target = resolve(root, path);
+		await mkdir(resolve(target, ".."), { recursive: true });
+		await Bun.write(target, await Bun.file(resolve(ROOT, path)).text());
+	}
+	git(root, "add", "-A");
+	git(root, "commit", "-qm", "carry the selection entrypoint");
+}
+
+// Assembled at runtime so this file is not itself counted as a committed writer
+// of job outputs. `ci-contract.ts` allows at most one, and the whole value of
+// that rule is that it needs no path exemptions.
+const OUTPUT_VARIABLE = ["GITHUB", "OUTPUT"].join("_");
+const SUMMARY_VARIABLE = ["GITHUB", "STEP", "SUMMARY"].join("_");
+
+interface MatrixRun {
+	exitCode: number;
+	output: string;
+	summary: string;
+	log: string;
+}
+
+async function runMatrices(
+	root: string,
+	environment: Record<string, string>,
+): Promise<MatrixRun> {
+	const outputPath = resolve(root, ".matrix-output");
+	const summaryPath = resolve(root, ".matrix-summary");
+	await Bun.write(outputPath, "");
+	await Bun.write(summaryPath, "");
+	const result = Bun.spawnSync({
+		cmd: ["bash", resolve(root, MATRIX_SCRIPT)],
+		cwd: root,
+		env: {
+			PATH: process.env["PATH"] ?? "",
+			HOME: root,
+			[OUTPUT_VARIABLE]: outputPath,
+			[SUMMARY_VARIABLE]: summaryPath,
+			...environment,
+		},
+		stdout: "pipe",
+		stderr: "pipe",
+	});
+	return {
+		exitCode: result.exitCode,
+		output: await Bun.file(outputPath).text(),
+		summary: await Bun.file(summaryPath).text(),
+		log: `${result.stdout.toString()}${result.stderr.toString()}`,
+	};
+}
+
+function emitted(output: string): Record<string, string> {
+	const values: Record<string, string> = {};
+	for (const line of output.split("\n")) {
+		const index = line.indexOf("=");
+		if (index > 0) values[line.slice(0, index)] = line.slice(index + 1);
+	}
+	return values;
+}
+
+describe("affected matrix entrypoint", () => {
+	test("emits the matrices, and narrates the shadow selection in both modes", async () => {
+		const root = await chain();
+		try {
+			await withEntrypoint(root);
+			await commitChange(root, {
+				"apps/web/src/index.ts":
+					"import '@synthetic/ui';\nexport const web = 8;\n",
+			});
+			const environment = {
+				EVENT_NAME: "pull_request",
+				BASE_SHA: git(root, "rev-parse", "HEAD~1"),
+				HEAD_SHA: git(root, "rev-parse", "HEAD"),
+			};
+
+			// Unset mode: today's behaviour, plus the selection it WOULD have made.
+			// That printed line is the shadow phase — there is no second selector to
+			// build and therefore none to delete.
+			const shadow = await runMatrices(root, environment);
+			expect(shadow.exitCode).toBe(0);
+			expect(emitted(shadow.output)).toEqual({
+				mode: "full",
+				reason: "mode-not-selecting",
+				ci: '["admin","base","root","ui","web"]',
+			});
+			expect(shadow.log).toContain("would have selected");
+			expect(shadow.log).toContain("ci = [web]");
+			expect(shadow.summary).toContain("would have selected");
+
+			// Flipped: the same tree, the same diff, one variable apart.
+			const flipped = await runMatrices(root, {
+				...environment,
+				MOON_AFFECTED_MODE: "moon",
+			});
+			expect(flipped.exitCode).toBe(0);
+			expect(emitted(flipped.output)).toEqual({
+				mode: "narrow",
+				reason: "affected",
+				ci: '["web"]',
+			});
+			expect(flipped.summary).toContain("selection: narrow");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("emits an empty matrix for a documentation-only change", async () => {
+		const root = await chain();
+		try {
+			await withEntrypoint(root);
+			await commitChange(root, { "docs/guide.md": "# guide\n" });
+			const run = await runMatrices(root, {
+				MOON_AFFECTED_MODE: "moon",
+				EVENT_NAME: "pull_request",
+				BASE_SHA: git(root, "rev-parse", "HEAD~1"),
+				HEAD_SHA: git(root, "rev-parse", "HEAD"),
+			});
+			expect(run.exitCode).toBe(0);
+			expect(emitted(run.output)["ci"]).toBe("[]");
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("fails OPEN to the full matrix on every fault", async () => {
+		for (const [label, body, reason] of [
+			["a crash", "process.exit(3);\n", "selector-failed"],
+			["a syntax error", "this is not typescript {{{\n", "selector-failed"],
+			[
+				"output that is not a selection",
+				'console.log("definitely not json");\n',
+				"selector-unreadable",
+			],
+			[
+				"a selection missing its universes",
+				'console.log(JSON.stringify({ mode: "narrow" }));\n',
+				"selector-unreadable",
+			],
+		] as const) {
+			const root = await chain();
+			try {
+				await withEntrypoint(root);
+				await Bun.write(
+					resolve(root, "scripts/template/select-affected.ts"),
+					body,
+				);
+				const run = await runMatrices(root, {
+					MOON_AFFECTED_MODE: "moon",
+					EVENT_NAME: "pull_request",
+					BASE_SHA: git(root, "rev-parse", "HEAD~1"),
+					HEAD_SHA: git(root, "rev-parse", "HEAD"),
+				});
+				// Exit 0 and the FULL matrix: uncertainty resolves toward running
+				// more, and a red job here would be a fault nobody can act on.
+				expect([label, run.exitCode]).toEqual([label, 0]);
+				expect([label, emitted(run.output)["mode"]]).toEqual([label, "full"]);
+				expect([label, emitted(run.output)["reason"]]).toEqual([label, reason]);
+				expect([label, emitted(run.output)["ci"]]).toEqual([
+					label,
+					'["admin","base","root","ui","web"]',
+				]);
+			} finally {
+				await rm(root, { recursive: true, force: true });
+			}
+		}
+	}, 120_000);
+
+	test("fails CLOSED with a byte-empty output file on an unusable registry", async () => {
+		for (const [label, contents] of [
+			["missing", undefined],
+			["not json", "{\n"],
+			["no universes key", `${JSON.stringify({ schemaVersion: 1 })}\n`],
+			[
+				"an empty universe list",
+				`${JSON.stringify({ schemaVersion: 1, universes: [] })}\n`,
+			],
+			[
+				"a universe with no projects",
+				`${JSON.stringify({ schemaVersion: 1, universes: [{ id: "ci", projects: [] }] })}\n`,
+			],
+			// The shell preflight cannot see this one — the file reads fine and
+			// names a universe — so it is the selector's own fail-closed exit that
+			// has to survive the ERR trap.
+			[
+				"a project in no universe",
+				`${JSON.stringify({ schemaVersion: 1, universes: [{ id: "ci", projects: ["root"] }] })}\n`,
+			],
+		] as const) {
+			const root = await chain();
+			try {
+				await withEntrypoint(root);
+				const registry = resolve(root, "ci-matrix-universes.json");
+				if (contents === undefined) await rm(registry);
+				else await Bun.write(registry, contents);
+				const run = await runMatrices(root, {
+					MOON_AFFECTED_MODE: "moon",
+					EVENT_NAME: "pull_request",
+					BASE_SHA: git(root, "rev-parse", "HEAD"),
+					HEAD_SHA: git(root, "rev-parse", "HEAD"),
+				});
+				// Fail-closed-SAFE: a red job and NO output. Emitting the full matrix
+				// here would emit an EMPTY one — every project skipped on the sole
+				// required gate, reported green.
+				expect([label, run.exitCode]).toEqual([label, 1]);
+				expect([label, run.output]).toEqual([label, ""]);
+				expect([label, run.log.includes("Failing CLOSED")]).toEqual([
+					label,
+					true,
+				]);
+			} finally {
+				await rm(root, { recursive: true, force: true });
+			}
+		}
+	}, 120_000);
+});

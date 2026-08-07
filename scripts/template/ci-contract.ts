@@ -82,6 +82,12 @@ const FOREIGN_RUNTIMES = [
 // is over every file under .github rather than over a job's `env:` block alone.
 const REMOTE_EXECUTION = /MOON_REMOTE_[A-Z0-9_]*/;
 
+// The runner variable a job's outputs are written through, assembled at
+// runtime so this file is not itself a match for the scan below. A guard that
+// matched its own source would need a path exemption, and a path exemption is a
+// hole somebody eventually widens.
+const OUTPUT_VARIABLE = ["GITHUB", "OUTPUT"].join("_");
+
 const IMMUTABLE_REFERENCE = /@[0-9a-f]{40}$/;
 const RUNNER_EXPRESSION = /\$\{\{\s*(?:env|secrets|vars|needs|matrix)\./;
 const BUN_CACHE_PATH = /^\s+~\/\.bun\/install\/cache\s*$/m;
@@ -459,6 +465,52 @@ function trackedFiles(root: string, pattern: string): string[] | undefined {
 	});
 	if (result.exitCode !== 0) return undefined;
 	return result.stdout.toString().split("\0").filter(Boolean);
+}
+
+// Every tracked file that writes a value into a job's outputs. `git grep`
+// rather than a directory walk for the same reason `trackedFiles` uses Git: the
+// scan has to see exactly what a clone receives. Exit 1 is "no match", exit 0
+// is "these files"; anything else means this tree is not a repository and the
+// scan abstains rather than reporting a clean result it never established.
+// The scope is the file types a runner can EXECUTE. That is not an exemption
+// list — prose cannot write a job output, so a changelog entry explaining this
+// very rule is not a second selector, and narrowing to executables is what lets
+// the rule stay free of per-path escapes.
+const EXECUTABLE_PATHSPECS = [
+	"*.sh",
+	"*.bash",
+	"*.ts",
+	"*.tsx",
+	"*.js",
+	"*.mjs",
+	"*.cjs",
+	"*.py",
+	"*.yml",
+	"*.yaml",
+] as const;
+
+function outputWriters(root: string, needle: string): string[] | undefined {
+	const result = Bun.spawnSync(
+		[
+			"git",
+			"-C",
+			root,
+			"grep",
+			"-I",
+			"-l",
+			"-F",
+			needle,
+			"--",
+			...EXECUTABLE_PATHSPECS,
+		],
+		{
+			stdout: "pipe",
+			stderr: "pipe",
+		},
+	);
+	if (result.exitCode === 1) return [];
+	if (result.exitCode !== 0) return undefined;
+	return result.stdout.toString().split("\n").filter(Boolean).sort();
 }
 
 export async function validateCiContract(
@@ -864,6 +916,18 @@ export async function validateCiContract(
 			}
 		}
 	}
+
+	// One selector, or none. A job's outputs decide what the lanes downstream of
+	// it run, so two files writing them are two authorities on "what must be
+	// checked" — and they disagree exactly once, quietly, in the direction of
+	// running less. The rule is deliberately "at most one" rather than "exactly
+	// one": a project that selects nothing has no writer at all, and demanding
+	// one would make the absence of a feature a contract violation.
+	const writers = outputWriters(root, OUTPUT_VARIABLE);
+	if (writers !== undefined && writers.length > 1)
+		errors.push(
+			`ci: only one committed file may write job outputs; found ${writers.join(", ")}`,
+		);
 
 	// Wiring. The guard is only a guard if something runs it.
 	for (const path of [GUARD_CONTRACT, GUARD_ENTRYPOINT]) {

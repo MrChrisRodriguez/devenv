@@ -31,6 +31,7 @@ const CONTRACT_FILES = [
 	"scripts/ci/bun-install-retry.sh",
 	"scripts/ci/run-tests.sh",
 	"scripts/ci/run-typecheck.sh",
+	"scripts/ci/affected-matrices.sh",
 	ACTION_PATH,
 	MOON_ACTION_PATH,
 	CI_WORKFLOW,
@@ -547,6 +548,18 @@ describe("workflow policy contract", () => {
 						"",
 					),
 				"ci: the gating workflow must run the workflow policy guard",
+			);
+
+			// --- One selector ------------------------------------------------------
+			// A job's outputs decide what the lanes below it run, so two committed
+			// files writing them are two authorities on "what must be checked" —
+			// and they disagree exactly once, quietly, toward running less. The
+			// variable name is assembled so this test file is not itself a writer.
+			await withTrackedFile(
+				temporary,
+				"scripts/ci/second-selector.sh",
+				`#!/usr/bin/env bash\necho "ci=[]" >> "$\{${["GITHUB", "OUTPUT"].join("_")}}"\n`,
+				"ci: only one committed file may write job outputs; found scripts/ci/affected-matrices.sh, scripts/ci/second-selector.sh",
 			);
 
 			// --- Compiler coverage -------------------------------------------------

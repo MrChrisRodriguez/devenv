@@ -17,7 +17,20 @@ const PARAMETER_PATH = "template-parameters.toml";
 const REGISTRY_PATH = "ci-matrix-universes.json";
 const GUARD_CONTRACT = "scripts/template/affected-contract.ts";
 const GUARD_ENTRYPOINT = "scripts/template/validate-affected.ts";
+const SELECTOR_ENTRYPOINT = "scripts/template/select-affected.ts";
+const MATRIX_SCRIPT = "scripts/ci/affected-matrices.sh";
 const GUARD_SCRIPT = "affected:check";
+const SELECT_SCRIPT = "affected:select";
+
+// Every file this capability adds, and the only list of them. Ownership,
+// gating and residue all read it, so a fifth file cannot be added in one place
+// and forgotten in the others.
+const GATED_PATHS = [
+	GUARD_CONTRACT,
+	GUARD_ENTRYPOINT,
+	SELECTOR_ENTRYPOINT,
+	MATRIX_SCRIPT,
+] as const;
 const OWNERSHIP_PATH =
 	"docs/devcontainer-upgrade/stage-0/template-ownership.json";
 
@@ -427,7 +440,7 @@ export async function validateAffectedContract(
 	const errors: string[] = [];
 
 	// Wiring. A guard nothing runs is not a guard.
-	for (const path of [GUARD_CONTRACT, GUARD_ENTRYPOINT]) {
+	for (const path of GATED_PATHS) {
 		if (!(await exists(resolve(root, path))))
 			errors.push(`affected: ${path} is missing`);
 	}
@@ -439,6 +452,10 @@ export async function validateAffectedContract(
 	if (scripts[GUARD_SCRIPT] !== `bun ${GUARD_ENTRYPOINT}`)
 		errors.push(
 			`affected: package script ${GUARD_SCRIPT} must expose the dedicated selection guard`,
+		);
+	if (scripts[SELECT_SCRIPT] !== `bun ${SELECTOR_ENTRYPOINT}`)
+		errors.push(
+			`affected: package script ${SELECT_SCRIPT} must expose the committed selector`,
 		);
 	// ... and something has to run it. A contract module that ships downstream
 	// and is never executed there is documentation with an import statement.
@@ -471,17 +488,23 @@ export async function validateAffectedContract(
 		const catchAll = rules.findIndex(
 			(entry) => entry["pattern"] === "scripts/template/**",
 		);
-		for (const pattern of [GUARD_CONTRACT, GUARD_ENTRYPOINT]) {
+		const projectCatchAll = rules.findIndex(
+			(entry) => entry["pattern"] === "scripts/**",
+		);
+		for (const pattern of GATED_PATHS) {
 			const index = rules.findIndex((entry) => entry["pattern"] === pattern);
+			const blocking = pattern.startsWith("scripts/template/")
+				? catchAll
+				: projectCatchAll;
 			if (
 				index < 0 ||
-				(catchAll >= 0 && index > catchAll) ||
+				(blocking >= 0 && index > blocking) ||
 				rules[index]?.["renderPolicy"] !== "copy"
 			)
 				errors.push(`affected: template ownership must cover ${pattern}`);
 		}
 		const artifacts = records(ownership["artifactRules"]);
-		for (const pattern of [GUARD_CONTRACT, GUARD_ENTRYPOINT]) {
+		for (const pattern of GATED_PATHS) {
 			const rule = artifacts.find((entry) => entry["pattern"] === pattern);
 			const requires = Array.isArray(rule?.["requiresAll"])
 				? rule["requiresAll"]

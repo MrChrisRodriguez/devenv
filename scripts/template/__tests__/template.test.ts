@@ -912,6 +912,8 @@ describe("deterministic fixture renderer", () => {
 				"scripts/template/generate-graph.ts",
 				"scripts/template/affected-contract.ts",
 				"scripts/template/validate-affected.ts",
+				"scripts/template/select-affected.ts",
+				"scripts/ci/affected-matrices.sh",
 			])
 				expect(await Bun.file(resolve(output, path)).exists()).toBe(false);
 			const minimalPackage = await Bun.file(
@@ -920,10 +922,12 @@ describe("deterministic fixture renderer", () => {
 			expect(minimalPackage.scripts["graph:check"]).toBeUndefined();
 			expect(minimalPackage.scripts["graph:generate"]).toBeUndefined();
 			expect(minimalPackage.scripts["affected:check"]).toBeUndefined();
+			expect(minimalPackage.scripts["affected:select"]).toBeUndefined();
 			const minimalCi = await Bun.file(
 				resolve(output, ".github/workflows/ci.yml"),
 			).text();
 			expect(minimalCi).not.toContain("affected:check");
+			expect(minimalCi).not.toContain("affected-matrices");
 
 			// The registry path was a PRE-DECLARED capability signature before the
 			// file existed, so a leaked copy has to be named by the scan rather
@@ -951,6 +955,8 @@ describe("deterministic fixture renderer", () => {
 			for (const path of [
 				"scripts/template/affected-contract.ts",
 				"scripts/template/validate-affected.ts",
+				"scripts/template/select-affected.ts",
+				"scripts/ci/affected-matrices.sh",
 			]) {
 				await Bun.write(resolve(output, path), "export const leaked = 1;\n");
 				const leaked = await scanDisabledResidue(output, resolved, ownership);
