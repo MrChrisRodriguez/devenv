@@ -164,6 +164,24 @@ describe("codex cloud contract", () => {
 					),
 				"cloud: secret allow-list must not carry deployment credentials",
 			);
+			// The same ban, for the telemetry family. It has been in the deployment
+			// credential pattern since this module was written, and it was covered
+			// only incidentally by the Cloudflare case above — so a narrowing of
+			// that pattern would have gone unnoticed here while the answer to
+			// "may a cloud task hold a telemetry upload token" quietly changed.
+			// Cloud tasks never deploy, never push and never run host
+			// orchestration, so those credentials stay in GitHub Actions where the
+			// deployment jobs live.
+			await mutate(
+				temporary,
+				".codex/cloud/contract.toml",
+				(source) =>
+					source.replace(
+						'secret_allow_list = ["ANTHROPIC_API_KEY", ',
+						'secret_allow_list = ["ANTHROPIC_API_KEY", "SENTRY_AUTH_TOKEN", ',
+					),
+				"cloud: secret allow-list must not carry deployment credentials",
+			);
 			await mutate(
 				temporary,
 				".codex/cloud/contract.toml",

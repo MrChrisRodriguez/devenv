@@ -1,4 +1,4 @@
-**Current status (2026-08-07):** 64 of 82 tasks are complete. Stages 0 through 10A have merged; Stage 10B is next.
+**Current status (2026-08-07):** 68 of 82 tasks are complete. Stages 0 through 10B have merged; Stage 10C is next.
 
 ## 1. Stage 0 PR — Inventory, Parameters, and Baseline
 
@@ -133,10 +133,10 @@ This stage generates shared request and response contracts for forms, servers, a
 
 This stage adds capability-gated Sentry configuration and explicit safeguards around external writes so telemetry and remote mutations occur only with complete intent and credentials.
 
-- [ ] 14.1 Add capability-gated centralized Sentry configuration with quiet-none, warn/disabled-partial, and enabled-both release/token semantics
-- [ ] 14.2 Require explicit intent plus credentials for every generated external write and query/assert the final remote state after intentional writes
-- [ ] 14.3 Add direct truth-table, token-only local-build zero-request, partial-config, allowlist, outage, and final-state tests
-- [ ] 14.4 Validate generated enabled/disabled fixtures, record rollback/evidence, and update secrets registry/rules/docs/`CHANGES.md`
+- [x] 14.1 Add capability-gated centralized Sentry configuration with quiet-none, warn/disabled-partial, and enabled-both release/token semantics
+- [x] 14.2 Require explicit intent plus credentials for every generated external write and query/assert the final remote state after intentional writes
+- [x] 14.3 Add direct truth-table, token-only local-build zero-request, partial-config, allowlist, outage, and final-state tests
+- [x] 14.4 Validate generated enabled/disabled fixtures, record rollback/evidence, and update secrets registry/rules/docs/`CHANGES.md`
 
 ## 15. Stage 10C PR — Vite WebSocket Proxy Safety
 

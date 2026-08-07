@@ -121,6 +121,23 @@ scripts/   # tooling — neither workspace packages nor moon projects
 - Run `bun run cloud:check` and `bash .codex/cloud/selftest.sh` after changing any cloud contract value, cloud script, Proto pin, checksum, or browser payload authority.
 
 <!-- capability:end codex_cloud -->
+
+<!-- capability:start sentry -->
+## Telemetry and External-write Ownership
+
+- `external-writes.json` is the single declaration of this project's telemetry surface and every remote mutation it performs. It is validated against `external-writes.schema.json`, and a second registry anywhere in the tree is a named refusal. Never answer a question about external writes by scanning the tree; ask this file and reconcile.
+- `mode` is the load-bearing field. `skeleton` asserts positively that no telemetry surface and no undeclared write shape exists anywhere; `active` asserts every declared path exists. A tree that grows one while the registry still says `skeleton` fails by name, and so does the reverse.
+- Credential presence alone never authorizes a remote write. A write needs explicit intent plus credentials, treats partial configuration as a warning and a no-op, stays quiet when both are absent, and queries the resource back afterwards. Gate on intent × credential, never on `CI` or any other environment flag.
+- Verification is a separate, read-only command and never a flag on the write. A verifier that shares the writer's code path can only confirm what the writer already believed, and one that mutates confirms nothing but its own effect.
+- The telemetry SDK may be imported and initialized only inside a module `telemetry.configModules[]` declares. Extend the allowlist by declaring a module; never weaken the guard's patterns to work around a violation. The SDK's user binding is banned in every file — it attaches an identity to a report that leaves the building.
+- One pure, SDK-free scrub module is shared by every tier, every configuration module binds a `beforeSend` hook, and `sendDefaultPii` is pinned `false`. There is no configuration in which this template collects default PII.
+- The ingest DSN is a PUBLIC value that ships inside the client bundle and may not be named like a credential; the upload token never reaches a bundle and must be. Neither is ever a committed literal — a credential belongs to the environment that supplies it.
+- `allowedHosts` is exact origins with no wildcard and no path. Every declared write's hosts are a subset of it, and a declared tunnel is a same-origin path rather than a second ingest endpoint.
+- A telemetry outage is a warning, never a build failure. A remote being down must not redden a deploy.
+- `scripts/openspec/archive.sh` is the one remote write this repository performs. It reads the remote back with `git ls-remote` after pushing and refuses on a mismatch; that readback sits after the push, binds its result, and is assigned exactly once.
+- Run `bun run telemetry:check` after changing the registry, either guard module, a declared configuration module, a declared write, or the archive wrapper.
+
+<!-- capability:end sentry -->
 ## Worktree Runtime Ownership
 
 - Every checkout — the main clone and each linked worktree — owns exactly one development container. `scripts/worktree/contract.toml` is the generated authority for its identity, ports, paths, and commands; regenerate it from `template-parameters.toml` and never hand-edit it.

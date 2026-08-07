@@ -708,6 +708,79 @@ describe("workflow policy contract", () => {
 				"ci: .github/workflows/ci.yml job project must check out full history",
 			);
 
+			// --- Credentials -------------------------------------------------------
+			// Every rule here is a negative requirement today: no workflow in this
+			// repository references the credential context at all. That is exactly
+			// why they are written now — a rule added alongside the first
+			// deployment job is a rule written by the person who wanted the job.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"      - name: Validate toolchain contract\n",
+						'      - name: Print a credential\n        run: echo "${{ secrets.EXAMPLE_TOKEN }}"\n\n      - name: Validate toolchain contract\n',
+					),
+				"ci: .github/workflows/ci.yml job ci must not interpolate a credential into a shell body",
+			);
+			// Declared at the workflow level a credential is in the environment of
+			// every step of every job, including the ones that run a third-party
+			// action and whatever that action loads.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						'env:\n  BUN_VERSION: "1.3.13"\n',
+						'env:\n  BUN_VERSION: "1.3.13"\n  EXAMPLE_TOKEN: ${{ secrets.EXAMPLE_TOKEN }}\n',
+					),
+				"ci: .github/workflows/ci.yml must not expose a credential in a workflow-level env block",
+			);
+			// The job level looks scoped and is not: the step that needed it is
+			// indistinguishable from the four that did not.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"    timeout-minutes: 20\n",
+						"    timeout-minutes: 20\n    env:\n      EXAMPLE_TOKEN: ${{ secrets.EXAMPLE_TOKEN }}\n",
+					),
+				"ci: .github/workflows/ci.yml job ci must not expose a credential in a job-level env block",
+			);
+			// The spec sentence at the one layer a workflow can be checked at:
+			// credential presence alone must not authorize the write.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"      - name: Validate toolchain contract\n        run: bun run toolchain:check\n",
+						"      - name: Validate toolchain contract\n        run: bun run toolchain:check\n        env:\n          EXAMPLE_TOKEN: ${{ secrets.EXAMPLE_TOKEN }}\n",
+					),
+				"ci: .github/workflows/ci.yml job ci passes a credential to an unconditional step; credential presence alone must not authorize a write",
+			);
+			// ... and the same step with an `if:` is legal, or the rule would be a
+			// ban on credentials rather than a rule about how they are used.
+			await tolerate(temporary, CI_WORKFLOW, (source) =>
+				source.replace(
+					"      - name: Validate toolchain contract\n        run: bun run toolchain:check\n",
+					"      - name: Validate toolchain contract\n        if: ${{ github.ref == 'refs/heads/main' }}\n        run: bun run toolchain:check\n        env:\n          EXAMPLE_TOKEN: ${{ secrets.EXAMPLE_TOKEN }}\n",
+				),
+			);
+			// A fork-writable credential context runs with the base repository's
+			// secrets against a head the fork controls.
+			await mutate(
+				temporary,
+				CI_WORKFLOW,
+				(source) =>
+					source.replace(
+						"  workflow_dispatch:\n",
+						"  workflow_dispatch:\n  pull_request_target:\n    types: [opened]\n",
+					),
+				"ci: .github/workflows/ci.yml must not declare a pull_request_target trigger; a fork-writable credential context has no legitimate use in a template",
+			);
+
 			// --- One selector ------------------------------------------------------
 			// A job's outputs decide what the lanes below it run, so two committed
 			// files writing them are two authorities on "what must be checked" —

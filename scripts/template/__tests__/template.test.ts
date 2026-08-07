@@ -1097,6 +1097,92 @@ describe("deterministic fixture renderer", () => {
 		}
 	});
 
+	test("known-bad telemetry and external write residue is detected and named", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const output = resolve(temporary, "minimal");
+			await renderFixture({ root: ROOT, fixtureName: "minimal", output });
+			// A project without the capability receives neither the declaration,
+			// nor its schema, nor either guard module, nor the package script, nor
+			// the workflow step that runs it.
+			for (const path of [
+				"external-writes.json",
+				"external-writes.schema.json",
+				"scripts/template/telemetry-contract.ts",
+				"scripts/template/validate-telemetry.ts",
+			])
+				expect(await Bun.file(resolve(output, path)).exists()).toBe(false);
+			const minimalPackage = await Bun.file(
+				resolve(output, "package.json"),
+			).json();
+			expect(minimalPackage.scripts["telemetry:check"]).toBeUndefined();
+			const minimalCi = await Bun.file(
+				resolve(output, ".github/workflows/ci.yml"),
+			).text();
+			expect(minimalCi).not.toContain("telemetry:check");
+
+			const parameters = await loadTemplateParameters(ROOT);
+			const fixture = await loadFixtureDefinition(ROOT, "minimal", parameters);
+			const resolved = resolveFixtureParameters(parameters, fixture);
+			const ownership = await loadTemplateOwnership(ROOT);
+			// Each declared path is a signature, so a leak has to be REPORTED
+			// rather than merely absent — "the render did not write it" and
+			// "nothing would notice if it did" are different claims.
+			for (const path of [
+				"external-writes.json",
+				"external-writes.schema.json",
+				"scripts/template/telemetry-contract.ts",
+				"scripts/template/validate-telemetry.ts",
+			]) {
+				await Bun.write(resolve(output, path), "export const leaked = 1;\n");
+				const leaked = await scanDisabledResidue(output, resolved, ownership);
+				expect(leaked.status).toBe("fail");
+				expect(leaked.findings).toContainEqual({
+					capability: "sentry",
+					path,
+					signature: path,
+					kind: "path",
+				});
+				await rm(resolve(output, path));
+			}
+			// `libs/observability/**` was pre-reserved by Stage 0 before anything
+			// existed to put in it, and it is gated in the same commit that adds
+			// the guard: the first downstream project to use the reserved path is
+			// governed from its first commit rather than from the commit somebody
+			// noticed.
+			await Bun.write(
+				resolve(output, "libs/observability/index.ts"),
+				"export const leaked = 1;\n",
+			);
+			const reserved = await scanDisabledResidue(output, resolved, ownership);
+			expect(reserved.findings).toContainEqual({
+				capability: "sentry",
+				path: "libs/observability/index.ts",
+				signature: "libs/observability/**",
+				kind: "path",
+			});
+			await rm(resolve(output, "libs/observability/index.ts"));
+
+			// The package script is a pre-declared signature TOKEN, and a token is
+			// a plain substring search: a leaked script name is caught wherever it
+			// lands, not only in the manifest it belongs to.
+			await Bun.write(
+				resolve(output, "scripts/ci/leaked.sh"),
+				"#!/usr/bin/env bash\nbun run telemetry:check\n",
+			);
+			const token = await scanDisabledResidue(output, resolved, ownership);
+			expect(token.status).toBe("fail");
+			expect(token.findings).toContainEqual({
+				capability: "sentry",
+				path: "scripts/ci/leaked.sh",
+				signature: "telemetry:check",
+				kind: "token",
+			});
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	});
+
 	test("full fixture still rejects global source identity residue", async () => {
 		const temporary = await temporaryDirectory();
 		try {

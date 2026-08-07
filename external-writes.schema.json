@@ -1,0 +1,186 @@
+{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"title": "External write and telemetry registry",
+	"description": "The enumerated declaration `scripts/template/telemetry-contract.ts` validates. Credential presence alone must not authorize a remote write, so a write is declared here with its intent, its credentials, the command that reads the remote back afterwards, and the exact hosts it may reach — and a tree that performs a write shape this file does not name is a refusal. `mode` is the load-bearing field: `skeleton` asserts, positively, that no telemetry surface and no undeclared write shape exists anywhere in the tracked tree; `active` asserts every declared path exists and runs every rule over it.",
+	"type": "object",
+	"additionalProperties": false,
+	"required": [
+		"schemaVersion",
+		"mode",
+		"telemetry",
+		"writes",
+		"allowedHosts",
+		"governedElsewhere"
+	],
+	"properties": {
+		"schemaVersion": {
+			"type": "integer",
+			"const": 1
+		},
+		"mode": {
+			"description": "The declared tree state. It is compared with the derived state before any other rule runs, and a disagreement in either direction is the first error.",
+			"type": "string",
+			"enum": ["skeleton", "active"]
+		},
+		"telemetry": {
+			"description": "The centralized telemetry configuration, or null when this project sends none. Centralized means allowlist-not-denylist: the SDK may be imported and initialized only inside a module named here, and a project extends the allowlist by declaring a module rather than by weakening the guard.",
+			"type": ["object", "null"],
+			"additionalProperties": false,
+			"required": [
+				"configModules",
+				"scrubModule",
+				"sendDefaultPii",
+				"tunnel",
+				"dsnVariable",
+				"upload"
+			],
+			"properties": {
+				"configModules": {
+					"description": "Every module allowed to import and initialize the telemetry SDK. One tier per module, because a browser tier and a server tier are two different bundles with two different leak surfaces.",
+					"type": "array",
+					"minItems": 1,
+					"uniqueItems": true,
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["path", "tier"],
+						"properties": {
+							"path": { "$ref": "#/$defs/relativePath" },
+							"tier": {
+								"type": "string",
+								"enum": ["browser", "server"]
+							}
+						}
+					}
+				},
+				"scrubModule": {
+					"description": "The one pure, SDK-free module every tier routes its payloads through. It is SDK-free on purpose: that is what lets a browser tier and a server tier share one scrubber instead of maintaining two that drift.",
+					"$ref": "#/$defs/relativePath"
+				},
+				"sendDefaultPii": {
+					"description": "Pinned false. There is no configuration in which a template ships default PII collection, so the field exists to be asserted rather than to be chosen.",
+					"type": "boolean",
+					"const": false
+				},
+				"tunnel": {
+					"description": "The same-origin path browser payloads are relayed through, or null when payloads go straight to the ingest host. Declared-or-explicitly-null: a project that never considered the question is a different state from one that decided against it.",
+					"type": ["string", "null"],
+					"minLength": 1
+				},
+				"dsnVariable": {
+					"description": "The environment variable carrying the ingest DSN. The DSN is a PUBLIC value — it ships inside the client bundle — so this name is checked for the opposite property from the upload token's: it may not read like a secret.",
+					"type": "string",
+					"minLength": 1
+				},
+				"upload": {
+					"description": "The build-time artifact upload, or null when this project uploads nothing. The gate is intent times credential and never an environment flag: a plain local build sets neither variable and therefore never writes, even when a deployment token has leaked into the shell.",
+					"type": ["object", "null"],
+					"additionalProperties": false,
+					"required": ["command", "releaseVariable", "tokenVariable", "scope"],
+					"properties": {
+						"command": { "type": "string", "minLength": 1 },
+						"releaseVariable": {
+							"description": "The INTENT half. A release name is a deliberate statement that this build is a deployable artifact.",
+							"type": "string",
+							"minLength": 1
+						},
+						"tokenVariable": {
+							"description": "The CREDENTIAL half, which must be credential-named because it is one.",
+							"type": "string",
+							"minLength": 1
+						},
+						"scope": {
+							"description": "Which bundle the upload may reach. `server` is declarable so that the guard's refusal of it is reachable and testable rather than hypothetical.",
+							"type": "string",
+							"enum": ["client", "server"]
+						}
+					}
+				}
+			}
+		},
+		"writes": {
+			"description": "Every remote mutation this project performs, with the intent that authorizes it, the credentials it needs, and the separate read-only command that asserts the final remote state afterwards.",
+			"type": "array",
+			"uniqueItems": true,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": [
+					"id",
+					"path",
+					"kind",
+					"command",
+					"intent",
+					"credentials",
+					"verify",
+					"allowedHosts"
+				],
+				"properties": {
+					"id": { "type": "string", "minLength": 1 },
+					"path": { "$ref": "#/$defs/relativePath" },
+					"kind": {
+						"type": "string",
+						"enum": ["git", "http", "cli"]
+					},
+					"command": {
+						"description": "The mutating command itself. Declared so that the read-only verifier can be asserted to be a DIFFERENT string: a verifier that shares the writer's code path can only confirm what the writer believed.",
+						"type": "string",
+						"minLength": 1
+					},
+					"intent": {
+						"description": "The named confirmation the write refuses to run without. A credential plus a flag is still not enough; a mutation needs a confirmation somebody had to type.",
+						"type": "string",
+						"minLength": 1
+					},
+					"credentials": {
+						"description": "Every environment variable the write reads. Absence is a clean no-op, never a failure.",
+						"type": "array",
+						"minItems": 1,
+						"uniqueItems": true,
+						"items": { "type": "string", "minLength": 1 }
+					},
+					"verify": {
+						"description": "The read-only command that queries the resource back after the write. It is a distinct declared command and never a flag on the write, because a verifier that shares the writer's code path can only confirm what the writer believed.",
+						"type": "string",
+						"minLength": 1
+					},
+					"allowedHosts": {
+						"description": "The exact origins this write may reach. A subset of the top-level allowlist, with no wildcard entry.",
+						"type": "array",
+						"minItems": 1,
+						"uniqueItems": true,
+						"items": { "type": "string", "minLength": 1 }
+					}
+				}
+			}
+		},
+		"allowedHosts": {
+			"description": "The union every declared write's hosts must be a subset of. Exact origins only: a wildcard entry is a suppressed safety guard, and an allowlist that can match a host nobody enumerated is a denylist wearing an allowlist's name.",
+			"type": "array",
+			"uniqueItems": true,
+			"items": { "type": "string", "minLength": 1 }
+		},
+		"governedElsewhere": {
+			"description": "Write-shaped files whose rules already have an owner. Without this list the write-shape scan would be a scan with nothing to find, because the one remote write this repository performs is governed by a module that predates this registry.",
+			"type": "array",
+			"uniqueItems": true,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["path", "authority"],
+				"properties": {
+					"path": { "$ref": "#/$defs/relativePath" },
+					"authority": { "$ref": "#/$defs/relativePath" }
+				}
+			}
+		}
+	},
+	"$defs": {
+		"relativePath": {
+			"description": "A repository-relative POSIX path. Absolute paths and parent traversal are rejected so a declaration cannot name a file outside the tree the guard scans.",
+			"type": "string",
+			"minLength": 1,
+			"pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$)).+$"
+		}
+	}
+}
