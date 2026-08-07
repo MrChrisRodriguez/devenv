@@ -1,7 +1,11 @@
 import { copyFile, mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import type { Experiment, ExperimentRegistry } from "../../experiment-contract";
+import type {
+	Experiment,
+	ExperimentRegistry,
+	RetiredExperiment,
+} from "../../experiment-contract";
 
 export const ROOT = resolve(import.meta.dir, "../../../..");
 
@@ -117,6 +121,21 @@ export function declaredExperiment(
 		findings: null,
 		findingsWaiver: null,
 		promotion: null,
+		...overrides,
+	};
+}
+
+/** One retired experiment, with its aliases declared as a union of literals. */
+export function retiredExperiment(
+	overrides: Partial<RetiredExperiment> = {},
+): RetiredExperiment {
+	return {
+		id: APP_ID,
+		directory: APP_DIRECTORY,
+		retiredAt: "2026-08-07T00:00:00Z",
+		findings: "CHANGES.md",
+		findingsWaiver: null,
+		aliases: [APP_ID, APP_DIRECTORY, APP_PACKAGE],
 		...overrides,
 	};
 }

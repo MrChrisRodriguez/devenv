@@ -42,6 +42,23 @@ const MOON_PROJECT_CONFIG = "moon.yml";
 // refusals for one defect send the reader to two files.
 const CI_GUARD_SCRIPT = "ci:check";
 
+// The generator that owns the derived region of every project's moon.yml, and
+// the module that owns the sentence about a project belonging to no universe.
+// Both are named as PATHS rather than as script names on purpose: one of the
+// two script names is a capability signature token, this file ships to every
+// render, and the anti-residue scan matches a path signature by a file's
+// location and a token signature by its contents.
+const GRAPH_GENERATE_SCRIPT = "graph:generate";
+const GRAPH_CONTRACT_PATH = "scripts/template/graph-contract.ts";
+
+// The markers bounding the region of a project's moon.yml that the generator
+// owns. They are literals here rather than an import: the generator and the
+// project-graph contract are both gated on a capability that defaults to false,
+// so importing either would make this core guard a module-load crash in most
+// rendered projects.
+const GENERATED_BLOCK_START = "# graph:generated:start";
+const GENERATED_BLOCK_END = "# graph:generated:end";
+
 // Directories no tree walk descends into. `tmp/` is where `template:fixtures`
 // renders, and a rendered fixture carries a full copy of this tree — a walk into
 // one would invent an `apps/` layout that does not exist and flip the derived
@@ -1190,6 +1207,232 @@ export async function inspectSurfaces(
 }
 
 /**
+ * Containment and identity, and the rule is the opposite of what "hygiene"
+ * usually suggests.
+ *
+ * A quarantine directory — `spikes/`, `scratch/`, anything outside the workspace
+ * globs — would keep half-finished code out of the way, and that is exactly why
+ * it is refused: outside those globs the code is invisible to moon, to the
+ * workspace manifest and to the typechecker at the same time, which is dead code
+ * by construction. Inside them a directory automatically inherits lint,
+ * typecheck, test and build, and automatically becomes subject to the universe
+ * rule. The strictness the requirement asks to preserve is a consequence of
+ * where the directory lives.
+ */
+export function validateContainment(registry: ExperimentRegistry): string[] {
+	const errors: string[] = [];
+	const roots = workspaceRoots(registry.policy);
+	const reserved = new Map(
+		registry.policy.reservedDirectories.map((entry) => [
+			entry.directory,
+			entry.ownershipPattern,
+		]),
+	);
+	for (const entry of [...registry.experiments, ...registry.retired]) {
+		const segments = entry.directory.split("/");
+		if (segments.length !== 2 || !roots.includes(segments[0] ?? ""))
+			errors.push(
+				`experiment: ${entry.id} claims ${entry.directory}, which is not one level under ${roots.join(" or ")}; code outside the workspace globs is invisible to every guard at once`,
+			);
+		const pattern = reserved.get(entry.directory);
+		if (pattern !== undefined)
+			errors.push(
+				`experiment: ${entry.id} claims ${entry.directory}, which the ownership pattern ${pattern} already reserves`,
+			);
+	}
+	return errors.sort();
+}
+
+/** The moon project id a directory would carry: `moon.yml#id`, else its name. */
+export function projectIdOf(root: string, directory: string): string {
+	const config = parseYaml(
+		textOf(resolve(root, `${directory}/${MOON_PROJECT_CONFIG}`)),
+	);
+	const declared = config?.["id"];
+	return typeof declared === "string" && declared !== ""
+		? declared
+		: (directory.split("/").at(-1) ?? directory);
+}
+
+/**
+ * The registrations a directory under the workspace globs is obliged to carry.
+ *
+ * A `disposable` experiment is required to have these three whether anyone likes
+ * it or not: it is a workspace member and a moon project by virtue of where it
+ * lives, and a directory that is one without being registered as one is the
+ * half-in state this registry exists to refuse.
+ */
+export async function validateRegistration(
+	root: string,
+	registry: ExperimentRegistry,
+): Promise<ExperimentReport> {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	for (const entry of registry.experiments) {
+		const covered = registry.policy.workspaceGlobs.some((glob) =>
+			matchesDirectory(glob, entry.directory),
+		);
+		if (!covered)
+			errors.push(
+				`experiment: ${entry.directory} is matched by no workspace glob in ${JSON.stringify(registry.policy.workspaceGlobs)}, so it is not a workspace member`,
+			);
+		if (!exists(resolve(root, `${entry.directory}/${MANIFEST_PATH}`)))
+			errors.push(
+				`experiment: ${entry.id} has no ${entry.directory}/${MANIFEST_PATH}, so it is a directory in the workspace rather than a package in it`,
+			);
+		const configPath = `${entry.directory}/${MOON_PROJECT_CONFIG}`;
+		if (!exists(resolve(root, configPath))) {
+			errors.push(
+				`experiment: ${entry.id} has no ${configPath}; run ${GRAPH_GENERATE_SCRIPT} so the project joins the graph`,
+			);
+			continue;
+		}
+		const source = textOf(resolve(root, configPath));
+		const start = source.indexOf(GENERATED_BLOCK_START);
+		const end = source.indexOf(GENERATED_BLOCK_END);
+		if (start < 0 || end < 0 || end < start)
+			errors.push(
+				`experiment: ${configPath} carries no generated dependency block; run ${GRAPH_GENERATE_SCRIPT} rather than writing dependsOn by hand`,
+			);
+		else
+			notices.push(
+				`experiment: ${configPath} carries a generated dependency block, and whether its contents are stale is a comparison ${GRAPH_CONTRACT_PATH} already owns`,
+			);
+	}
+	return { errors: errors.sort(), notices: notices.sort() };
+}
+
+/**
+ * The universe registry, read as DATA and never imported.
+ *
+ * It is gated on a capability that defaults to false, so in most rendered
+ * projects the file is not there — and the module that owns it is gated on the
+ * same capability, which means a static import here would be a module-load crash
+ * in every default project rather than a diagnostic. So: read the JSON, name the
+ * absence, and refuse only the part nobody else owns. "This project belongs to
+ * no universe" is a sentence the project-graph contract already prints, and two
+ * sentences for one defect send the reader to two files; a declared universe id
+ * that the registry does not contain is nobody else's sentence, and it is an
+ * error.
+ */
+export async function reconcileUniverses(
+	root: string,
+	registry: ExperimentRegistry,
+): Promise<ExperimentReport> {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	const path = registry.policy.universeRegistryPath;
+	if (!exists(resolve(root, path))) {
+		for (const entry of registry.experiments)
+			notices.push(
+				`experiment: ${path} is absent, so the declared experiment ${entry.id} was declared and not reconciled against a CI universe`,
+			);
+		return { errors, notices: notices.sort() };
+	}
+	let parsed: unknown;
+	try {
+		parsed = (await Bun.file(resolve(root, path)).json()) as unknown;
+	} catch {
+		notices.push(
+			`experiment: ${path} did not parse as JSON, so no declared experiment was reconciled against a CI universe`,
+		);
+		return { errors, notices };
+	}
+	const universes = new Map<string, string[]>();
+	for (const universe of records(
+		isRecord(parsed) ? parsed["universes"] : undefined,
+	)) {
+		const id = universe["id"];
+		if (typeof id !== "string") continue;
+		universes.set(id, strings(universe["projects"]));
+	}
+	for (const entry of registry.experiments) {
+		const project = projectIdOf(root, entry.directory);
+		const membership = [...universes.entries()].filter(([, projects]) =>
+			projects.includes(project),
+		);
+		const declared = entry.promotion?.universeId;
+		if (declared !== undefined) {
+			if (!universes.has(declared))
+				errors.push(
+					`experiment: ${entry.id} declares the CI universe ${declared}, which ${path} does not declare`,
+				);
+			else if (!(universes.get(declared) ?? []).includes(project))
+				errors.push(
+					`experiment: ${entry.id} declares the CI universe ${declared}, which does not list the project ${project}`,
+				);
+		}
+		if (membership.length === 0)
+			notices.push(
+				`experiment: the project ${project} belongs to no universe in ${path}, which is a refusal ${GRAPH_CONTRACT_PATH} already owns`,
+			);
+	}
+	return { errors: errors.sort(), notices: notices.sort() };
+}
+
+function isAllowListed(path: string, allowList: readonly string[]): boolean {
+	return allowList.some((entry) =>
+		entry.endsWith("/") ? path.startsWith(entry) : path === entry,
+	);
+}
+
+/**
+ * Removal, proved by what is NOT there any more.
+ *
+ * "Removal shall remove dependencies and registration" is a statement about
+ * something that is gone, and a guard cannot enumerate what is not there.
+ * Deleting the registry entry along with the directory leaves nothing to check
+ * and the guard is green because the evidence of the failure was deleted too. So
+ * a retired record is permanent, and it turns the deleted id, directory and
+ * package name into forbidden tokens across the tracked tree.
+ *
+ * The scan is the union of every DECLARED alias and never a widened regex over
+ * the id: each spelling is declared, justified and individually falsifiable. A
+ * three-character id turned into a pattern matches half the tree, the guard
+ * cries wolf, and the rule gets switched off inside a week.
+ */
+export function validateRetirementResidue(
+	root: string,
+	registry: ExperimentRegistry,
+	files: string[],
+): ExperimentReport {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	for (const entry of registry.retired) {
+		if (exists(resolve(root, entry.directory)))
+			errors.push(
+				`experiment: ${entry.id} is retired but ${entry.directory} still exists`,
+			);
+		for (const required of [entry.id, entry.directory]) {
+			if (!entry.aliases.includes(required))
+				errors.push(
+					`experiment: the retired record for ${entry.id} must declare ${required} as an alias; the scan is the union of declared spellings and never a pattern over the id`,
+				);
+		}
+		const allowList = [
+			...registry.policy.retirementAllowList,
+			...(entry.findings === null ? [] : [entry.findings]),
+		];
+		for (const path of files) {
+			if (isAllowListed(path, allowList)) continue;
+			const source = textOf(resolve(root, path));
+			if (source === "") continue;
+			for (const alias of entry.aliases) {
+				if (!source.includes(alias)) continue;
+				errors.push(
+					`experiment: ${path} still names ${alias}, which the retired record for ${entry.id} declared as removed`,
+				);
+			}
+		}
+	}
+	if (registry.retired.length > 0)
+		notices.push(
+			`experiment: the retirement scan covered ${files.length} tracked files for ${registry.retired.length} retired records`,
+		);
+	return { errors: errors.sort(), notices: notices.sort() };
+}
+
+/**
  * Every leg, in the order the requirement enumerates them, with the notices kept
  * separate from the refusals.
  *
@@ -1230,6 +1473,20 @@ export async function inspectExperimentContract(
 	const surfaces = await inspectSurfaces(root, registry, files);
 	errors.push(...surfaces.errors);
 	notices.push(...surfaces.notices);
+
+	errors.push(...validateContainment(registry));
+
+	const registration = await validateRegistration(root, registry);
+	errors.push(...registration.errors);
+	notices.push(...registration.notices);
+
+	const universes = await reconcileUniverses(root, registry);
+	errors.push(...universes.errors);
+	notices.push(...universes.notices);
+
+	const residue = validateRetirementResidue(root, registry, files);
+	errors.push(...residue.errors);
+	notices.push(...residue.notices);
 
 	return {
 		errors: [...new Set(errors)].sort(),

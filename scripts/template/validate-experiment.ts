@@ -12,5 +12,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-	"Validated the experiment lifecycle registry, its declared mode against the tree in both directions, guard wiring, template ownership, and the seven strictness exception surfaces.",
+	"Validated the experiment lifecycle registry, its declared mode against the tree in both directions, guard wiring, template ownership, the seven strictness exception surfaces, containment and registration, CI universe membership, and the retirement residue scan.",
 );

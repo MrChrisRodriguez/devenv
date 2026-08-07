@@ -5,6 +5,7 @@ import {
 	CORE_PATHS,
 	deriveTreeState,
 	type ExperimentRegistry,
+	enumerateFiles,
 	GUARD_SCRIPT,
 	inspectExperimentContract,
 	inspectSurfaces,
@@ -12,14 +13,18 @@ import {
 	reconcileMode,
 	SURFACE_COUNT,
 	SURFACES,
+	validateContainment,
 	validateExperimentContract,
+	validateRetirementResidue,
 	validateSoleDeclarations,
 } from "../experiment-contract";
 import {
 	APP_DIRECTORY,
 	APP_ID,
+	APP_PACKAGE,
 	activeWorkspace,
 	BIOME_PATH,
+	declaredExperiment,
 	experimentFiles,
 	experimentWorkspace,
 	IGNORE_PATH,
@@ -28,6 +33,7 @@ import {
 	OWNERSHIP_PATH,
 	REGISTRY_PATH,
 	ROOT,
+	retiredExperiment,
 	SKELETON,
 	skeletonWorkspace,
 	TSCONFIG_PATH,
@@ -846,5 +852,323 @@ describe("the seven strictness exception surfaces", () => {
 		} finally {
 			await rm(root, { recursive: true, force: true });
 		}
+	});
+});
+
+describe("containment, registration, and universe membership", () => {
+	test("an experiment outside the workspace globs is refused", async () => {
+		// The schema refuses the shape outright, because a quarantine directory is
+		// the answer a reader expects and it is exactly the wrong one: outside the
+		// globs the code is invisible to moon, to the workspace manifest and to the
+		// typechecker at once, which is dead code by construction rather than by
+		// neglect.
+		const root = await skeletonWorkspace();
+		try {
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) =>
+					source.replace(
+						'"experiments": []',
+						`"experiments": [${JSON.stringify({ ...declaredExperiment(), directory: "spikes/alpha" })}]`,
+					),
+				"experiment: experiments.json $.experiments[0].directory does not match ^(?:apps|libs)/[a-z0-9]+(?:-[a-z0-9]+)*$",
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+		// And the guard's own containment rule, which is stated relative to the
+		// declared globs rather than to a hardcoded pair.
+		expect(
+			validateContainment({
+				...SKELETON,
+				experiments: [declaredExperiment({ directory: "apps/one/two" })],
+			} as ExperimentRegistry),
+		).toContain(
+			"experiment: spike-alpha claims apps/one/two, which is not one level under apps or libs; code outside the workspace globs is invisible to every guard at once",
+		);
+	});
+
+	test("an experiment may not claim a reserved capability directory", async () => {
+		expect(
+			validateContainment({
+				...SKELETON,
+				experiments: [declaredExperiment({ directory: "libs/forms" })],
+			} as ExperimentRegistry),
+		).toContain(
+			"experiment: spike-alpha claims libs/forms, which the ownership pattern libs/forms/** already reserves",
+		);
+	});
+
+	test("a declared experiment must be a package and a moon project", async () => {
+		const { root } = await activeWorkspace();
+		try {
+			const manifest = resolve(root, `${APP_DIRECTORY}/package.json`);
+			const original = await Bun.file(manifest).text();
+			await rm(manifest);
+			expect(await validateExperimentContract(root)).toContain(
+				`experiment: ${APP_ID} has no ${APP_DIRECTORY}/package.json, so it is a directory in the workspace rather than a package in it`,
+			);
+			await Bun.write(manifest, original);
+
+			const config = resolve(root, `${APP_DIRECTORY}/moon.yml`);
+			const originalConfig = await Bun.file(config).text();
+			await rm(config);
+			expect(await validateExperimentContract(root)).toContain(
+				`experiment: ${APP_ID} has no ${APP_DIRECTORY}/moon.yml; run graph:generate so the project joins the graph`,
+			);
+			await Bun.write(config, originalConfig);
+			expect(await validateExperimentContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("a hand-written moon.yml with no generated block is refused", async () => {
+		const { root } = await activeWorkspace();
+		try {
+			await mutate(
+				root,
+				`${APP_DIRECTORY}/moon.yml`,
+				() =>
+					"$schema: 'https://moonrepo.dev/schemas/project.json'\ndependsOn:\n  - 'shared'\n",
+				`experiment: ${APP_DIRECTORY}/moon.yml carries no generated dependency block; run graph:generate rather than writing dependsOn by hand`,
+			);
+			// Staleness of the block's CONTENTS is a comparison another module owns,
+			// and this guard says so out loud instead of writing it a second time.
+			const { notices } = await inspectExperimentContract(root);
+			expect(notices).toContain(
+				`experiment: ${APP_DIRECTORY}/moon.yml carries a generated dependency block, and whether its contents are stale is a comparison scripts/template/graph-contract.ts already owns`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("universe membership is a notice, and a declared universe id is not", async () => {
+		const { root } = await activeWorkspace();
+		try {
+			// The project belongs to no universe, and that sentence belongs to the
+			// project-graph contract. Two refusals for one defect send the reader to
+			// two files.
+			const report = await inspectExperimentContract(root);
+			expect(report.errors).toEqual([]);
+			expect(report.notices).toContain(
+				`experiment: the project ${APP_ID} belongs to no universe in ${UNIVERSE_PATH}, which is a refusal scripts/template/graph-contract.ts already owns`,
+			);
+			// A declared universe id nobody declares IS this guard's sentence.
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) =>
+					source.replace(
+						'"promotion": null',
+						`"promotion": ${JSON.stringify({
+							ownershipRule: "apps/**",
+							universeId: "invented",
+							testGlob: "**/*.test.ts",
+							documentation: "docs/spike-alpha.md",
+						})}`,
+					),
+				`experiment: ${APP_ID} declares the CI universe invented, which ${UNIVERSE_PATH} does not declare`,
+			);
+			// ... and a real universe that does not list the project is too.
+			const registryFile = resolve(root, REGISTRY_PATH);
+			const original = await Bun.file(registryFile).text();
+			try {
+				const declared = JSON.parse(original) as ExperimentRegistry;
+				const entry = declared.experiments[0];
+				if (entry)
+					entry.promotion = {
+						ownershipRule: "apps/**",
+						universeId: "ci",
+						testGlob: "**/*.test.ts",
+						documentation: "docs/spike-alpha.md",
+					};
+				await Bun.write(
+					registryFile,
+					`${JSON.stringify(declared, null, "\t")}\n`,
+				);
+				expect(await validateExperimentContract(root)).toContain(
+					`experiment: ${APP_ID} declares the CI universe ci, which does not list the project ${APP_ID}`,
+				);
+			} finally {
+				await Bun.write(registryFile, original);
+			}
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("an absent universe registry names each experiment it could not reconcile", async () => {
+		const { root } = await activeWorkspace();
+		try {
+			await rm(resolve(root, UNIVERSE_PATH));
+			const { errors, notices } = await inspectExperimentContract(root);
+			expect(errors).toEqual([]);
+			expect(notices).toContain(
+				`experiment: ${UNIVERSE_PATH} is absent, so the declared experiment ${APP_ID} was declared and not reconciled against a CI universe`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("the retirement residue scan", () => {
+	test("a retired record whose directory still exists is refused", async () => {
+		// The record and the tree disagree in the one direction a removal can get
+		// wrong without noticing: the entry moved, the directory did not.
+		const { root } = await activeWorkspace();
+		try {
+			const registryFile = resolve(root, REGISTRY_PATH);
+			const original = await Bun.file(registryFile).text();
+			const declared = JSON.parse(original) as ExperimentRegistry;
+			declared.retired = [retiredExperiment()];
+			await Bun.write(
+				registryFile,
+				`${JSON.stringify(declared, null, "\t")}\n`,
+			);
+			try {
+				expect(await validateExperimentContract(root)).toContain(
+					`experiment: ${APP_ID} is retired but ${APP_DIRECTORY} still exists`,
+				);
+			} finally {
+				await Bun.write(registryFile, original);
+			}
+			expect(await validateExperimentContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("a leftover registration is named, one file and one alias at a time", async () => {
+		const root = await skeletonWorkspace();
+		try {
+			const registryFile = resolve(root, REGISTRY_PATH);
+			const original = await Bun.file(registryFile).text();
+			const declared = JSON.parse(original) as ExperimentRegistry;
+			declared.retired = [retiredExperiment()];
+			await Bun.write(
+				registryFile,
+				`${JSON.stringify(declared, null, "\t")}\n`,
+			);
+			try {
+				// A workspace dependency the removal forgot.
+				await mutate(
+					root,
+					MANIFEST_PATH,
+					(source) =>
+						source.replace(
+							'"devDependencies": {',
+							`"devDependencies": {\n\t\t"${APP_PACKAGE}": "workspace:*",`,
+						),
+					`experiment: package.json still names ${APP_PACKAGE}, which the retired record for ${APP_ID} declared as removed`,
+				);
+				// A universe entry the removal forgot.
+				await mutate(
+					root,
+					UNIVERSE_PATH,
+					(source) => source.replace('["root"]', `["root", "${APP_ID}"]`),
+					`experiment: ${UNIVERSE_PATH} still names ${APP_ID}, which the retired record for ${APP_ID} declared as removed`,
+				);
+				// A workflow step the removal forgot, naming the directory.
+				await mutate(
+					root,
+					WORKFLOW_PATH,
+					(source) =>
+						source.replace(
+							"      - name: Validate experiment lifecycle contract\n",
+							`      - name: Build the spike\n        run: bun run --cwd ${APP_DIRECTORY} build\n      - name: Validate experiment lifecycle contract\n`,
+						),
+					`experiment: ${WORKFLOW_PATH} still names ${APP_DIRECTORY}, which the retired record for ${APP_ID} declared as removed`,
+				);
+				// And the other half: a mention inside the allow-list is a RECORD
+				// rather than a route, and it is correctly tolerated. Sealed evidence
+				// and changelogs describe work that really happened and must never be
+				// "cleaned up".
+				await tolerate(root, "CHANGES.md", `${APP_ID} was retired.\n`);
+				await tolerate(
+					root,
+					"docs/devcontainer-upgrade/stage-10e/README.md",
+					`${APP_DIRECTORY} was deleted and its findings kept.\n`,
+				);
+			} finally {
+				await Bun.write(registryFile, original);
+			}
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("an alias that is not declared is not scanned for", async () => {
+		const root = await skeletonWorkspace();
+		try {
+			const registryFile = resolve(root, REGISTRY_PATH);
+			const original = await Bun.file(registryFile).text();
+			const declared = JSON.parse(original) as ExperimentRegistry;
+			declared.retired = [
+				retiredExperiment({ aliases: [APP_ID, APP_PACKAGE] }),
+			];
+			await Bun.write(
+				registryFile,
+				`${JSON.stringify(declared, null, "\t")}\n`,
+			);
+			try {
+				expect(await validateExperimentContract(root)).toContain(
+					`experiment: the retired record for ${APP_ID} must declare ${APP_DIRECTORY} as an alias; the scan is the union of declared spellings and never a pattern over the id`,
+				);
+			} finally {
+				await Bun.write(registryFile, original);
+			}
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("the scan finds a token that genuinely appears in this repository", async () => {
+		// The proof that the matcher works rather than passing because it is
+		// broken. The probe token is the launcher Stage 5B superseded: it is still
+		// named in this tree on purpose, so a synthetic retired record naming it
+		// must find it. A scan that reported nothing here would be the most
+		// dangerous possible result for a rule whose whole job is to find things.
+		//
+		// It is ASSEMBLED rather than written, and that is not decoration. Stage
+		// 5B's own guard refuses any tracked file outside its allow-list that
+		// names the superseded launcher, and this file is not on that list — a
+		// literal here fails `worktree:check` rather than this suite, which is a
+		// refusal pointing at the wrong file.
+		const probeToken = ["dev", "pod"].join("");
+		const { registry } = await readExperimentRegistry(ROOT);
+		if (!registry) throw new Error("the committed registry must be readable");
+		const { files } = enumerateFiles(ROOT);
+		const probe = validateRetirementResidue(
+			ROOT,
+			{
+				...registry,
+				retired: [
+					retiredExperiment({
+						id: "spike-probe",
+						directory: "apps/spike-probe",
+						aliases: ["spike-probe", "apps/spike-probe", probeToken],
+					}),
+				],
+			},
+			files,
+		);
+		const hits = probe.errors.filter((error) => error.includes(probeToken));
+		expect(hits.length).toBeGreaterThan(0);
+		expect(probe.errors).toContain(
+			`experiment: scripts/template/worktree-contract.ts still names ${probeToken}, which the retired record for spike-probe declared as removed`,
+		);
+		// And the allow-list is doing real work rather than being decorative: the
+		// changelog, the sealed evidence and the stage documentation all name it,
+		// and every one of those mentions is a record rather than a route.
+		expect(
+			probe.errors.some((error) => error.startsWith("experiment: CHANGES.md")),
+		).toBe(false);
+		expect(
+			probe.errors.some((error) => error.startsWith("experiment: evidence/")),
+		).toBe(false);
 	});
 });
