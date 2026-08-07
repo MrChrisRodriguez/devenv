@@ -28,7 +28,11 @@ const GIT_HOOKS = [".husky/commit-msg", ".husky/pre-commit"] as const;
 // The launcher this stage supersedes. The scan below is the non-vacuous half of
 // the cutover: documentation can claim anything, but a tracked file still naming
 // the old entry point is a fact.
-const LEGACY_LAUNCHER = "devpod";
+// Exported so the release gate scans the RENDERS for the same literal rather
+// than carrying a second copy of it. This module's own allow-list covers the
+// template tree; the render surface is a different set of files and a smaller
+// allow-list, because CHANGES.md, evidence/ and docs/ do not ship.
+export const LEGACY_LAUNCHER = "devpod";
 
 // Paths whose mention of the superseded launcher is a record, not a route.
 // Sealed evidence and its validators describe runs that really did use it and

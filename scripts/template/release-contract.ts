@@ -5,8 +5,24 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, relative, resolve, sep } from "node:path";
+import { IMMUTABLE_REFERENCE } from "./ci-contract";
 import { validateJsonSchema } from "./json-schema";
-import { type RenderManifest, renderFixture } from "./render-fixture";
+import {
+	loadFixtureDefinition,
+	loadTemplateParameters,
+	resolveFixtureParameters,
+	type TemplateParameters,
+} from "./parameters";
+import {
+	loadTemplateOwnership,
+	type RenderManifest,
+	type ResidueReport,
+	renderFixture,
+	scanDisabledResidue,
+	type TemplateOwnership,
+} from "./render-fixture";
+import { IMMUTABLE_PLUGIN } from "./toolchain";
+import { LEGACY_LAUNCHER } from "./worktree-contract";
 
 type JsonRecord = Record<string, unknown>;
 
@@ -101,6 +117,97 @@ export interface ReleaseRegistry {
 		totalFileCount: number;
 		fixtures: GoldenDeclaration[];
 	};
+	scans: ScanDeclaration[];
+	topLevelWorkspaces: {
+		allowed: string[];
+		exceptions: Array<{ directory: string; reason: string }>;
+	};
+	syncBoundary: {
+		script: string;
+		risk: string;
+		mergeDeclaredButExcluded: number;
+		reason: string;
+	};
+	deferrals: DeferralDeclaration[];
+}
+
+/**
+ * The six scan families the requirement names, in its own order.
+ *
+ * `tasks.md` names four of them; `spec.md` names six, and the spec is the
+ * normative artefact. The two it omits — fixed source ports and obsolete
+ * commands — are also the two cheapest: one reads a TOML table that already
+ * exists and one imports a constant that already exists.
+ */
+export const SCAN_IDS = [
+	"source-identifier",
+	"fixed-source-port",
+	"mutable-pin",
+	"obsolete-command",
+	"duplicate-rule-skill",
+	"disabled-residue",
+] as const;
+
+export type ScanId = (typeof SCAN_IDS)[number];
+
+/**
+ * A tolerated hit, with the mechanism that makes it safe named mechanically.
+ *
+ * A guard biases toward FALSE POSITIVES: a canonical token appearing only in a
+ * comment gets flagged and is resolved with an entry here, rather than with a
+ * cleverer matcher. A string-literal-aware stripper is the thing that silently
+ * stops matching, and a scan that stops matching is worse than no scan.
+ *
+ * `mechanism` is what stops the entry outliving its justification: every needle
+ * it names must still be present in the file it names, so the exemption dies
+ * with the code that earned it.
+ */
+export interface ScanAllowEntry {
+	path: string;
+	token: string;
+	reason: string;
+	mechanism: Array<{ path: string; needle: string }>;
+}
+
+export interface ScanExemption {
+	path: string;
+	reason: string;
+}
+
+export interface ScanDeclaration {
+	id: ScanId;
+	authority: string;
+	ownedBy: string | null;
+	allow: ScanAllowEntry[];
+	knownExemptions: ScanExemption[];
+}
+
+export interface DeferralDeclaration {
+	id: string;
+	recordedBy: string;
+	blockingFacts: string[];
+	unblockedWhen: string[];
+}
+
+export interface RenderedFixture {
+	fixture: string;
+	root: string;
+	manifest: RenderManifest;
+	residue: ResidueReport;
+	parameters: TemplateParameters;
+}
+
+export interface ScanSurface {
+	label: string;
+	root: string;
+	files: string[];
+}
+
+export interface ScanFinding {
+	scan: ScanId;
+	surface: string;
+	path: string;
+	token: string;
 }
 
 export interface GoldenFile {
@@ -602,13 +709,6 @@ export async function validateOwnership(root: string): Promise<string[]> {
 	return errors.sort();
 }
 
-function goldenPathOf(registry: ReleaseRegistry, fixture: string): string {
-	const declared = registry.goldens.fixtures.find(
-		(entry) => entry.fixture === fixture,
-	);
-	return declared?.manifest ?? `${registry.goldens.directory}/${fixture}.json`;
-}
-
 async function readGolden(
 	root: string,
 	path: string,
@@ -702,7 +802,7 @@ export function declaredFixtures(root: string): string[] {
 export async function validateGoldens(
 	root: string,
 	registry: ReleaseRegistry,
-	options: { render?: boolean } = {},
+	options: { render?: boolean; renders?: RenderedFixture[] } = {},
 ): Promise<ReleaseReport> {
 	const errors: string[] = [];
 	const notices: string[] = [];
@@ -772,26 +872,31 @@ export async function validateGoldens(
 		);
 		return { errors: errors.sort(), notices: notices.sort() };
 	}
-	const output = await mkdtemp(resolve(tmpdir(), "devenv-release-goldens-"));
+	const output =
+		options.renders === undefined
+			? await mkdtemp(resolve(tmpdir(), "devenv-release-goldens-"))
+			: undefined;
 	try {
+		const rendered =
+			options.renders ??
+			(
+				await renderAllFixtures(
+					root,
+					declared.map((entry) => entry.fixture),
+					output as string,
+				)
+			).renders;
 		for (const entry of declared) {
 			const golden = goldens.get(entry.fixture);
 			if (!golden) continue;
-			let manifest: RenderManifest;
-			try {
-				const result = await renderFixture({
-					root,
-					fixtureName: entry.fixture,
-					output: resolve(output, entry.fixture),
-					force: true,
-				});
-				manifest = result.manifest;
-			} catch (error) {
+			const render = rendered.find((item) => item.fixture === entry.fixture);
+			if (!render) {
 				errors.push(
-					`release: the ${entry.fixture} fixture did not render: ${error instanceof Error ? error.message : String(error)}`,
+					`release: the ${entry.fixture} fixture did not render, so its golden was not compared`,
 				);
 				continue;
 			}
+			const manifest = render.manifest;
 			if (manifest.omittedCount !== entry.omittedCount)
 				errors.push(
 					`release: the ${entry.fixture} render omits ${manifest.omittedCount} tracked paths but ${REGISTRY_PATH} declares ${entry.omittedCount}`,
@@ -832,8 +937,644 @@ export async function validateGoldens(
 			);
 		}
 	} finally {
-		await rm(output, { recursive: true, force: true });
+		if (output) await rm(output, { recursive: true, force: true });
 	}
+	return { errors: errors.sort(), notices: notices.sort() };
+}
+
+// ── the six scan families ─────────────────────────────────────────────────
+//
+// Every one of them runs over the three RENDERS, which is the new thing: the
+// requirement says "scan outputs", and every existing scan in this repository
+// runs over the template tree. Four of them also run over the template tree,
+// because a source-identifier scan that stops at the render boundary is weaker
+// than it should be — but the template surface is narrowed to the files a
+// render actually receives, so `evidence/`, `docs/`, `CHANGES.md` and
+// `openspec/` are out of scope by construction rather than by allow-list.
+//
+// And every one of them CROSS-REFERENCES the module that already owns its
+// sentence rather than restating it. Two refusals for one defect send the
+// reader to two files.
+
+/** Render every declared fixture once, for the goldens and the scans alike. */
+export async function renderAllFixtures(
+	root: string,
+	fixtures: string[],
+	output: string,
+): Promise<{ renders: RenderedFixture[]; errors: string[] }> {
+	const renders: RenderedFixture[] = [];
+	const errors: string[] = [];
+	const parameters = await loadTemplateParameters(root);
+	for (const fixture of fixtures) {
+		try {
+			const target = resolve(output, fixture);
+			const result = await renderFixture({
+				root,
+				fixtureName: fixture,
+				output: target,
+				force: true,
+			});
+			const definition = await loadFixtureDefinition(root, fixture, parameters);
+			renders.push({
+				fixture,
+				root: target,
+				manifest: result.manifest,
+				residue: result.residue,
+				parameters: resolveFixtureParameters(parameters, definition),
+			});
+		} catch (error) {
+			errors.push(
+				`release: the ${fixture} fixture did not render: ${error instanceof Error ? error.message : String(error)}`,
+			);
+		}
+	}
+	return { renders, errors };
+}
+
+function matchesPath(pattern: string, path: string): boolean {
+	if (pattern === path) return true;
+	if (pattern.endsWith("/")) return path.startsWith(pattern);
+	try {
+		return new Bun.Glob(pattern).match(path);
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * The template tree's scan surface: the files a render actually receives.
+ *
+ * Narrowing by render policy rather than by allow-list is what keeps the
+ * source-identifier allow-list down to three entries. `evidence/` carries host
+ * paths from real captures and `CHANGES.md` names the repository this template
+ * mirrors; both are omitted from every render, so neither is a finding and
+ * neither needs an exemption saying so.
+ */
+export async function templateScanSurface(
+	root: string,
+	files: string[],
+): Promise<ScanSurface> {
+	const ownership = await loadTemplateOwnership(root);
+	const received = files.filter((path) => {
+		const rule = ownership.ownershipRules.find((candidate) =>
+			matchesPath(candidate.pattern, path),
+		);
+		return rule !== undefined && rule.renderPolicy !== "omit";
+	});
+	return { label: "the template tree", root, files: received };
+}
+
+/** Every file of a rendered tree, pruned the same way every walk here is. */
+export function renderScanSurface(render: RenderedFixture): ScanSurface {
+	return {
+		label: `the ${render.fixture} render`,
+		root: render.root,
+		files: render.manifest.files.map((entry) => entry.path),
+	};
+}
+
+function stringLiteralsIn(block: string): string[] {
+	const found: string[] = [];
+	const pattern = /(['"])((?:\\.|(?!\1).)*)\1/g;
+	let match = pattern.exec(block);
+	while (match) {
+		found.push((match[2] ?? "").replace(/\\(.)/g, "$1"));
+		match = pattern.exec(block);
+	}
+	return found;
+}
+
+/**
+ * The forbidden-token list, ASSEMBLED from the renderer at run time.
+ *
+ * It is read out of `render-fixture.ts` rather than imported, because the
+ * renderer does not export it and this stage may not touch the file it exists
+ * to measure. Reading it has a second property worth having: a needle list that
+ * silently became empty is the most dangerous failure a scan can have, so an
+ * unreadable or empty block is a refusal rather than a clean sweep.
+ */
+export function forbiddenIdentifierTokens(source: string): string[] {
+	const anchor = source.indexOf("GLOBAL_FORBIDDEN_TOKENS");
+	if (anchor < 0) return [];
+	const open = source.indexOf("[", anchor);
+	const close = source.indexOf("]", open);
+	if (open < 0 || close < 0) return [];
+	return stringLiteralsIn(source.slice(open + 1, close));
+}
+
+/** Every port the parameter file advertises, plus the published container one. */
+export function declaredPorts(parameters: TemplateParameters): number[] {
+	return [
+		...new Set([
+			...parameters.advertised_ports.map((entry) => entry.port),
+			parameters.routing.published_container_port,
+		]),
+	].sort((left, right) => left - right);
+}
+
+interface ScanContext {
+	identifierTokens: string[];
+	ports: number[];
+}
+
+async function readTextFile(root: string, path: string): Promise<string> {
+	try {
+		return await Bun.file(resolve(root, path)).text();
+	} catch {
+		return "";
+	}
+}
+
+function actionReferences(source: string): string[] {
+	const found: string[] = [];
+	for (const line of source.split("\n")) {
+		const match = /^\s*(?:-\s+)?uses:\s*(\S+)/.exec(line);
+		if (match?.[1]) found.push(match[1]);
+	}
+	return found;
+}
+
+function pluginLocators(source: string): string[] {
+	const found: string[] = [];
+	let inPlugins = false;
+	for (const line of source.split("\n")) {
+		const trimmed = line.trim();
+		if (trimmed.startsWith("[")) {
+			inPlugins = trimmed === "[plugins]";
+			continue;
+		}
+		if (!inPlugins) continue;
+		const match = /^[A-Za-z0-9_-]+\s*=\s*"([^"]+)"/.exec(trimmed);
+		if (match?.[1]) found.push(match[1]);
+	}
+	return found;
+}
+
+/**
+ * Every content scan over one surface, in one pass over its files.
+ *
+ * The scan reports the number of files it READ, and zero is a refusal. A sweep
+ * that enumerated nothing and reported success is the vacuous pass this whole
+ * requirement exists to name.
+ */
+export async function scanSurface(
+	surface: ScanSurface,
+	context: ScanContext,
+): Promise<{ findings: ScanFinding[]; scanned: number }> {
+	const findings: ScanFinding[] = [];
+	const portPattern =
+		context.ports.length > 0
+			? new RegExp(`\\b(?:${context.ports.join("|")})\\b`)
+			: undefined;
+	let scanned = 0;
+	for (const path of surface.files) {
+		const content = await readTextFile(surface.root, path);
+		if (content === "") continue;
+		scanned += 1;
+		for (const token of context.identifierTokens) {
+			if (content.includes(token))
+				findings.push({
+					scan: "source-identifier",
+					surface: surface.label,
+					path,
+					token,
+				});
+		}
+		if (portPattern) {
+			const match = portPattern.exec(content);
+			if (match)
+				findings.push({
+					scan: "fixed-source-port",
+					surface: surface.label,
+					path,
+					token: match[0],
+				});
+		}
+		if (content.includes(LEGACY_LAUNCHER))
+			findings.push({
+				scan: "obsolete-command",
+				surface: surface.label,
+				path,
+				token: LEGACY_LAUNCHER,
+			});
+		if (/^\.github\/(?:workflows|actions)\/.+\.ya?ml$/.test(path)) {
+			for (const reference of actionReferences(content)) {
+				if (reference.startsWith("./")) continue;
+				if (IMMUTABLE_REFERENCE.test(reference)) continue;
+				findings.push({
+					scan: "mutable-pin",
+					surface: surface.label,
+					path,
+					token: reference,
+				});
+			}
+		}
+		if (path === ".prototools") {
+			for (const locator of pluginLocators(content)) {
+				if (IMMUTABLE_PLUGIN.test(locator)) continue;
+				findings.push({
+					scan: "mutable-pin",
+					surface: surface.label,
+					path,
+					token: locator,
+				});
+			}
+		}
+	}
+	return { findings, scanned };
+}
+
+/**
+ * Skill and command directories, counted across every agent surface.
+ *
+ * The duplicate-NORMATIVE-TEXT half of this requirement already has an owner,
+ * and this leg emits a notice naming it rather than writing the rule twice.
+ * What nobody owns is the other half: `graphify` is a skill directory under
+ * three agent surfaces at once, which is correct and intended, and until now
+ * nothing asserted that it was intended. A fourth copy — or a second name
+ * appearing twice — is indistinguishable from that by inspection.
+ */
+export function skillDirectories(files: string[]): Map<string, string[]> {
+	const found = new Map<string, string[]>();
+	for (const path of files) {
+		const match = /^(\.[a-z]+)\/(?:skills|commands)\/([^/]+)\//.exec(path);
+		if (!match?.[1] || !match[2]) continue;
+		const surfaces = found.get(match[2]) ?? [];
+		if (!surfaces.includes(match[1])) surfaces.push(match[1]);
+		found.set(match[2], surfaces.sort());
+	}
+	return found;
+}
+
+function declarationOf(
+	registry: ReleaseRegistry,
+	id: ScanId,
+): ScanDeclaration | undefined {
+	return registry.scans.find((entry) => entry.id === id);
+}
+
+function tolerated(
+	declaration: ScanDeclaration | undefined,
+	finding: ScanFinding,
+): boolean {
+	if (!declaration) return false;
+	if (
+		declaration.knownExemptions.some((entry) =>
+			matchesPath(entry.path, finding.path),
+		)
+	)
+		return true;
+	return declaration.allow.some(
+		(entry) =>
+			matchesPath(entry.path, finding.path) && entry.token === finding.token,
+	);
+}
+
+/**
+ * The six families, run and reconciled with what the registry declares.
+ */
+export async function validateScans(
+	root: string,
+	registry: ReleaseRegistry,
+	renders: RenderedFixture[],
+	files: string[],
+): Promise<ReleaseReport> {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	for (const id of SCAN_IDS) {
+		if (!declarationOf(registry, id))
+			errors.push(
+				`release: ${REGISTRY_PATH} declares no ${id} scan; the requirement names six families and a missing one is a clause nobody discharged`,
+			);
+	}
+	for (const declaration of registry.scans) {
+		if (!(SCAN_IDS as readonly string[]).includes(declaration.id))
+			errors.push(
+				`release: ${REGISTRY_PATH} declares the ${declaration.id} scan, which is not one of the six the requirement names`,
+			);
+		if (declaration.ownedBy)
+			notices.push(
+				`release: the ${declaration.id} scan cross-references ${declaration.ownedBy}, which owns that sentence for the template tree; this scan adds the render surface`,
+			);
+		// An exemption whose justification has been deleted is a widened rule
+		// wearing an allow-list's clothes.
+		for (const entry of declaration.allow) {
+			for (const mechanism of entry.mechanism) {
+				const source = textOf(resolve(root, mechanism.path));
+				if (source === "" || !source.includes(mechanism.needle))
+					errors.push(
+						`release: the ${declaration.id} allowance for ${entry.token} in ${entry.path} cites ${mechanism.path}, which no longer contains \`${mechanism.needle}\`; the exemption dies with the mechanism that earned it`,
+					);
+			}
+		}
+	}
+
+	const rendererSource = textOf(
+		resolve(root, "scripts/template/render-fixture.ts"),
+	);
+	const identifierTokens = forbiddenIdentifierTokens(rendererSource);
+	if (identifierTokens.length === 0)
+		errors.push(
+			"release: the source-identifier needle list read out of scripts/template/render-fixture.ts is empty; a scan with no needles reports success over everything",
+		);
+	const parameters = await loadTemplateParameters(root);
+	const ports = declaredPorts(parameters);
+	if (ports.length === 0)
+		errors.push(
+			"release: template-parameters.toml advertises no port, so the fixed-source-port scan has no needles",
+		);
+	const context: ScanContext = { identifierTokens, ports };
+
+	const surfaces: ScanSurface[] = [
+		await templateScanSurface(root, files),
+		...renders.map(renderScanSurface),
+	];
+	for (const surface of surfaces) {
+		const { findings, scanned } = await scanSurface(surface, context);
+		if (scanned === 0)
+			errors.push(
+				`release: the scan of ${surface.label} read no file at all; a sweep over nothing is a pass nobody earned`,
+			);
+		for (const finding of findings) {
+			if (tolerated(declarationOf(registry, finding.scan), finding)) continue;
+			errors.push(
+				`release: the ${finding.scan} scan found ${finding.token} in ${surface.label} at ${finding.path}`,
+			);
+		}
+		notices.push(
+			`release: the source-identifier, fixed-source-port, mutable-pin and obsolete-command scans read ${scanned} files of ${surface.label}`,
+		);
+	}
+
+	// ── duplicate rules and skills ──────────────────────────────────────────
+	const duplicates = declarationOf(registry, "duplicate-rule-skill");
+	notices.push(
+		"release: duplicate normative rule TEXT is refused by rules:check, which owns that sentence; this scan covers the skill and command directories nothing else reads",
+	);
+	for (const surface of surfaces) {
+		const directories = skillDirectories(surface.files);
+		if (surface.label === "the template tree" && directories.size === 0)
+			errors.push(
+				"release: no skill or command directory was found in the template tree, so the duplicate scan compared nothing",
+			);
+		for (const [name, agents] of directories) {
+			if (agents.length < 2) continue;
+			if (
+				duplicates?.knownExemptions.some((entry) =>
+					matchesPath(entry.path, name),
+				)
+			)
+				continue;
+			errors.push(
+				`release: the skill ${name} exists under ${agents.join(", ")} in ${surface.label} and ${REGISTRY_PATH} does not declare the duplication as intended`,
+			);
+		}
+		notices.push(
+			`release: the duplicate-rule-skill scan inspected ${directories.size} skill and command directories of ${surface.label}`,
+		);
+	}
+
+	// ── disabled-capability residue ─────────────────────────────────────────
+	const ownership = await loadTemplateOwnership(root);
+	for (const render of renders) {
+		let report: ResidueReport;
+		try {
+			report = await scanDisabledResidue(
+				render.root,
+				render.parameters,
+				ownership,
+			);
+		} catch (error) {
+			errors.push(
+				`release: the disabled-residue scan of the ${render.fixture} render did not run: ${error instanceof Error ? error.message : String(error)}`,
+			);
+			continue;
+		}
+		if (report.status !== "pass")
+			errors.push(
+				`release: the disabled-residue scan of the ${render.fixture} render found ${report.findings.length} findings, first ${report.findings[0]?.signature} in ${report.findings[0]?.path}`,
+			);
+		if (report.scannedFiles === 0)
+			errors.push(
+				`release: the disabled-residue scan of the ${render.fixture} render read no file at all`,
+			);
+		// The hole inside the function that implements the anti-vacuity
+		// requirement. `scanDisabledResidue` refuses zero FILES and has never
+		// refused zero disabled capabilities — and the `full` fixture enables
+		// everything, so its residue scan has been structurally vacuous since the
+		// day it was written. That is not a defect in `full`; it is a fact about
+		// it, and the caller is where it gets said out loud.
+		const disabled = render.manifest.disabledCapabilities.length;
+		if (disabled > 0 && report.scannedDisabledCapabilities === 0)
+			errors.push(
+				`release: the ${render.fixture} render disables ${disabled} capabilities and its residue scan scanned none of them; a residue scan with no disabled capability is a pass nobody earned`,
+			);
+		if (disabled === 0)
+			notices.push(
+				`release: the ${render.fixture} render disables no capability, so its residue scan is vacuous by construction rather than by defect and proves nothing about residue`,
+			);
+		else
+			notices.push(
+				`release: the ${render.fixture} residue scan covered ${report.scannedFiles} files for ${report.scannedDisabledCapabilities} disabled capabilities with a signature`,
+			);
+	}
+	return { errors: errors.sort(), notices: notices.sort() };
+}
+
+/**
+ * The deferrals, recorded WITH a mechanical assertion rather than as a note.
+ *
+ * `graphify` is the program's anchor deferral, parked at this stage by Stage 9
+ * and re-parked by Stage 10E. It is not closed here, and the reason is
+ * measured: two of its three surfaces cannot carry a capability fence at all,
+ * because a fence in this repository is a line comment and `tsconfig.json` and
+ * `.claude/settings.json` are strict JSON; and a signature added today would
+ * sit INERT, because the residue scan selects default-FALSE capabilities that
+ * have a signature and `graphify` defaults to true. So the assertion is the
+ * inertness itself: the moment the default flips or the selection changes, this
+ * refusal fires and the deferral has to be decided rather than inherited.
+ */
+export async function validateDeferrals(
+	root: string,
+	registry: ReleaseRegistry,
+): Promise<ReleaseReport> {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	if (registry.deferrals.length === 0)
+		errors.push(
+			`release: ${REGISTRY_PATH} records no deferral at all; the program carries a ledger and an empty one is a claim nobody checked`,
+		);
+	for (const entry of registry.deferrals) {
+		if (entry.blockingFacts.length === 0)
+			errors.push(
+				`release: the ${entry.id} deferral names no blocking fact, so nothing says why it is still open`,
+			);
+		if (entry.unblockedWhen.length === 0)
+			errors.push(
+				`release: the ${entry.id} deferral names no condition under which it becomes possible, so nothing will ever close it`,
+			);
+		notices.push(
+			`release: ${entry.id} stays deferred, recorded by ${entry.recordedBy}, and this run asserted the facts that keep it open`,
+		);
+	}
+	const parameters = await loadTemplateParameters(root);
+	const ownership = await loadTemplateOwnership(root);
+	const graphify = registry.deferrals.find((entry) => entry.id === "graphify");
+	if (graphify) {
+		const selected = Object.entries(parameters.capabilities.defaults)
+			.filter(([, enabled]) => !enabled)
+			.map(([capability]) => capability)
+			.filter((capability) => ownership.capabilitySignatures[capability]);
+		if (parameters.capabilities.defaults["graphify"] !== true)
+			errors.push(
+				"release: graphify no longer defaults to true, so the signature the graphify deferral calls inert would now be scanned; decide the deferral rather than inheriting it",
+			);
+		if (ownership.capabilitySignatures["graphify"] !== undefined)
+			errors.push(
+				"release: graphify has acquired a capability signature while the graphify deferral still records it as absent; the deferral and the ownership file disagree",
+			);
+		if (selected.includes("graphify"))
+			errors.push(
+				"release: graphify is now inside the disabled-residue scan's selected set, which the graphify deferral records as impossible",
+			);
+		notices.push(
+			`release: the disabled-residue scan selects ${selected.length} default-false capabilities that carry a signature, and graphify is not one of them`,
+		);
+		// The path half of the fence already works and needs nothing; naming the
+		// rules is what stops a future reader concluding the surface is unfenced.
+		for (const pattern of [
+			".claude/skills/graphify/**",
+			".codex/skills/graphify/**",
+			".gemini/skills/graphify/**",
+			".devcontainer/on-create/setup-graphify.sh",
+		]) {
+			const rule = ownership.artifactRules.find(
+				(entry) => entry.pattern === pattern,
+			);
+			if (!rule || !rule.requiresAll.includes("graphify"))
+				errors.push(
+					`release: ${pattern} is no longer gated on graphify, and the graphify deferral records it as already covered`,
+				);
+		}
+	}
+	return { errors: errors.sort(), notices: notices.sort() };
+}
+
+/**
+ * The top-level blind spot, closed with the narrow version 10E wrote for it.
+ *
+ * A second workspace hiding outside the workspace globs is a RELEASE defect
+ * rather than an experiment one: it is a tree the release gate renders and no
+ * guard reads. The rule is three lines and it would have caught nothing in
+ * either repository, which is a fair argument that it catches nothing here —
+ * so the anti-vacuity anchor is the number of top-level directories inspected
+ * and never the number of violations found.
+ */
+export function validateTopLevelWorkspaces(
+	registry: ReleaseRegistry,
+	files: string[],
+): ReleaseReport {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	const directories = new Set<string>();
+	const manifests = new Set<string>();
+	for (const path of files) {
+		const segments = path.split("/");
+		if (segments.length < 2 || !segments[0]) continue;
+		directories.add(segments[0]);
+		if (segments.length === 2 && segments[1] === MANIFEST_PATH)
+			manifests.add(segments[0]);
+	}
+	if (directories.size === 0)
+		errors.push(
+			"release: the tracked tree has no top-level directory at all, so the layout rule inspected nothing",
+		);
+	const allowed = new Set([
+		...registry.topLevelWorkspaces.allowed,
+		...registry.topLevelWorkspaces.exceptions.map((entry) => entry.directory),
+	]);
+	for (const directory of [...manifests].sort()) {
+		if (allowed.has(directory)) continue;
+		errors.push(
+			`release: ${directory}/${MANIFEST_PATH} makes ${directory} a workspace outside ${registry.topLevelWorkspaces.allowed.join(" and ")}; declare it or move it, because a package nothing globs is a tree no guard reads`,
+		);
+	}
+	notices.push(
+		`release: the top-level layout rule inspected ${directories.size} tracked directories and found ${manifests.size} carrying a ${MANIFEST_PATH}`,
+	);
+	return { errors: errors.sort(), notices: notices.sort() };
+}
+
+/**
+ * Shell `case` semantics, which are not glob semantics.
+ *
+ * `scripts/*` in a `case` matches `scripts/template/foo.ts`, because the shell
+ * pattern's `*` crosses `/`. Reading the table with a globber that does not
+ * would produce the opposite answer for every entry that matters.
+ */
+export function shellCaseExcludes(source: string, path: string): boolean {
+	const body = source.slice(source.indexOf("is_excluded()"));
+	for (const line of body.split("\n")) {
+		if (line.includes("esac")) break;
+		const match = /^\s*([^)\s][^)]*)\)\s*return\s+([01])\s*;;/.exec(line);
+		if (!match?.[1] || !match[2]) continue;
+		for (const pattern of match[1].split("|")) {
+			const expression = new RegExp(
+				`^${pattern
+					.trim()
+					.replace(/[.+^${}()|[\]\\]/g, "\\$&")
+					.replace(/\*/g, ".*")
+					.replace(/\?/g, ".")}$`,
+			);
+			if (expression.test(path)) return match[2] === "0";
+		}
+	}
+	return false;
+}
+
+/**
+ * The sync boundary, as a RATCHET rather than as an equality.
+ *
+ * `template-ownership.json` declares thirty-five `scripts/template/*.ts` files
+ * as `syncPolicy: merge`, and `sync-devcontainer.sh` excludes every one of them
+ * through its `scripts/*` case arm. That is not news: `knownBoundaryRisks[0]`
+ * says it in writing — "any further template-owned script under scripts/ still
+ * requires the same paired cutover ... or its declared syncPolicy merge is a
+ * lie". Closing it means rewriting the sync script's exclusion table in the
+ * stage that closes the program, which is the wrong stage for it.
+ *
+ * So the count is declared and asserted, which is the half that is worth
+ * having: a thirty-sixth file joining the silent set is a refusal naming it,
+ * and the risk stops being a paragraph nobody re-reads.
+ */
+export async function validateSyncBoundary(
+	root: string,
+	registry: ReleaseRegistry,
+): Promise<ReleaseReport> {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	const source = textOf(resolve(root, registry.syncBoundary.script));
+	if (source === "") {
+		notices.push(
+			`release: ${registry.syncBoundary.script} is absent, so the sync boundary was not reconciled`,
+		);
+		return { errors, notices };
+	}
+	const ownership = await loadTemplateOwnership(root);
+	const silent: string[] = [];
+	for (const rule of ownership.ownershipRules) {
+		if (!rule.pattern.startsWith("scripts/")) continue;
+		if (rule.pattern.endsWith("/**") || rule.pattern.endsWith("*")) continue;
+		if (rule.syncPolicy !== "merge" || rule.renderPolicy !== "copy") continue;
+		if (shellCaseExcludes(source, rule.pattern)) silent.push(rule.pattern);
+	}
+	if (silent.length !== registry.syncBoundary.mergeDeclaredButExcluded)
+		errors.push(
+			`release: ${silent.length} tracked scripts declare syncPolicy merge and are excluded by ${registry.syncBoundary.script}, but ${REGISTRY_PATH} declares ${registry.syncBoundary.mergeDeclaredButExcluded}; first ${silent.sort()[0]}`,
+		);
+	notices.push(
+		`release: ${silent.length} template-owned scripts declare a merge sync policy that ${registry.syncBoundary.script} excludes, which ${registry.syncBoundary.risk} already records; this run asserts the count rather than widening the script`,
+	);
 	return { errors: errors.sort(), notices: notices.sort() };
 }
 
@@ -874,13 +1615,50 @@ export async function inspectReleaseContract(
 	errors.push(...(await validateWiring(root)));
 	errors.push(...(await validateOwnership(root)));
 
-	const goldens = await validateGoldens(
-		root,
-		registry,
-		options.renders === undefined ? {} : { render: options.renders },
-	);
-	errors.push(...goldens.errors);
-	notices.push(...goldens.notices);
+	const topLevel = validateTopLevelWorkspaces(registry, files);
+	errors.push(...topLevel.errors);
+	notices.push(...topLevel.notices);
+
+	const syncBoundary = await validateSyncBoundary(root, registry);
+	errors.push(...syncBoundary.errors);
+	notices.push(...syncBoundary.notices);
+
+	const deferrals = await validateDeferrals(root, registry);
+	errors.push(...deferrals.errors);
+	notices.push(...deferrals.notices);
+
+	if (options.renders === false) {
+		const goldens = await validateGoldens(root, registry, { render: false });
+		errors.push(...goldens.errors);
+		notices.push(...goldens.notices);
+		notices.push(
+			"release: the six scan families did not run; they read the rendered trees and this caller asked for the hermetic legs only",
+		);
+		return {
+			errors: [...new Set(errors)].sort(),
+			notices: [...new Set(notices)].sort(),
+		};
+	}
+
+	// One render, two consumers. The goldens compare it and the scans read it,
+	// and rendering three fixtures twice in one command buys nothing.
+	const output = await mkdtemp(resolve(tmpdir(), "devenv-release-"));
+	try {
+		const { renders, errors: renderErrors } = await renderAllFixtures(
+			root,
+			registry.goldens.fixtures.map((entry) => entry.fixture),
+			output,
+		);
+		errors.push(...renderErrors);
+		const goldens = await validateGoldens(root, registry, { renders });
+		errors.push(...goldens.errors);
+		notices.push(...goldens.notices);
+		const scans = await validateScans(root, registry, renders, files);
+		errors.push(...scans.errors);
+		notices.push(...scans.notices);
+	} finally {
+		await rm(output, { recursive: true, force: true });
+	}
 
 	return {
 		errors: [...new Set(errors)].sort(),

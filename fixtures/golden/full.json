@@ -638,7 +638,7 @@
 			{
 				"path": "scripts/template/ci-contract.ts",
 				"mode": "0644",
-				"sha256": "ba9ac0aabfd0d1aa52121e9a484cfda38bcc9c4f72d05642e13a9bb7c97ddcf0"
+				"sha256": "0caa2e653cdb0edc921ac9d7e61facab079c84a2110b120ef52d2f5fb1b868a1"
 			},
 			{
 				"path": "scripts/template/cloud-contract.ts",
@@ -708,7 +708,7 @@
 			{
 				"path": "scripts/template/toolchain.ts",
 				"mode": "0644",
-				"sha256": "5dd685f18994a5203a8a0853627a9f63e28e069e6caab4ebe7d6ef40690e2f59"
+				"sha256": "5c4e532e5b51604d16b8f15d2a23b35d3cf3180c7b46397bd06da04933b4187e"
 			},
 			{
 				"path": "scripts/template/validate-affected.ts",
@@ -788,7 +788,7 @@
 			{
 				"path": "scripts/template/worktree-contract.ts",
 				"mode": "0644",
-				"sha256": "cadb09b2dbac13b5453732dafac345abf51df4830bd7c42a71740feb2689ea60"
+				"sha256": "a08f77dd84b0c5fe7b2840ff64bb95822147ab0d22270936baf8d9c20708a98a"
 			},
 			{
 				"path": "scripts/worktree/cleanup.sh",

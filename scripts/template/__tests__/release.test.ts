@@ -1,22 +1,35 @@
 import { describe, expect, test } from "bun:test";
-import { rm } from "node:fs/promises";
-import { resolve } from "node:path";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { dirname, resolve } from "node:path";
+import { loadTemplateParameters } from "../parameters";
 import {
 	classifyGoldenDrift,
 	declaredFixtures,
+	declaredPorts,
+	forbiddenIdentifierTokens,
 	GOLDEN_ROOT,
 	GUARD_SCRIPT,
 	inspectReleaseContract,
 	type ReleaseRegistry,
 	readReleaseRegistry,
 	reconcileDecision,
+	SCAN_IDS,
+	type ScanSurface,
 	SYNC_SCRIPT,
+	scanSurface,
+	shellCaseExcludes,
+	skillDirectories,
 	TEMPLATE_ONLY_PATHS,
 	templateOnlyBlockOf,
+	validateDeferrals,
 	validateGoldens,
 	validateOwnership,
 	validateReleaseContract,
+	validateScans,
 	validateSoleDeclarations,
+	validateSyncBoundary,
+	validateTopLevelWorkspaces,
 	validateWiring,
 } from "../release-contract";
 import {
@@ -55,6 +68,14 @@ async function inWorkspace(
 		await rm(root, { recursive: true, force: true });
 	}
 }
+
+/** The needles, read from the definitions exactly as the guard reads them. */
+const SCAN_CONTEXT = {
+	identifierTokens: forbiddenIdentifierTokens(
+		await Bun.file(resolve(ROOT, "scripts/template/render-fixture.ts")).text(),
+	),
+	ports: declaredPorts(await loadTemplateParameters(ROOT)),
+};
 
 describe("the release gate registry", () => {
 	test("accepts the source tree and its own committed declaration", async () => {
@@ -470,4 +491,262 @@ describe("the aggregate", () => {
 			await rm(root, { recursive: true, force: true });
 		}
 	});
+});
+
+describe("the six scan families", () => {
+	// The most dangerous failure a scan can have is not a false negative on one
+	// file; it is a matcher that silently matches NOTHING and reports success
+	// over the whole tree. These cases plant a positive for every family, in a
+	// surface built for the purpose, so a broken matcher fails here rather than
+	// passing everywhere.
+	async function plantedSurface(
+		files: Record<string, string>,
+	): Promise<ScanSurface> {
+		const root = await mkdtemp(resolve(tmpdir(), "devenv-release-scan-"));
+		for (const [path, content] of Object.entries(files)) {
+			const target = resolve(root, path);
+			await mkdir(dirname(target), { recursive: true });
+			await Bun.write(target, content);
+		}
+		return { label: "a planted surface", root, files: Object.keys(files) };
+	}
+
+	test("reads its needles from the definitions rather than retyping them", () => {
+		// A needle list that quietly became empty reports success over every file
+		// there will ever be, so both lists are asserted non-empty before any
+		// case below relies on them.
+		expect(SCAN_CONTEXT.identifierTokens.length).toBeGreaterThan(0);
+		expect(SCAN_CONTEXT.identifierTokens).toContain("trading-games");
+		expect(SCAN_CONTEXT.ports).toEqual([3000, 4000, 8080, 8787]);
+		expect(forbiddenIdentifierTokens("const NOTHING = [];")).toEqual([]);
+	});
+
+	test("finds a planted source identifier, a port, a launcher and a floating pin", async () => {
+		const surface = await plantedSurface({
+			"docs.md": `see ${"trading"}-games for the original`,
+			"server.ts": "const url = `http://localhost:8080/api`;\n",
+			"runbook.md": `start it with ${"dev"}pod up\n`,
+			".github/workflows/probe.yml":
+				"jobs:\n  a:\n    steps:\n      - uses: actions/checkout@v4\n",
+			".prototools":
+				'[plugins]\nmoon = "https://example.invalid/plugin.toml"\n',
+		});
+		try {
+			const { findings, scanned } = await scanSurface(surface, SCAN_CONTEXT);
+			expect(scanned).toBe(5);
+			const found = findings.map((entry) => `${entry.scan}:${entry.path}`);
+			expect(found).toContain("source-identifier:docs.md");
+			expect(found).toContain("fixed-source-port:server.ts");
+			expect(found).toContain("obsolete-command:runbook.md");
+			expect(found).toContain("mutable-pin:.github/workflows/probe.yml");
+			expect(found).toContain("mutable-pin:.prototools");
+		} finally {
+			await rm(surface.root, { recursive: true, force: true });
+		}
+	});
+
+	test("tolerates the shapes that look like findings and are not", async () => {
+		const surface = await plantedSurface({
+			// A port-shaped number that is not a declared port, a launcher-shaped
+			// word that is not the launcher, and an action reference pinned to a
+			// commit. Without this half a guard passes its whole suite by refusing
+			// everything, which is the failure a file of known-bad cases cannot see.
+			"server.ts": "const port = 9999;\nconst other = 30000;\n",
+			"runbook.md": "start it with a development container\n",
+			".github/workflows/probe.yml":
+				"jobs:\n  a:\n    steps:\n      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n      - uses: ./.github/actions/setup-bun\n",
+			".prototools":
+				'[plugins]\nmoon = "https://raw.githubusercontent.com/moonrepo/moon/11d5960a326750d5838078e36cf38b85af677262/proto/plugin.toml"\n',
+		});
+		try {
+			const { findings, scanned } = await scanSurface(surface, SCAN_CONTEXT);
+			expect(scanned).toBe(4);
+			expect(findings).toEqual([]);
+		} finally {
+			await rm(surface.root, { recursive: true, force: true });
+		}
+	});
+
+	test("declares all six families and refuses a missing one", async () => {
+		expect(COMMITTED.scans.map((entry) => entry.id).sort()).toEqual(
+			[...SCAN_IDS].sort(),
+		);
+		const registry: ReleaseRegistry = {
+			...COMMITTED,
+			scans: COMMITTED.scans.filter((entry) => entry.id !== "mutable-pin"),
+		};
+		const report = await validateScans(ROOT, registry, [], []);
+		expect(report.errors.join("\n")).toContain(
+			"release: release.json declares no mutable-pin scan; the requirement names six families and a missing one is a clause nobody discharged",
+		);
+	});
+
+	test("refuses an allowance whose cited mechanism has been deleted", async () => {
+		const registry: ReleaseRegistry = {
+			...COMMITTED,
+			scans: COMMITTED.scans.map((entry) =>
+				entry.id === "source-identifier"
+					? {
+							...entry,
+							allow: entry.allow.map((allowance) => ({
+								...allowance,
+								mechanism: [
+									{
+										path: "scripts/template/render-fixture.ts",
+										needle: "a substitution nobody wrote",
+									},
+								],
+							})),
+						}
+					: entry,
+			),
+		};
+		const report = await validateScans(ROOT, registry, [], []);
+		// An exemption whose justification has been deleted is a widened rule
+		// wearing an allow-list's clothes.
+		expect(report.errors.join("\n")).toContain(
+			"the exemption dies with the mechanism that earned it",
+		);
+	});
+
+	test("refuses a fourth graphify skill and tolerates the three intended ones", () => {
+		const intended = [
+			".claude/skills/graphify/SKILL.md",
+			".codex/skills/graphify/SKILL.md",
+			".gemini/skills/graphify/SKILL.md",
+			".claude/commands/opsx/apply.md",
+		];
+		const directories = skillDirectories(intended);
+		expect(directories.get("graphify")).toEqual([
+			".claude",
+			".codex",
+			".gemini",
+		]);
+		expect(directories.get("opsx")).toEqual([".claude"]);
+		expect(
+			skillDirectories([".zed/skills/opsx/thing.md", ...intended]).get("opsx"),
+		).toEqual([".claude", ".zed"]);
+	});
+
+	test("reads the sync script with shell case semantics rather than glob ones", async () => {
+		const source = await Bun.file(
+			resolve(ROOT, "scripts/sync-devcontainer.sh"),
+		).text();
+		// `scripts/*` in a `case` crosses `/`. A globber that does not would give
+		// the opposite answer for every entry that matters here.
+		expect(shellCaseExcludes(source, "scripts/template/toolchain.ts")).toBe(
+			true,
+		);
+		expect(shellCaseExcludes(source, "scripts/worktree/up.sh")).toBe(false);
+		expect(shellCaseExcludes(source, "scripts/sync-devcontainer.sh")).toBe(
+			false,
+		);
+		expect(shellCaseExcludes(source, "AGENTS.md")).toBe(false);
+	});
+
+	test("holds the sync boundary as a ratchet and refuses a drifted count", async () => {
+		expect((await validateSyncBoundary(ROOT, COMMITTED)).errors).toEqual([]);
+		const registry: ReleaseRegistry = {
+			...COMMITTED,
+			syncBoundary: { ...COMMITTED.syncBoundary, mergeDeclaredButExcluded: 34 },
+		};
+		const report = await validateSyncBoundary(ROOT, registry);
+		expect(report.errors.join("\n")).toContain(
+			"but release.json declares 34; first scripts/template/affected-contract.ts",
+		);
+	});
+});
+
+describe("the top-level layout rule", () => {
+	test("counts directories inspected and never violations found", () => {
+		const report = validateTopLevelWorkspaces(COMMITTED, [
+			"apps/.gitkeep",
+			"libs/.gitkeep",
+			"docs/troubleshooting.md",
+		]);
+		expect(report.errors).toEqual([]);
+		expect(report.notices.join("\n")).toContain(
+			"inspected 3 tracked directories and found 0 carrying a package.json",
+		);
+		expect(validateTopLevelWorkspaces(COMMITTED, []).errors).toContain(
+			"release: the tracked tree has no top-level directory at all, so the layout rule inspected nothing",
+		);
+	});
+
+	test("refuses a second workspace hiding outside the workspace globs", () => {
+		const report = validateTopLevelWorkspaces(COMMITTED, [
+			"apps/one/package.json",
+			"libs/two/package.json",
+			"devenv-changes/package.json",
+		]);
+		expect(report.errors.join("\n")).toContain(
+			"release: devenv-changes/package.json makes devenv-changes a workspace outside apps and libs",
+		);
+		// The declared exception is the escape hatch, and it carries a reason.
+		const registry: ReleaseRegistry = {
+			...COMMITTED,
+			topLevelWorkspaces: {
+				allowed: COMMITTED.topLevelWorkspaces.allowed,
+				exceptions: [
+					{ directory: "devenv-changes", reason: "a self-contained root" },
+				],
+			},
+		};
+		expect(
+			validateTopLevelWorkspaces(registry, ["devenv-changes/package.json"])
+				.errors,
+		).toEqual([]);
+	});
+});
+
+describe("the graphify deferral", () => {
+	test("asserts the inertness rather than recording it as a note", async () => {
+		const report = await validateDeferrals(ROOT, COMMITTED);
+		expect(report.errors).toEqual([]);
+		// The assertion that makes the deferral falsifiable: the residue scan
+		// selects default-FALSE capabilities that carry a signature, graphify
+		// defaults to true, and a signature added today would therefore change
+		// nothing. The moment either fact moves, this run refuses.
+		expect(report.notices.join("\n")).toContain(
+			"and graphify is not one of them",
+		);
+	});
+
+	test("refuses a deferral that names no blocking fact or no way out", async () => {
+		const registry: ReleaseRegistry = {
+			...COMMITTED,
+			deferrals: [
+				{
+					id: "orphan",
+					recordedBy: "nobody",
+					blockingFacts: [],
+					unblockedWhen: [],
+				},
+			],
+		};
+		const report = await validateDeferrals(ROOT, registry);
+		expect(report.errors.join("\n")).toContain(
+			"release: the orphan deferral names no blocking fact, so nothing says why it is still open",
+		);
+		expect(report.errors.join("\n")).toContain(
+			"release: the orphan deferral names no condition under which it becomes possible, so nothing will ever close it",
+		);
+	});
+});
+
+describe("the disabled-residue vacuity the renderer never refused", () => {
+	test("names the full fixture's residue scan as vacuous by construction", async () => {
+		const report = await inspectReleaseContract(ROOT);
+		expect(report.errors).toEqual([]);
+		// `scanDisabledResidue` throws on zero FILES and has never refused zero
+		// disabled capabilities. `full` enables everything, so its residue scan
+		// has been structurally vacuous since the day it was written — a fact
+		// about the fixture rather than a defect in it, said out loud here.
+		expect(report.notices.join("\n")).toContain(
+			"release: the full render disables no capability, so its residue scan is vacuous by construction rather than by defect and proves nothing about residue",
+		);
+		expect(report.notices.join("\n")).toContain(
+			"release: the minimal residue scan covered",
+		);
+	}, 120_000);
 });

@@ -867,7 +867,7 @@
 	"capabilitySignatures": {
 		"better_auth": { "paths": ["libs/auth/**"], "tokens": ["better-auth"] },
 		"cloudflare_workers": {
-			"paths": ["tsconfig.worker.base.json", "wrangler.toml"],
+			"paths": ["tsconfig.worker.base.json", "wrangler.jsonc", "wrangler.toml"],
 			"tokens": [
 				"cloudflare.vscode-cloudflare-workers",
 				"@cloudflare/",

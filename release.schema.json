@@ -9,7 +9,11 @@
 		"decision",
 		"auditedSource",
 		"release",
-		"goldens"
+		"goldens",
+		"scans",
+		"topLevelWorkspaces",
+		"syncBoundary",
+		"deferrals"
 	],
 	"properties": {
 		"schemaVersion": {
@@ -91,9 +95,143 @@
 					"items": { "$ref": "#/$defs/golden" }
 				}
 			}
+		},
+		"scans": {
+			"description": "The six scan families `spec.md` names, in its own order. `tasks.md` names four; the spec is the normative artefact, and the two it omits are also the two cheapest — one reads a TOML table that already exists and one imports a constant that already exists. Every family runs over the three renders, which is the new thing: the requirement says `scan outputs`, and every existing scan in this repository runs over the template tree. Four also run over the template surface a render receives, narrowed by render policy so `evidence/`, `docs/`, `CHANGES.md` and `openspec/` are out of scope by construction rather than by allow-list. A guard biases toward FALSE POSITIVES: a canonical token that appears only in a comment gets flagged and is resolved with an entry here, never with a cleverer matcher — a string-literal-aware stripper is the thing that silently stops matching, and a scan that stops matching is worse than no scan.",
+			"type": "array",
+			"minItems": 6,
+			"items": { "$ref": "#/$defs/scan" }
+		},
+		"topLevelWorkspaces": {
+			"description": "The top-level layout rule. A tracked top-level directory carrying a `package.json` that is neither `apps/` nor `libs/` nor a declared exception is a second workspace hiding outside the workspace globs — a tree the release gate renders and no guard reads. Anti-vacuity is anchored on the number of directories INSPECTED and never on the number of violations found, because this rule would have caught nothing in either repository today and is expected to catch nothing until it matters.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["allowed", "exceptions"],
+			"properties": {
+				"allowed": {
+					"type": "array",
+					"minItems": 1,
+					"items": { "type": "string", "minLength": 1 }
+				},
+				"exceptions": {
+					"type": "array",
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["directory", "reason"],
+						"properties": {
+							"directory": { "type": "string", "minLength": 1 },
+							"reason": { "type": "string", "minLength": 1 }
+						}
+					}
+				}
+			}
+		},
+		"syncBoundary": {
+			"description": "The declared-merge-but-sync-excluded count, held as a RATCHET. `template-ownership.json` declares every `scripts/template/*.ts` guard module `syncPolicy: merge`, and `scripts/sync-devcontainer.sh` excludes all of them through its `scripts/*` case arm — which `knownBoundaryRisks[0]` already states in writing. Closing that means rewriting the sync script's exclusion table in the stage that closes the program, which is the wrong stage for it. Asserting the count is the half worth having: one more file joining the silent set is a refusal naming it.",
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["script", "risk", "mergeDeclaredButExcluded", "reason"],
+			"properties": {
+				"script": { "$ref": "#/$defs/relativePath" },
+				"risk": { "type": "string", "minLength": 1 },
+				"mergeDeclaredButExcluded": { "type": "integer", "minimum": 0 },
+				"reason": { "type": "string", "minLength": 1 }
+			}
+		},
+		"deferrals": {
+			"description": "The ledger items this stage records rather than closes, each with the facts that keep it open and the conditions under which it becomes possible. A deferral here is not a note: the guard asserts every blocking fact it names, so the moment one stops being true the refusal fires and the deferral has to be decided rather than inherited.",
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["id", "recordedBy", "blockingFacts", "unblockedWhen"],
+				"properties": {
+					"id": { "type": "string", "minLength": 1 },
+					"recordedBy": { "type": "string", "minLength": 1 },
+					"blockingFacts": {
+						"type": "array",
+						"minItems": 1,
+						"items": { "type": "string", "minLength": 1 }
+					},
+					"unblockedWhen": {
+						"type": "array",
+						"minItems": 1,
+						"items": { "type": "string", "minLength": 1 }
+					}
+				}
+			}
 		}
 	},
 	"$defs": {
+		"scan": {
+			"type": "object",
+			"additionalProperties": false,
+			"required": ["id", "authority", "ownedBy", "allow", "knownExemptions"],
+			"properties": {
+				"id": {
+					"type": "string",
+					"enum": [
+						"source-identifier",
+						"fixed-source-port",
+						"mutable-pin",
+						"obsolete-command",
+						"duplicate-rule-skill",
+						"disabled-residue"
+					]
+				},
+				"authority": {
+					"description": "Where the needles come from. Every one of them is READ or IMPORTED rather than retyped, so the scan and the definition can never drift.",
+					"type": "string",
+					"minLength": 1
+				},
+				"ownedBy": {
+					"description": "The guard that already owns this sentence for the template tree, or null when nobody does. When it is set the release gate emits a NOTICE naming it rather than a second refusal: two refusals for one defect send the reader to two files.",
+					"type": ["string", "null"]
+				},
+				"allow": {
+					"description": "A specific token tolerated at a specific path, with the mechanism that makes it safe named mechanically. Every needle in `mechanism` must still be present in the file it names, so the exemption dies with the code that earned it.",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["path", "token", "reason", "mechanism"],
+						"properties": {
+							"path": { "type": "string", "minLength": 1 },
+							"token": { "type": "string", "minLength": 1 },
+							"reason": { "type": "string", "minLength": 1 },
+							"mechanism": {
+								"type": "array",
+								"minItems": 1,
+								"items": {
+									"type": "object",
+									"additionalProperties": false,
+									"required": ["path", "needle"],
+									"properties": {
+										"path": { "$ref": "#/$defs/relativePath" },
+										"needle": { "type": "string", "minLength": 1 }
+									}
+								}
+							}
+						}
+					}
+				},
+				"knownExemptions": {
+					"description": "A whole path this family does not ask about, with the reason inline. This is where four findings that four separate stage READMEs called folklore stop being folklore: a fifth reader no longer has to find four documents to learn that the finding is known and benign.",
+					"type": "array",
+					"items": {
+						"type": "object",
+						"additionalProperties": false,
+						"required": ["path", "reason"],
+						"properties": {
+							"path": { "type": "string", "minLength": 1 },
+							"reason": { "type": "string", "minLength": 1 }
+						}
+					}
+				}
+			}
+		},
 		"sha": {
 			"type": "string",
 			"pattern": "^[0-9a-f]{40}$"

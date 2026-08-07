@@ -42,5 +42,166 @@
 				"disabledCount": 13
 			}
 		]
-	}
+	},
+	"scans": [
+		{
+			"id": "source-identifier",
+			"authority": "scripts/template/render-fixture.ts#GLOBAL_FORBIDDEN_TOKENS, read out of the renderer at run time rather than retyped",
+			"ownedBy": null,
+			"allow": [
+				{
+					"path": "tsconfig.base.json",
+					"token": "@confiador/",
+					"reason": "the renderer's substitution SOURCE. render-fixture.ts deletes the alias from every rendered tsconfig and rewrites the prefix to the fixture's own slug, and template.test.ts asserts the original key is undefined in a render — so the identifier is impossible in an output and renaming it here would cost five interlocking files for a cosmetic gain.",
+					"mechanism": [
+						{
+							"path": "scripts/template/render-fixture.ts",
+							"needle": "delete paths[\"@confiador/*\"];"
+						},
+						{
+							"path": "scripts/template/render-fixture.ts",
+							"needle": ".replaceAll(\"@confiador/\", `@${parameters.project.slug}/`)"
+						},
+						{
+							"path": "scripts/template/__tests__/template.test.ts",
+							"needle": "paths[\"@confiador/*\"]).toBeUndefined()"
+						}
+					]
+				},
+				{
+					"path": "package.json",
+					"token": "\"name\": \"devenv-template\"",
+					"reason": "the private root manifest name, which the renderer replaces with the fixture's slug before any file is written. This repository is not a package and has no version field; the name is the thing a render overwrites, not a thing it inherits.",
+					"mechanism": [
+						{
+							"path": "scripts/template/render-fixture.ts",
+							"needle": "value[\"name\"] = parameters.project.slug;"
+						},
+						{
+							"path": "scripts/template/__tests__/template.test.ts",
+							"needle": "expect(packageJson.name).toBe(\"fixture-minimal\");"
+						}
+					]
+				},
+				{
+					"path": "scripts/template/graph-contract.ts",
+					"token": "@confiador/",
+					"reason": "a COMMENT explaining why the guard reads the library alias out of tsconfig.base.json instead of hardcoding it — the literal appears in the sentence that forbids the literal. A matcher clever enough to skip comments is a matcher that silently stops matching, so this is an entry rather than a smarter scan.",
+					"mechanism": [
+						{
+							"path": "scripts/template/graph-contract.ts",
+							"needle": "libraryAliasPrefix"
+						}
+					]
+				}
+			],
+			"knownExemptions": []
+		},
+		{
+			"id": "fixed-source-port",
+			"authority": "template-parameters.toml#[[advertised_ports]].port and [routing].published_container_port, imported through parameters.ts",
+			"ownedBy": null,
+			"allow": [],
+			"knownExemptions": [
+				{
+					"path": ".devcontainer/devcontainer.json",
+					"reason": "the ports AUTHORITY. renderDevcontainer rewrites forwardPorts and portsAttributes for every fixture from [[advertised_ports]], filtered by profile and by capability, so the literals here are the parameter file's own projection rather than a hardcoded target."
+				},
+				{
+					"path": "scripts/worktree/contract.toml",
+					"reason": "regenerated in full by renderWorktreeContract from [routing].published_container_port. The runtime scripts read it with sed before Bun exists on the host, which is why the value is a literal rather than an indirection."
+				},
+				{
+					"path": "proxy-routes.json",
+					"reason": "its publishedContainerPort mirrors the worktree runtime contract, and proxy:check owns the sentence that refuses a disagreement between the two. A second refusal here would send the reader to two files for one defect."
+				},
+				{
+					"path": "**/skills/graphify/SKILL.md",
+					"reason": "`--budget 3000` is a graph search budget in vendored documentation and not a port. This is the false positive the doctrine expects: a guard biases toward flagging a number that looks like a port and resolves it with an entry, rather than with a matcher that understands context and quietly stops matching."
+				}
+			]
+		},
+		{
+			"id": "mutable-pin",
+			"authority": "scripts/template/ci-contract.ts#IMMUTABLE_REFERENCE and scripts/template/toolchain.ts#IMMUTABLE_PLUGIN, imported rather than re-implemented",
+			"ownedBy": "ci:check and toolchain:check",
+			"allow": [],
+			"knownExemptions": []
+		},
+		{
+			"id": "obsolete-command",
+			"authority": "scripts/template/worktree-contract.ts#LEGACY_LAUNCHER, imported rather than retyped",
+			"ownedBy": "worktree:check",
+			"allow": [],
+			"knownExemptions": [
+				{
+					"path": "scripts/template/worktree-contract.ts",
+					"reason": "the authority. It carries the superseded launcher's literal in order to look for it, exactly as its own allow-list already records for the template tree."
+				},
+				{
+					"path": "scripts/template/cloud-contract.ts",
+					"reason": "forbids the launcher by name inside the cloud environment, so the mention is the prohibition."
+				},
+				{
+					"path": ".codex/cloud/contract.toml",
+					"reason": "forbidden_cloud_commands lists the launcher as a command the cloud environment must refuse. A declaration that names what it forbids is not a route to it."
+				}
+			]
+		},
+		{
+			"id": "duplicate-rule-skill",
+			"authority": "the skill and command directories under every agent surface in the tracked tree and in every render",
+			"ownedBy": "rules:check",
+			"allow": [],
+			"knownExemptions": [
+				{
+					"path": "graphify",
+					"reason": "intended in all three agent surfaces. Claude, Codex and Gemini each read skills from their own directory, so one skill available to three agents is three directories by construction — and until this scan existed nothing said so. A FOURTH copy, or any other name appearing twice, is a real finding."
+				}
+			]
+		},
+		{
+			"id": "disabled-residue",
+			"authority": "docs/devcontainer-upgrade/stage-0/template-ownership.json#capabilitySignatures, through scanDisabledResidue",
+			"ownedBy": null,
+			"allow": [],
+			"knownExemptions": [
+				{
+					"path": "fixture-manifest.json",
+					"reason": "the render's own manifest names every disabled capability as part of each omission reason, so it would report itself. scanDisabledResidue skips it by name and four stage READMEs have recorded that this is deliberate; this entry is where the fifth reader finds it without reading four documents. Do NOT 'fix' it by removing the skip."
+				},
+				{
+					"path": "scripts/template/ci-contract.ts",
+					"reason": "the shipped text of this guard contains `moon-graph` as a substring in every render. The ownership signature deliberately excluded that string for exactly this reason, and the finding was recorded in Stage 8A as a known benign substring rather than a leak."
+				}
+			]
+		}
+	],
+	"topLevelWorkspaces": {
+		"allowed": ["apps", "libs"],
+		"exceptions": []
+	},
+	"syncBoundary": {
+		"script": "scripts/sync-devcontainer.sh",
+		"risk": "knownBoundaryRisks[0] in docs/devcontainer-upgrade/stage-0/template-ownership.json",
+		"mergeDeclaredButExcluded": 35,
+		"reason": "Every scripts/template guard module is declared syncPolicy merge and is excluded by the script's `scripts/*` case arm, so for those thirty-five files the declared merge policy does not describe what the sync script does. Stage 0 recorded the risk in writing and every stage since has added to the set without closing it. Rewriting the exclusion table belongs to a stage that owns the sync script; asserting the count belongs here, because a thirty-sixth file joining the silent set is the failure the risk actually predicts."
+	},
+	"deferrals": [
+		{
+			"id": "graphify",
+			"recordedBy": "Stage 9 deviation 12, re-recorded by Stage 10E",
+			"blockingFacts": [
+				"Two of the three surfaces cannot carry a capability fence: a fence in this repository is a line comment, and tsconfig.json's exclude array and .claude/settings.json's hook command are both strict JSON with no comment syntax and no way to fence one array element.",
+				"The .claude/settings.json graphify hook invokes no script file, and the renderer's hook filter prunes hooks only by matching a script filename against its owner table, so a graphify=false render emits the hook today and would keep emitting it.",
+				"biome.jsonc could carry a comment but its own header forbids naming a capability there, because the file is copied into every render and the residue scan is a plain substring search.",
+				"A signature added today would sit INERT: scanDisabledResidue selects default-FALSE capabilities that have a signature, and graphify defaults to true, so the obvious one-line fix is a green diff that changes nothing."
+			],
+			"unblockedWhen": [
+				"graphify's default in template-parameters.toml becomes false, which is what makes a signature do anything at all.",
+				"scanDisabledResidue's selection predicate stops requiring a default of false.",
+				"The two strict-JSON surfaces gain a fencing mechanism, or the renderer learns to prune the graphify hook by something other than a script filename."
+			]
+		}
+	]
 }
