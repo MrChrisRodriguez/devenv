@@ -608,7 +608,7 @@
 			{
 				"path": "scripts/openspec/archive.sh",
 				"mode": "0755",
-				"sha256": "7d6f4964236f1d5ad357119fe4d7d2fae8c6b6ae4851c2e682810f81d395af71"
+				"sha256": "0834ad1dfadf665c1ab4d07775982d99bd61f848c070eb1a9013d90a25447f7b"
 			},
 			{
 				"path": "scripts/sync-devcontainer.sh",
