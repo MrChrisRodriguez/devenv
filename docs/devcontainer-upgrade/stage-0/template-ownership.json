@@ -379,6 +379,10 @@
 			"requiresAll": ["moon_affected_selection"]
 		},
 		{
+			"pattern": ".github/actions/setup-moon/**",
+			"requiresAll": ["moon_affected_selection"]
+		},
+		{
 			"pattern": "scripts/template/graph-contract.ts",
 			"requiresAll": ["moon_affected_selection"]
 		},
@@ -560,6 +564,7 @@
 		},
 		"moon_affected_selection": {
 			"paths": [
+				".github/actions/setup-moon/**",
 				"ci-matrix-universes.json",
 				"scripts/ci/affected-matrices.sh",
 				"scripts/template/graph-contract.ts",

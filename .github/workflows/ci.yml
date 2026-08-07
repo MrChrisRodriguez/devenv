@@ -141,6 +141,36 @@ jobs:
           target="$(jq -r '.build.target' .devcontainer/devcontainer.json)"
           docker build --progress=plain --target "$target" -f .devcontainer/Dockerfile .
 
+  # capability:start moon_affected_selection
+  # The live leg of the graph oracle. It is a separate job because it is the one
+  # check here that needs a real toolchain: the `ci` job's fenced graph:check
+  # step covers the hermetic leg with nothing but Bun, and folding the live leg
+  # into it would make every contract check wait on a moon install.
+  moon-graph:
+    name: Verify Moon project graph
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    if: ${{ !github.event.pull_request.draft }}
+
+    steps:
+      # No fetch-depth: this job asks moon what the graph is, which is a
+      # question about the checked-out tree and not about its ancestry.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: ./.github/actions/setup-moon
+
+      # `install: "false"` because the guard is a standalone script over
+      # node: and Bun builtins — it imports nothing from node_modules, so an
+      # install here would be several minutes spent on nothing.
+      - uses: ./.github/actions/setup-bun
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+          install: "false"
+
+      - name: Reconcile the committed graph with moon
+        run: bun run graph:check --query
+  # capability:end moon_affected_selection
+
   # capability:start playwright
   browser:
     name: Launch baked browser payload
@@ -215,6 +245,9 @@ jobs:
     needs:
       - ci
       - image
+      # capability:start moon_affected_selection
+      - moon-graph
+      # capability:end moon_affected_selection
       # capability:start playwright
       - browser
       # capability:end playwright

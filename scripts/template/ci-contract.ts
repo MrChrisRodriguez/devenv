@@ -40,6 +40,14 @@ const SETUP_ACTION_INPUTS = [
 	"token",
 ] as const;
 
+// The moon toolchain, and the one job allowed to need it. `setup-moon` wraps the
+// third-party installer for the same reason `setup-bun` wraps its own: one owner
+// of "how a job gets this toolchain", verified against .prototools at runtime.
+const MOON_SETUP_ACTION = "moonrepo/setup-toolchain";
+const MOON_ACTION_DIRECTORY = `${ACTION_DIRECTORY}/setup-moon`;
+const MOON_ACTION = `${MOON_ACTION_DIRECTORY}/action.yml`;
+const GRAPH_JOB = "moon-graph";
+
 // Jobs that are allowed to claim ownership of repository history. `fetch-depth`
 // is cheap to add and expensive to reason about: a second job that deepens its
 // clone means two jobs now depend on ancestry and neither says why. Every entry
@@ -604,7 +612,21 @@ export async function validateCiContract(
 					errors.push(
 						`ci: ${path} must reach Bun through the committed action`,
 					);
+				// Same rule, same reason, for the second toolchain: an inline
+				// installer is a second owner of the moon version, and it sits
+				// outside the assertion that checks it against .prototools.
+				if (step.uses?.startsWith(`${MOON_SETUP_ACTION}@`))
+					errors.push(
+						`ci: ${path} must reach moon through the committed action`,
+					);
 			}
+			if (
+				id === GRAPH_JOB &&
+				!steps.some((step) => step.uses === `./${MOON_ACTION_DIRECTORY}`)
+			)
+				errors.push(
+					`ci: ${path} job ${GRAPH_JOB} must reach moon through the committed action`,
+				);
 		}
 	}
 
@@ -644,6 +666,32 @@ export async function validateCiContract(
 			if (assignment !== "${{ inputs.bun-version }}")
 				errors.push(`ci: ${path} must relay bun-version from its own input`);
 		}
+		if (path === MOON_ACTION) {
+			// No inputs at all. .prototools is the one authority for the moon
+			// version — setup-toolchain reads it when `moon-version` is empty — so
+			// an input here would be a second authority sitting outside the
+			// toolchain guard, and a caller could ask for a moon this repository
+			// does not pin. That includes bun-version: a job needing both
+			// toolchains uses both committed actions rather than folding one into
+			// the other.
+			for (const key of Object.keys(inputs))
+				errors.push(
+					`ci: ${path} must not declare the input ${key}; .prototools is the only version authority`,
+				);
+			// An installed toolchain is only an intention until the binary agrees
+			// with the authority, which is what makes this action self-verifying
+			// rather than merely obedient.
+			const asserts = steps.some(
+				(step) =>
+					(step.run ?? "").includes(".prototools") &&
+					(step.run ?? "").includes("moon --version"),
+			);
+			if (!asserts)
+				errors.push(
+					`ci: ${path} must assert the installed moon against .prototools`,
+				);
+		}
+
 		const bunVersion = inputs["bun-version"];
 		if (isRecord(bunVersion)) {
 			// `required: true` is NOT enforced by the runner for composite actions,
@@ -689,6 +737,15 @@ export async function validateCiContract(
 		if ([...declared].sort().join(",") !== [...expected].sort().join(","))
 			errors.push(
 				`ci: the aggregate gate must depend on every job in ${gatePath}`,
+			);
+		// Named separately from the membership rule above so the failure reads as
+		// what it is. The graph oracle is the only job whose absence from `needs`
+		// is invisible in the run — every other lane's output is obviously
+		// missing, while a graph that was never verified looks exactly like a
+		// graph that was.
+		if (Object.hasOwn(jobs, GRAPH_JOB) && !declared.includes(GRAPH_JOB))
+			errors.push(
+				"ci: the aggregate gate must depend on the moon graph oracle",
 			);
 		const verdict = stepsOf(gate).at(-1);
 		const environment = isRecord(verdict?.env) ? verdict.env : {};
