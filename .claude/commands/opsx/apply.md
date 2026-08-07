@@ -5,6 +5,9 @@ category: Workflow
 tags: [workflow, artifacts, experimental]
 ---
 
+<!-- Generated from @fission-ai/openspec by `openspec artifact-experimental-setup`. -->
+<!-- Canonical rules live in AGENTS.md. Regenerate with `bun run rules:sync`; never edit by hand. -->
+
 Implement tasks from an OpenSpec change.
 
 **Input**: Optionally specify `--change <name>` after `/opsx:apply`. If omitted, MUST prompt for available changes.

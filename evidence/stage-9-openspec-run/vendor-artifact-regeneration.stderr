@@ -1,0 +1,28 @@
+
+scripts/template/__tests__/agent-rules.test.ts:
+(pass) canonical cross-agent rules > this repository's canonical file and every mirror agree [140.00ms]
+(pass) canonical cross-agent rules > rules:sync is a no-op on a synchronized tree [126.00ms]
+(pass) canonical cross-agent rules > every declared surface exists and declares only known blocks [1.00ms]
+(pass) canonical cross-agent rules > a hand-edited mirror is named with the file and the block [4.00ms]
+(pass) canonical cross-agent rules > a canonical edit fails until rules:sync propagates it [4.00ms]
+(pass) canonical cross-agent rules > a missing mirror region names the generator rather than guessing [2.00ms]
+(pass) canonical cross-agent rules > a mirror region the canonical file does not declare for it is rejected [2.00ms]
+(pass) canonical cross-agent rules > canonical text restated outside a generated region is rejected [3.00ms]
+(pass) canonical cross-agent rules > an OpenSpec artifact under .codex fails, because codex receives none [2.00ms]
+(pass) canonical cross-agent rules > this repository's .codex names no OpenSpec artifact [136.00ms]
+(pass) canonical cross-agent rules > no canonical block depends on a line the renderer's filter drops [5.00ms]
+(pass) canonical cross-agent rules > every generated region in this tree is a block the canonical file owns [1.00ms]
+(pass) generated OpenSpec commands and skills > all fourteen match the pinned CLI plus the declared overlay [119.00ms]
+(pass) generated OpenSpec commands and skills > regeneration is byte-identical across two runs [238.00ms]
+(pass) generated OpenSpec commands and skills > every artifact carries the regeneration header [2.00ms]
+(pass) generated OpenSpec commands and skills > both archive surfaces delegate to the wrapper
+(pass) generated OpenSpec commands and skills > the vendor archive procedure appears nowhere in this tree [8.00ms]
+(pass) generated OpenSpec commands and skills > a hand-edited artifact is named by the guard [254.00ms]
+(pass) generated OpenSpec commands and skills > a deleted artifact names the generator [123.00ms]
+(pass) generated OpenSpec commands and skills > an artifact in a project with no OpenSpec marker is rejected [5.00ms]
+(pass) generated OpenSpec commands and skills > the vendor procedure is rejected wherever it reappears [2.00ms]
+
+ 21 pass
+ 0 fail
+ 123 expect() calls
+Ran 21 tests across 1 file. [1194.00ms]

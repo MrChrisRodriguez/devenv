@@ -1,13 +1,3 @@
----
-name: OPSX: Archive
-description: Archive a completed change in the experimental workflow
-category: Workflow
-tags: [workflow, archive, experimental]
----
-
-<!-- Generated from @fission-ai/openspec by `openspec artifact-experimental-setup`. -->
-<!-- Canonical rules live in AGENTS.md. Regenerate with `bun run rules:sync`; never edit by hand. -->
-
 Archive a completed OpenSpec change by delegating to this repository's wrapper.
 
 **Do not move directories, and do not call `openspec archive` yourself.** The vendor procedure this file replaces was a directory move with a date in it, and the CLI it wraps cannot be trusted to report what it did: it returns 0 after "Aborted. No files were changed.", and it applies the delta specs to `openspec/specs/**` *before* it checks whether the destination exists — then returns 0 when it does, leaving a half-applied tree that looks like a success.

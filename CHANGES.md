@@ -4,6 +4,64 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-08-07 — Add: OpenSpec lifecycle validation and a refusing archive wrapper
+
+**Goal:** Make "the specs are fine" a claim something can fail. The OpenSpec CLI is helpful right up to the moment it is not: `validate --all` exits 0 over zero items, `list --specs` prints prose instead of JSON when there are none, and every command resolves against `'.'` because the CLI has no notion of where a project's roots are. A guard built on those answers reports green for a tree somebody emptied.
+
+**How to implement:**
+
+**Enumerate first, ask second.** `scripts/template/openspec-contract.ts` walks the tree for `**/openspec/config.yaml` — skipping `.git`, `node_modules`, `dist`, `graphify-out` and `tmp`, because `template:fixtures` renders into `tmp/` and a rendered fixture carries its own config — and cross-checks every root it finds against `git ls-files`. That enumeration is the authority. `scripts/template/validate-openspec.ts` then drives the CLI once per root with that root's directory as `cwd`, and the two answers must agree EXACTLY in both directions: an item the CLI reports that the tree does not contain is a failure, and so is an item the tree contains that the CLI does not report.
+
+**Anti-vacuity is the whole point.** A root that declares no change and no spec fails rather than passing, because a validator with nothing to validate has told you nothing. The reported `summary.totals.items` is compared against **our** count rather than against the item array the same command printed — otherwise the CLI would only be agreeing with itself. Every abnormal outcome is a failure: a non-zero exit, empty output, non-JSON output, an unexpected shape, or a version that is not the catalog pin.
+
+**The binary has to be the pinned one.** "Whatever `openspec` is on `PATH`" is not a pin — a globally installed CLI of another version validates a different schema and prints the same green summary while doing it. The guard requires a binary inside this repository's own `node_modules` and requires `--version` to equal the `@fission-ai/openspec` catalog entry. `OPENSPEC_BIN` injects a fake for the tests, exactly as `MOON_BIN` does for the graph oracle, so every refusal above is a path the suite has actually executed.
+
+**Telemetry off on every invocation.** The CLI posts to PostHog unless told not to, so `OPENSPEC_TELEMETRY=0`, `DO_NOT_TRACK=1` and `CI=true` are set on every spawn. A required lane must not depend on the network to answer, and a guard must not phone anywhere.
+
+**Archive hygiene is checked from the tree, not from the CLI.** `validate --all` never looks at an archive at all, so the contract does: entries must be named `<YYYY-MM-DD>-<change>`, the date must parse as a real calendar day and must not be in the future **in UTC** (the CLI stamps `new Date().toISOString()`, and a local comparison calls an ordinary archive "in the future" for several hours a day), no name may be both active and archived, `archive/archive` is rejected, an empty entry is rejected, and an archived change's `ADDED` requirements must actually have reached `openspec/specs/`.
+
+**A finished change is a notice, not a failure.** Zero remaining tasks is the correct state between the last implementation commit and the archive commit. Failing on it would make the guard red for the one window in which everything is right, so it prints a notice naming the archive wrapper and exits 0.
+
+**Where the step lives is a constraint.** `openspec/**` classifies as documentation in the affected-selection oracle, so a lifecycle guard in a lane a selection can narrow would be skipped by exactly the pull requests that change a change. The fenced `bun run openspec:check` step is in the `ci` job, unconditional, and the contract asserts both facts.
+
+**Archiving is a host script that refuses first.** `scripts/openspec/archive.sh` is deliberately not a package script: it does Git work — branch, status, fetch, commit, push — which is host work by definition, and a package script for it would be an invitation to run it through the bridge from inside the container it refuses to run in. The contract rejects a package script that names it.
+
+The order of its checks is the safety property. Usage, then the two environment refusals (a Codex Cloud task and the development container are both the wrong side of the remote), then a readiness preflight, then every Git precondition, and only then anything that needs the CLI. **The readiness preflight is not decoration**: the git hooks route through `scripts/worktree/exec.sh --require-ready`, which exits 7 rather than starting a container, so a checkout whose container is down would archive the tree and then fail at `git commit` — leaving the change moved, the specs rewritten, and nothing committed. That is the one state this script exists to prevent, so it is checked before the first mutation rather than discovered after it.
+
+"Clean" includes untracked files and `graphify-out/`, and the refusal names both ways out (`git restore graphify-out`, `git stash`) because a dirty graph directory is the ordinary state after a hook run and the pre-commit guard would reject it staged alongside anything else. HEAD must equal `origin/<default>` **exactly** after a fresh `git fetch --prune`; behind, ahead and diverged are three different refusals with three different instructions. Selection must be explicit the moment it is ambiguous — more than one active change, or one name present in more than one root — because "pick the only one" silently becomes "pick the first one" the day a second appears.
+
+`OPENSPEC_BRIDGE` is the one injection point, spelled `${OPENSPEC_BRIDGE-bash scripts/worktree/exec.sh --require-ready}` and asserted verbatim by the contract. It uses `-` and not `:-`: an explicitly empty value means "run in place", which is what the tests and a throwaway clone use, and `:-` would silently send them back through a bridge they do not have.
+
+**The CLI's exit code is not evidence, so the post-state is.** `openspec archive` returns 0 after "Aborted. No files were changed.", and it returns 0 after writing the main specs and *then* discovering the destination is occupied — which leaves a half-applied tree reported as a success. The wrapper therefore pre-checks the destination itself, in UTC, before the call; and after the call it verifies the post-state directly: the active directory is gone, the archive directory exists and is not empty, and nothing outside the OpenSpec root was touched. Any of those failing rolls the root back with `git restore --source=HEAD --staged --worktree -- <root>` plus a scoped `git clean`, says out loud what it just did, and exits non-zero.
+
+Then, and only then, `openspec:check` runs again across **every** root — applying delta specs rewrites `openspec/specs/**`, and the archive-hygiene rules are the only thing that inspects what the CLI just wrote. A failure there rolls back too, and nothing is committed. The commit stages the OpenSpec root and nothing else, its subject is checked against commitlint's 72-character cap **before** the CLI is allowed to move anything, and it runs the hooks like any other commit: `--no-verify` is banned by the contract, because the archive commit is the one commit nobody reviews.
+
+**A rejected push is a designed outcome, not a bug.** Branch protection can refuse the direct push. The archive commit is kept, three ways out are printed (push as an administrator, open a pull request, `git reset --hard origin/<default>`), and the wrapper exits non-zero. The next run then refuses on `HEAD` being ahead of `origin/<default>` — so the failure mode heals itself instead of quietly re-running.
+
+**One canonical rule file, and mirrors that are generated.** `AGENTS.md` is the source; `CLAUDE.md`, `GEMINI.md` and `.claude/CLAUDE.md` carry generated regions of the blocks it marks, produced by `bun run rules:sync` and checked by `bun run rules:check`. Before this, the graphify rules existed in four places and had already drifted — one copy was missing the "dirty graphify-out is expected" bullet, and nothing noticed, because nothing compared them. Two copies of a rule are two rules the moment one of them is edited.
+
+The guard checks three things, and the third is the one that keeps the arrangement honest: mirrors must match, mirrors may not carry a region the canonical file does not declare for them, and **canonical text may not be restated outside a generated region** — otherwise consolidation is just addition, and the duplicate stays behind where `rules:sync` will never touch it.
+
+The blocks sit inside capability fences, so a project that disables a capability loses the canonical block and its mirrors *together*, and the guard is comparing an empty set against an empty set rather than needing a second fence somebody has to remember. That is also why `rules:check` is an **ungated** CI step: it is true in every render by construction.
+
+**The fourteen Claude artifacts are generated, and the generator is the pinned CLI.** `.claude/commands/opsx/*.md` and `.claude/skills/openspec-*/SKILL.md` are regenerated by **spawning** `openspec artifact-experimental-setup` into a scratch directory — spawned rather than imported, because the package publishes `"."` only in its exports map and a deep import of its generator fails under Bun. Regeneration is byte-deterministic, and `rules:check` compares all fourteen against a fresh run.
+
+The overlay on top is deliberately the smallest thing that can be checked, because anything larger stops "regenerated from the pinned CLI" from being true: a two-line header after each file's frontmatter naming the source and the regeneration command, plus a **body replacement** on the two archive surfaces. The vendor bodies told the agent to `mkdir` an archive directory and move the change into it with a dated name — the exact procedure this stage exists to forbid — so both now carry a committed delegation that points at the wrapper and explains why the CLI's exit code is not evidence. The guard then asserts the vendor's move command appears **nowhere in the tree**; replacing it in the two files that shipped it is not the same as no agent ever reading it. The needle is assembled at runtime so the guard is not a match for its own scan, which is the same reason `ci-contract.ts` assembles `GITHUB_OUTPUT`.
+
+**Codex's surface is a negative requirement, written down as a check.** Codex reads the root `AGENTS.md` and receives no OpenSpec commands or skills. That was a standing decision living in somebody's memory, which is the kind of decision that gets re-litigated the first time a generator offers to write `.codex/skills/openspec-*`. It is now a table entry plus a scan: any `.codex/**` file naming `opsx` or `openspec-` fails the guard.
+
+**The evidence is eight commands with digest-bound logs.** `evidence/stage-9-openspec.json` seals the two guards, both mutation suites, one whole archive lifecycle run against the real pinned CLI in a throwaway clone with its own bare origin, the three rendered fixtures, the green required gate at the implementation boundary, and a synthetic-merge rollback proof. The collector validates the record before it writes it and a committed suite fabricates each claim in turn. `template:validate` is deliberately absent from that list: it aggregates every hermetic contract *including this record*, so it cannot appear in the record it validates — the required CI lane runs it instead.
+
+Two things the capture found that review would not have: a probe that read its post-archive facts *after* re-creating the change reported a correct run as a failed one, and a change with no delta specs at all fails the real CLI's `--strict` validation, so the fixture's second, still-active change needs its own delta spec. Both are recorded in the stage README.
+
+**Rollback is one `git revert -m 1`.** Nothing about this stage lives outside the tree — no repository variable, no branch-protection change, no operator step — so `rollback.outsideTheTree` in the sealed record is empty, unlike Stage 8B's. Nothing under `.devcontainer/**` changed either, so adopting or reverting costs no container rebuild.
+
+**Why downstream cares:** If a tool's success path is compatible with "there was nothing to check", its exit code is not a result. Enumerate the inputs yourself, make the tool agree with your enumeration, and treat every ambiguous answer as a failure. And when a script mutates a tree, put every refusal it will ever make ahead of its first write — a guard that refuses halfway has not refused.
+
+Full detail: `docs/devcontainer-upgrade/stage-9/README.md`.
+
+---
+
 ## 2026-08-06 — Fix: give the heavy CI lane the history its suite asserts
 
 **Goal:** Stop the sealed-evidence tests from going red the moment the suite moved into a job with a shallow checkout.

@@ -1,0 +1,480 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-9-openspec",
+	"capturedAt": "2026-08-07T04:42:12.203Z",
+	"run": {
+		"id": "stage9-20260807t044159z-69e4995f",
+		"logRoot": "evidence/stage-9-openspec-run"
+	},
+	"source": {
+		"baseSha": "e4c6cfcee92b3cd4ced47b6641afb728430bf66b",
+		"implementationSha": "69e4995f305de997f761f8b57011acfa95c5fb6b",
+		"treeClean": true,
+		"openspecCatalogPin": "0.19.0"
+	},
+	"host": {
+		"os": "linux",
+		"architecture": "aarch64",
+		"kernel": "7.0.11-orbstack-00360-gc9bc4d96ac70",
+		"insideDevcontainer": true,
+		"bunVersion": "1.3.13",
+		"openspecVersion": "0.19.0",
+		"ghVersion": "2.97.0"
+	},
+	"repository": {
+		"nameWithOwner": "MrChrisRodriguez/devenv",
+		"workflowFile": ".github/workflows/ci.yml",
+		"gateJobId": "ci-gate",
+		"gateContext": "CI gate",
+		"gateNeeds": [
+			"ci",
+			"image",
+			"affected",
+			"project",
+			"moon-graph",
+			"browser"
+		],
+		"openspecGuardScript": "openspec:check",
+		"rulesGuardScript": "rules:check",
+		"archiveWrapper": "scripts/openspec/archive.sh",
+		"capability": "openspec"
+	},
+	"commands": [
+		{
+			"id": "openspec-guard",
+			"command": ["bun", "run", "openspec:check"],
+			"runId": "stage9-20260807t044159z-69e4995f",
+			"startedAt": "2026-08-07T04:41:59.100Z",
+			"completedAt": "2026-08-07T04:41:59.555Z",
+			"durationMs": 455,
+			"stdoutPath": "evidence/stage-9-openspec-run/openspec-guard.stdout",
+			"stderrPath": "evidence/stage-9-openspec-run/openspec-guard.stderr",
+			"stdoutSha256": "e55f644c12bfb940b5562226a7838a2afb637df7a4f3d35bcae721a6e94ebdca",
+			"stderrSha256": "dc2c9a83def8b7f64a38d1f5b1ea3cf5e0f4f2695a054e1a20d972ea5d4dd827",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rules-guard",
+			"command": ["bun", "run", "rules:check"],
+			"runId": "stage9-20260807t044159z-69e4995f",
+			"startedAt": "2026-08-07T04:41:59.556Z",
+			"completedAt": "2026-08-07T04:41:59.705Z",
+			"durationMs": 149,
+			"stdoutPath": "evidence/stage-9-openspec-run/rules-guard.stdout",
+			"stderrPath": "evidence/stage-9-openspec-run/rules-guard.stderr",
+			"stdoutSha256": "0e0871cac2ed06b6550019906e5576f45bddfa27eceb9536cd76160df3201ccf",
+			"stderrSha256": "596e087d0b2436f2e121c37a424bfc9224051d09c6dbc6c921e30fe3760284f1",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "archive-refusals",
+			"command": ["bun", "test", "scripts/template/__tests__/openspec.test.ts"],
+			"runId": "stage9-20260807t044159z-69e4995f",
+			"startedAt": "2026-08-07T04:41:59.706Z",
+			"completedAt": "2026-08-07T04:42:02.935Z",
+			"durationMs": 3229,
+			"stdoutPath": "evidence/stage-9-openspec-run/archive-refusals.stdout",
+			"stderrPath": "evidence/stage-9-openspec-run/archive-refusals.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "d21eccd9a4dc7fcf2dd9d9f8ba20397dcf9e73cd4a521e65669c93f988e97bbd",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "vendor-artifact-regeneration",
+			"command": [
+				"bun",
+				"test",
+				"scripts/template/__tests__/agent-rules.test.ts"
+			],
+			"runId": "stage9-20260807t044159z-69e4995f",
+			"startedAt": "2026-08-07T04:42:02.936Z",
+			"completedAt": "2026-08-07T04:42:04.134Z",
+			"durationMs": 1198,
+			"stdoutPath": "evidence/stage-9-openspec-run/vendor-artifact-regeneration.stdout",
+			"stderrPath": "evidence/stage-9-openspec-run/vendor-artifact-regeneration.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "67b78b841f9ae0a7015a66b022eee477d01060ad9b27753271ad94f0fe46101e",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "disposable-lifecycle",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-nine-evidence.ts",
+				"probe-lifecycle",
+				"--workspace",
+				"/tmp/devenv-stage9-20260807t044159z-69e4995f-lifecycle"
+			],
+			"runId": "stage9-20260807t044159z-69e4995f",
+			"startedAt": "2026-08-07T04:42:04.134Z",
+			"completedAt": "2026-08-07T04:42:04.983Z",
+			"durationMs": 849,
+			"stdoutPath": "evidence/stage-9-openspec-run/disposable-lifecycle.stdout",
+			"stderrPath": "evidence/stage-9-openspec-run/disposable-lifecycle.stderr",
+			"stdoutSha256": "5c052cf4fa4ac6f97b9e8cc01a59e1a2ccf4538926b33d187705391ddef0126b",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rendered-fixture-artifacts",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-nine-evidence.ts",
+				"probe-render-openspec",
+				"--workspace",
+				"/tmp/devenv-stage9-20260807t044159z-69e4995f-render"
+			],
+			"runId": "stage9-20260807t044159z-69e4995f",
+			"startedAt": "2026-08-07T04:42:04.983Z",
+			"completedAt": "2026-08-07T04:42:05.377Z",
+			"durationMs": 394,
+			"stdoutPath": "evidence/stage-9-openspec-run/rendered-fixture-artifacts.stdout",
+			"stderrPath": "evidence/stage-9-openspec-run/rendered-fixture-artifacts.stderr",
+			"stdoutSha256": "0eb67d5a6901d9af932fbe09876f35f62d561e6a3f63df9277530500a68aa929",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-gate",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nrun=\"$(gh run view 31147637385 --repo MrChrisRodriguez/devenv --json conclusion,createdAt,databaseId,event,headBranch,headSha,jobs,status,url,workflowName)\"\nprintf 'runJson=%s\\n' \"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\ngate=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; jobs=[job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]]; print(jobs[0] if jobs else \"\")' \"CI gate\")\"\nprintf 'gateJobId=%s\\n' \"$gate\"\nlog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$gate\" --log)\"\nprintf 'gateLogSha256=%s\\n' \"$(printf '%s' \"$log\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'upstreamResults=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*upstream results: //p' | head -n 1)\"\nprintf 'gateGreenLines=%s\\n' \"$(printf '%s\\n' \"$log\" | grep -c 'Every required job passed or was skipped' || true)\""
+			],
+			"runId": "stage9-20260807t044159z-69e4995f",
+			"startedAt": "2026-08-07T04:42:05.377Z",
+			"completedAt": "2026-08-07T04:42:11.693Z",
+			"durationMs": 6316,
+			"stdoutPath": "evidence/stage-9-openspec-run/live-gate.stdout",
+			"stderrPath": "evidence/stage-9-openspec-run/live-gate.stderr",
+			"stdoutSha256": "157e66125900047736e88dcd7392a2cebc040089e3b7d5ba51a215e999dc0c61",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rollback-proof",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-nine-evidence.ts",
+				"probe-rollback",
+				"--base",
+				"e4c6cfcee92b3cd4ced47b6641afb728430bf66b",
+				"--implementation",
+				"69e4995f305de997f761f8b57011acfa95c5fb6b",
+				"--workspace",
+				"/tmp/devenv-stage2-stage9-20260807t044159z-69e4995f-rollback"
+			],
+			"runId": "stage9-20260807t044159z-69e4995f",
+			"startedAt": "2026-08-07T04:42:11.694Z",
+			"completedAt": "2026-08-07T04:42:12.089Z",
+			"durationMs": 395,
+			"stdoutPath": "evidence/stage-9-openspec-run/rollback-proof.stdout",
+			"stderrPath": "evidence/stage-9-openspec-run/rollback-proof.stderr",
+			"stdoutSha256": "15e540598971f89e70a0f7e8222ae30edfe0130a46c2bded6b1b033e351dccb9",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		}
+	],
+	"guards": {
+		"openspec": {
+			"commandId": "openspec-guard",
+			"command": "bun run openspec:check",
+			"summary": "Validated 1 OpenSpec item(s) across 1 root(s) with the pinned repository-local CLI."
+		},
+		"rules": {
+			"commandId": "rules-guard",
+			"command": "bun run rules:check",
+			"summary": "Validated the canonical agent rules, every generated mirror region, the fourteen artifacts regenerated from the pinned CLI, the required surface table, and the agents that receive no OpenSpec artifacts."
+		},
+		"archiveRefusals": {
+			"commandId": "archive-refusals",
+			"testFile": "scripts/template/__tests__/openspec.test.ts",
+			"passCount": 58,
+			"failCount": 0
+		},
+		"agentRules": {
+			"commandId": "vendor-artifact-regeneration",
+			"testFile": "scripts/template/__tests__/agent-rules.test.ts",
+			"passCount": 21,
+			"failCount": 0
+		}
+	},
+	"lifecycle": {
+		"commandId": "disposable-lifecycle",
+		"result": {
+			"change": "disposable-archive-probe",
+			"archiveExitCode": 0,
+			"destination": "openspec/changes/archive/2026-08-07-disposable-archive-probe",
+			"activeDirectoryRemoved": true,
+			"archiveEntryPresent": true,
+			"mainSpecRequirementApplied": true,
+			"secondChangeUntouched": true,
+			"commitSubject": "chore(openspec): archive disposable-archive-probe",
+			"originAdvanced": true,
+			"stagedOutsideRoot": 0,
+			"committedPathCount": 5,
+			"secondRunExitCode": 8,
+			"secondRunTouchedTree": false,
+			"templateChangeStillActive": true
+		}
+	},
+	"vendorArtifacts": {
+		"commandId": "vendor-artifact-regeneration",
+		"artifacts": [
+			".claude/commands/opsx/apply.md",
+			".claude/commands/opsx/archive.md",
+			".claude/commands/opsx/continue.md",
+			".claude/commands/opsx/explore.md",
+			".claude/commands/opsx/ff.md",
+			".claude/commands/opsx/new.md",
+			".claude/commands/opsx/sync.md",
+			".claude/skills/openspec-apply-change/SKILL.md",
+			".claude/skills/openspec-archive-change/SKILL.md",
+			".claude/skills/openspec-continue-change/SKILL.md",
+			".claude/skills/openspec-explore/SKILL.md",
+			".claude/skills/openspec-ff-change/SKILL.md",
+			".claude/skills/openspec-new-change/SKILL.md",
+			".claude/skills/openspec-sync-specs/SKILL.md"
+		],
+		"replaced": [
+			".claude/commands/opsx/archive.md",
+			".claude/skills/openspec-archive-change/SKILL.md"
+		],
+		"expectedCount": 14
+	},
+	"renderFixtures": {
+		"commandId": "rendered-fixture-artifacts",
+		"fixtures": [
+			{
+				"name": "minimal",
+				"capabilityEnabled": true,
+				"gatedPaths": [
+					"openspec/config.yaml",
+					"scripts/openspec/archive.sh",
+					"scripts/template/agent-rules/archive-delegation.md",
+					"scripts/template/openspec-contract.ts",
+					"scripts/template/validate-openspec.ts"
+				],
+				"packageScripts": ["openspec:check", "rules:check", "rules:sync"],
+				"openspecStepPresent": true,
+				"rulesStepPresent": true,
+				"generatedArtifactCount": 14,
+				"lifecycleProsePresent": true,
+				"ruleSurfaces": 5,
+				"ruleErrors": [],
+				"residueFindings": []
+			},
+			{
+				"name": "cloud",
+				"capabilityEnabled": false,
+				"gatedPaths": [],
+				"packageScripts": ["rules:check", "rules:sync"],
+				"openspecStepPresent": false,
+				"rulesStepPresent": true,
+				"generatedArtifactCount": 0,
+				"lifecycleProsePresent": false,
+				"ruleSurfaces": 5,
+				"ruleErrors": [],
+				"residueFindings": []
+			},
+			{
+				"name": "full",
+				"capabilityEnabled": true,
+				"gatedPaths": [
+					"openspec/config.yaml",
+					"scripts/openspec/archive.sh",
+					"scripts/template/agent-rules/archive-delegation.md",
+					"scripts/template/openspec-contract.ts",
+					"scripts/template/validate-openspec.ts"
+				],
+				"packageScripts": ["openspec:check", "rules:check", "rules:sync"],
+				"openspecStepPresent": true,
+				"rulesStepPresent": true,
+				"generatedArtifactCount": 14,
+				"lifecycleProsePresent": true,
+				"ruleSurfaces": 5,
+				"ruleErrors": [],
+				"residueFindings": []
+			}
+		]
+	},
+	"live": {
+		"live-gate": {
+			"commandId": "live-gate",
+			"heavyLaneRan": true,
+			"run": {
+				"runId": 31147637385,
+				"url": "https://github.com/MrChrisRodriguez/devenv/actions/runs/31147637385",
+				"event": "pull_request",
+				"headBranch": "feat/stage-9-openspec-lifecycle",
+				"headSha": "69e4995f305de997f761f8b57011acfa95c5fb6b",
+				"conclusion": "success",
+				"gateJobId": 92770755958,
+				"gateConclusion": "success",
+				"gateLogSha256": "1c349f69104294a69c98fd03008ec070059d974e3703b4e300cddaed99bdfcfe",
+				"upstreamResults": "success,success,success,success,success,success",
+				"jobs": [
+					{
+						"name": "Build devcontainer image",
+						"conclusion": "success"
+					},
+					{
+						"name": "Select affected projects",
+						"conclusion": "success"
+					},
+					{
+						"name": "Contracts & Baseline",
+						"conclusion": "success"
+					},
+					{
+						"name": "Verify Moon project graph",
+						"conclusion": "success"
+					},
+					{
+						"name": "Launch baked browser payload",
+						"conclusion": "success"
+					},
+					{
+						"name": "Lint, Typecheck & Test (root)",
+						"conclusion": "success"
+					}
+				]
+			}
+		}
+	},
+	"coverage": [
+		{
+			"id": "multi-root-validation",
+			"task": "12.1 repository-local multi-root strict validation",
+			"reason": "The guard enumerates every openspec/config.yaml by walking the tree and cross-checking the git index, then drives the pinned repository-local CLI once per root with that root's own working directory and requires the two answers to agree exactly in both directions.",
+			"commandIds": ["openspec-guard", "archive-refusals"]
+		},
+		{
+			"id": "anti-vacuity",
+			"task": "12.1 anti-vacuity and active/archive hygiene",
+			"reason": "A root that declares nothing fails rather than passing, the reported item total is compared against this repository's own count rather than against the array the same command printed, and the archive rules the CLI never looks at are checked from the tree: prefix, calendar date, UTC future, active-and-archived, nested archive, empty entry and an orphaned delta requirement.",
+			"commandIds": ["openspec-guard", "archive-refusals"]
+		},
+		{
+			"id": "archive-refusals",
+			"task": "12.2 refuse unsafe archives before touching the tree",
+			"reason": "Every documented exit code of the wrapper is exercised against a synthetic clone with a real bare origin, each case asserting both the exact diagnostic and that the tree is byte-for-byte what it was, and the suite closes the matrix in both directions so a documented refusal cannot go unobserved.",
+			"commandIds": ["archive-refusals"]
+		},
+		{
+			"id": "archive-publication",
+			"task": "12.3 publish only after validation succeeds",
+			"reason": "One whole lifecycle runs against the real pinned CLI in a throwaway clone: the change is archived, its ADDED requirement reaches the main specs, the unfinished second change is untouched, only the OpenSpec root is staged, the commit subject is exact, the bare origin advances, and a second run refuses on the destination the first one occupied.",
+			"commandIds": ["disposable-lifecycle", "archive-refusals"]
+		},
+		{
+			"id": "canonical-rules",
+			"task": "12.4 consolidate canonical cross-agent rules",
+			"reason": "AGENTS.md is the only source of the mirrored blocks, the guard rejects drift, a region the canonical file does not declare, and canonical text restated outside a region, and the required-surface table records that Codex receives no OpenSpec artifacts as a scan that fails when one appears.",
+			"commandIds": ["rules-guard", "vendor-artifact-regeneration"]
+		},
+		{
+			"id": "generated-artifacts",
+			"task": "12.4 mechanically synchronized tool-specific commands and skills",
+			"reason": "All fourteen Claude artifacts are regenerated by spawning the pinned CLI into a scratch directory and compared byte for byte, regeneration is shown to be deterministic across two runs, both archive surfaces delegate to the wrapper, and the vendor directory-move procedure is absent from the whole tree.",
+			"commandIds": ["vendor-artifact-regeneration", "rules-guard"]
+		},
+		{
+			"id": "capability-isolation",
+			"task": "12.5 the lifecycle is present only where it is enabled",
+			"reason": "Each fixture is rendered and inspected for the gated paths, the package scripts, the fenced step and the fourteen artifacts, the cross-agent rule surface is checked to be core in every one of them, and each render is put through the anti-residue scan and the rules contract on its own terms.",
+			"commandIds": ["rendered-fixture-artifacts", "live-gate"]
+		},
+		{
+			"id": "rollback",
+			"task": "12.5 rollback",
+			"reason": "A synthetic merge followed by git revert -m 1 produces a tree identical to the Stage 8B predecessor, and that tree is shown to carry none of the seven paths this stage adds while the implementation tree carries all of them; nothing about this stage lives outside the tree.",
+			"commandIds": ["rollback-proof"]
+		}
+	],
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-9-pr-merge-commit>"],
+		"outsideTheTree": [],
+		"containerRebuildRequired": false,
+		"scope": "Revert the OpenSpec lifecycle contract and its entrypoint, the host archive wrapper, the cross-agent rules contract, its guard and its generator, the committed delegation body, the three package scripts, the two steps in the required lane, the canonical blocks and every generated mirror region, the fourteen regenerated Claude artifacts, the ownership wiring, the documentation, and this record as one Stage 9 bundle. Nothing about this stage lives outside the tree: there is no repository variable, no branch-protection change and no operator step, and nothing under .devcontainer/** changed, so adopting or reverting it costs no container rebuild. The active change portable-devcontainer-upgrade stays ACTIVE through Stage 11 either way — no capture, proof or guard in this stage archives it, and a committed test asserts that.",
+		"proof": {
+			"commandId": "rollback-proof",
+			"predecessorSha": "e4c6cfcee92b3cd4ced47b6641afb728430bf66b",
+			"implementationSha": "69e4995f305de997f761f8b57011acfa95c5fb6b",
+			"syntheticMergeSha": "edbe69b0338a1cc08b860050e748a0ac262501a9",
+			"syntheticMergeTree": "bc623cae6ba8435cef20c3f72164219e70b42f7f",
+			"syntheticMergeParents": [
+				"e4c6cfcee92b3cd4ced47b6641afb728430bf66b",
+				"69e4995f305de997f761f8b57011acfa95c5fb6b"
+			],
+			"predecessorTree": "40e70a07f67e3039ef18ad3e823542d9d5feb074",
+			"revertedTree": "40e70a07f67e3039ef18ad3e823542d9d5feb074",
+			"treeMatchesPredecessor": true,
+			"operations": [
+				["git", "rev-parse", "e4c6cfcee92b3cd4ced47b6641afb728430bf66b^{tree}"],
+				["git", "rev-parse", "69e4995f305de997f761f8b57011acfa95c5fb6b^{tree}"],
+				[
+					"git",
+					"worktree",
+					"add",
+					"--detach",
+					"/tmp/devenv-stage2-stage9-20260807t044159z-69e4995f-rollback",
+					"e4c6cfcee92b3cd4ced47b6641afb728430bf66b"
+				],
+				[
+					"git",
+					"commit-tree",
+					"bc623cae6ba8435cef20c3f72164219e70b42f7f",
+					"-p",
+					"e4c6cfcee92b3cd4ced47b6641afb728430bf66b",
+					"-p",
+					"69e4995f305de997f761f8b57011acfa95c5fb6b",
+					"-m",
+					"Stage 2 synthetic merge"
+				],
+				["git", "rev-parse", "edbe69b0338a1cc08b860050e748a0ac262501a9^{tree}"],
+				[
+					"git",
+					"show",
+					"-s",
+					"--format=%P",
+					"edbe69b0338a1cc08b860050e748a0ac262501a9"
+				],
+				[
+					"git",
+					"checkout",
+					"--detach",
+					"edbe69b0338a1cc08b860050e748a0ac262501a9"
+				],
+				[
+					"git",
+					"revert",
+					"--no-edit",
+					"-m",
+					"1",
+					"edbe69b0338a1cc08b860050e748a0ac262501a9"
+				],
+				["git", "rev-parse", "HEAD^{tree}"]
+			],
+			"addedPaths": [
+				"scripts/openspec/archive.sh",
+				"scripts/template/agent-rules-contract.ts",
+				"scripts/template/agent-rules/archive-delegation.md",
+				"scripts/template/openspec-contract.ts",
+				"scripts/template/sync-agent-rules.ts",
+				"scripts/template/validate-agent-rules.ts",
+				"scripts/template/validate-openspec.ts"
+			],
+			"addedPathsRemoved": true
+		}
+	}
+}

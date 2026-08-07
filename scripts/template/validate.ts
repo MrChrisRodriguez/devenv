@@ -1,11 +1,13 @@
 import { resolve } from "node:path";
 import { validateAffectedContract } from "./affected-contract";
+import { validateAgentRulesContract } from "./agent-rules-contract";
 import { validateBrowserContract } from "./browser-contract";
 import { validateCiContract } from "./ci-contract";
 import { validateCloudContract } from "./cloud-contract";
 import { validateStageZeroEvidence } from "./evidence";
 import { validateStageTwoEvidence } from "./image-evidence";
 import { validateJsonSchema } from "./json-schema";
+import { validateOpenspecContract } from "./openspec-contract";
 import {
 	loadFixtureDefinition,
 	loadTemplateParameters,
@@ -18,6 +20,7 @@ import { validateStageEightBEvidence } from "./stage-eight-b-evidence";
 import { validateStageFiveBEvidence } from "./stage-five-b-evidence";
 import { validateStageFiveEvidence } from "./stage-five-evidence";
 import { validateStageFourEvidence } from "./stage-four-evidence";
+import { validateStageNineEvidence } from "./stage-nine-evidence";
 import { validateStageSevenEvidence } from "./stage-seven-evidence";
 import { validateStageSixEvidence } from "./stage-six-evidence";
 import { validateStageThreeEvidence } from "./stage-three-evidence";
@@ -53,6 +56,8 @@ export interface ValidationReport {
 	graphEvidenceSchemaFile: string;
 	affectedEvidenceFile: string;
 	affectedEvidenceSchemaFile: string;
+	openspecEvidenceFile: string;
+	openspecEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -88,6 +93,8 @@ export async function validateAll(
 		affectedEvidenceFile: "evidence/stage-8b-affected-selection.json",
 		affectedEvidenceSchemaFile:
 			"evidence/stage-8b-affected-selection.schema.json",
+		openspecEvidenceFile: "evidence/stage-9-openspec.json",
+		openspecEvidenceSchemaFile: "evidence/stage-9-openspec.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -170,6 +177,24 @@ export async function validateAll(
 			report.status = "fail";
 			report.errors.push(...affectedErrors);
 		}
+		// The hermetic leg only, for the same reason as the graph oracle above:
+		// the live leg drives the pinned CLI, and a host running
+		// `template:validate` before `bun install` would skip it rather than run
+		// it — which is the same as not having it.
+		const openspecErrors = await validateOpenspecContract(root);
+		if (openspecErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...openspecErrors);
+		}
+		// Hermetic again: the vendor-artifact leg spawns the pinned CLI, which
+		// `rules:check` owns.
+		const agentRulesErrors = await validateAgentRulesContract(root, {
+			vendor: false,
+		});
+		if (agentRulesErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...agentRulesErrors);
+		}
 		const toolchainEvidenceErrors = await validateStageOneEvidence(root);
 		if (toolchainEvidenceErrors.length > 0) {
 			report.status = "fail";
@@ -240,6 +265,13 @@ export async function validateAll(
 				...affectedEvidenceErrors.map((error) => `stage-8b evidence: ${error}`),
 			);
 		}
+		const openspecEvidenceErrors = await validateStageNineEvidence(root);
+		if (openspecEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...openspecEvidenceErrors.map((error) => `stage-9 evidence: ${error}`),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -258,7 +290,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, ${report.graphEvidenceFile}, ${report.affectedEvidenceFile}, and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, ${report.graphEvidenceFile}, ${report.affectedEvidenceFile}, ${report.openspecEvidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(

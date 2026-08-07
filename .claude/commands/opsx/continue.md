@@ -5,6 +5,9 @@ category: Workflow
 tags: [workflow, artifacts, experimental]
 ---
 
+<!-- Generated from @fission-ai/openspec by `openspec artifact-experimental-setup`. -->
+<!-- Canonical rules live in AGENTS.md. Regenerate with `bun run rules:sync`; never edit by hand. -->
+
 Continue working on a change by creating the next artifact.
 
 **Input**: Optionally specify `--change <name>` after `/opsx:continue`. If omitted, MUST prompt for available changes.
