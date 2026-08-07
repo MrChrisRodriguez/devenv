@@ -1,3 +1,5 @@
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: The mutations write
+// runner expressions into a workflow verbatim.
 import { describe, expect, test } from "bun:test";
 import { mkdir, rm } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
@@ -6,15 +8,26 @@ import {
 	type ExternalWrites,
 	REGISTRY_PATH,
 	readExternalWrites,
+	validateDeclaredWrites,
 	validateSoleDeclarations,
 	validateTelemetryContract,
 } from "../telemetry-contract";
 import {
+	activeWorkspace,
+	CONFIG_MODULE_PATH,
+	configModuleSource,
+	DEPLOY_SCRIPT_PATH,
+	declaredWrite,
 	INSTRUCTION_SCRIPT,
+	RELEASE_VARIABLE,
 	ROOT,
 	SDK_IMPORT,
 	SDK_INITIALIZER,
+	SDK_LOGGER,
+	SDK_SCOPE,
+	SDK_SET_USER,
 	SKELETON,
+	TOKEN_VARIABLE,
 	telemetryWorkspace,
 	WRITE_SCRIPT,
 	writeRegistry,
@@ -177,17 +190,7 @@ describe("external write registry", () => {
 			// world is empty.
 			const declared: ExternalWrites = {
 				...SKELETON,
-				writes: [
-					{
-						id: "deploy",
-						path: "scripts/deploy.sh",
-						kind: "git",
-						intent: "--confirm-push",
-						credentials: ["DEPLOY_TOKEN_NAME"],
-						verify: "bash scripts/verify.sh",
-						allowedHosts: ["https://example.invalid"],
-					},
-				],
+				writes: [declaredWrite()],
 			};
 			const original = await Bun.file(resolve(temporary, REGISTRY_PATH)).text();
 			await writeRegistry(temporary, declared);
@@ -215,17 +218,7 @@ describe("external write registry", () => {
 		expect(
 			validateSoleDeclarations([REGISTRY_PATH], {
 				...SKELETON,
-				writes: [
-					{
-						id: "archive",
-						path: "scripts/openspec/archive.sh",
-						kind: "git",
-						intent: "--change",
-						credentials: ["GIT_TOKEN_NAME"],
-						verify: "git ls-remote",
-						allowedHosts: ["https://example.invalid"],
-					},
-				],
+				writes: [declaredWrite({ path: "scripts/openspec/archive.sh" })],
 			}),
 		).toContain(
 			"telemetry: scripts/openspec/archive.sh is both a declared write and governed elsewhere; one file has one authority",
@@ -409,5 +402,230 @@ describe("external write registry", () => {
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
+	});
+});
+
+describe("telemetry SDK confinement", () => {
+	test("accepts a declared configuration module and refuses every other caller", async () => {
+		const { root } = await activeWorkspace({ prefix: "devenv-telemetry-sdk-" });
+		try {
+			expect(await validateTelemetryContract(root)).toEqual([]);
+			// The allowlist is derived from the registry, so the SAME content is
+			// legal in a declared module and refused outside one. That is the whole
+			// difference between an allowlist and a list of mistakes.
+			await withFile(
+				root,
+				"apps/web/src/boot.ts",
+				SDK_IMPORT,
+				"telemetry: apps/web/src/boot.ts imports the telemetry SDK outside a declared configuration module",
+			);
+			await withFile(
+				root,
+				"apps/web/src/init.ts",
+				SDK_INITIALIZER,
+				"telemetry: apps/web/src/init.ts calls the telemetry SDK initializer outside a declared configuration module",
+			);
+			await withFile(
+				root,
+				"apps/web/src/log.ts",
+				SDK_LOGGER,
+				"telemetry: apps/web/src/log.ts reaches the telemetry SDK's structured logger or metrics namespace outside a declared configuration module",
+			);
+			// The user binding is banned in EVERY file, declared or not: it is the
+			// one call whose whole purpose is to attach an identity to a report that
+			// leaves the building.
+			await withFile(
+				root,
+				`${CONFIG_MODULE_PATH.slice(0, -3)}-user.ts`,
+				SDK_SET_USER,
+				`telemetry: ${CONFIG_MODULE_PATH.slice(0, -3)}-user.ts binds a telemetry user identity; the SDK's user binding attaches an identity to every report and is banned everywhere`,
+			);
+			// ... and the near-misses. An unrelated object with the same method
+			// name is not the SDK, and the SDK's own surface inside a declared
+			// module is exactly what the declaration is for.
+			await tolerate(
+				root,
+				"apps/web/src/session.ts",
+				'declare const app: { setUser(id: string): void };\napp.setUser("1");\n',
+			);
+			// The import scan reads the AST, so a module that only NAMES the scope
+			// in a string is not a module that imports it.
+			await tolerate(
+				root,
+				"apps/web/src/docs.ts",
+				`export const documentedScope = "${SDK_SCOPE}";\n`,
+			);
+			// ... and the executable half is what the substring rules read, so a
+			// comment explaining the ban is not an instance of it.
+			await tolerate(
+				root,
+				"apps/web/src/notes.ts",
+				`// Never call ${SDK_INITIALIZER.trim()} outside a declared module.\nexport const note = 1;\n`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("the upload truth table", () => {
+	test("accepts a module that gates on both halves and warns on one", async () => {
+		const { root } = await activeWorkspace({
+			prefix: "devenv-telemetry-table-",
+		});
+		try {
+			expect(await validateTelemetryContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("refuses every state the table does not have", async () => {
+		const { root } = await activeWorkspace({
+			prefix: "devenv-telemetry-table-bad-",
+		});
+		try {
+			// Neither half. A module that reads no gate at all cannot be gated on
+			// one, so the message names both variables rather than the missing one.
+			await mutate(
+				root,
+				CONFIG_MODULE_PATH,
+				(source) =>
+					source
+						.replace(`process.env.${RELEASE_VARIABLE}`, '""')
+						.replace(`process.env.${TOKEN_VARIABLE}`, '""'),
+				`telemetry: no declared configuration module reads both ${RELEASE_VARIABLE} and ${TOKEN_VARIABLE}; an upload gated on one half is gated on nothing`,
+			);
+			// The credential without the intent — the exact bug the reference's
+			// header names: a leaked CI token in a developer shell minting phantom
+			// releases from a plain local build.
+			await mutate(
+				root,
+				CONFIG_MODULE_PATH,
+				(source) => source.replace(`process.env.${RELEASE_VARIABLE}`, '""'),
+				`telemetry: no declared configuration module reads both ${RELEASE_VARIABLE} and ${TOKEN_VARIABLE}; an upload gated on one half is gated on nothing`,
+			);
+			// The intent without the credential.
+			await mutate(
+				root,
+				CONFIG_MODULE_PATH,
+				(source) => source.replace(`process.env.${TOKEN_VARIABLE}`, '""'),
+				`telemetry: no declared configuration module reads both ${RELEASE_VARIABLE} and ${TOKEN_VARIABLE}; an upload gated on one half is gated on nothing`,
+			);
+			// Both halves read, and the credential still used where the intent does
+			// not reach. This is the case a presence check would wave through.
+			await mutate(
+				root,
+				CONFIG_MODULE_PATH,
+				(source) =>
+					source.replace(
+						"export const uploadEnabled = Boolean(release) && Boolean(authToken);",
+						"export const uploadEnabled = Boolean(authToken);",
+					),
+				`telemetry: ${CONFIG_MODULE_PATH} reads ${TOKEN_VARIABLE} in a branch ${RELEASE_VARIABLE} does not dominate; the gate is intent times credential`,
+			);
+			// The partial state must be loud.
+			await mutate(
+				root,
+				CONFIG_MODULE_PATH,
+				(source) =>
+					source.replace(
+						'\tconsole.warn("[telemetry] upload DISABLED: one half of the gate is set and the other is not");\n',
+						"",
+					),
+				`telemetry: no declared configuration module warns from a branch that reads both ${RELEASE_VARIABLE} and ${TOKEN_VARIABLE}; a build that silently skips the upload is a build nobody notices`,
+			);
+			// A declared upload has a declared scope, and one that can reach the
+			// server bundle is a different artifact leaving the building.
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) => source.replace('"scope": "client"', '"scope": "server"'),
+				`telemetry: ${REGISTRY_PATH} declares the upload scope server; an upload that can reach the server bundle is a refusal`,
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("a module that gates correctly but names the variables in prose is tolerated", async () => {
+		const { root } = await activeWorkspace({
+			prefix: "devenv-telemetry-table-prose-",
+		});
+		try {
+			// The comment names the credential outside every branch. Reading the
+			// executable half is what lets the explanation be written at all.
+			await Bun.write(
+				resolve(root, CONFIG_MODULE_PATH),
+				`// ${TOKEN_VARIABLE} is never read without ${RELEASE_VARIABLE}.\n${configModuleSource()}`,
+			);
+			expect(await validateTelemetryContract(root)).toEqual([]);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe("declared writes", () => {
+	test("requires an intent, its credentials and a separate verifier", async () => {
+		const { root } = await activeWorkspace({
+			prefix: "devenv-telemetry-writes-",
+		});
+		try {
+			await mutate(
+				root,
+				DEPLOY_SCRIPT_PATH,
+				(source) => source.replace('"--confirm-push"', '"--yes"'),
+				"telemetry: scripts/deploy.sh never reads the intent --confirm-push; a credential is not an authorization",
+			);
+			await mutate(
+				root,
+				DEPLOY_SCRIPT_PATH,
+				(source) => source.replaceAll("DEPLOY_ACCESS_TOKEN", "OTHER_TOKEN"),
+				"telemetry: scripts/deploy.sh declares the credential DEPLOY_ACCESS_TOKEN and never reads it",
+			);
+			await mutate(
+				root,
+				DEPLOY_SCRIPT_PATH,
+				(source) =>
+					source.replace(
+						"git ls-remote --exit-code origin refs/heads/main\n",
+						"",
+					),
+				"telemetry: scripts/deploy.sh never runs the declared verify command git ls-remote --exit-code origin; an unread final state is an unasserted one",
+			);
+			await mutate(
+				root,
+				REGISTRY_PATH,
+				(source) =>
+					source.replace(
+						'"verify": "git ls-remote --exit-code origin"',
+						'"verify": "git push --quiet origin HEAD"',
+					),
+				"telemetry: the write deploy verifies with its own write command; verification is a separate command, never a flag on the write",
+			);
+			// A declared write whose file writes nothing is a declaration nothing
+			// exercises — the mirror image of a write nothing declares.
+			await mutate(
+				root,
+				DEPLOY_SCRIPT_PATH,
+				(source) => source.replace("git push --quiet origin HEAD\n", ""),
+				"telemetry: scripts/deploy.sh is declared as the write deploy but performs no remote write",
+			);
+		} finally {
+			await rm(root, { recursive: true, force: true });
+		}
+	});
+
+	test("refuses a verifier that is itself a remote write", () => {
+		expect(
+			validateDeclaredWrites("/nonexistent", {
+				...SKELETON,
+				mode: "active",
+				writes: [declaredWrite({ verify: "git push --tags origin" })],
+			}),
+		).toContain(
+			"telemetry: the write deploy declares a verify command that is itself a remote write; a verifier that mutates confirms only its own effect",
+		);
 	});
 });

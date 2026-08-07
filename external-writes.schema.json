@@ -109,6 +109,7 @@
 					"id",
 					"path",
 					"kind",
+					"command",
 					"intent",
 					"credentials",
 					"verify",
@@ -120,6 +121,11 @@
 					"kind": {
 						"type": "string",
 						"enum": ["git", "http", "cli"]
+					},
+					"command": {
+						"description": "The mutating command itself. Declared so that the read-only verifier can be asserted to be a DIFFERENT string: a verifier that shares the writer's code path can only confirm what the writer believed.",
+						"type": "string",
+						"minLength": 1
 					},
 					"intent": {
 						"description": "The named confirmation the write refuses to run without. A credential plus a flag is still not enough; a mutation needs a confirmation somebody had to type.",

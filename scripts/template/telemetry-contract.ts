@@ -176,6 +176,7 @@ export interface DeclaredWrite {
 	id: string;
 	path: string;
 	kind: "git" | "http" | "cli";
+	command: string;
 	intent: string;
 	credentials: string[];
 	verify: string;
@@ -493,7 +494,7 @@ export function deriveTreeState(
 			}
 		}
 		if (!isSourceFile(path)) continue;
-		if (source.includes(INITIALIZER)) {
+		if (executableHalf(path, source).includes(INITIALIZER)) {
 			signals.push({
 				path,
 				shape: "sdk-initializer",
@@ -931,6 +932,312 @@ export function validateGovernedElsewhere(
 	return errors.sort();
 }
 
+type Node = import("typescript").Node;
+
+interface ParsedModule {
+	path: string;
+	source: string;
+	file: import("typescript").SourceFile;
+}
+
+function parseModule(root: string, path: string): ParsedModule | undefined {
+	const api = typescript();
+	if (!api) return undefined;
+	const source = textOf(resolve(root, path));
+	if (source === "") return undefined;
+	return {
+		path,
+		source,
+		file: api.createSourceFile(
+			path,
+			source,
+			api.ScriptTarget.Latest,
+			true,
+			path.endsWith("x") ? api.ScriptKind.TSX : api.ScriptKind.TS,
+		),
+	};
+}
+
+function eachNode(node: Node, visit: (node: Node) => void): void {
+	const api = typescript();
+	if (!api) return;
+	const walk = (current: Node): void => {
+		visit(current);
+		api.forEachChild(current, walk);
+	};
+	walk(node);
+}
+
+/** Every ancestor of a node, innermost first, stopping below the source file. */
+function ancestors(node: Node): Node[] {
+	const api = typescript();
+	const found: Node[] = [];
+	if (!api) return found;
+	let current = node.parent;
+	while (current && !api.isSourceFile(current)) {
+		found.push(current);
+		current = current.parent;
+	}
+	return found;
+}
+
+function namesAny(text: string, names: Iterable<string>): boolean {
+	for (const name of names) {
+		if (
+			new RegExp(`(?:^|[^A-Za-z0-9_$])${name}(?:$|[^A-Za-z0-9_$])`).test(text)
+		)
+			return true;
+	}
+	return false;
+}
+
+/**
+ * The declared modules a telemetry surface may live in.
+ *
+ * This is an ALLOWLIST and never a denylist. A denylist over SDK entry points
+ * is a list of the call sites somebody already found, and the first spelling
+ * nobody thought of ships an identity into a crash report. A project that adds
+ * a module extends the allowlist by DECLARING it — which is also the reference
+ * implementation's rule, written into its own allowlist header: never weaken
+ * the guard's patterns to work around a violation here; fix the call site
+ * instead.
+ */
+function declaredModules(contract: ExternalWrites): Set<string> {
+	const telemetry = contract.telemetry;
+	if (telemetry === null) return new Set();
+	return new Set([
+		...telemetry.configModules.map((entry) => entry.path),
+		telemetry.scrubModule,
+	]);
+}
+
+/**
+ * SDK confinement, ported refusal by refusal.
+ *
+ * In `skeleton` mode the allowed set is empty, which is exactly the assertion
+ * that mode makes: the SDK appears nowhere at all. The user binding is banned
+ * in BOTH modes and in every file, declared or not — it is the one call whose
+ * whole purpose is to attach an identity to a report that leaves the building.
+ */
+export function validateSurfaceConfinement(
+	root: string,
+	contract: ExternalWrites,
+): string[] {
+	const errors: string[] = [];
+	const allowed = declaredModules(contract);
+	for (const path of enumerateFiles(root)) {
+		if (!isSourceFile(path) || !isShipped(path)) continue;
+		const source = textOf(resolve(root, path));
+		if (source === "") continue;
+		// The executable half only, here as everywhere else. A comment that names
+		// the banned call in order to explain why it is banned is not an instance
+		// of it, and a rule that could not tell the difference would make writing
+		// the explanation impossible.
+		const code = executableHalf(path, source);
+		if (code.includes(USER_BINDING))
+			errors.push(
+				`telemetry: ${path} binds a telemetry user identity; the SDK's user binding attaches an identity to every report and is banned everywhere`,
+			);
+		if (allowed.has(path)) continue;
+		const specifiers = moduleSpecifiers(path, source);
+		if (specifiers !== undefined && importsSdk(specifiers))
+			errors.push(
+				`telemetry: ${path} imports the telemetry SDK outside a declared configuration module`,
+			);
+		if (code.includes(INITIALIZER))
+			errors.push(
+				`telemetry: ${path} calls the telemetry SDK initializer outside a declared configuration module`,
+			);
+		if (code.includes(LOGGER_NAMESPACE) || code.includes(METRICS_NAMESPACE))
+			errors.push(
+				`telemetry: ${path} reaches the telemetry SDK's structured logger or metrics namespace outside a declared configuration module`,
+			);
+	}
+	return [...new Set(errors)].sort();
+}
+
+/**
+ * Local names bound to an environment variable, resolved one hop.
+ *
+ * A gate almost never reads `process.env.X` twice; it reads it once into a
+ * local and then decides. One hop is what makes the dominance rule below a
+ * statement about the DECISION rather than about the read.
+ */
+function envBindings(module: ParsedModule, variable: string): Set<string> {
+	const api = typescript();
+	const found = new Set<string>([variable]);
+	if (!api) return found;
+	eachNode(module.file, (node) => {
+		if (!api.isVariableDeclaration(node) || !api.isIdentifier(node.name))
+			return;
+		const initializer = node.initializer;
+		if (!initializer) return;
+		if (namesAny(initializer.getText(module.file), [variable]))
+			found.add(node.name.text);
+	});
+	return found;
+}
+
+/**
+ * The truth table, as a projection onto the AST.
+ *
+ * The reference writes it as nine lines of a real function, so there is nothing
+ * to infer there — the behaviour IS the code. A template has no such function,
+ * so the static half asserts the SHAPE the table must have and the suite
+ * executes the table itself against a recorder.
+ *
+ * Three rules, and each one names the state it protects. Something must read
+ * both halves, or the gate is on one half and therefore on nothing. No read of
+ * the credential may sit in a branch the intent does not dominate — that is the
+ * projection of `disable: !release || !authToken`, and it is the rule that
+ * keeps a leaked token in a developer shell from minting a phantom release.
+ * And the partial state must be LOUD: a build that silently skips the upload
+ * is a build nobody notices skipping it.
+ */
+export function validateTruthTable(
+	root: string,
+	contract: ExternalWrites,
+): string[] {
+	const api = typescript();
+	const telemetry = contract.telemetry;
+	const upload = telemetry?.upload;
+	if (!telemetry || !upload || !api) return [];
+	const errors: string[] = [];
+	// The gate is `intent x credential`, never an environment flag. A source-map
+	// upload that can reach the server bundle is a different artifact leaving the
+	// building than the one the scope declares.
+	if (upload.scope !== "client")
+		errors.push(
+			`telemetry: ${REGISTRY_PATH} declares the upload scope ${upload.scope}; an upload that can reach the server bundle is a refusal`,
+		);
+	let gated = false;
+	let warned = false;
+	for (const entry of telemetry.configModules) {
+		const module = parseModule(root, entry.path);
+		if (!module) continue;
+		const release = envBindings(module, upload.releaseVariable);
+		const token = envBindings(module, upload.tokenVariable);
+		const readsRelease = namesAny(module.source, release);
+		const readsToken = namesAny(module.source, token);
+		if (readsRelease && readsToken) gated = true;
+		if (!readsToken) continue;
+		eachNode(module.file, (node) => {
+			const isName =
+				(api.isIdentifier(node) && token.has(node.text)) ||
+				(api.isStringLiteralLike(node) &&
+					token.has((node as { text: string }).text));
+			if (!isName) return;
+			const chain = ancestors(node);
+			// The binding site itself is not a use. `const authToken =
+			// process.env.…` reads the credential in order to have it; the question
+			// this rule asks is what the module DOES with it afterwards.
+			if (
+				chain.some(
+					(parent) =>
+						api.isVariableDeclaration(parent) &&
+						api.isIdentifier(parent.name) &&
+						token.has(parent.name.text),
+				)
+			)
+				return;
+			if (
+				chain.some((parent) => namesAny(parent.getText(module.file), release))
+			)
+				return;
+			errors.push(
+				`telemetry: ${entry.path} reads ${upload.tokenVariable} in a branch ${upload.releaseVariable} does not dominate; the gate is intent times credential`,
+			);
+		});
+		eachNode(module.file, (node) => {
+			if (!api.isCallExpression(node)) return;
+			const callee = node.expression.getText(module.file);
+			if (!/\.warn$/.test(callee) && !node.getText(module.file).includes("::"))
+				return;
+			const dominating = ancestors(node).flatMap((parent) =>
+				api.isIfStatement(parent)
+					? [parent.expression.getText(module.file)]
+					: api.isConditionalExpression(parent)
+						? [parent.condition.getText(module.file)]
+						: [],
+			);
+			if (
+				dominating.some(
+					(condition) =>
+						namesAny(condition, release) && namesAny(condition, token),
+				)
+			)
+				warned = true;
+		});
+	}
+	if (!gated)
+		errors.push(
+			`telemetry: no declared configuration module reads both ${upload.releaseVariable} and ${upload.tokenVariable}; an upload gated on one half is gated on nothing`,
+		);
+	if (!warned)
+		errors.push(
+			`telemetry: no declared configuration module warns from a branch that reads both ${upload.releaseVariable} and ${upload.tokenVariable}; a build that silently skips the upload is a build nobody notices`,
+		);
+	return [...new Set(errors)].sort();
+}
+
+/**
+ * Every declared write, against the file that performs it.
+ *
+ * The spec sentence is the second rule: credential presence alone must not
+ * authorize a remote write, so the file has to read a named intent as well as
+ * its credentials. The verifier is the fourth: a separate, read-only command,
+ * never a flag on the write — a verifier that shares the writer's code path can
+ * only confirm what the writer already believed, and one that mutates confirms
+ * nothing but its own effect.
+ */
+export function validateDeclaredWrites(
+	root: string,
+	contract: ExternalWrites,
+): string[] {
+	const errors: string[] = [];
+	const commands = new Set(contract.writes.map((entry) => entry.command));
+	const uploadCommand = contract.telemetry?.upload?.command;
+	for (const entry of contract.writes) {
+		const source = textOf(resolve(root, entry.path));
+		const code = source === "" ? "" : executableHalf(entry.path, source);
+		if (source !== "" && writeShapesOf(entry.path, source).length === 0)
+			errors.push(
+				`telemetry: ${entry.path} is declared as the write ${entry.id} but performs no remote write`,
+			);
+		if (source !== "" && !code.includes(entry.intent))
+			errors.push(
+				`telemetry: ${entry.path} never reads the intent ${entry.intent}; a credential is not an authorization`,
+			);
+		for (const credential of entry.credentials) {
+			if (source !== "" && !code.includes(credential))
+				errors.push(
+					`telemetry: ${entry.path} declares the credential ${credential} and never reads it`,
+				);
+		}
+		if (entry.verify === entry.command || commands.has(entry.verify))
+			errors.push(
+				`telemetry: the write ${entry.id} verifies with its own write command; verification is a separate command, never a flag on the write`,
+			);
+		if (uploadCommand !== undefined && entry.verify === uploadCommand)
+			errors.push(
+				`telemetry: the write ${entry.id} verifies with the declared upload command; verification is a separate command, never a flag on the write`,
+			);
+		if (
+			WRITE_SHAPES.some((shape) =>
+				commandPosition(shape.parts.join("")).test(entry.verify),
+			)
+		)
+			errors.push(
+				`telemetry: the write ${entry.id} declares a verify command that is itself a remote write; a verifier that mutates confirms only its own effect`,
+			);
+		if (source !== "" && !code.includes(entry.verify))
+			errors.push(
+				`telemetry: ${entry.path} never runs the declared verify command ${entry.verify}; an unread final state is an unasserted one`,
+			);
+	}
+	return [...new Set(errors)].sort();
+}
+
 /**
  * The whole telemetry and external-write contract, with the notices the caller
  * prints.
@@ -963,6 +1270,9 @@ export async function inspectTelemetryContract(
 		...(await validateWiring(root, contract)),
 		...(await validateOwnership(root)),
 		...validateGovernedElsewhere(root, contract),
+		...validateSurfaceConfinement(root, contract),
+		...validateTruthTable(root, contract),
+		...validateDeclaredWrites(root, contract),
 	];
 	return { errors: [...new Set(errors)].sort(), notices };
 }

@@ -11,5 +11,5 @@ if (errors.length > 0) {
 }
 
 console.log(
-	"Validated the external write registry, its declared mode against the tree, guard wiring, template ownership, and every delegated write authority.",
+	"Validated the external write registry, its declared mode against the tree, guard wiring, template ownership, every delegated write authority, telemetry SDK confinement, the upload truth table, and every declared write's intent, credentials and verifier.",
 );

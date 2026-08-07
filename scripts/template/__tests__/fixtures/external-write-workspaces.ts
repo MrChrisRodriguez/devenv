@@ -1,7 +1,14 @@
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: The fixtures carry
+// shell parameter expansions and runner expressions verbatim.
 import { copyFile, mkdir, mkdtemp } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, resolve } from "node:path";
-import { type ExternalWrites, NEEDLES } from "../../telemetry-contract";
+import {
+	type DeclaredWrite,
+	type ExternalWrites,
+	NEEDLES,
+	type TelemetryDeclaration,
+} from "../../telemetry-contract";
 
 export const ROOT = resolve(import.meta.dir, "../../../..");
 
@@ -90,6 +97,164 @@ export async function writeFiles(
 		await mkdir(dirname(target), { recursive: true });
 		await Bun.write(target, content);
 	}
+}
+
+// Deliberately vendor-neutral names. A fixture never needs a real vendor's
+// spelling to exercise a rule, and every host below is `example.invalid`, which
+// is reserved by the DNS specification and can never resolve.
+export const RELEASE_VARIABLE = "TELEMETRY_RELEASE";
+export const TOKEN_VARIABLE = "TELEMETRY_UPLOAD_TOKEN";
+export const DSN_VARIABLE = "TELEMETRY_DSN";
+export const DEPLOY_CREDENTIAL = "DEPLOY_ACCESS_TOKEN";
+
+export const CONFIG_MODULE_PATH = "libs/observability/src/telemetry.ts";
+export const SCRUB_MODULE_PATH = "libs/observability/src/scrub.ts";
+export const DEPLOY_SCRIPT_PATH = "scripts/deploy.sh";
+
+export const INGEST_HOST = "https://ingest.example.invalid";
+export const GIT_HOST = "https://git.example.invalid";
+export const UPLOAD_COMMAND = "bun run upload-sourcemaps";
+export const WRITE_COMMAND = "git push --quiet origin HEAD";
+export const VERIFY_COMMAND = "git ls-remote --exit-code origin";
+export const WRITE_INTENT = "--confirm-push";
+
+/**
+ * A configuration module that implements the whole truth table.
+ *
+ * Neither half set is quiet, one half set warns loudly and writes nothing, and
+ * both halves set is the only state that enables the upload. The credential is
+ * read into a local once and then never used outside an expression the release
+ * also appears in, which is the shape the dominance rule projects onto.
+ */
+export function configModuleSource(): string {
+	return [
+		`import * as Telemetry from "${SDK_SCOPE}node";`,
+		'import { scrub } from "./scrub";',
+		"",
+		`const release = process.env.${RELEASE_VARIABLE};`,
+		`const authToken = process.env.${TOKEN_VARIABLE};`,
+		"",
+		"if (Boolean(release) !== Boolean(authToken)) {",
+		'\tconsole.warn("[telemetry] upload DISABLED: one half of the gate is set and the other is not");',
+		"}",
+		"",
+		"export const uploadEnabled = Boolean(release) && Boolean(authToken);",
+		"",
+		"export function start(): void {",
+		`\tconst dsn = process.env.${DSN_VARIABLE};`,
+		"\tif (!dsn) return;",
+		`\t${NEEDLES.initializer}{`,
+		"\t\tdsn,",
+		"\t\tsendDefaultPii: false,",
+		"\t\tbeforeSend: scrub,",
+		"\t\ttransport: Telemetry.makeNodeTransport,",
+		"\t});",
+		"}",
+		"",
+	].join("\n");
+}
+
+/** A pure, SDK-free scrubber that fails closed. */
+export function scrubModuleSource(): string {
+	return [
+		"const SENSITIVE = /authorization|cookie|password|private[-_]?key|signature/i;",
+		"",
+		"export function scrub(event: Record<string, unknown>): Record<string, unknown> {",
+		"\ttry {",
+		"\t\tfor (const key of Object.keys(event)) {",
+		"\t\t\tif (SENSITIVE.test(key)) delete event[key];",
+		"\t\t}",
+		"\t\treturn event;",
+		"\t} catch {",
+		"\t\t// Fail CLOSED: a scrubber that throws drops the payload rather than",
+		"\t\t// shipping the one it could not clean.",
+		"\t\treturn {};",
+		"\t}",
+		"}",
+		"",
+	].join("\n");
+}
+
+/** A write that refuses without its named intent and no-ops without its credential. */
+export function deployScriptSource(): string {
+	return [
+		"#!/usr/bin/env bash",
+		"set -euo pipefail",
+		"",
+		'if [ "${1:-}" != "--confirm-push" ]; then',
+		'\techo "refusing to write without the confirmation flag" >&2',
+		"\texit 1",
+		"fi",
+		`if [ -z "\${${DEPLOY_CREDENTIAL}:-}" ]; then`,
+		`\techo "::warning::no ${DEPLOY_CREDENTIAL}; nothing was written" >&2`,
+		"\texit 0",
+		"fi",
+		"git push --quiet origin HEAD",
+		"git ls-remote --exit-code origin refs/heads/main",
+		"",
+	].join("\n");
+}
+
+export function declaredWrite(
+	overrides: Partial<DeclaredWrite> = {},
+): DeclaredWrite {
+	return {
+		id: "deploy",
+		path: DEPLOY_SCRIPT_PATH,
+		kind: "git",
+		command: WRITE_COMMAND,
+		intent: WRITE_INTENT,
+		credentials: [DEPLOY_CREDENTIAL],
+		verify: VERIFY_COMMAND,
+		allowedHosts: [GIT_HOST],
+		...overrides,
+	};
+}
+
+export function declaredTelemetry(
+	overrides: Partial<TelemetryDeclaration> = {},
+): TelemetryDeclaration {
+	return {
+		configModules: [{ path: CONFIG_MODULE_PATH, tier: "server" }],
+		scrubModule: SCRUB_MODULE_PATH,
+		sendDefaultPii: false,
+		tunnel: null,
+		dsnVariable: DSN_VARIABLE,
+		upload: {
+			command: UPLOAD_COMMAND,
+			releaseVariable: RELEASE_VARIABLE,
+			tokenVariable: TOKEN_VARIABLE,
+			scope: "client",
+		},
+		...overrides,
+	};
+}
+
+/** An `active` workspace with a real configuration module, scrubber and write. */
+export async function activeWorkspace(options?: {
+	contract?: Partial<ExternalWrites>;
+	files?: Record<string, string>;
+	prefix?: string;
+}): Promise<{ root: string; contract: ExternalWrites }> {
+	const contract: ExternalWrites = {
+		...SKELETON,
+		mode: "active",
+		telemetry: declaredTelemetry(),
+		writes: [declaredWrite()],
+		allowedHosts: [GIT_HOST, INGEST_HOST],
+		...options?.contract,
+	};
+	const root = await telemetryWorkspace({
+		contract,
+		prefix: options?.prefix ?? "devenv-telemetry-active-",
+		files: {
+			[CONFIG_MODULE_PATH]: configModuleSource(),
+			[SCRUB_MODULE_PATH]: scrubModuleSource(),
+			[DEPLOY_SCRIPT_PATH]: deployScriptSource(),
+			...options?.files,
+		},
+	});
+	return { root, contract };
 }
 
 /**
