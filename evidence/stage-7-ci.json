@@ -1,0 +1,568 @@
+{
+	"schemaVersion": 1,
+	"stage": "stage-7-ci-bootstrap",
+	"capturedAt": "2026-08-06T23:59:13.879Z",
+	"run": {
+		"id": "stage7-20260806t235847z-9b15ab35",
+		"logRoot": "evidence/stage-7-ci-run"
+	},
+	"source": {
+		"baseSha": "75343aed70b712e3a6368cd059d13784a8c8e2f3",
+		"implementationSha": "9b15ab355b401e366f8e6a37976f95a0f7e1521e",
+		"treeClean": true
+	},
+	"host": {
+		"os": "darwin",
+		"architecture": "arm64",
+		"kernel": "25.5.0",
+		"ghVersion": "2.59.0"
+	},
+	"repository": {
+		"nameWithOwner": "MrChrisRodriguez/devenv",
+		"protectedBranch": "main",
+		"workflowFile": ".github/workflows/ci.yml",
+		"gateJobId": "ci-gate",
+		"gateContext": "CI gate",
+		"gateNeeds": ["ci", "image", "browser"],
+		"negativeBranch": "evidence/stage-7-gate-negative"
+	},
+	"commands": [
+		{
+			"id": "ci-guard",
+			"command": ["bun", "run", "ci:check"],
+			"runId": "stage7-20260806t235847z-9b15ab35",
+			"startedAt": "2026-08-06T23:58:47.586Z",
+			"completedAt": "2026-08-06T23:58:47.661Z",
+			"durationMs": 75,
+			"stdoutPath": "evidence/stage-7-ci-run/ci-guard.stdout",
+			"stderrPath": "evidence/stage-7-ci-run/ci-guard.stderr",
+			"stdoutSha256": "9cfe650e97435463f535e1a81f5b30b1ab521cfb458af04688f901be57a294f9",
+			"stderrSha256": "d183538a63c244d8ba196aa5a8eb1eb4cfc636414a9ba546e4cfb9b3537e4088",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "workflow-policy-mutations",
+			"command": ["bun", "test", "scripts/template/__tests__/ci.test.ts"],
+			"runId": "stage7-20260806t235847z-9b15ab35",
+			"startedAt": "2026-08-06T23:58:47.664Z",
+			"completedAt": "2026-08-06T23:59:03.233Z",
+			"durationMs": 15569,
+			"stdoutPath": "evidence/stage-7-ci-run/workflow-policy-mutations.stdout",
+			"stderrPath": "evidence/stage-7-ci-run/workflow-policy-mutations.stderr",
+			"stdoutSha256": "ca35b94f2c5b623fccbd1cc9e77eef3e30a6fcf4b045842fc1353f7ae6d8ea32",
+			"stderrSha256": "0b70cf533c8fe9fbd1b35e6e75c7df5ddb705b3651238269ef8522b360a949c8",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "gate-semantics",
+			"command": [
+				"bash",
+				"-c",
+				"set -uo pipefail\nstatus=0\nRESULTS=\"success,success,success\" DRAFT=\"\" \\\n\tbash scripts/ci/aggregate-gate.sh >/dev/null 2>&1 || status=$?\nprintf 'case-push-every-job-succeeded=%s\\n' \"$status\"\nstatus=0\nRESULTS=\"success,skipped\" DRAFT=\"false\" \\\n\tbash scripts/ci/aggregate-gate.sh >/dev/null 2>&1 || status=$?\nprintf 'case-ready-success-and-skipped=%s\\n' \"$status\"\nstatus=0\nRESULTS=\"failure,success,success\" DRAFT=\"false\" \\\n\tbash scripts/ci/aggregate-gate.sh >/dev/null 2>&1 || status=$?\nprintf 'case-ready-one-job-failed=%s\\n' \"$status\"\nstatus=0\nRESULTS=\"success,cancelled\" DRAFT=\"false\" \\\n\tbash scripts/ci/aggregate-gate.sh >/dev/null 2>&1 || status=$?\nprintf 'case-ready-one-job-cancelled=%s\\n' \"$status\"\nstatus=0\nRESULTS=\"success,,success\" DRAFT=\"false\" \\\n\tbash scripts/ci/aggregate-gate.sh >/dev/null 2>&1 || status=$?\nprintf 'case-ready-one-result-empty=%s\\n' \"$status\"\nstatus=0\nRESULTS=\"\" DRAFT=\"false\" \\\n\tbash scripts/ci/aggregate-gate.sh >/dev/null 2>&1 || status=$?\nprintf 'case-ready-no-results-at-all=%s\\n' \"$status\"\nstatus=0\nRESULTS=\"skipped,skipped,skipped\" DRAFT=\"true\" \\\n\tbash scripts/ci/aggregate-gate.sh >/dev/null 2>&1 || status=$?\nprintf 'case-draft-every-job-skipped=%s\\n' \"$status\"\ndraft_message=\"$(RESULTS='skipped,skipped' DRAFT=true bash scripts/ci/aggregate-gate.sh 2>&1 1>/dev/null || true)\"\nprintf 'draftMessage=%s\\n' \"$draft_message\"\ngreen_output=\"$(RESULTS='success,success,success' DRAFT=false bash scripts/ci/aggregate-gate.sh 2>/dev/null || true)\"\nprintf 'greenOutput=%s\\n' \"$(printf '%s' \"$green_output\" | tr '\\n' '|')\"\nexit 0"
+			],
+			"runId": "stage7-20260806t235847z-9b15ab35",
+			"startedAt": "2026-08-06T23:59:03.233Z",
+			"completedAt": "2026-08-06T23:59:03.275Z",
+			"durationMs": 42,
+			"stdoutPath": "evidence/stage-7-ci-run/gate-semantics.stdout",
+			"stderrPath": "evidence/stage-7-ci-run/gate-semantics.stderr",
+			"stdoutSha256": "dfa8f07a8886fe8cac3166d2408a7774d0d142092932e1a3613e4fd7e404ed0b",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rendered-workflow-graph",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-seven-evidence.ts",
+				"probe-render-graph",
+				"--workspace",
+				"/tmp/devenv-stage7-20260806t235847z-9b15ab35-render"
+			],
+			"runId": "stage7-20260806t235847z-9b15ab35",
+			"startedAt": "2026-08-06T23:59:03.275Z",
+			"completedAt": "2026-08-06T23:59:03.806Z",
+			"durationMs": 531,
+			"stdoutPath": "evidence/stage-7-ci-run/rendered-workflow-graph.stdout",
+			"stderrPath": "evidence/stage-7-ci-run/rendered-workflow-graph.stderr",
+			"stdoutSha256": "1c69e8ce97fb3c521371be6c3c3d94819b1bbb05b36ab8438c5c707df618591b",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-gate-green",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nrun=\"$(gh run view 31132434357 --repo MrChrisRodriguez/devenv --json conclusion,createdAt,databaseId,event,headBranch,headSha,jobs,status,url,workflowName)\"\nprintf 'runJson=%s\\n' \"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\ngate=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print([job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]][0])' \"CI gate\")\"\nprintf 'gateJobId=%s\\n' \"$gate\"\nlog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$gate\" --log)\"\nprintf 'gateLogSha256=%s\\n' \"$(printf '%s' \"$log\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'upstreamResults=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*upstream results: //p' | head -n 1)\"\nprintf 'gateVerdict=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*##\\[error\\]//p' | head -n 1)\"\nprintf 'gateGreenLines=%s\\n' \"$(printf '%s\\n' \"$log\" | grep -c 'Every required job passed or was skipped' || true)\""
+			],
+			"runId": "stage7-20260806t235847z-9b15ab35",
+			"startedAt": "2026-08-06T23:59:03.806Z",
+			"completedAt": "2026-08-06T23:59:07.324Z",
+			"durationMs": 3518,
+			"stdoutPath": "evidence/stage-7-ci-run/live-gate-green.stdout",
+			"stderrPath": "evidence/stage-7-ci-run/live-gate-green.stderr",
+			"stdoutSha256": "0e45f76d05829a4af903d98837a8d657f09898c69157e11ced6b93e815ccc2ee",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-gate-red",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nrun=\"$(gh run view 31132456715 --repo MrChrisRodriguez/devenv --json conclusion,createdAt,databaseId,event,headBranch,headSha,jobs,status,url,workflowName)\"\nprintf 'runJson=%s\\n' \"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\ngate=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print([job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]][0])' \"CI gate\")\"\nprintf 'gateJobId=%s\\n' \"$gate\"\nlog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$gate\" --log)\"\nprintf 'gateLogSha256=%s\\n' \"$(printf '%s' \"$log\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'upstreamResults=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*upstream results: //p' | head -n 1)\"\nprintf 'gateVerdict=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*##\\[error\\]//p' | head -n 1)\"\nprintf 'gateGreenLines=%s\\n' \"$(printf '%s\\n' \"$log\" | grep -c 'Every required job passed or was skipped' || true)\"\nprintf 'injectedFiles=%s\\n' \"$(git diff --name-only 9b15ab355b401e366f8e6a37976f95a0f7e1521e d789242f648d7d7fd3f5b57ef46d16ff509ae3f2 | tr '\\n' ' ')\"\nprintf 'injectedNumstat=%s\\n' \"$(git diff --numstat 9b15ab355b401e366f8e6a37976f95a0f7e1521e d789242f648d7d7fd3f5b57ef46d16ff509ae3f2 | tr '\\t' ' ' | tr '\\n' '|')\"\nprintf 'injectedLines=%s\\n' \"$(git diff 9b15ab355b401e366f8e6a37976f95a0f7e1521e d789242f648d7d7fd3f5b57ef46d16ff509ae3f2 | grep '^+[^+]' | sed 's/^+[[:space:]]*//' | grep . | tr '\\n' '|')\""
+			],
+			"runId": "stage7-20260806t235847z-9b15ab35",
+			"startedAt": "2026-08-06T23:59:07.324Z",
+			"completedAt": "2026-08-06T23:59:10.110Z",
+			"durationMs": 2786,
+			"stdoutPath": "evidence/stage-7-ci-run/live-gate-red.stdout",
+			"stderrPath": "evidence/stage-7-ci-run/live-gate-red.stderr",
+			"stdoutSha256": "6a7e2a1f2d7e033a05ade3b68398c3aaa04d71602d01fc2e8554ab0d3eb6f462",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "live-gate-draft",
+			"command": [
+				"bash",
+				"-c",
+				"set -euo pipefail\nrun=\"$(gh run view 31132439991 --repo MrChrisRodriguez/devenv --json conclusion,createdAt,databaseId,event,headBranch,headSha,jobs,status,url,workflowName)\"\nprintf 'runJson=%s\\n' \"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print(json.dumps(json.load(sys.stdin), sort_keys=True, separators=(\",\", \":\")))')\"\ngate=\"$(printf '%s' \"$run\" | python3 -c 'import json,sys; print([job[\"databaseId\"] for job in json.load(sys.stdin)[\"jobs\"] if job[\"name\"] == sys.argv[1]][0])' \"CI gate\")\"\nprintf 'gateJobId=%s\\n' \"$gate\"\nlog=\"$(gh run view --repo MrChrisRodriguez/devenv --job \"$gate\" --log)\"\nprintf 'gateLogSha256=%s\\n' \"$(printf '%s' \"$log\" | shasum -a 256 | awk '{ print $1 }')\"\nprintf 'upstreamResults=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*upstream results: //p' | head -n 1)\"\nprintf 'gateVerdict=%s\\n' \"$(printf '%s\\n' \"$log\" | sed -n 's/.*##\\[error\\]//p' | head -n 1)\"\nprintf 'gateGreenLines=%s\\n' \"$(printf '%s\\n' \"$log\" | grep -c 'Every required job passed or was skipped' || true)\""
+			],
+			"runId": "stage7-20260806t235847z-9b15ab35",
+			"startedAt": "2026-08-06T23:59:10.110Z",
+			"completedAt": "2026-08-06T23:59:12.651Z",
+			"durationMs": 2541,
+			"stdoutPath": "evidence/stage-7-ci-run/live-gate-draft.stdout",
+			"stderrPath": "evidence/stage-7-ci-run/live-gate-draft.stderr",
+			"stdoutSha256": "165417306566fe892d58f41bd444cf2793b476e3e7fcd3d8a0846819b96d9bcc",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "branch-protection",
+			"command": [
+				"gh",
+				"api",
+				"repos/MrChrisRodriguez/devenv/branches/main/protection"
+			],
+			"runId": "stage7-20260806t235847z-9b15ab35",
+			"startedAt": "2026-08-06T23:59:12.651Z",
+			"completedAt": "2026-08-06T23:59:13.156Z",
+			"durationMs": 505,
+			"stdoutPath": "evidence/stage-7-ci-run/branch-protection.stdout",
+			"stderrPath": "evidence/stage-7-ci-run/branch-protection.stderr",
+			"stdoutSha256": "e792a385c232028bb1ef8cc658cc6aceb3aeec4f1450aa1efe9e54d466865c15",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		},
+		{
+			"id": "rollback-proof",
+			"command": [
+				"bun",
+				"scripts/template/collect-stage-seven-evidence.ts",
+				"probe-rollback",
+				"--base",
+				"75343aed70b712e3a6368cd059d13784a8c8e2f3",
+				"--implementation",
+				"9b15ab355b401e366f8e6a37976f95a0f7e1521e",
+				"--workspace",
+				"/tmp/devenv-stage2-stage7-20260806t235847z-9b15ab35-rollback"
+			],
+			"runId": "stage7-20260806t235847z-9b15ab35",
+			"startedAt": "2026-08-06T23:59:13.158Z",
+			"completedAt": "2026-08-06T23:59:13.879Z",
+			"durationMs": 721,
+			"stdoutPath": "evidence/stage-7-ci-run/rollback-proof.stdout",
+			"stderrPath": "evidence/stage-7-ci-run/rollback-proof.stderr",
+			"stdoutSha256": "9268ce32de91920e9401e544e593ceba69578ef1207cd5b05abf099021df0ada",
+			"stderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+			"exitCode": 0,
+			"status": "pass"
+		}
+	],
+	"guards": {
+		"contract": {
+			"commandId": "ci-guard",
+			"command": "bun run ci:check",
+			"summary": "Validated workflow trigger policy, bootstrap ownership, action pins, job bounds, failure tolerance, aggregate gate membership, shell injection surface, history ownership, compiler coverage, and guard wiring."
+		},
+		"mutations": {
+			"commandId": "workflow-policy-mutations",
+			"testFile": "scripts/template/__tests__/ci.test.ts",
+			"passCount": 16,
+			"failCount": 0
+		}
+	},
+	"gateSemantics": {
+		"commandId": "gate-semantics",
+		"script": "scripts/ci/aggregate-gate.sh",
+		"draftMessage": "::error::This pull request is a draft, so the gating jobs were skipped. Mark it ready for review to validate it; the required check stays red until then.",
+		"greenOutput": "upstream results: success,success,success|Every required job passed or was skipped.",
+		"cases": [
+			{
+				"name": "push-every-job-succeeded",
+				"results": "success,success,success",
+				"draft": "",
+				"expectedExitCode": 0,
+				"observedExitCode": 0
+			},
+			{
+				"name": "ready-success-and-skipped",
+				"results": "success,skipped",
+				"draft": "false",
+				"expectedExitCode": 0,
+				"observedExitCode": 0
+			},
+			{
+				"name": "ready-one-job-failed",
+				"results": "failure,success,success",
+				"draft": "false",
+				"expectedExitCode": 1,
+				"observedExitCode": 1
+			},
+			{
+				"name": "ready-one-job-cancelled",
+				"results": "success,cancelled",
+				"draft": "false",
+				"expectedExitCode": 1,
+				"observedExitCode": 1
+			},
+			{
+				"name": "ready-one-result-empty",
+				"results": "success,,success",
+				"draft": "false",
+				"expectedExitCode": 1,
+				"observedExitCode": 1
+			},
+			{
+				"name": "ready-no-results-at-all",
+				"results": "",
+				"draft": "false",
+				"expectedExitCode": 1,
+				"observedExitCode": 1
+			},
+			{
+				"name": "draft-every-job-skipped",
+				"results": "skipped,skipped,skipped",
+				"draft": "true",
+				"expectedExitCode": 1,
+				"observedExitCode": 1
+			}
+		]
+	},
+	"renderGraph": {
+		"commandId": "rendered-workflow-graph",
+		"fixtures": [
+			{
+				"name": "minimal",
+				"workflows": [".github/workflows/ci.yml"],
+				"jobs": ["ci", "ci-gate", "image"],
+				"gateContext": "CI gate",
+				"gateNeeds": ["ci", "image"],
+				"errors": []
+			},
+			{
+				"name": "cloud",
+				"workflows": [
+					".github/workflows/ci.yml",
+					".github/workflows/codex-cloud-smoke.yml"
+				],
+				"jobs": ["ci", "ci-gate", "image"],
+				"gateContext": "CI gate",
+				"gateNeeds": ["ci", "image"],
+				"errors": []
+			},
+			{
+				"name": "full",
+				"workflows": [
+					".github/workflows/ci.yml",
+					".github/workflows/codex-cloud-smoke.yml"
+				],
+				"jobs": ["browser", "ci", "ci-gate", "image"],
+				"gateContext": "CI gate",
+				"gateNeeds": ["ci", "image", "browser"],
+				"errors": []
+			}
+		]
+	},
+	"live": {
+		"green": {
+			"commandId": "live-gate-green",
+			"runId": 31132434357,
+			"url": "https://github.com/MrChrisRodriguez/devenv/actions/runs/31132434357",
+			"event": "workflow_dispatch",
+			"headBranch": "feat/stage-7-ci-bootstrap",
+			"headSha": "9b15ab355b401e366f8e6a37976f95a0f7e1521e",
+			"conclusion": "success",
+			"gateJobId": 92724645168,
+			"gateConclusion": "success",
+			"gateLogSha256": "ad9305b7b5e5def0d67bb3d1fe5a1d5d48acf3b1e654221bb70ab6cf6f3bbbdd",
+			"upstreamResults": "success,success,success",
+			"gateVerdict": "",
+			"jobs": [
+				{
+					"name": "Launch baked browser payload",
+					"conclusion": "success"
+				},
+				{
+					"name": "Build devcontainer image",
+					"conclusion": "success"
+				},
+				{
+					"name": "Lint, Typecheck & Test",
+					"conclusion": "success"
+				}
+			]
+		},
+		"red": {
+			"commandId": "live-gate-red",
+			"runId": 31132456715,
+			"url": "https://github.com/MrChrisRodriguez/devenv/actions/runs/31132456715",
+			"event": "workflow_dispatch",
+			"headBranch": "evidence/stage-7-gate-negative",
+			"headSha": "d789242f648d7d7fd3f5b57ef46d16ff509ae3f2",
+			"conclusion": "failure",
+			"gateJobId": 92724717034,
+			"gateConclusion": "failure",
+			"gateLogSha256": "0365a82ff71642dccbae00ff1c8496b0acdb7fc1f4051dfd5900b70abd53f1a5",
+			"upstreamResults": "failure,success,success",
+			"gateVerdict": "A required job did not pass (result=failure).",
+			"jobs": [
+				{
+					"name": "Lint, Typecheck & Test",
+					"conclusion": "failure"
+				},
+				{
+					"name": "Launch baked browser payload",
+					"conclusion": "success"
+				},
+				{
+					"name": "Build devcontainer image",
+					"conclusion": "success"
+				}
+			],
+			"failedJob": "Lint, Typecheck & Test",
+			"branchDeleted": true,
+			"injectedFiles": ".github/workflows/ci.yml ",
+			"injectedNumstat": "3 0 .github/workflows/ci.yml|",
+			"injectedLines": "- name: Deliberate gate negative control|run: exit 1|"
+		},
+		"draft": {
+			"commandId": "live-gate-draft",
+			"runId": 31132439991,
+			"url": "https://github.com/MrChrisRodriguez/devenv/actions/runs/31132439991",
+			"event": "pull_request",
+			"headBranch": "evidence/stage-7-gate-negative",
+			"headSha": "d789242f648d7d7fd3f5b57ef46d16ff509ae3f2",
+			"conclusion": "failure",
+			"gateJobId": 92724285178,
+			"gateConclusion": "failure",
+			"gateLogSha256": "4cc2fc0b76da5e037ac26dd491b5461783f568ad420b1f4adeaa034f9aab7f26",
+			"upstreamResults": "",
+			"gateVerdict": "This pull request is a draft, so the gating jobs were skipped. Mark it ready for review to validate it; the required check stays red until then.",
+			"jobs": [
+				{
+					"name": "Lint, Typecheck & Test",
+					"conclusion": "skipped"
+				},
+				{
+					"name": "Launch baked browser payload",
+					"conclusion": "skipped"
+				},
+				{
+					"name": "Build devcontainer image",
+					"conclusion": "skipped"
+				}
+			],
+			"isDraft": true,
+			"pullRequest": 26,
+			"pullRequestClosed": true
+		}
+	},
+	"branchProtection": {
+		"commandId": "branch-protection",
+		"branch": "main",
+		"contexts": ["CI gate"],
+		"strict": true,
+		"enforceAdmins": false,
+		"requiredPullRequestReviews": false,
+		"restrictions": false,
+		"applyCommand": [
+			"gh",
+			"api",
+			"-X",
+			"PUT",
+			"repos/MrChrisRodriguez/devenv/branches/main/protection"
+		],
+		"removeCommand": [
+			"gh",
+			"api",
+			"-X",
+			"DELETE",
+			"repos/MrChrisRodriguez/devenv/branches/main/protection"
+		]
+	},
+	"coverage": [
+		{
+			"id": "setup-input-and-context",
+			"task": "setup input and context",
+			"status": "proven",
+			"reason": "The composite action's required input, its empty-value refusal, its runtime assertion against .prototools, and the rejection of every runner context in action metadata are each driven by a mutation that has to be rejected and a lookalike that has to be accepted.",
+			"commandIds": ["ci-guard", "workflow-policy-mutations"]
+		},
+		{
+			"id": "trigger-forms",
+			"task": "trigger forms",
+			"status": "proven",
+			"reason": "Every form of a pull_request base-branch filter, a missing ready_for_review activity, a missing draft/ready concurrency lane, and a missing cancel-in-progress is mutated into the committed workflows and rejected.",
+			"commandIds": ["ci-guard", "workflow-policy-mutations"]
+		},
+		{
+			"id": "aggregate-dependency-and-results",
+			"task": "aggregate dependency and results",
+			"status": "proven",
+			"reason": "Removing a needs entry, removing always(), and removing the join over needs results are each rejected, and the whole results decision table is executed against the committed gate script rather than described.",
+			"commandIds": [
+				"ci-guard",
+				"workflow-policy-mutations",
+				"gate-semantics",
+				"rendered-workflow-graph",
+				"live-gate-green",
+				"live-gate-red",
+				"live-gate-draft"
+			]
+		},
+		{
+			"id": "semantic-readiness-and-liveness",
+			"task": "semantic readiness and liveness",
+			"status": "proven",
+			"reason": "A fixed sleep and a hand-rolled retry loop in a workflow body are rejected, and the committed install wrapper is executed against a deliberately hanging command to show it bounds each attempt, caps the attempt count, and surfaces the timeout exit code instead of masking it.",
+			"commandIds": ["ci-guard", "workflow-policy-mutations"]
+		},
+		{
+			"id": "service-readiness-probes",
+			"task": "semantic readiness and liveness (service-readiness portion)",
+			"status": "not-applicable",
+			"reason": "No job in either workflow boots a service, so there is no readiness or liveness probe in CI to mutate. The probe-based readiness this repository does own belongs to scripts/worktree/ and is guarded by the Stage 5 and Stage 6 records; claiming it here would be counting the same proof twice.",
+			"commandIds": []
+		},
+		{
+			"id": "runtime-ownership",
+			"task": "runtime ownership",
+			"status": "proven",
+			"reason": "A setup-node step, an npm, npx, pnpm, yarn, or corepack invocation, and a fetch-depth on any job outside the declared history-owning list are each rejected, while bunx and the declared owner are accepted.",
+			"commandIds": ["ci-guard", "workflow-policy-mutations"]
+		},
+		{
+			"id": "compiler-coverage",
+			"task": "compiler coverage",
+			"status": "proven",
+			"reason": "A tracked TypeScript file that falls outside every committed tsconfig include is rejected, and the workflow is required to run a typecheck for each project, so a file the compiler never sees cannot be added silently.",
+			"commandIds": ["ci-guard", "workflow-policy-mutations"]
+		},
+		{
+			"id": "network-isolation",
+			"task": "network isolation",
+			"status": "proven",
+			"reason": "Any MOON_REMOTE_ variable anywhere under .github, a gate that depends on the real-network smoke workflow, a Bun dependency cache path, and a networked bootstrap in the required lane are each rejected, and the live green run shows the gate deciding from the hermetic lanes alone.",
+			"commandIds": ["ci-guard", "workflow-policy-mutations", "live-gate-green"]
+		}
+	],
+	"rollback": {
+		"mode": "atomic",
+		"command": ["git", "revert", "-m", "1", "<stage-7-pr-merge-commit>"],
+		"outsideTheTree": [
+			[
+				"gh",
+				"api",
+				"-X",
+				"DELETE",
+				"repos/MrChrisRodriguez/devenv/branches/main/protection"
+			]
+		],
+		"containerRebuildRequired": false,
+		"scope": "Revert the composite action, the three CI helper scripts, the root tsconfig.json, the workflow guard and its entrypoint, both workflow rewrites, the toolchain and cloud contract retargets, the ownership and Renovate wiring, the documentation, and this record as one Stage 7 bundle. Nothing under .devcontainer/** changed, so adopting or reverting this stage costs no container rebuild. One thing the revert cannot undo: branch protection lives on the forge and not in the tree, so removing the required status check is a separate operator step run with the recorded removeCommand, and it has to happen before the revert lands or every later pull request blocks on a context no workflow produces any more.",
+		"proof": {
+			"commandId": "rollback-proof",
+			"predecessorSha": "75343aed70b712e3a6368cd059d13784a8c8e2f3",
+			"implementationSha": "9b15ab355b401e366f8e6a37976f95a0f7e1521e",
+			"syntheticMergeSha": "04c3aad3a051762bf402826c0ec2e1f83ea42176",
+			"syntheticMergeTree": "1882e8ac037436dec252299cfa75141fcca8028b",
+			"syntheticMergeParents": [
+				"75343aed70b712e3a6368cd059d13784a8c8e2f3",
+				"9b15ab355b401e366f8e6a37976f95a0f7e1521e"
+			],
+			"predecessorTree": "4cd2c115924319d236f873061913ec5781e5a566",
+			"revertedTree": "4cd2c115924319d236f873061913ec5781e5a566",
+			"treeMatchesPredecessor": true,
+			"operations": [
+				["git", "rev-parse", "75343aed70b712e3a6368cd059d13784a8c8e2f3^{tree}"],
+				["git", "rev-parse", "9b15ab355b401e366f8e6a37976f95a0f7e1521e^{tree}"],
+				[
+					"git",
+					"worktree",
+					"add",
+					"--detach",
+					"/tmp/devenv-stage2-stage7-20260806t235847z-9b15ab35-rollback",
+					"75343aed70b712e3a6368cd059d13784a8c8e2f3"
+				],
+				[
+					"git",
+					"commit-tree",
+					"1882e8ac037436dec252299cfa75141fcca8028b",
+					"-p",
+					"75343aed70b712e3a6368cd059d13784a8c8e2f3",
+					"-p",
+					"9b15ab355b401e366f8e6a37976f95a0f7e1521e",
+					"-m",
+					"Stage 2 synthetic merge"
+				],
+				["git", "rev-parse", "04c3aad3a051762bf402826c0ec2e1f83ea42176^{tree}"],
+				[
+					"git",
+					"show",
+					"-s",
+					"--format=%P",
+					"04c3aad3a051762bf402826c0ec2e1f83ea42176"
+				],
+				[
+					"git",
+					"checkout",
+					"--detach",
+					"04c3aad3a051762bf402826c0ec2e1f83ea42176"
+				],
+				[
+					"git",
+					"revert",
+					"--no-edit",
+					"-m",
+					"1",
+					"04c3aad3a051762bf402826c0ec2e1f83ea42176"
+				],
+				["git", "rev-parse", "HEAD^{tree}"]
+			],
+			"addedPaths": [
+				".github/actions/setup-bun/action.yml",
+				"scripts/ci/aggregate-gate.sh",
+				"scripts/ci/bun-install-retry.sh",
+				"scripts/ci/run-tests.sh",
+				"scripts/ci/run-typecheck.sh",
+				"scripts/template/__tests__/ci.test.ts",
+				"scripts/template/ci-contract.ts",
+				"scripts/template/validate-ci.ts",
+				"tsconfig.json"
+			],
+			"addedPathsRemoved": true
+		}
+	}
+}

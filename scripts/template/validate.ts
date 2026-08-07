@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { validateBrowserContract } from "./browser-contract";
+import { validateCiContract } from "./ci-contract";
 import { validateCloudContract } from "./cloud-contract";
 import { validateStageZeroEvidence } from "./evidence";
 import { validateStageTwoEvidence } from "./image-evidence";
@@ -14,6 +15,7 @@ import {
 import { validateStageFiveBEvidence } from "./stage-five-b-evidence";
 import { validateStageFiveEvidence } from "./stage-five-evidence";
 import { validateStageFourEvidence } from "./stage-four-evidence";
+import { validateStageSevenEvidence } from "./stage-seven-evidence";
 import { validateStageSixEvidence } from "./stage-six-evidence";
 import { validateStageThreeEvidence } from "./stage-three-evidence";
 import { validateToolchainContract } from "./toolchain";
@@ -41,6 +43,8 @@ export interface ValidationReport {
 	cutoverEvidenceSchemaFile: string;
 	doctorEvidenceFile: string;
 	doctorEvidenceSchemaFile: string;
+	ciEvidenceFile: string;
+	ciEvidenceSchemaFile: string;
 	fixtures: Array<{ name: string; status: "pass" | "fail"; errors: string[] }>;
 	errors: string[];
 }
@@ -69,6 +73,8 @@ export async function validateAll(
 		cutoverEvidenceSchemaFile: "evidence/stage-5b-cutover.schema.json",
 		doctorEvidenceFile: "evidence/stage-6-doctor.json",
 		doctorEvidenceSchemaFile: "evidence/stage-6-doctor.schema.json",
+		ciEvidenceFile: "evidence/stage-7-ci.json",
+		ciEvidenceSchemaFile: "evidence/stage-7-ci.schema.json",
 		fixtures: [],
 		errors: [],
 	};
@@ -133,6 +139,11 @@ export async function validateAll(
 			report.status = "fail";
 			report.errors.push(...worktreeErrors);
 		}
+		const ciErrors = await validateCiContract(root);
+		if (ciErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...ciErrors);
+		}
 		const toolchainEvidenceErrors = await validateStageOneEvidence(root);
 		if (toolchainEvidenceErrors.length > 0) {
 			report.status = "fail";
@@ -182,6 +193,13 @@ export async function validateAll(
 				...doctorEvidenceErrors.map((error) => `stage-6 evidence: ${error}`),
 			);
 		}
+		const ciEvidenceErrors = await validateStageSevenEvidence(root);
+		if (ciEvidenceErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(
+				...ciEvidenceErrors.map((error) => `stage-7 evidence: ${error}`),
+			);
+		}
 	} catch (error) {
 		report.status = "fail";
 		if (error instanceof ParameterValidationError)
@@ -200,7 +218,7 @@ if (import.meta.main) {
 	if (json) console.log(JSON.stringify(report, null, 2));
 	else if (report.status === "pass") {
 		console.log(
-			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, and ${report.fixtures.length} fixtures.`,
+			`Validated ${report.parameterFile}, ${report.evidenceFile}, ${report.toolchainEvidenceFile}, ${report.imageEvidenceFile}, ${report.runtimeEvidenceFile}, ${report.cloudEvidenceFile}, ${report.worktreeEvidenceFile}, ${report.cutoverEvidenceFile}, ${report.doctorEvidenceFile}, ${report.ciEvidenceFile}, and ${report.fixtures.length} fixtures.`,
 		);
 	} else {
 		console.error(

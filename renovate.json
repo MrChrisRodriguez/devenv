@@ -1,7 +1,7 @@
 {
 	"$schema": "https://docs.renovatebot.com/renovate-schema.json",
 	"extends": ["config:recommended", ":dependencyDashboard"],
-	"enabledManagers": ["custom.regex", "dockerfile"],
+	"enabledManagers": ["custom.regex", "dockerfile", "github-actions"],
 	"customManagers": [
 		{
 			"customType": "regex",
@@ -21,6 +21,18 @@
 		}
 	],
 	"packageRules": [
+		{
+			"description": "Third-party actions are pinned to immutable commit SHAs with a trailing version comment. Without this manager the pins never move again and the tag comment silently rots; the manager keeps both halves in step.",
+			"matchManagers": ["github-actions"],
+			"rangeStrategy": "pin",
+			"pinDigests": true,
+			"separateMajorMinor": true,
+			"separateMinorPatch": true,
+			"groupName": null,
+			"automerge": false,
+			"commitMessagePrefix": "chore(ci):",
+			"semanticCommits": "disabled"
+		},
 		{
 			"matchFileNames": [".devcontainer/Dockerfile"],
 			"matchManagers": ["custom.regex", "dockerfile"],

@@ -1,0 +1,113 @@
+name: Setup Bun
+description: >
+  Install the pinned Bun toolchain and, by default, the workspace dependencies
+  through the committed retry wrapper. This action is the single owner of "how a
+  CI job gets Bun and node_modules", so no call site can drift from the version
+  pinned in .prototools.
+
+# ---------------------------------------------------------------------------
+# WHY THERE IS NO DEPENDENCY CACHE HERE - please read before "fixing" this.
+#
+# oven-sh/setup-bun declares exactly these inputs:
+#   bun-version, bun-version-file, bun-download-url, registries, registry-url,
+#   scope, no-cache, token
+# There is no `cache` and no `cache-dependency-path`. GitHub Actions silently
+# ignores unknown inputs, so a workflow that passes them looks cached and caches
+# nothing, forever. (`no-cache` governs caching the Bun BINARY - which setup-bun
+# already does by default - not dependencies.)
+#
+# The obvious repair is actions/cache over Bun's global module cache
+# (~/.bun/install/cache). It was measured upstream and it LOSES by construction.
+# Bun's global cache stores EXTRACTED packages, not tarballs, so the restore leg
+# performs the same two operations that make a cold install cold - download the
+# payload, then write it all to disk - and adds tar/zstd overhead on top:
+#
+#   cold `bun install --frozen-lockfile` (empty cache) : ~11.9 s
+#   warm `bun install --frozen-lockfile` (hot cache)   : ~ 6.5 s
+#   => the entire prize is ~5.4 s
+#   tar+extract of the 1.2 GB cache, ZERO network      : ~ 6.4 s  <- already more
+#   compressed cache artifact                          :  337 MB
+#
+# A 337 MB artifact per lockfile revision also evicts, under a repository's
+# 10 GB Actions cache quota, the caches that DO pay for themselves. `bun install`
+# is already fast; the correct fix was to delete the lie, not to add a cache. If
+# you want to revisit this, re-measure first - and beat 5.4 s including restore.
+# ---------------------------------------------------------------------------
+
+inputs:
+  bun-version:
+    description: >
+      Bun version to install. Callers MUST pass the workflow-level BUN_VERSION
+      environment value; there is deliberately no default here. The toolchain
+      guard reads every bun-version assignment under .github and asserts each one
+      resolves to the version pinned in .prototools, so a default in this file
+      would sit outside that guard and become a second, unchecked authority.
+
+      NOTE: never write a runner expression - the dollar-and-double-brace form -
+      anywhere in this file, not even inside prose. The runner parses action.yml
+      as a template and evaluates every expression it finds, including inside a
+      description, BEFORE a single step runs. Composite-action metadata has no
+      env, secrets, vars, needs, or matrix context, so one documentation sentence
+      naming one of those fails the whole action to LOAD, which fails every job
+      that uses it.
+    required: true
+  install:
+    description: >
+      Install workspace dependencies through the committed retry wrapper. Set to
+      the string "false" for a job that needs only the Bun binary to run a
+      standalone script with no workspace imports.
+    required: false
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    # `required: true` is NOT enforced by the runner for composite actions, and
+    # an empty version makes setup-bun quietly install "latest" - the same class
+    # of silent misconfiguration this action exists to kill. Fail loudly instead.
+    #
+    # There is deliberately no timeout-minutes on any step below:
+    # timeout-minutes is unsupported on composite-action steps, and the only
+    # unbounded operation here is the install, whose per-attempt bound lives in
+    # scripts/ci/bun-install-retry.sh.
+    - name: Assert bun-version was supplied
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ -z "${{ inputs.bun-version }}" ]; then
+          echo "::error::setup-bun: bun-version is empty. Pass the workflow's BUN_VERSION." >&2
+          exit 1
+        fi
+
+    - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+      with:
+        bun-version: ${{ inputs.bun-version }}
+
+    # Close the loop: the version the caller asked for is only an intention until
+    # the installed binary agrees with the authority. Reading .prototools here
+    # makes the action self-verifying rather than trusting its own input, and a
+    # missing manifest is a hard failure - not a skipped check.
+    - name: Assert the installed Bun matches the pinned toolchain
+      shell: bash
+      run: |
+        set -euo pipefail
+        if [ ! -f .prototools ]; then
+          echo "::error::setup-bun: .prototools is missing; the Bun pin has no authority to verify against." >&2
+          exit 1
+        fi
+        pinned="$(sed -n 's/^bun = "\([^"]*\)"[[:space:]]*$/\1/p' .prototools | head -n 1)"
+        if [ -z "$pinned" ]; then
+          echo "::error::setup-bun: .prototools declares no bun version." >&2
+          exit 1
+        fi
+        actual="$(bun --version)"
+        if [ "$actual" != "$pinned" ]; then
+          echo "::error::setup-bun: installed Bun $actual differs from the .prototools pin $pinned." >&2
+          exit 1
+        fi
+        echo "Bun $actual matches the .prototools pin."
+
+    - name: Install dependencies
+      if: inputs.install != 'false'
+      shell: bash
+      run: bash scripts/ci/bun-install-retry.sh

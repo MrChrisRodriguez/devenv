@@ -1,0 +1,9 @@
+case-push-every-job-succeeded=0
+case-ready-success-and-skipped=0
+case-ready-one-job-failed=1
+case-ready-one-job-cancelled=1
+case-ready-one-result-empty=1
+case-ready-no-results-at-all=1
+case-draft-every-job-skipped=1
+draftMessage=::error::This pull request is a draft, so the gating jobs were skipped. Mark it ready for review to validate it; the required check stays red until then.
+greenOutput=upstream results: success,success,success|Every required job passed or was skipped.

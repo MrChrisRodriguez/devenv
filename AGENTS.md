@@ -139,6 +139,18 @@ scripts/   # one-off tooling scripts
 - Runtime environment knobs, all prefixed with the contract's environment prefix: `<PREFIX>_STARTUP_MODE=staggered` replaces readiness gates with bounded delays, `<PREFIX>_STAGGER_SECONDS` sets that delay, `<PREFIX>_SERVICE_START_TIMEOUT` bounds a single service's readiness wait, `<PREFIX>_HOST_CADDY_BIN` and `<PREFIX>_HOST_CADDYFILE` override host Caddy discovery, and `WORKTREE_ENSURE_LOCK_TIMEOUT_SECONDS` bounds the container lifecycle lock.
 - Every runtime script writes its diagnostics to stderr, so stdout stays parseable: `env.sh --json`, `ensure.sh` (a container id), `manifest.sh path|env`, and `services.sh order|status` are the only stdout producers. Every entry point exits 2 with a usage block on an unsupported argument.
 
+## Continuous Integration Ownership
+
+- `.github/actions/setup-bun` is the only place a job learns how to get Bun and `node_modules`. The version chain is one-way: `.prototools` → a workflow's top-level `env.BUN_VERSION` → the action's `required` input → `oven-sh/setup-bun` → a runtime assertion back against `.prototools`. Never spell a Bun version any other way, and never add a second bootstrap path.
+- Pin every third-party action to a 40-hex SHA with a trailing `# vX.Y.Z` comment. Local actions use the `./.github/...` path form.
+- Never write `${{ }}` anywhere in `action.yml`, prose included. A composite action has no `env`, `secrets`, `vars`, `needs`, or `matrix` context, and one such expression makes the action fail to load. `timeout-minutes` is also unsupported on composite steps; per-attempt bounds belong in `scripts/ci/bun-install-retry.sh`.
+- Never add a `branches:` filter under `pull_request`. It matches the pull request's BASE branch, so a stacked pull request runs zero gating jobs and shows a green page with no checks on it. Keep `ready_for_review` in `types` and keep the draft/ready suffix on the concurrency group.
+- Every job needs `timeout-minutes`. No step may carry `continue-on-error`: `scripts/ci/run-tests.sh` and `scripts/ci/run-typecheck.sh` classify the two "nothing to check yet" exits, and every other failure is passed straight through.
+- `ci-gate` is the one required status check. Its display name — `CI gate`, not the job id — is the branch-protection context. It runs `if: ${{ always() }}`, its `needs` names every other job in the file, and its verdict comes from `join(needs.*.result)` passed through `env:` into `scripts/ci/aggregate-gate.sh`. Adding a job means adding it to `needs`.
+- Never interpolate `${{ github.event.* }}` into a `run:` body. Pull-request metadata is attacker-influenced text; pass it through `env:` so it is only ever a value.
+- Never bootstrap from the network in the required lane, never add `MOON_REMOTE_*` under `.github/**`, and never make the gate depend on the real-network smoke workflow. `fetch-depth` belongs only to jobs on the guard's declared history-owner list.
+- Run `bun run ci:check` after changing any workflow, composite action, `scripts/ci/*` helper, `tsconfig` include, or package script that CI invokes. Branch protection is not in the tree: applying and removing it are operator steps run with `gh api` against `branches/<default>/protection`.
+
 ## Commit Policy
 
 ALWAYS commit and push after completing each significant change. Do NOT wait for the user to ask. Before committing, update `/workspace/CHANGES.md` with a dated entry (Goal + How to implement).

@@ -1,4 +1,5 @@
 // biome-ignore-all lint/complexity/useLiteralKeys: Strict JSON/TOML records require bracket access.
+// biome-ignore-all lint/suspicious/noTemplateCurlyInString: Workflow indirection is matched as literal runner-expression text.
 import { resolve } from "node:path";
 
 const EXACT_VERSION = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
@@ -200,6 +201,16 @@ async function nestedLockPaths(root: string): Promise<string[]> {
 	return [...new Set(paths)].sort();
 }
 
+// The whole right-hand side of every `bun-version:` assignment, so the caller
+// judges the FORM of the reference and not just a literal. An input declaration
+// (`bun-version:` with a nested block and no value) is not an assignment and is
+// deliberately not returned here.
+function bunVersionAssignments(automation: string): string[] {
+	return [
+		...automation.matchAll(/^[^\S\n]*bun-version:[^\S\n]*(\S.*?)[^\S\n]*$/gm),
+	].flatMap((match) => (match[1] ? [match[1]] : []));
+}
+
 function setupBunPins(workflow: string): Array<string | undefined> {
 	const lines = workflow.split("\n");
 	const pins: Array<string | undefined> = [];
@@ -222,12 +233,54 @@ function setupBunPins(workflow: string): Array<string | undefined> {
 		)
 			stepEnd += 1;
 		const step = lines.slice(stepStart, stepEnd).join("\n");
-		const matches = [
-			...step.matchAll(/bun-version:\s*['"]?([^'"\s#]+)/g),
-		].flatMap((match) => (match[1] ? [match[1]] : []));
+		const matches = bunVersionAssignments(step);
 		pins.push(matches.length === 1 ? matches[0] : undefined);
 	}
 	return pins;
+}
+
+// The value of a top-level `env:` key, which is where a workflow publishes its
+// single Bun pin. Job-level and step-level env blocks are indented and therefore
+// never match, which is the point: a second pin further down the file is drift.
+function topLevelEnvValue(automation: string, key: string): string | undefined {
+	const lines = automation.split("\n");
+	const matcher = new RegExp(`^\\s+${escapeRegExp(key)}:\\s*['"]?([^'"\\s#]+)`);
+	let inEnv = false;
+	for (const line of lines) {
+		if (/^env:\s*$/.test(line)) {
+			inEnv = true;
+			continue;
+		}
+		if (!inEnv) continue;
+		if (line.trim() === "") continue;
+		if (/^\S/.test(line)) {
+			inEnv = false;
+			continue;
+		}
+		const match = matcher.exec(line);
+		if (match?.[1]) return match[1];
+	}
+	return undefined;
+}
+
+// A composite action may only relay a bun-version its caller supplied, and only
+// if the declaration makes that mandatory. `required: true` is not enforced by
+// the runner for composite actions, so a default here would quietly become a
+// second authority the version guard never sees.
+function declaresRequiredBunVersionInput(automation: string): boolean {
+	const lines = automation.split("\n");
+	const start = lines.findIndex((line) => /^\s+bun-version:\s*$/.test(line));
+	if (start < 0) return false;
+	const indent = (/^\s*/.exec(lines[start] ?? "")?.[0] ?? "").length;
+	let required = false;
+	for (let index = start + 1; index < lines.length; index += 1) {
+		const line = lines[index] ?? "";
+		if (line.trim() === "") continue;
+		if ((/^\s*/.exec(line)?.[0] ?? "").length <= indent) break;
+		if (/^\s*required:\s*true\s*$/.test(line)) required = true;
+		if (/^\s*default:/.test(line)) return false;
+	}
+	return required;
 }
 
 export async function validateToolchainContract(
@@ -412,20 +465,52 @@ export async function validateToolchainContract(
 		}))
 			githubAutomationPaths.push(automationPath);
 	}
+	// Bun reaches a CI job through one indirection chain and no other:
+	//   .prototools -> a workflow's top-level env.BUN_VERSION
+	//                -> a composite action's required bun-version input
+	//                -> oven-sh/setup-bun
+	// Each hop is judged where it is written. A literal version at any hop is a
+	// second authority nothing keeps in step with .prototools, which is exactly
+	// the drift this guard exists to make impossible.
 	for (const automationPath of [...new Set(githubAutomationPaths)].sort()) {
 		const automation = await Bun.file(resolve(root, automationPath)).text();
-		if (!/oven-sh\/setup-bun@/i.test(automation)) continue;
-		const pins = setupBunPins(automation);
-		for (const pin of pins) {
-			if (pin === undefined) {
+		const isCompositeAction = automationPath.startsWith(".github/actions/");
+		for (const pin of setupBunPins(automation)) {
+			if (pin === undefined)
 				errors.push(`proto: ${automationPath} setup-bun omits bun-version`);
-				continue;
+		}
+		const assignments = bunVersionAssignments(automation);
+		if (assignments.length === 0) continue;
+		if (isCompositeAction) {
+			for (const assignment of assignments) {
+				if (assignment !== "${{ inputs.bun-version }}") {
+					errors.push(
+						`proto: ${automationPath} must relay bun-version from its own input`,
+					);
+					continue;
+				}
+				if (!declaresRequiredBunVersionInput(automation))
+					errors.push(
+						`proto: ${automationPath} must declare bun-version required without a default`,
+					);
 			}
-			if (pin !== protoValue["bun"])
+			continue;
+		}
+		const declaredBun = topLevelEnvValue(automation, "BUN_VERSION");
+		for (const assignment of assignments) {
+			if (assignment !== "${{ env.BUN_VERSION }}")
 				errors.push(
-					`proto: ${automationPath} Bun ${pin} differs from .prototools`,
+					`proto: ${automationPath} must pass bun-version through env.BUN_VERSION`,
 				);
 		}
+		if (declaredBun === undefined) {
+			errors.push(`proto: ${automationPath} omits a top-level BUN_VERSION pin`);
+			continue;
+		}
+		if (declaredBun !== protoValue["bun"])
+			errors.push(
+				`proto: ${automationPath} Bun ${declaredBun} differs from .prototools`,
+			);
 	}
 
 	const lockText = await Bun.file(resolve(root, "bun.lock")).text();

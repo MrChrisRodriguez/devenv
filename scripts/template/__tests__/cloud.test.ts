@@ -211,17 +211,14 @@ describe("codex cloud contract", () => {
 				temporary,
 				".github/workflows/codex-cloud-smoke.yml",
 				(source) =>
-					source.replace(
-						"  pull_request:\n    paths:",
-						"  pull_request:\n    branches: [main]\n    paths:",
-					),
+					source.replace("\n    paths:", "\n    branches: [main]\n    paths:"),
 				"cloud: smoke pull_request must not filter base branches",
 			);
 			await mutate(
 				temporary,
 				".github/workflows/codex-cloud-smoke.yml",
 				(source) =>
-					source.replace("bun-version: '1.3.13'", "bun-version: '1.3.14'"),
+					source.replace('BUN_VERSION: "1.3.13"', 'BUN_VERSION: "1.3.14"'),
 				"cloud: workflow Bun pin must equal the cloud contract",
 			);
 		} finally {

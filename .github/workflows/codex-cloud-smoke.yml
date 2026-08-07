@@ -7,6 +7,13 @@ name: Codex cloud smoke
 
 on:
   pull_request:
+    # No `branches:` filter, for the same reason ci.yml has none: that filter
+    # matches the PR's BASE branch, so it would silently disable this smoke on
+    # every stacked pull request. `paths:` is the intended narrowing.
+    #
+    # `ready_for_review` keeps this lane consistent with the gating workflow: a
+    # PR promoted out of draft revalidates immediately.
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - ".codex/cloud/**"
       - ".prototools"
@@ -19,12 +26,20 @@ on:
     - cron: "30 8 * * *"
   workflow_dispatch:
 
+# Same draft/ready lane separation as the gating workflow, so a ready_for_review
+# run never cancels the draft run whose jobs are still attached to this head.
 concurrency:
-  group: codex-cloud-smoke-${{ github.ref }}
+  group: codex-cloud-smoke-${{ github.ref }}-${{ github.event_name == 'pull_request' && github.event.pull_request.draft && 'draft' || 'ready' }}
   cancel-in-progress: true
 
 permissions:
   contents: read
+
+# Same one-way Bun authority as ci.yml: .prototools -> env.BUN_VERSION -> the
+# setup-bun action's required input -> a runtime assertion back against
+# .prototools. A literal version anywhere in this file is a second authority.
+env:
+  BUN_VERSION: "1.3.13"
 
 jobs:
   smoke:
@@ -42,18 +57,27 @@ jobs:
           # capability:end playwright
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
-      - uses: oven-sh/setup-bun@v2
+      # The bootstrap under test installs its own workspace dependencies; this
+      # job needs nothing from the Bun toolchain but the binary itself.
+      - uses: ./.github/actions/setup-bun
         with:
-          bun-version: '1.3.13'
+          bun-version: ${{ env.BUN_VERSION }}
+          install: "false"
 
       - name: Cache cloud toolchain and downloads
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
+          # ~/.bun/install/cache is deliberately NOT cached. Bun's global cache
+          # stores EXTRACTED packages rather than tarballs, so restoring it does
+          # the same two expensive things a cold install does — move the payload,
+          # then write it all to disk — plus tar/zstd overhead, and it evicts the
+          # entries below that genuinely do pay for themselves. The remaining
+          # paths are real wins: Proto toolchains, uv, and the browser payload
+          # are large downloads this smoke would otherwise refetch every run.
           path: |
             ~/.proto
-            ~/.bun/install/cache
             ~/.cache/uv
             ~/.local/share/uv/tools
             ~/.local/bin

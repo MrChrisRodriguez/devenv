@@ -668,15 +668,23 @@ export async function validateCloudContract(
 			errors.push("cloud: smoke workflow must run the committed bootstrap");
 	}
 
+	// Both workflows now reach Bun through a composite action, so no literal
+	// version survives in either file: the only thing left to compare against the
+	// cloud contract is the top-level env pin those callers relay. Matching the
+	// old `bun-version: '<literal>'` form here would be vacuous by construction.
 	const bunPin = scalar(contract, "tool_bun");
 	for (const workflow of [CI_WORKFLOW, SMOKE_WORKFLOW]) {
 		const source = await readText(resolve(root, workflow));
-		for (const match of source.matchAll(/bun-version:\s*'([^']+)'/g)) {
-			if (match[1] !== bunPin) {
-				errors.push("cloud: workflow Bun pin must equal the cloud contract");
-				break;
-			}
+		if (source === "") continue;
+		const pins = [
+			...source.matchAll(/^\s+BUN_VERSION:\s*['"]?([^'"\s#]+)/gm),
+		].flatMap((match) => (match[1] ? [match[1]] : []));
+		if (pins.length === 0) {
+			errors.push("cloud: workflow must pin Bun through env.BUN_VERSION");
+			continue;
 		}
+		if (pins.some((pin) => pin !== bunPin))
+			errors.push("cloud: workflow Bun pin must equal the cloud contract");
 	}
 
 	if (!ci.includes("bun run cloud:check"))

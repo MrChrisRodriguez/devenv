@@ -209,7 +209,7 @@ describe("repository toolchain contract", () => {
 				temporary,
 				".github/workflows/ci.yml",
 				(source) =>
-					source.replace("bun-version: '1.3.13'", "bun-version: '1.3.14'"),
+					source.replace('BUN_VERSION: "1.3.13"', 'BUN_VERSION: "1.3.14"'),
 				"proto: .github/workflows/ci.yml Bun 1.3.14 differs from .prototools",
 			);
 			await mutate(
@@ -217,10 +217,29 @@ describe("repository toolchain contract", () => {
 				".github/workflows/ci.yml",
 				(source) =>
 					source.replace(
-						"      - name: Install dependencies",
-						"      - uses: oven-sh/setup-bun@v2\n\n      - name: Install dependencies",
+						"      - name: Validate toolchain contract",
+						"      - uses: oven-sh/setup-bun@v2\n\n      - name: Validate toolchain contract",
 					),
 				"proto: .github/workflows/ci.yml setup-bun omits bun-version",
+			);
+			// The indirection itself is the contract: a job that spells the version
+			// out has left the one authority chain, even when the literal happens to
+			// be correct today.
+			await mutate(
+				temporary,
+				".github/workflows/ci.yml",
+				(source) =>
+					source.replace(
+						"bun-version: ${{ env.BUN_VERSION }}",
+						"bun-version: '1.3.13'",
+					),
+				"proto: .github/workflows/ci.yml must pass bun-version through env.BUN_VERSION",
+			);
+			await mutate(
+				temporary,
+				".github/workflows/ci.yml",
+				(source) => source.replace('\nenv:\n  BUN_VERSION: "1.3.13"\n', "\n"),
+				"proto: .github/workflows/ci.yml omits a top-level BUN_VERSION pin",
 			);
 			const compositeAction = resolve(
 				temporary,
