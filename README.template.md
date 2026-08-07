@@ -92,6 +92,11 @@ stays a fully spec-compliant definition, so an editor or the `devcontainer` CLI 
 still open this folder, but only `up.sh` gives this checkout a stable port, a route,
 isolation from sibling worktrees, and a manifest.
 
+Symptoms that look like defects and are not — the exit 7 above, a rebuild after
+a change you thought was cosmetic, a second clone colliding with the first, and
+a fresh project reporting a missing lockfile — are collected in
+[docs/troubleshooting.md](docs/troubleshooting.md).
+
 <!-- capability:start codex_cloud -->
 
 ### Codex Cloud

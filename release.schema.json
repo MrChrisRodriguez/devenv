@@ -14,6 +14,7 @@
 		"topLevelWorkspaces",
 		"syncBoundary",
 		"deferrals",
+		"agentRuleSections",
 		"acceptance",
 		"budgets",
 		"signals"
@@ -163,6 +164,20 @@
 						"minItems": 1,
 						"items": { "type": "string", "minLength": 1 }
 					}
+				}
+			}
+		},
+		"agentRuleSections": {
+			"description": "Which `## …` section of `AGENTS.md` describes each `*:check` guard. It is declared rather than derived because the mapping is not derivable from the names: fifteen guards map to fourteen `## … Ownership` sections plus `## Canonical Agent Rules`, and `worktree:check` is named in no line of the file at all. The guard asserts the mapping covers every script a render keeps and that each named section survived into the same render — so a capability whose guard ships without its documentation, or whose documentation ships without its guard, is a refusal. `AGENTS.md` gains NO new section for the release gate: `stripTemplateOnlyBlocks` matches a `#`-comment form and `# template-only:start release` is an H1 in markdown, so a section describing this stage would ship into every render describing a guard that is not there. The release gate's own scripts are refused from this mapping for that reason, which proves the template-only decision from the other side.",
+			"type": "array",
+			"minItems": 1,
+			"items": {
+				"type": "object",
+				"additionalProperties": false,
+				"required": ["script", "section"],
+				"properties": {
+					"script": { "type": "string", "minLength": 1 },
+					"section": { "type": "string", "pattern": "^## " }
 				}
 			}
 		},

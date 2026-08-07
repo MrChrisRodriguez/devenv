@@ -26,6 +26,7 @@ import {
 	TEMPLATE_ONLY_PATHS,
 	templateOnlyBlockOf,
 	validateAcceptance,
+	validateAgentSections,
 	validateBudgets,
 	validateCapabilityInventory,
 	validateDeferrals,
@@ -1312,4 +1313,91 @@ describe("the goldens catch renderer drift", () => {
 			await rm(temporary, { recursive: true, force: true });
 		}
 	}, 180_000);
+});
+
+describe("the guard-to-documentation mapping", () => {
+	test("maps every check script a render keeps to a section that survived with it", async () => {
+		const agents = await Bun.file(resolve(ROOT, "AGENTS.md")).text();
+		const manifest = (await Bun.file(resolve(ROOT, "package.json")).json()) as {
+			scripts: Record<string, string>;
+		};
+		const report = validateAgentSections(
+			COMMITTED,
+			Object.keys(manifest.scripts),
+			agents,
+			"the template tree",
+		);
+		expect(report.errors).toEqual([]);
+		// Fifteen guards, fourteen `## … Ownership` sections and one that is not
+		// named "Ownership" at all. The mapping is declared precisely because it
+		// is not derivable from the names.
+		expect(COMMITTED.agentRuleSections).toHaveLength(15);
+		expect(
+			COMMITTED.agentRuleSections.filter((entry) =>
+				entry.section.endsWith("Ownership"),
+			),
+		).toHaveLength(14);
+		for (const entry of COMMITTED.agentRuleSections)
+			expect(agents).toContain(entry.section);
+	});
+
+	test("refuses a guard whose section did not survive into the same render", () => {
+		const report = validateAgentSections(
+			COMMITTED,
+			["cloud:check"],
+			"# Agent rules\n\n## Toolchain Ownership\n",
+			"a render",
+		);
+		expect(report.errors.join("\n")).toContain(
+			"release: a render keeps cloud:check and its AGENTS.md section ## Codex Cloud Ownership did not survive with it",
+		);
+	});
+
+	test("refuses a guard the mapping does not describe at all", () => {
+		const report = validateAgentSections(
+			COMMITTED,
+			["invented:check"],
+			"# Agent rules\n",
+			"a render",
+		);
+		expect(report.errors.join("\n")).toContain(
+			"a guard nothing documents is one nobody can be told about",
+		);
+	});
+
+	test("refuses a section describing the release gate itself", () => {
+		// The assertion that proves this stage's decision from the other side.
+		// `stripTemplateOnlyBlocks` matches a `#`-comment form, so in markdown a
+		// template-only marker renders as an H1 — a `## Release Ownership`
+		// section would ship into every render describing a guard that is not
+		// there.
+		const registry: ReleaseRegistry = {
+			...COMMITTED,
+			agentRuleSections: [
+				...COMMITTED.agentRuleSections,
+				{ script: GUARD_SCRIPT, section: "## Release Ownership" },
+			],
+		};
+		const report = validateAgentSections(
+			registry,
+			[],
+			"# Agent rules\n",
+			"a render",
+		);
+		expect(report.errors.join("\n")).toContain(
+			"this surface is template-only and appears in no render, so a section describing it would ship where the guard does not",
+		);
+	});
+
+	test("refuses a surface that declares no check script at all", () => {
+		const report = validateAgentSections(
+			COMMITTED,
+			["prepare"],
+			"",
+			"a render",
+		);
+		expect(report.errors.join("\n")).toContain(
+			"declares no *:check script at all, so the ownership mapping compared nothing",
+		);
+	});
 });

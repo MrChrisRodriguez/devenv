@@ -130,6 +130,7 @@ export interface ReleaseRegistry {
 		reason: string;
 	};
 	deferrals: DeferralDeclaration[];
+	agentRuleSections: Array<{ script: string; section: string }>;
 	acceptance: AcceptanceDeclaration[];
 	budgets: BudgetDeclaration[];
 	signals: SignalDeclaration[];
@@ -890,6 +891,9 @@ export async function validateGoldens(
 					output as string,
 				)
 			).renders;
+		const renderedRoots = new Map(
+			rendered.map((item) => [item.fixture, item.root]),
+		);
 		for (const entry of declared) {
 			const golden = goldens.get(entry.fixture);
 			if (!golden) continue;
@@ -939,6 +943,30 @@ export async function validateGoldens(
 			notices.push(
 				`release: the ${entry.fixture} golden pinned ${manifest.files.length} rendered files and ${manifest.omittedCount} omitted template paths`,
 			);
+			const renderRoot = renderedRoots.get(entry.fixture);
+			if (renderRoot !== undefined) {
+				let scripts: string[] = [];
+				try {
+					const generated = (await Bun.file(
+						resolve(renderRoot, MANIFEST_PATH),
+					).json()) as JsonRecord;
+					scripts = isRecord(generated["scripts"])
+						? Object.keys(generated["scripts"])
+						: [];
+				} catch {
+					errors.push(
+						`release: the ${entry.fixture} render has no readable ${MANIFEST_PATH}`,
+					);
+				}
+				const sections = validateAgentSections(
+					registry,
+					scripts,
+					textOf(resolve(renderRoot, "AGENTS.md")),
+					`the ${entry.fixture} render`,
+				);
+				errors.push(...sections.errors);
+				notices.push(...sections.notices);
+			}
 		}
 	} finally {
 		if (output) await rm(output, { recursive: true, force: true });
@@ -2091,6 +2119,72 @@ export async function validateVersionAuthorities(
 		}
 	}
 	return errors.sort();
+}
+
+/**
+ * Every guard a render receives is described by a section of that render's
+ * AGENTS.md, and the release gate is described by none of them.
+ *
+ * "Finalize canonical agent rules" is discharged as a COMPLETENESS assertion
+ * over the sections that already exist rather than as a new section, and the
+ * reason is mechanical rather than stylistic: `stripTemplateOnlyBlocks` matches
+ * a `#`-comment form, and in markdown `# template-only:start release` renders
+ * as an H1. Template-only blocks do not work in markdown. A `## Release
+ * Ownership` section would therefore ship into every render, describing a guard
+ * that is not there — an agent instruction for a capability the project does
+ * not have, which is the thing the capability model forbids.
+ *
+ * So the rule is the mapping instead, and it has a live subject. Fifteen
+ * `*:check` scripts exist; fourteen `## … Ownership` sections describe them and
+ * `rules:check` is described by `## Canonical Agent Rules`, so the mapping is
+ * not derivable from the names and has to be declared. The guard asserts the
+ * declaration covers every script, that every named section exists, and — the
+ * half that matters — that for each render, every `*:check` script that
+ * SURVIVED into it has a section that survived with it. The release gate's own
+ * script is exempt by construction, because the `template:` prefix keeps it out
+ * of every render: the assertion proves this stage's central decision from the
+ * other side.
+ */
+export function validateAgentSections(
+	registry: ReleaseRegistry,
+	manifestScripts: string[],
+	agentRules: string,
+	label: string,
+): ReleaseReport {
+	const errors: string[] = [];
+	const notices: string[] = [];
+	const declared = new Map(
+		registry.agentRuleSections.map((entry) => [entry.script, entry.section]),
+	);
+	const checks = manifestScripts.filter((script) => script.endsWith(":check"));
+	if (checks.length === 0)
+		errors.push(
+			`release: ${label} declares no ${"*"}:check script at all, so the ownership mapping compared nothing`,
+		);
+	for (const script of checks) {
+		const section = declared.get(script);
+		if (section === undefined) {
+			errors.push(
+				`release: ${label} runs ${script} and ${REGISTRY_PATH} maps it to no AGENTS.md section; a guard nothing documents is one nobody can be told about`,
+			);
+			continue;
+		}
+		if (!agentRules.includes(section))
+			errors.push(
+				`release: ${label} keeps ${script} and its AGENTS.md section ${section} did not survive with it`,
+			);
+	}
+	for (const [script, section] of declared) {
+		if (script === GUARD_SCRIPT || script === SYNC_SCRIPT) {
+			errors.push(
+				`release: ${REGISTRY_PATH} maps ${script} to the AGENTS.md section ${section}; this surface is template-only and appears in no render, so a section describing it would ship where the guard does not`,
+			);
+		}
+	}
+	notices.push(
+		`release: ${checks.length} ${"*"}:check scripts survive into ${label} and each is described by a section of its AGENTS.md`,
+	);
+	return { errors: errors.sort(), notices: notices.sort() };
 }
 
 /**

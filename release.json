@@ -15,12 +15,12 @@
 	"goldens": {
 		"directory": "fixtures/golden",
 		"regenerateWith": "bun run template:release-sync",
-		"totalFileCount": 410,
+		"totalFileCount": 413,
 		"fixtures": [
 			{
 				"fixture": "cloud",
 				"manifest": "fixtures/golden/cloud.json",
-				"fileCount": 121,
+				"fileCount": 122,
 				"omittedCount": 884,
 				"enabledCount": 11,
 				"disabledCount": 8
@@ -28,7 +28,7 @@
 			{
 				"fixture": "full",
 				"manifest": "fixtures/golden/full.json",
-				"fileCount": 170,
+				"fileCount": 171,
 				"omittedCount": 835,
 				"enabledCount": 19,
 				"disabledCount": 0
@@ -36,7 +36,7 @@
 			{
 				"fixture": "minimal",
 				"manifest": "fixtures/golden/minimal.json",
-				"fileCount": 119,
+				"fileCount": 120,
 				"omittedCount": 886,
 				"enabledCount": 6,
 				"disabledCount": 13
@@ -202,6 +202,68 @@
 				"scanDisabledResidue's selection predicate stops requiring a default of false.",
 				"The two strict-JSON surfaces gain a fencing mechanism, or the renderer learns to prune the graphify hook by something other than a script filename."
 			]
+		}
+	],
+	"agentRuleSections": [
+		{
+			"script": "ci:check",
+			"section": "## Continuous Integration Ownership"
+		},
+		{
+			"script": "image:check",
+			"section": "## Devcontainer Image Ownership"
+		},
+		{
+			"script": "browser:check",
+			"section": "## Browser Runtime Ownership"
+		},
+		{
+			"script": "cloud:check",
+			"section": "## Codex Cloud Ownership"
+		},
+		{
+			"script": "forms:check",
+			"section": "## Shared Schema and API Contract Ownership"
+		},
+		{
+			"script": "openspec:check",
+			"section": "## OpenSpec Lifecycle Ownership"
+		},
+		{
+			"script": "proxy:check",
+			"section": "## Development Server and Proxy Ownership"
+		},
+		{
+			"script": "telemetry:check",
+			"section": "## Telemetry and External-write Ownership"
+		},
+		{
+			"script": "start:check",
+			"section": "## TanStack Start and SSR Ownership"
+		},
+		{
+			"script": "experiments:check",
+			"section": "## Experiment Lifecycle Ownership"
+		},
+		{
+			"script": "rules:check",
+			"section": "## Canonical Agent Rules"
+		},
+		{
+			"script": "worktree:check",
+			"section": "## Worktree Runtime Ownership"
+		},
+		{
+			"script": "toolchain:check",
+			"section": "## Toolchain Ownership"
+		},
+		{
+			"script": "affected:check",
+			"section": "## Affected Selection Ownership"
+		},
+		{
+			"script": "graph:check",
+			"section": "## Moon Graph Ownership"
 		}
 	],
 	"acceptance": [

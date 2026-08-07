@@ -555,6 +555,13 @@
 			"sourceOfTruth": "experiments.schema.json"
 		},
 		{
+			"pattern": "docs/troubleshooting.md",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "template repository"
+		},
+		{
 			"pattern": "release.json",
 			"classification": "template-tooling",
 			"syncPolicy": "merge",

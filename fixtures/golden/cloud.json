@@ -412,6 +412,11 @@
 				"sha256": "a4c3d8df51d1da9523ead0f7f97d8474d378a9a273202630dd6a295cc79b8d52"
 			},
 			{
+				"path": "docs/troubleshooting.md",
+				"mode": "0644",
+				"sha256": "e91fbed4f008ad87fa41f4a4b558aae4f00ec7df3806fc9c47fa6678f4f136da"
+			},
+			{
 				"path": "experiments.json",
 				"mode": "0644",
 				"sha256": "7ef0a7351412bfa1f9f73fbcf1f6803d0708ff2f8151a83344a29930b6d6f2e1"
@@ -444,7 +449,7 @@
 			{
 				"path": "README.md",
 				"mode": "0644",
-				"sha256": "be71368c6188f9acf51932071b623707705aed9f78e09871eedfd21bea71d77d"
+				"sha256": "396d73c8eee29defe7195059574794b658932a450d49518636f6c83c8cad52b1"
 			},
 			{
 				"path": "renovate.json",

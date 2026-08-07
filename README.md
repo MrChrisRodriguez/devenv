@@ -9,6 +9,13 @@ The setup has four stages:
 3. **[Secrets](#secrets)** — drop API keys where the container can read them
 4. **[Starting the Dev Container](#starting-the-dev-container)** — build and open the container, then sign in to the AI CLIs
 
+Two sections after that describe the template itself rather than your project:
+**[Capabilities and Profiles](#capabilities-and-profiles)** explains what a
+generated project does and does not receive, and
+**[Validating the Template](#validating-the-template)** is for people changing
+the template rather than using it. Symptoms that look like defects and are not
+are collected in **[docs/troubleshooting.md](docs/troubleshooting.md)**.
+
 ---
 
 ## Host Machine Setup
@@ -257,6 +264,74 @@ codex
 **Claude Code** is pre-installed and authenticates through the editor extension or `claude` on first run.
 
 You're now ready to start building!
+
+---
+
+## Capabilities and Profiles
+
+This template is not one tree with optional bits switched off at runtime. It is
+a **generator**: `template-parameters.toml` declares nineteen supported
+capabilities, and a generated project receives only the files, package scripts,
+workflow steps and agent instructions belonging to the ones its profile enables.
+Everything else is omitted, so nothing in the generated tree points at a file
+that is not there.
+
+The nineteen: `devcontainer`, `claude`, `codex`, `codex_cloud`, `gemini`,
+`openspec`, `graphify`, `context7`, `ccstatusline`, `claude_octopus`,
+`claude_warp`, `moon_affected_selection`, `playwright`, `cloudflare_workers`,
+`better_auth`, `rhf_zod`, `sentry`, `vite_websocket_proxy` and `tanstack_start`.
+
+Three committed profiles under `fixtures/template/` fix a value for every one of
+them, and each is rendered and validated on every change:
+
+| Profile | What it is for |
+|---|---|
+| `minimal` | the core Bun devcontainer with no cloud, browser, affected-selection or application-stack integrations |
+| `cloud` | the Cloudflare Worker and Codex Cloud profile, without browser or application-stack integrations |
+| `full` | every supported capability enabled, which is what release validation exercises |
+
+Two consequences worth knowing before they surprise you. A disabled capability
+leaves **no residue**: a scan over every generated file refuses a leftover
+script, dependency, workflow, test or agent instruction belonging to a
+capability the profile turned off. And ownership is declared rather than
+guessed — `docs/devcontainer-upgrade/stage-0/template-ownership.json` records,
+for every path, whether the template owns it, your project owns it, or it is
+generated, and whether an update should merge it or leave it alone.
+
+---
+
+## Validating the Template
+
+This section is for changing the template, not for using it. A generated project
+needs none of it.
+
+```bash
+bun run template:validate        # parameters, evidence records and every hermetic guard
+bun run template:fixtures <dir>  # render minimal, cloud and full
+bun run template:release-check   # the release gate: goldens, scans, acceptance, budgets
+bun run template:release-sync    # regenerate the committed golden render manifests
+```
+
+Fifteen `*:check` guards run on every pull request — `ci`, `toolchain`,
+`image`, `browser`, `cloud`, `forms`, `openspec`, `proxy`, `telemetry`,
+`start`, `experiments`, `rules`, `worktree`, `affected` and `graph` — and each
+one has a section in `AGENTS.md` describing what it refuses. They all report
+into one required status check, **`ci-gate`**, which is the only thing branch
+protection needs to know about.
+
+The `template:` prefix on the four commands above is load-bearing: it is what
+removes them from a generated project's `package.json`. Their inputs — the
+fixture definitions, the golden manifests under `fixtures/golden/` and
+`release.json` — are omitted from every profile, so a generated project would
+receive a command with nothing to run it against.
+
+Golden render manifests pin the path, mode and SHA-256 of every file each
+profile emits. If a change moves them, that is not a failure to work around:
+
+```bash
+bun run template:release-sync    # regenerate
+git diff fixtures/golden/        # then review, because a golden is an expectation
+```
 
 ---
 
