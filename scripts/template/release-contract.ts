@@ -1951,6 +1951,20 @@ export async function validateBudgets(
  * written for. The run ids come from the human who watched them go green, the
  * shas are checked against local Git objects, and a signal that has not been
  * captured yet says `pending` rather than pretending.
+ *
+ * The exact-head rule has TWO anchors and the decision is what selects between
+ * them. While the tree is a `candidate` the anchor is `HEAD`: the tree under
+ * review must be the tree the green run belongs to, which is the whole of
+ * "release only from exact green head". Once the tree is `released` that anchor
+ * is unreachable rather than strict — the flip is a commit, a commit moves
+ * `HEAD`, and no commit can carry its own object id — so a released tree that
+ * still anchored on `HEAD` would be a state machine with no legal terminal
+ * state, refusing `candidate` because the tag exists and `released` because the
+ * head moved. The released anchor is therefore the tag itself: the reviewed
+ * head must be a commit the release CONTAINS. That is checkable against local
+ * Git objects like everything else here, it is what the runbook actually did —
+ * tag the merge commit whose second parent is the reviewed head — and it is a
+ * narrower claim than "some commit in this repository", not a wider one.
  */
 export function validateSignals(
 	root: string,
@@ -1998,14 +2012,27 @@ export function validateSignals(
 			errors.push(
 				`release: the ${entry.id} signal names ${entry.sha}, which is not a commit in this repository`,
 			);
-		else if (
-			entry.kind === "pr-exact-head" &&
-			head !== null &&
-			entry.sha !== head
-		)
-			errors.push(
-				`release: the ${entry.id} signal belongs to ${entry.sha} and HEAD is ${head}; a green run for a different commit is not an exact-head signal`,
-			);
+		else if (entry.kind === "pr-exact-head") {
+			if (registry.decision === "released") {
+				const tag = registry.release.plannedTag;
+				const contained = Bun.spawnSync([
+					"git",
+					"-C",
+					root,
+					"merge-base",
+					"--is-ancestor",
+					entry.sha,
+					tag,
+				]);
+				if (contained.exitCode !== 0)
+					errors.push(
+						`release: the ${entry.id} signal belongs to ${entry.sha}, which ${tag} does not contain; a release cut from a commit its own green run does not cover is not an exact-head release`,
+					);
+			} else if (head !== undefined && entry.sha !== head)
+				errors.push(
+					`release: the ${entry.id} signal belongs to ${entry.sha} and HEAD is ${head}; a green run for a different commit is not an exact-head signal`,
+				);
+		}
 		notices.push(
 			`release: the ${entry.id} signal is captured at ${entry.sha} as run ${entry.runId}, asserted against local Git objects and never against a Checks API this guard may not read`,
 		);
