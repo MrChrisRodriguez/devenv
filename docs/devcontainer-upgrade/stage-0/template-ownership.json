@@ -296,6 +296,27 @@
 			"sourceOfTruth": "OpenSpec lifecycle contract"
 		},
 		{
+			"pattern": "scripts/template/validate-forms.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "shared schema and API contract entrypoint"
+		},
+		{
+			"pattern": "scripts/template/forms-contract.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "api-contract.json"
+		},
+		{
+			"pattern": "scripts/template/json-schema.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "template repository"
+		},
+		{
 			"pattern": "scripts/worktree/**",
 			"classification": "template-owned",
 			"syncPolicy": "merge",
@@ -408,6 +429,20 @@
 			"sourceOfTruth": "openspec/config.yaml"
 		},
 		{
+			"pattern": "api-contract.json",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "api-contract.json"
+		},
+		{
+			"pattern": "api-contract.schema.json",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "api-contract.schema.json"
+		},
+		{
 			"pattern": "*",
 			"classification": "template-owned",
 			"syncPolicy": "merge",
@@ -500,6 +535,17 @@
 			"pattern": "scripts/ci/affected-matrices.sh",
 			"requiresAll": ["moon_affected_selection"]
 		},
+		{ "pattern": "api-contract.json", "requiresAll": ["rhf_zod"] },
+		{ "pattern": "api-contract.schema.json", "requiresAll": ["rhf_zod"] },
+		{
+			"pattern": "scripts/template/forms-contract.ts",
+			"requiresAll": ["rhf_zod"]
+		},
+		{
+			"pattern": "scripts/template/validate-forms.ts",
+			"requiresAll": ["rhf_zod"]
+		},
+		{ "pattern": "libs/forms/**", "requiresAll": ["rhf_zod"] },
 		{ "pattern": "scripts/worktree/**", "requiresAll": ["devcontainer"] },
 		{
 			"pattern": "scripts/template/worktree-contract.ts",
@@ -625,7 +671,8 @@
 		{
 			"capability": "rhf_zod",
 			"sections": ["workspaces.catalog", "devDependencies", "overrides"],
-			"packages": ["@hookform/resolvers", "react-hook-form", "zod"]
+			"packages": ["@hookform/resolvers", "react-hook-form", "zod"],
+			"scripts": ["forms:check"]
 		}
 	],
 	"capabilitySignatures": {
@@ -713,8 +760,14 @@
 			"tokens": ["playwright"]
 		},
 		"rhf_zod": {
-			"paths": ["libs/forms/**"],
-			"tokens": ["react-hook-form", "@hookform/resolvers", "zod"]
+			"paths": [
+				"api-contract.json",
+				"api-contract.schema.json",
+				"libs/forms/**",
+				"scripts/template/forms-contract.ts",
+				"scripts/template/validate-forms.ts"
+			],
+			"tokens": ["react-hook-form", "@hookform/resolvers", "zod", "forms:check"]
 		},
 		"sentry": { "paths": ["libs/observability/**"], "tokens": ["@sentry/"] },
 		"tanstack_start": {
@@ -978,13 +1031,7 @@
 			"claude_warp"
 		],
 		"advertisedOnly": ["cloudflare_workers", "tanstack_start"],
-		"absent": [
-			"playwright",
-			"better_auth",
-			"rhf_zod",
-			"sentry",
-			"vite_websocket_proxy"
-		]
+		"absent": ["playwright", "better_auth", "sentry", "vite_websocket_proxy"]
 	},
 	"knownBoundaryRisks": [
 		"scripts/sync-devcontainer.sh excludes every scripts/* path except itself and the scripts/worktree/* runtime, which the isolated-worktree cutover added explicitly alongside its template-owned ownership rule. Any further template-owned script under scripts/ still requires the same paired cutover — an is_excluded include plus an ownershipRules entry ahead of scripts/template/** — or its declared syncPolicy merge is a lie.",

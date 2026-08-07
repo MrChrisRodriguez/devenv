@@ -14,5 +14,23 @@
 	},
 	"files": {
 		"includes": ["**", "!**/worker-configuration.d.ts", "!graphify-out"]
-	}
+	},
+	// Generated output is compared byte-for-byte against what its generator
+	// emits, so reformatting or linting it would break that compare — the
+	// artifact would be "correct" and the gate would still be red. All three
+	// tools are off, not just the formatter: an assist action rewrites a file
+	// just as thoroughly as a format does.
+	//
+	// The globs are deliberately generic. This file is copied into EVERY
+	// rendered project, and the anti-residue scan is a plain substring search
+	// over every file of a render whose capability is off, so a glob naming a
+	// capability's package would fail the projects that disable it.
+	"overrides": [
+		{
+			"includes": ["**/generated/**", "**/openapi/**"],
+			"linter": { "enabled": false },
+			"formatter": { "enabled": false },
+			"assist": { "enabled": false }
+		}
+	]
 }
