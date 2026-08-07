@@ -97,9 +97,15 @@ done
 # never push, and a container has no business running the host half of a
 # release step: the checkout is bind mounted, so the host sees the same bytes
 # and owns the credentials.
+# The cloud arm is fenced because the marker variable is a declared capability
+# signature and the anti-residue scan is a plain substring search: one unfenced
+# mention here would fail every render that has no cloud. The stripped remainder
+# is still valid bash, which is the other requirement of a line-based fence.
+# capability:start codex_cloud
 if [ "${CODEX_CLOUD:-}" = "true" ]; then
 	die "a Codex Cloud task must not archive; run this on the host that owns the remote" 3
 fi
+# capability:end codex_cloud
 if [ "${DEVCONTAINER:-}" = "true" ]; then
 	die "run this on the host, not inside the development container" 3
 fi

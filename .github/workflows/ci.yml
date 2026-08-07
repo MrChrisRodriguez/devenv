@@ -124,6 +124,14 @@ jobs:
         run: bun run openspec:check
       # capability:end openspec
 
+      # Ungated. Every project has agent rule files and a canonical AGENTS.md,
+      # whatever else it disables, and the guard checks the mirrors only for
+      # blocks the canonical file still declares — so a project that fenced a
+      # capability away loses the canonical block and its mirrors together and
+      # this step stays true without a second fence.
+      - name: Validate canonical agent rules
+        run: bun run rules:check
+
       - name: Validate worktree runtime contract
         run: bun run worktree:check
 

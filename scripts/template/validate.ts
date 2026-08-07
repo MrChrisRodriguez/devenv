@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { validateAffectedContract } from "./affected-contract";
+import { validateAgentRulesContract } from "./agent-rules-contract";
 import { validateBrowserContract } from "./browser-contract";
 import { validateCiContract } from "./ci-contract";
 import { validateCloudContract } from "./cloud-contract";
@@ -179,6 +180,11 @@ export async function validateAll(
 		if (openspecErrors.length > 0) {
 			report.status = "fail";
 			report.errors.push(...openspecErrors);
+		}
+		const agentRulesErrors = await validateAgentRulesContract(root);
+		if (agentRulesErrors.length > 0) {
+			report.status = "fail";
+			report.errors.push(...agentRulesErrors);
 		}
 		const toolchainEvidenceErrors = await validateStageOneEvidence(root);
 		if (toolchainEvidenceErrors.length > 0) {

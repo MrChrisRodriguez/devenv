@@ -38,6 +38,14 @@ Then, and only then, `openspec:check` runs again across **every** root — apply
 
 **A rejected push is a designed outcome, not a bug.** Branch protection can refuse the direct push. The archive commit is kept, three ways out are printed (push as an administrator, open a pull request, `git reset --hard origin/<default>`), and the wrapper exits non-zero. The next run then refuses on `HEAD` being ahead of `origin/<default>` — so the failure mode heals itself instead of quietly re-running.
 
+**One canonical rule file, and mirrors that are generated.** `AGENTS.md` is the source; `CLAUDE.md`, `GEMINI.md` and `.claude/CLAUDE.md` carry generated regions of the blocks it marks, produced by `bun run rules:sync` and checked by `bun run rules:check`. Before this, the graphify rules existed in four places and had already drifted — one copy was missing the "dirty graphify-out is expected" bullet, and nothing noticed, because nothing compared them. Two copies of a rule are two rules the moment one of them is edited.
+
+The guard checks three things, and the third is the one that keeps the arrangement honest: mirrors must match, mirrors may not carry a region the canonical file does not declare for them, and **canonical text may not be restated outside a generated region** — otherwise consolidation is just addition, and the duplicate stays behind where `rules:sync` will never touch it.
+
+The blocks sit inside capability fences, so a project that disables a capability loses the canonical block and its mirrors *together*, and the guard is comparing an empty set against an empty set rather than needing a second fence somebody has to remember. That is also why `rules:check` is an **ungated** CI step: it is true in every render by construction.
+
+**Codex's surface is a negative requirement, written down as a check.** Codex reads the root `AGENTS.md` and receives no OpenSpec commands or skills. That was a standing decision living in somebody's memory, which is the kind of decision that gets re-litigated the first time a generator offers to write `.codex/skills/openspec-*`. It is now a table entry plus a scan: any `.codex/**` file naming `opsx` or `openspec-` fails the guard.
+
 **Why downstream cares:** If a tool's success path is compatible with "there was nothing to check", its exit code is not a result. Enumerate the inputs yourself, make the tool agree with your enumeration, and treat every ambiguous answer as a failure. And when a script mutates a tree, put every refusal it will ever make ahead of its first write — a guard that refuses halfway has not refused.
 
 ---

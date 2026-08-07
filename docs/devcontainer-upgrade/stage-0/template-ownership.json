@@ -247,6 +247,27 @@
 			"sourceOfTruth": "affected selection entrypoint"
 		},
 		{
+			"pattern": "scripts/template/validate-agent-rules.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "cross-agent rules contract entrypoint"
+		},
+		{
+			"pattern": "scripts/template/sync-agent-rules.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "cross-agent rules generator"
+		},
+		{
+			"pattern": "scripts/template/agent-rules-contract.ts",
+			"classification": "template-owned",
+			"syncPolicy": "merge",
+			"renderPolicy": "copy",
+			"sourceOfTruth": "cross-agent rules contract"
+		},
+		{
 			"pattern": "scripts/openspec/**",
 			"classification": "template-owned",
 			"syncPolicy": "merge",

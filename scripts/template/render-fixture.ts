@@ -822,7 +822,12 @@ async function renderExtensions(
 	return json({ recommendations });
 }
 
-function filterAgentRuleLines(
+// Exported for the agent-rules suite: the canonical shared blocks are mirrored
+// into CLAUDE.md and GEMINI.md verbatim, but only AGENTS.md passes through this
+// line filter — so a canonical line this drops would leave the mirrors carrying
+// text the canonical file no longer has, in exactly the renders that disable a
+// capability.
+export function filterAgentRuleLines(
 	source: string,
 	parameters: TemplateParameters,
 ): string {
