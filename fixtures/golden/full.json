@@ -53,7 +53,7 @@
 			{
 				"path": ".claude/commands/opsx/archive.md",
 				"mode": "0644",
-				"sha256": "466d7abfd343720d93de841514afb7701de848010ec360e2666b20d752425091"
+				"sha256": "705b09580e67086f74bc45d415ea12cbf9936bbd72fef556755b7886d7da1d44"
 			},
 			{
 				"path": ".claude/commands/opsx/continue.md",
@@ -103,7 +103,7 @@
 			{
 				"path": ".claude/skills/openspec-archive-change/SKILL.md",
 				"mode": "0644",
-				"sha256": "71170261f533c9826f4a8bc2733dbe0be512a526bfdc398766f17d7bc1fd3838"
+				"sha256": "796d820162d030315ad3e37f1cbdbac77a7c3006795651b54376f519699745b1"
 			},
 			{
 				"path": ".claude/skills/openspec-continue-change/SKILL.md",
@@ -478,7 +478,7 @@
 			{
 				"path": "AGENTS.md",
 				"mode": "0644",
-				"sha256": "8f8ef1860a7c2f516f78b5a6e6e20760dc2d33386e9516f5a2bc121f4e23c087"
+				"sha256": "ae0768432dffb9654b3f6258ca3a141aa49e1484f68b5a1fb44fa8519dd90a3a"
 			},
 			{
 				"path": "api-contract.json",
@@ -508,7 +508,7 @@
 			{
 				"path": "CLAUDE.md",
 				"mode": "0644",
-				"sha256": "e12bd11f7f6b92552dafd14720bc5fc0147187a5fbae442257a6bcfa4c74e64a"
+				"sha256": "a9c4310a0026faaa5457d3025f3fe5c0b52de21fbe2d40565f07008ab8b92a18"
 			},
 			{
 				"path": "docs/troubleshooting.md",
@@ -538,7 +538,7 @@
 			{
 				"path": "GEMINI.md",
 				"mode": "0644",
-				"sha256": "3ecce42de95230552417438d05a2807c8da8920cccb70fe404c446f022300616"
+				"sha256": "e9cf13b80bc64acf963b3e13444f78bb8e37a3b3585ecf6dce6fc198ebcffbfd"
 			},
 			{
 				"path": "libs/.gitkeep",
@@ -628,7 +628,7 @@
 			{
 				"path": "scripts/openspec/archive.sh",
 				"mode": "0755",
-				"sha256": "0834ad1dfadf665c1ab4d07775982d99bd61f848c070eb1a9013d90a25447f7b"
+				"sha256": "abb6636d12fd3df1f837aecef575da2f44a50bee9eca6c5d11f3cf06a8f102fc"
 			},
 			{
 				"path": "scripts/sync-devcontainer.sh",
@@ -653,7 +653,7 @@
 			{
 				"path": "scripts/template/agent-rules/archive-delegation.md",
 				"mode": "0644",
-				"sha256": "b60e92f3835179750004c2981f3077245d186220a9c5b00ed6829abb9e156e65"
+				"sha256": "f8f73ad35570e33c861216d1e236caf278b5385bb66857d9897c6568a4edb36d"
 			},
 			{
 				"path": "scripts/template/browser-contract.ts",

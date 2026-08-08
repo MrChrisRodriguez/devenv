@@ -31,7 +31,7 @@ Archive a completed OpenSpec change by delegating to this repository's wrapper.
 - Requiring an explicit `--change` the moment the selection is ambiguous, and refusing a change with remaining tasks.
 - Choosing `--skip-specs` only when the change carries no delta specs at all.
 - Pre-checking the archive destination in UTC, verifying the post-state after the CLI returns, and rolling the OpenSpec root back to `HEAD` on any failure.
-- Re-running `bun run openspec:check` across every root, staging only the OpenSpec root, committing with the hooks enabled, and pushing — with a printed recovery path if the push is rejected.
+- Re-running `bun run openspec:check` across every root, staging only the OpenSpec root, committing with the hooks enabled, and publishing an archive branch whose pull request auto-merges once the CI gate passes — with a printed recovery path at every refusal.
 
 **Never**
 

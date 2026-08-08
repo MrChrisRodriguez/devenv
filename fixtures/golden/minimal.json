@@ -54,7 +54,7 @@
 			{
 				"path": ".claude/commands/opsx/archive.md",
 				"mode": "0644",
-				"sha256": "466d7abfd343720d93de841514afb7701de848010ec360e2666b20d752425091"
+				"sha256": "705b09580e67086f74bc45d415ea12cbf9936bbd72fef556755b7886d7da1d44"
 			},
 			{
 				"path": ".claude/commands/opsx/continue.md",
@@ -94,7 +94,7 @@
 			{
 				"path": ".claude/skills/openspec-archive-change/SKILL.md",
 				"mode": "0644",
-				"sha256": "71170261f533c9826f4a8bc2733dbe0be512a526bfdc398766f17d7bc1fd3838"
+				"sha256": "796d820162d030315ad3e37f1cbdbac77a7c3006795651b54376f519699745b1"
 			},
 			{
 				"path": ".claude/skills/openspec-continue-change/SKILL.md",
@@ -379,7 +379,7 @@
 			{
 				"path": "AGENTS.md",
 				"mode": "0644",
-				"sha256": "63814fe213022e841aff6fb0cf6a98f48747c50e7a788e87faab2ba8762f2dc4"
+				"sha256": "b9277e340474c6e45feab1845763804475b3060bce8eb78d32746f02fb6fb03e"
 			},
 			{
 				"path": "apps/.gitkeep",
@@ -394,7 +394,7 @@
 			{
 				"path": "CLAUDE.md",
 				"mode": "0644",
-				"sha256": "5ff5cedbbf0775b78fce0f038ea18a7b1fbd1dc6a58d64f5f2d2499fe97f4f61"
+				"sha256": "7988b8834db67940916712bb0bf256e90f4ab8c82dda1b21fcbe0621cffdf1ba"
 			},
 			{
 				"path": "docs/troubleshooting.md",
@@ -414,7 +414,7 @@
 			{
 				"path": "GEMINI.md",
 				"mode": "0644",
-				"sha256": "5b9a1e944482b4e1095ce8ad61cd8f11c4dfed944d9e311bc968a247d4949463"
+				"sha256": "4121ccdf14bbcac7546d10d3000428c35cb9cf60c010f2d077d3388ec1012f6e"
 			},
 			{
 				"path": "libs/.gitkeep",
@@ -484,7 +484,7 @@
 			{
 				"path": "scripts/openspec/archive.sh",
 				"mode": "0755",
-				"sha256": "b33f945e2debc586204974fe978b7390f8bcdb7def10180791372ae03a2e7ddc"
+				"sha256": "cc9c0b04093ba91a7b289ce29911af816d31b1ca88fe3277e11484ee65648d26"
 			},
 			{
 				"path": "scripts/sync-devcontainer.sh",
@@ -504,7 +504,7 @@
 			{
 				"path": "scripts/template/agent-rules/archive-delegation.md",
 				"mode": "0644",
-				"sha256": "b60e92f3835179750004c2981f3077245d186220a9c5b00ed6829abb9e156e65"
+				"sha256": "f8f73ad35570e33c861216d1e236caf278b5385bb66857d9897c6568a4edb36d"
 			},
 			{
 				"path": "scripts/template/ci-contract.ts",

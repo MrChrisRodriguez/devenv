@@ -38,6 +38,9 @@
 #   9 the archive did not verify and was rolled back
 #  10 the push was refused
 #  11 the push did not verify against the remote
+#  12 the pull request could not be opened
+#  13 auto-merge could not be armed
+#  14 the pull request did not verify against the branch and auto-merge
 
 set -euo pipefail
 
@@ -51,12 +54,22 @@ cd "$REPO_ROOT"
 BRIDGE="${OPENSPEC_BRIDGE-bash scripts/worktree/exec.sh --require-ready}"
 OPENSPEC_RELATIVE_BIN="node_modules/.bin/openspec"
 
+# The publisher's injection point, mirroring OPENSPEC_BRIDGE: unset it is the
+# real GitHub CLI, and set it names the command line the tests substitute.
+GH="${ARCHIVE_GH-gh}"
+
+gh_cli() {
+	# Word splitting is the point: ARCHIVE_GH records a command line.
+	# shellcheck disable=SC2086
+	$GH "$@"
+}
+
 CHANGE=""
 ROOT_ARGUMENT=""
 DRY_RUN="false"
 
 usage() {
-	sed -n '/^# Usage:/,/^#  11 /p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+	sed -n '/^# Usage:/,/^#  14 /p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
 }
 
 die() {
@@ -179,6 +192,24 @@ if [ "$LOCAL_HEAD" != "$REMOTE_HEAD" ]; then
 		die "HEAD is ahead of origin/$DEFAULT_BRANCH; push or reset before archiving" 5
 	fi
 	die "HEAD and origin/$DEFAULT_BRANCH have diverged; reconcile them before archiving" 5
+fi
+
+# The publisher is checked with the other preconditions, before anything is
+# touched: the archive lands through a pull request whose auto-merge the CI
+# gate releases, so a missing CLI, a missing login, or a repository that
+# refuses auto-merge must refuse the run here rather than strand a verified
+# branch with no way to land it. These sit AFTER the git preconditions on
+# purpose — a checkout that is ahead or behind gets the answer about itself
+# first, exactly as it always has.
+if ! gh_cli --version >/dev/null 2>&1; then
+	die "the GitHub CLI (gh) is required to open the archive pull request; install it and run \`gh auth login\`" 5
+fi
+if ! gh_cli auth status >/dev/null 2>&1; then
+	die "the GitHub CLI is not authenticated; run \`gh auth login\`" 5
+fi
+AUTO_MERGE_ALLOWED="$(gh_cli repo view --json autoMergeAllowed --jq .autoMergeAllowed 2>/dev/null || true)"
+if [ "$AUTO_MERGE_ALLOWED" != "true" ]; then
+	die "the repository does not allow auto-merge; enable it in the repository settings so the CI gate can land the archive" 5
 fi
 
 # ── 5. Selection ────────────────────────────────────────────────────────────
@@ -435,27 +466,31 @@ done < <(git diff --cached --name-only)
 git commit --quiet -m "$COMMIT_SUBJECT"
 ARCHIVE_COMMIT="$(git rev-parse HEAD)"
 
-# ── 9. Push ─────────────────────────────────────────────────────────────────
-# Re-fetched, because the checks above took time and the remote is shared. The
-# new commit's parent must still be exactly what origin has, or this push would
-# be a force in disguise.
+# ── 9. Push the archive branch ──────────────────────────────────────────────
+# The archive no longer lands on the default branch by hand: it rides a branch,
+# a pull request, and the same CI gate every other change passes. Re-fetched
+# first, because the checks above took time and the remote is shared. The new
+# commit's parent must still be exactly what origin has, or the merge this run
+# arms below would not land the tree this run validated.
+ARCHIVE_BRANCH="chore/archive-$CHANGE"
 git fetch --prune --quiet origin
 REMOTE_HEAD="$(git rev-parse "refs/remotes/origin/$DEFAULT_BRANCH")"
 if [ "$(git rev-parse "$ARCHIVE_COMMIT^")" != "$REMOTE_HEAD" ]; then
 	note "origin/$DEFAULT_BRANCH moved while this archive was being validated."
-	note "The archive commit $ARCHIVE_COMMIT is kept. Rebase it and push, or reset with:"
+	note "The archive commit $ARCHIVE_COMMIT is kept. Rebase it and re-run, or reset with:"
 	note "  git reset --hard origin/$DEFAULT_BRANCH"
-	die "refusing to push a commit whose parent is no longer origin/$DEFAULT_BRANCH" 10
+	die "refusing to publish a commit whose parent is no longer origin/$DEFAULT_BRANCH" 10
 fi
 
-if ! git push --quiet origin "HEAD:refs/heads/$DEFAULT_BRANCH"; then
-	# Branch protection can reject this, and that is a supported outcome rather
-	# than a bug: the commit stays, and the next run refuses on HEAD != origin
-	# until the operator picks one of these. Self-healing by construction.
+if ! git push --quiet origin "HEAD:refs/heads/$ARCHIVE_BRANCH"; then
+	# A remote can reject a branch push too — a stale archive branch from an
+	# earlier refused run is the ordinary cause — and that is a supported
+	# outcome rather than a bug: the commit stays, and the next run refuses on
+	# HEAD != origin until the operator picks one of these. Self-healing by
+	# construction.
 	note "the push was rejected. The archive commit $ARCHIVE_COMMIT is kept locally."
 	note "Choose one:"
-	note "  - push it as an administrator"
-	note "  - open a pull request:  git switch -c chore/archive-$CHANGE && git push -u origin HEAD"
+	note "  - delete a stale archive branch:  git push origin :refs/heads/$ARCHIVE_BRANCH"
 	note "  - discard it:           git reset --hard origin/$DEFAULT_BRANCH"
 	die "push rejected" 10
 fi
@@ -475,14 +510,47 @@ fi
 # value the remote never produced. `|| true` keeps `pipefail` from turning an
 # unreachable remote into an undiagnosed abort: an empty readback is a
 # mismatch, and it is reported as one.
-REMOTE_AFTER="$(git ls-remote --exit-code origin "refs/heads/$DEFAULT_BRANCH" 2>/dev/null | awk '{ print $1 }' || true)"
+REMOTE_AFTER="$(git ls-remote --exit-code origin "refs/heads/$ARCHIVE_BRANCH" 2>/dev/null | awk '{ print $1 }' || true)"
 if [ "$REMOTE_AFTER" != "$ARCHIVE_COMMIT" ]; then
-	note "the push returned 0 but origin/$DEFAULT_BRANCH reads back as ${REMOTE_AFTER:-<unreadable>}, not $ARCHIVE_COMMIT."
+	note "the push returned 0 but $ARCHIVE_BRANCH reads back as ${REMOTE_AFTER:-<unreadable>}, not $ARCHIVE_COMMIT."
 	note "The archive commit $ARCHIVE_COMMIT is kept locally. Choose one:"
 	note "  - re-run this command once the remote is reachable and settled"
-	note "  - open a pull request:  git switch -c chore/archive-$CHANGE && git push -u origin HEAD"
 	note "  - discard it:           git reset --hard origin/$DEFAULT_BRANCH"
 	die "the archive push did not verify against the remote" 11
 fi
 
-printf '%s\n' "$LABEL: archived $CHANGE to $ARCHIVE_DESTINATION and pushed $ARCHIVE_COMMIT"
+# ── 11. Open the pull request and arm auto-merge ────────────────────────────
+# Two writes, two refusals, then a readback of their combined effect. The title
+# is the commit subject this run already validated; `--merge` rather than
+# squash, because the archive commit was authored and hook-checked here and the
+# merge should land it byte-identical — the same shape every other pull request
+# in this repository lands.
+if ! gh_cli pr create --head "$ARCHIVE_BRANCH" --base "$DEFAULT_BRANCH" \
+	--title "$COMMIT_SUBJECT" \
+	--body "Automated OpenSpec archive of $CHANGE, published by scripts/openspec/archive.sh. Lands via auto-merge once the CI gate passes." >/dev/null; then
+	note "the archive branch $ARCHIVE_BRANCH is pushed and verified; only the pull request is missing."
+	note "Open it yourself:  gh pr create --head $ARCHIVE_BRANCH --base $DEFAULT_BRANCH"
+	die "the pull request could not be opened" 12
+fi
+
+if ! gh_cli pr merge "$ARCHIVE_BRANCH" --auto --merge --delete-branch >/dev/null; then
+	note "the pull request exists; only auto-merge is missing. Arm it yourself:"
+	note "  gh pr merge $ARCHIVE_BRANCH --auto --merge --delete-branch"
+	die "auto-merge could not be armed" 13
+fi
+
+# ── 12. Read the pull request back ──────────────────────────────────────────
+# The same discipline as the branch readback, applied to the second write: a
+# read-only query, distinct from both writers, bound once and compared exactly.
+# The pull request must be about the verified commit and auto-merge must
+# actually be armed — a merge command that returned 0 against a superseded head
+# would land a commit this run never validated.
+PR_AFTER="$(gh_cli pr view "$ARCHIVE_BRANCH" --json headRefOid,autoMergeRequest --jq '.headRefOid + (if .autoMergeRequest then " armed" else " unarmed" end)' 2>/dev/null || true)"
+if [ "$PR_AFTER" != "$ARCHIVE_COMMIT armed" ]; then
+	note "the pull request reads back as '${PR_AFTER:-<unreadable>}', not '$ARCHIVE_COMMIT armed'."
+	note "Inspect it:  gh pr view $ARCHIVE_BRANCH"
+	die "the pull request did not verify against the branch and auto-merge" 14
+fi
+
+printf '%s\n' "$LABEL: archived $CHANGE to $ARCHIVE_DESTINATION and armed auto-merge for $ARCHIVE_COMMIT on $ARCHIVE_BRANCH"
+note "it lands when the CI gate passes; run \`git pull --ff-only\` afterwards to pick it up"

@@ -22,7 +22,7 @@ When OpenSpec is enabled, tooling MUST discover applicable roots and CLI-returne
 - **THEN** validation reports an expected notice and does not archive the change
 
 ### Requirement: Guarded post-merge archive
-Archive MUST run only from a clean dedicated default-branch worktree whose HEAD equals a freshly fetched remote default branch, with explicit change selection when ambiguous, duplicate-destination refusal, delta assessment/sync, strict all-root validation, and no commit/push on failure.
+Archive MUST run only from a clean dedicated default-branch worktree whose HEAD equals a freshly fetched remote default branch, with explicit change selection when ambiguous, duplicate-destination refusal, delta assessment/sync, strict all-root validation, and no commit/push on failure. The archive commit lands through an archive branch and a pull request whose auto-merge the CI gate releases, never through a direct write to the default branch, and every remote write is read back and verified before the run reports success.
 
 #### Scenario: Archive precondition is unsafe
 - **WHEN** the worktree is a feature branch, dirty, stale, lacks the remote base, has an existing destination, has ambiguous selection, or fails strict validation
