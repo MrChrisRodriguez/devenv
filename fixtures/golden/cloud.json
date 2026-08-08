@@ -339,7 +339,7 @@
 			{
 				"path": ".github/workflows/ci.yml",
 				"mode": "0644",
-				"sha256": "7d01df39b68266bea2024f1b935a55b95cef450cc1d3b4e2ab2095b3c50f3744"
+				"sha256": "c8d768f89d73864bd35e2ca7580367dca5f395f460184a6f0ab2ee36f24dc6c4"
 			},
 			{
 				"path": ".github/workflows/codex-cloud-smoke.yml",

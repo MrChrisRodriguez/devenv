@@ -263,10 +263,19 @@ jobs:
       # the devcontainer fingerprint, so an image built from one tree and a
       # checkout from another fail here rather than at a developer's first
       # create.
+      # The chain runs against a throwaway copy in RUNNER_TEMP, chowned to the
+      # container's own user first: the runner's checkout is owned by a uid the
+      # image's vscode user does not have, and the chain's dependency install
+      # must be able to write node_modules. The copy also keeps the job's real
+      # checkout byte-identical for anything that inspects it afterwards.
       - name: Run the on-create chain inside the built image
         run: |
+          smoke="${RUNNER_TEMP}/image-smoke"
+          mkdir -p "$smoke"
+          cp -a . "$smoke"
+          docker run --rm --user root --volume "$smoke:/workspace" devenv-image-ci chown -R vscode:vscode /workspace
           docker run --rm --user vscode \
-            --volume "$PWD:/workspace" --workdir /workspace \
+            --volume "$smoke:/workspace" --workdir /workspace \
             devenv-image-ci \
             /usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p -c \
             '/bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && exec /bin/bash -p /workspace/.devcontainer/on-create.sh'
