@@ -52,15 +52,28 @@ if [ -n "$TEMPLATE_REF" ]; then
     } > .template-ref
 fi
 
-# Update DEVCONTAINER_PROJECT in devcontainer.json if a repo name was provided
+# Update the project slug if a repo name was provided. The slug appears in FOUR
+# places (the checklist in .devcontainer/AUTH-PERSISTENCE.md "Adding this to
+# another repo"): static JSON cannot reference containerEnv from a mount or
+# runArgs string, so the literal is unavoidably repeated and every copy must be
+# rewritten together. Rewriting only containerEnv leaves the host-side env-file
+# merge and the Codex auth snapshot pointed at the template's "devenv" slug.
 if [ -n "$REPO_ARG" ]; then
     # Extract just the repo name (strip owner prefix if present)
     DEVCONTAINER_PROJECT="${REPO_ARG##*/}"
     DEVCONTAINER_PROJECT="${DEVCONTAINER_PROJECT%.git}"
     if [ -f ".devcontainer/devcontainer.json" ]; then
         echo "🔧 Setting DEVCONTAINER_PROJECT to \"$DEVCONTAINER_PROJECT\"..."
-        sed -i.bak "s/\"DEVCONTAINER_PROJECT\": \"[^\"]*\"/\"DEVCONTAINER_PROJECT\": \"$DEVCONTAINER_PROJECT\"/" .devcontainer/devcontainer.json
+        sed -i.bak \
+            -e "s/\"DEVCONTAINER_PROJECT\": \"[^\"]*\"/\"DEVCONTAINER_PROJECT\": \"$DEVCONTAINER_PROJECT\"/" \
+            -e "s|/container-env/devenv\.env|/container-env/$DEVCONTAINER_PROJECT.env|" \
+            -e "s|/codex-auth/devenv,target=|/codex-auth/$DEVCONTAINER_PROJECT,target=|" \
+            .devcontainer/devcontainer.json
         rm -f .devcontainer/devcontainer.json.bak
+    fi
+    if [ -f ".devcontainer/host/prepare-container-env.sh" ]; then
+        sed -i.bak "s/\${DEVCONTAINER_PROJECT:-devenv}/\${DEVCONTAINER_PROJECT:-$DEVCONTAINER_PROJECT}/" .devcontainer/host/prepare-container-env.sh
+        rm -f .devcontainer/host/prepare-container-env.sh.bak
     fi
 fi
 
