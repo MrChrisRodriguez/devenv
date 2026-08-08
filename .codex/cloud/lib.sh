@@ -47,6 +47,9 @@ cloud_tool_version() {
 cloud_expand_home() {
 	local value="$1"
 	value="${value//\$\{HOME\}/$HOME}"
+	# The quoted tilde arm is deliberate: it MATCHES a literal leading "~/" in
+	# contract text precisely so this function can expand it.
+	# shellcheck disable=SC2088
 	case "$value" in
 		"~/"*) value="$HOME/${value#\~/}" ;;
 	esac
@@ -139,6 +142,9 @@ cloud_source_persisted_environment() {
 	local file=""
 	file="$(cloud_persisted_environment_file)" || return 0
 	if [ -r "$file" ]; then
+		# The persisted environment file is generated at run time, so there is
+		# no constant path for shellcheck to follow.
+		# shellcheck disable=SC1090
 		. "$file"
 	fi
 	return 0

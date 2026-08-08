@@ -818,7 +818,11 @@ describe("deterministic fixture renderer", () => {
 			for (const fixtureName of ["minimal", "cloud", "full"]) {
 				const output = resolve(temporary, fixtureName);
 				await renderFixture({ root: ROOT, fixtureName, output });
-				for (const hook of [".husky/commit-msg", ".husky/pre-commit"]) {
+				for (const hook of [
+					".husky/commit-msg",
+					".husky/pre-commit",
+					".husky/pre-push",
+				]) {
 					const source = await Bun.file(resolve(output, hook)).text();
 					expect(source).toContain(
 						"bash scripts/worktree/exec.sh --require-ready",

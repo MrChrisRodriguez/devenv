@@ -79,6 +79,9 @@ install_workspace_dependencies
 # specific step must be caught, guard that command directly (as the octopus
 # mkdir/ln calls do with `|| echo`).
 optional() {
+    # The sourced path is a run-time argument, so there is no constant
+    # location for shellcheck to follow.
+    # shellcheck disable=SC1090
     source "$1" || echo "⚠️   $(basename "$1") failed; continuing setup without it"
 }
 

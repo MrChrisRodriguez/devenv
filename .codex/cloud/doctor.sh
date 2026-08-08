@@ -88,7 +88,9 @@ if [ "$profile" = "$(cloud_contract_value browser_profile)" ]; then
 		refuse "browser payload marker is missing or differs from ${browser_expected}"
 	fi
 	# The unchanged repository preflight is the Stage 3 acceptance command.
-	# shellcheck disable=SC2046
+	# Executing the contract value's output is the point: the contract stores a
+	# command line, and word-splitting it into a command is how it runs.
+	# shellcheck disable=SC2046,SC2091
 	if ! (cd "$REPO_ROOT" && $(cloud_contract_value browser_required_command)); then
 		refuse "repository-pinned Chromium cannot launch for the browser profile"
 	fi

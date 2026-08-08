@@ -1,0 +1,16 @@
+# Every contract guard runs before a push leaves this machine — the same
+# hermetic set CI's fixed-cost lane runs, discovered from package.json so a
+# render only runs the guards its profile received. Guards run where the pinned
+# toolchain lives: inside this checkout's own container. --require-ready never
+# starts one, so a push made while the container is down is refused with exit 7
+# rather than silently building an image. The escape hatch is
+# `git push --no-verify`.
+#
+# The fallback is a file test rather than a capability fence: a project rendered
+# without the devcontainer capability ships no scripts/worktree at all, so the
+# decision has to be made at run time.
+if [ -x scripts/worktree/exec.sh ]; then
+	bash scripts/worktree/exec.sh --require-ready bash scripts/ci/pre-push-checks.sh
+else
+	bash scripts/ci/pre-push-checks.sh
+fi

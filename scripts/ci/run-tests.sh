@@ -20,7 +20,12 @@
 # variable so it can be classified before it is re-raised.
 set -uo pipefail
 
-output="$(bun test "$@" 2>&1)"
+# --coverage makes every run report what fraction of each source file the suite
+# actually executed. It is a report, not yet a gate: the table rides inside this
+# already-gated step where a reviewer sees it next to the results, and a floor
+# can be added once a baseline has soaked. The flag changes neither exit codes
+# nor the zero-test wording this script classifies below.
+output="$(bun test --coverage "$@" 2>&1)"
 rc=$?
 
 printf '%s\n' "$output"

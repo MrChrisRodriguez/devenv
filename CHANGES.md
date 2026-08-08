@@ -4,6 +4,21 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-08-08 — CI: close the coverage, shell, image, moon and pre-push gaps
+
+**Goal:** Close five holes a CI/CD review found in the merge safety net, without adding a single job or touching a guard's verdict logic.
+
+- **Coverage is now reported on every test run.** `scripts/ci/run-tests.sh` passes `--coverage`, so the per-file table rides inside the already-gated Test step. A report, not yet a gate: a floor can be added once a baseline has soaked. The current baseline: most `scripts/template/*.ts` contract modules sit at 90–100% line coverage.
+- **Every tracked shell script is linted.** New `scripts/ci/lint-shell.sh` runs shellcheck at warning severity over `git ls-files '*.sh'` — 55 scripts that previously had no linter at all, including the worktree runtime and the devcontainer lifecycle. The tree is clean at that severity; the nine pre-existing warnings were fixed (two genuinely dead variables removed from `scripts/worktree/doctor.sh`) or suppressed with reasoned inline directives (the deliberate literal-tilde `case` arms, the run-time `source` targets, the same-value env-prefix expansion in `env.sh`). The step lives in the fixed-cost contract lane; a host without shellcheck falls back to the digest-pinned container image.
+- **The built devcontainer image is now executed, not just built.** The `image` job tags its build and runs the real on-create chain — the same `env -i` incantation `devcontainer.json`'s `onCreateCommand` spells — against the CI checkout with no secrets and no config mounts, which the chain is designed to tolerate. The image-owned verifier inside it re-checks the devcontainer fingerprint, so an image and checkout that disagree fail in CI rather than at a developer's first create. Verified locally: a deliberate fingerprint mismatch exits 1.
+- **`.moon/tasks.yml` has a standing execution surface.** The `moon-graph` job runs `moon ci :lint :typecheck :test :build`. Today the targets resolve to zero projects (`apps/` and `libs/` ship empty; root excludes the inherited tasks) so the step is the wiring rather than the work — the first real project starts running its declared moon tasks in CI with no workflow change, which is what keeps the task file from diverging silently from what CI executes.
+- **Docker builds are bounded and retried.** New `scripts/ci/docker-build-retry.sh` (modelled byte-for-byte on `bun-install-retry.sh`: per-attempt timeout with the 124 hang contract, fixed attempt cap, worst case under the job budget) wraps the registry-dependent builds in the `image` and `browser` jobs. Three committed tests drive it with a fake `docker`.
+- **A `pre-push` hook runs every contract guard locally.** New `.husky/pre-push` routes `scripts/ci/pre-push-checks.sh` through the container bridge with `--require-ready`, exactly as the other two hooks do. The script discovers `*:check` scripts from `package.json` rather than hardcoding them — a render only runs the guards its profile received — and runs `template:validate` only where `template-parameters.toml` exists. `.husky/pre-push` was added to the worktree guard's `GIT_HOOKS` so the routing is enforced, not conventional. Escape hatch: `git push --no-verify`.
+
+**Adopting this downstream:** rendered projects receive all of it automatically (the four new files ship in every profile; goldens resynced and the Stage 11 record re-sealed, 413 → 425 files).
+
+---
+
 ## 2026-08-08 — Fix: rewrite the project slug in all four declared places at init
 
 **Goal:** Make `init-new-project.sh` deliver what the README and `.devcontainer/AUTH-PERSISTENCE.md` promise: a generated project whose per-project secrets, validated env-file, and Codex auth snapshot are namespaced by its own slug.

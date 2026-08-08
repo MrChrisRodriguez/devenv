@@ -11,6 +11,7 @@ const ROOT = resolve(import.meta.dir, "../../..");
 const ACTION_PATH = ".github/actions/setup-bun/action.yml";
 const MOON_ACTION_PATH = ".github/actions/setup-moon/action.yml";
 const RETRY_SCRIPT = resolve(ROOT, "scripts/ci/bun-install-retry.sh");
+const BUILD_RETRY_SCRIPT = resolve(ROOT, "scripts/ci/docker-build-retry.sh");
 const CI_WORKFLOW = ".github/workflows/ci.yml";
 const SMOKE_WORKFLOW = ".github/workflows/codex-cloud-smoke.yml";
 const WORKFLOWS = [CI_WORKFLOW, SMOKE_WORKFLOW] as const;
@@ -83,10 +84,10 @@ async function fakeBinary(
 
 function runScript(
 	script: string,
-	options: { cwd: string; env?: Record<string, string> },
+	options: { cwd: string; env?: Record<string, string>; args?: string[] },
 ): { exitCode: number; output: string } {
 	const result = Bun.spawnSync({
-		cmd: ["bash", script],
+		cmd: ["bash", script, ...(options.args ?? [])],
 		cwd: options.cwd,
 		env: { ...process.env, ...(options.env ?? {}) },
 		stdout: "pipe",
@@ -1184,6 +1185,85 @@ describe("bounded dependency install", () => {
 			});
 			expect(silent.exitCode).toBe(1);
 			expect(silent.output).toContain("without writing bun.lock");
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 30_000);
+});
+
+describe("bounded image build", () => {
+	test("kills a hung build, caps the attempts, and reports the timeout", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const binDirectory = await fakeBinary(temporary, "docker", "sleep 60");
+			const started = Date.now();
+			const result = runScript(BUILD_RETRY_SCRIPT, {
+				cwd: temporary,
+				env: {
+					PATH: `${binDirectory}:${process.env["PATH"] ?? ""}`,
+					DOCKER_BUILD_TIMEOUT_SEC: "1",
+					DOCKER_BUILD_ATTEMPTS: "2",
+					DOCKER_BUILD_RETRY_SLEEP_SEC: "0",
+				},
+			});
+			const elapsed = Date.now() - started;
+			// A stalled registry pull is only bounded if it is killed and surfaced
+			// as 124 rather than left to consume the job's whole budget.
+			expect(result.exitCode).toBe(124);
+			expect(result.output).toContain("exit 124, hang");
+			expect(result.output).toContain("attempt 2/2");
+			expect(result.output).not.toContain("attempt 3/");
+			expect(elapsed).toBeLessThan(30_000);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 60_000);
+
+	test("retries a failing build and surfaces its real exit code", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const binDirectory = await fakeBinary(temporary, "docker", "exit 7");
+			const result = runScript(BUILD_RETRY_SCRIPT, {
+				cwd: temporary,
+				env: {
+					PATH: `${binDirectory}:${process.env["PATH"] ?? ""}`,
+					DOCKER_BUILD_ATTEMPTS: "2",
+					DOCKER_BUILD_RETRY_SLEEP_SEC: "0",
+				},
+			});
+			expect(result.exitCode).toBe(7);
+			expect(result.output).toContain("failed (exit 7)");
+			expect(result.output).toContain("after 2 attempts");
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 30_000);
+
+	test("forwards the build arguments verbatim and stops on success", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const argumentLog = resolve(temporary, "arguments");
+			const binDirectory = await fakeBinary(
+				temporary,
+				"docker",
+				`printf '%s\\n' "$*" >> "${argumentLog}"`,
+			);
+			const result = runScript(BUILD_RETRY_SCRIPT, {
+				cwd: temporary,
+				args: ["--target", "development", "--tag", "probe", "."],
+				env: {
+					PATH: `${binDirectory}:${process.env["PATH"] ?? ""}`,
+					DOCKER_BUILD_ATTEMPTS: "3",
+					DOCKER_BUILD_RETRY_SLEEP_SEC: "0",
+				},
+			});
+			expect(result.exitCode).toBe(0);
+			expect(result.output).toContain("succeeded on attempt 1/3");
+			// The wrapper owns bounding and retries and NOTHING else: the command
+			// the fake saw must be the caller's argument list, once, unedited.
+			expect(await Bun.file(argumentLog).text()).toBe(
+				"build --target development --tag probe .\n",
+			);
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}

@@ -21,9 +21,13 @@ const HOST_ONBOARDING = "init-host.sh";
 const README = "README.md";
 const README_TEMPLATE = "README.template.md";
 
-// The two hooks the cutover routes. Both are optional on disk — a downstream
+// The hooks the cutover routes. All are optional on disk — a downstream
 // project may not use Husky at all — but any hook that ships has to route.
-const GIT_HOOKS = [".husky/commit-msg", ".husky/pre-commit"] as const;
+const GIT_HOOKS = [
+	".husky/commit-msg",
+	".husky/pre-commit",
+	".husky/pre-push",
+] as const;
 
 // The launcher this stage supersedes. The scan below is the non-vacuous half of
 // the cutover: documentation can claim anything, but a tracked file still naming
