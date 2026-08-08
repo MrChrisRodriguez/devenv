@@ -9,12 +9,14 @@ The setup has four stages:
 3. **[Secrets](#secrets)** — drop API keys where the container can read them
 4. **[Starting the Dev Container](#starting-the-dev-container)** — build and open the container, then sign in to the AI CLIs
 
-Two sections after that describe the template itself rather than your project:
+The sections after that describe the template itself rather than your project:
 **[Capabilities and Profiles](#capabilities-and-profiles)** explains what a
-generated project does and does not receive, and
+generated project does and does not receive,
 **[Validating the Template](#validating-the-template)** is for people changing
-the template rather than using it. Symptoms that look like defects and are not
-are collected in **[docs/troubleshooting.md](docs/troubleshooting.md)**.
+the template rather than using it, and **[What's Included](#whats-included)**
+lists the tooling every container ships with. Symptoms that look like defects
+and are not are collected in
+**[docs/troubleshooting.md](docs/troubleshooting.md)**.
 
 ---
 
@@ -247,21 +249,28 @@ Run the remaining steps through `exec.sh`, or from a login shell it opened.
 
 ### 3. Authenticate the AI CLIs
 
-The container ships with several AI CLIs that need a one-time sign-in.
+The container ships with several AI CLIs. Each has a persistent auth path, so
+you sign in **once per machine**, not once per container or worktree — the full
+design is in [.devcontainer/AUTH-PERSISTENCE.md](.devcontainer/AUTH-PERSISTENCE.md).
 
-**Gemini CLI** — run it and follow the login prompts (Google account or API key). You can also set `GEMINI_API_KEY` in your secrets file.
-
-```bash
-gemini
-```
-
-**Codex CLI** — needs an OpenAI API key. Add `OPENAI_API_KEY` to your common or per-project secrets file so it's available automatically, then run:
+**Claude Code** — mint a long-lived token once on your host and put it in the
+common secrets file; every container and worktree then starts authenticated:
 
 ```bash
-codex
+claude setup-token   # prints a CLAUDE_CODE_OAUTH_TOKEN value
 ```
 
-**Claude Code** is pre-installed and authenticates through the editor extension or `claude` on first run.
+Add it to `~/.config/devcontainer/secrets` as `CLAUDE_CODE_OAUTH_TOKEN=...`.
+Without it, `claude` falls back to an interactive login in each fresh container.
+
+**Codex CLI** — run `codex login` once inside the container. The auth snapshot
+is captured back to the host (`~/.config/devcontainer/codex-auth/<project>`) and
+seeded into every future container and worktree of this project. Do **not** set
+`OPENAI_API_KEY` in your secrets if you use the login — the key would shadow it.
+
+**Gemini CLI** — the container runs in API-key mode: set `GEMINI_API_KEY` in
+your secrets file and `gemini` needs no login. A Google-account device login
+works too, but the API key takes precedence whenever it is set.
 
 You're now ready to start building!
 

@@ -57,17 +57,17 @@
 		"goldenDigests": [
 			{
 				"path": "fixtures/golden/cloud.json",
-				"sha256": "dffadb9e0aff4a0894123bcaef39c67c5e4c70e77d5de8adf25d13d610d75bbc",
+				"sha256": "3fb0b02d6856f996f88c4f5b5d03a67e5246d3668b9e9b91e27a4a75527ed322",
 				"fileCount": 122
 			},
 			{
 				"path": "fixtures/golden/full.json",
-				"sha256": "3453865706a3f8aff0245097865b23baf6e89e326c3c9008007a9f9e08add8c4",
+				"sha256": "fc5fe739f311ab652b21954f06b83463a052db4f58cd6b50b1affe54c838685b",
 				"fileCount": 171
 			},
 			{
 				"path": "fixtures/golden/minimal.json",
-				"sha256": "e41374f2485425caf3eef912f4335c5b30fbf24ea6aa169dce5c5172d20a3cf8",
+				"sha256": "0b1768b8322dc3abdb11b8379cbd820327e989d5ff5e6ed6b34dd643c762c023",
 				"fileCount": 120
 			}
 		],

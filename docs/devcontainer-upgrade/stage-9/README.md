@@ -142,6 +142,7 @@ silently send them back through a bridge they do not have.
 | 8 | the archive destination is already occupied |
 | 9 | the archive did not verify and was rolled back |
 | 10 | the push was refused |
+| 11 | the push did not verify against the remote |
 
 A committed test asserts that every code the usage block documents is a code the
 suite triggers, **and** that every code the suite triggers is documented. A

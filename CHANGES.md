@@ -4,6 +4,31 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-08-08 — Fix: rewrite the project slug in all four declared places at init
+
+**Goal:** Make `init-new-project.sh` deliver what the README and `.devcontainer/AUTH-PERSISTENCE.md` promise: a generated project whose per-project secrets, validated env-file, and Codex auth snapshot are namespaced by its own slug.
+
+**The script rewrote one of four places.** AUTH-PERSISTENCE.md's "Adding this to another repo" checklist names the four spots the slug literal appears, because static JSON cannot reference `containerEnv` from a mount or `runArgs` string: (1) `containerEnv.DEVCONTAINER_PROJECT`, (2) the `--env-file …/container-env/<slug>.env` path in `runArgs`, (3) the `PROJECT="${DEVCONTAINER_PROJECT:-<slug>}"` default in `host/prepare-container-env.sh` (a **host** script, so the containerEnv value never reaches it), and (4) the `codex-auth/<slug>` mount source. The init script rewrote only (1), so every generated project silently merged its secrets from `secrets.d/devenv`, wrote `container-env/devenv.env`, and shared the template's `codex-auth/devenv` snapshot — while shells inside the container, which do see `DEVCONTAINER_PROJECT`, layered `secrets.d/<project>` on top, splitting the two delivery paths across two different slugs.
+
+**The fix extends the same `sed` block to all four places.** The two `devcontainer.json` patterns anchor on `/container-env/devenv.env` and `/codex-auth/devenv,target=` so the `devenv-image` payload paths in the lifecycle commands are untouched; the host-script pattern anchors on the full `${DEVCONTAINER_PROJECT:-devenv}` default.
+
+**Adopting this downstream:** projects already generated from this template should apply the checklist by hand — the four places are listed in AUTH-PERSISTENCE.md — and rename the host files (`secrets.d/devenv` → `secrets.d/<slug>`, `codex-auth/devenv` → `codex-auth/<slug>`) if they had been accumulating state under the template's slug.
+
+---
+
+## 2026-08-08 — Docs: post-release freshness pass
+
+**Goal:** Bring the user-facing docs back in line with the tree after the eleven-stage program closed, and stop one capability-gated section from shipping to renders that lack its subject.
+
+- **README.md "Authenticate the AI CLIs" rewritten to match the designed mechanisms** in AUTH-PERSISTENCE.md: Claude Code leads with `claude setup-token` → `CLAUDE_CODE_OAUTH_TOKEN` in the common secrets file; Codex leads with `codex login` plus the captured-back snapshot and now warns that `OPENAI_API_KEY` shadows the login (the old text recommended setting it); Gemini leads with API-key mode, which takes precedence over a device login.
+- **AUTH-PERSISTENCE.md "Mechanism 4 — Warp ACP" is now fenced with `claude_warp`.** The section describes `host/capture-warp-env.sh` and its `initializeCommand` entry, both of which a Warp-disabled render drops; the prose used none of the capability's declared residue tokens, so the anti-residue scan could not see it. Renders with the capability are byte-identical (fence markers are stripped); the `minimal` render loses the section. Golden manifests resynced and the Stage 11 record's `goldenDigests` re-sealed to the files they bind, as in `758fc11`.
+- **docs/troubleshooting.md "Where to look next"** no longer points a generated project at `template-parameters.toml` and `template-ownership.json`, which are omitted from every render.
+- **Stage 9 README** exit-code table gained code `11` (the push did not verify against the remote), which the wrapper's usage block has documented since Stage 10B. **Stage 11 README** gained a status note recording that the post-merge runbook completed on 2026-08-07.
+
+**Adopting this downstream:** the README auth section and the troubleshooting row are worth porting into generated projects' copies; the fence only matters at render time.
+
+---
+
 ## 2026-08-07 — Fix: accept the container's own path in the archive post-check
 
 **Goal:** Make `bash scripts/openspec/archive.sh` work through the bridge it ships with. Archiving this repository's own change refused with a true statement:

@@ -129,7 +129,7 @@
 			{
 				"path": ".devcontainer/AUTH-PERSISTENCE.md",
 				"mode": "0644",
-				"sha256": "6a0bb802e695e2d592a230b94d540cab2b032824947dbfccb7fd473e8afb1807"
+				"sha256": "ecf23f8e9bd2c60e495ae9319c502395c669de71c30e381c963887b75fbf9c47"
 			},
 			{
 				"path": ".devcontainer/ccstatusline-settings.json",
@@ -394,7 +394,7 @@
 			{
 				"path": "docs/troubleshooting.md",
 				"mode": "0644",
-				"sha256": "7d9f2cd7a3820e921ab95ebe1b60f513a620c754ad415edb3f3b24991b0648fc"
+				"sha256": "0bacdc4e61af3ad11292ed83d49ade5c9a571e5e1dad29074619511e620806e0"
 			},
 			{
 				"path": "experiments.json",
