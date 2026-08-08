@@ -75,6 +75,9 @@ wt_service_value() {
 wt_expand_home() {
 	local value="$1"
 	value="${value//\$\{HOME\}/$HOME}"
+	# The quoted tilde arms are deliberate: they MATCH a literal leading "~" in
+	# contract text precisely so this function can expand it.
+	# shellcheck disable=SC2088
 	case "$value" in
 		"~/"*) value="$HOME/${value#\~/}" ;;
 		"~") value="$HOME" ;;

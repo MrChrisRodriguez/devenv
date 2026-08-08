@@ -84,7 +84,7 @@
 			{
 				"path": ".codex/cloud/lib.sh",
 				"mode": "0755",
-				"sha256": "0c34abd73029fc661377546d28fa80fae28d77dec4c0f283cbe0de16fff045c1"
+				"sha256": "95ec60d4963ad61f05fc22d9525c3681be593abbe5e92d8b3d2b8c01578fb427"
 			},
 			{
 				"path": ".codex/cloud/selftest.sh",
@@ -194,7 +194,7 @@
 			{
 				"path": ".devcontainer/on-create.sh",
 				"mode": "0755",
-				"sha256": "5e47e062effdae87eff585c34fe02b1ba5c76e45a8632a8d7c3e6b9a7bf25ae8"
+				"sha256": "f6f1098cf8ff695afc0f689d4908b27deb1d751e13a3331e28dc5b46eb610ab2"
 			},
 			{
 				"path": ".devcontainer/on-create/codex-auth-snapshot.sh",
@@ -339,7 +339,7 @@
 			{
 				"path": ".github/workflows/ci.yml",
 				"mode": "0644",
-				"sha256": "ebe82860cb003bcc2fa84a04e3d7f823535b5b5927dcada155a50990d38b340e"
+				"sha256": "c8d768f89d73864bd35e2ca7580367dca5f395f460184a6f0ab2ee36f24dc6c4"
 			},
 			{
 				"path": ".github/workflows/codex-cloud-smoke.yml",
@@ -360,6 +360,11 @@
 				"path": ".husky/pre-commit",
 				"mode": "0755",
 				"sha256": "8f4cc5012461481b8e8502f77eaef193e4c52d003756be5bf7c61e953c0938e4"
+			},
+			{
+				"path": ".husky/pre-push",
+				"mode": "0755",
+				"sha256": "87398b9187e4f01fc7121284257071cfb081d0863e30667e5a2d1491c8f11112"
 			},
 			{
 				"path": ".moon/tasks.yml",
@@ -467,9 +472,24 @@
 				"sha256": "19dd5eb9911ded0907670827c1dbabd1c9c01d06d71bb09e08ce20b224de1f97"
 			},
 			{
+				"path": "scripts/ci/docker-build-retry.sh",
+				"mode": "0755",
+				"sha256": "be4beb0435b38fe68064c9204b9490c5734e597f96b4bd0a1e7d211918b5e2af"
+			},
+			{
+				"path": "scripts/ci/lint-shell.sh",
+				"mode": "0755",
+				"sha256": "4fb777d9dfe426c17cc195661dd79032430a8f9a2f57de0babb763d3c0603eab"
+			},
+			{
+				"path": "scripts/ci/pre-push-checks.sh",
+				"mode": "0755",
+				"sha256": "1ea5ee96926f89c14dc9698423b7acafafa27cb5b6e5573d82acd8ac0a7c6bfa"
+			},
+			{
 				"path": "scripts/ci/run-tests.sh",
 				"mode": "0755",
-				"sha256": "e3c9d4c71b3406c8abf96fa1dbeb8604cf87e8314e3829f6309287156940e5d7"
+				"sha256": "87577ff87e554bff73d807150fe68ff681e4ff584de3993fc3efdfb4704dd94d"
 			},
 			{
 				"path": "scripts/ci/run-typecheck.sh",
@@ -564,7 +584,7 @@
 			{
 				"path": "scripts/template/worktree-contract.ts",
 				"mode": "0644",
-				"sha256": "a08f77dd84b0c5fe7b2840ff64bb95822147ab0d22270936baf8d9c20708a98a"
+				"sha256": "3b791705223cd31f9db0e94cf9dfee767668d8e78a1345a3aaaab539fb18e34c"
 			},
 			{
 				"path": "scripts/worktree/cleanup.sh",
@@ -579,7 +599,7 @@
 			{
 				"path": "scripts/worktree/doctor.sh",
 				"mode": "0755",
-				"sha256": "dc1a52f0127526a73d8ffd8baa6432d6c6c7db577d30f7f4b44b25778348471b"
+				"sha256": "2ac6f3dc8fa39b1b09b67287dc93ad5210cca4efb6953178e469b430ab714f7f"
 			},
 			{
 				"path": "scripts/worktree/down.sh",
@@ -594,7 +614,7 @@
 			{
 				"path": "scripts/worktree/env.sh",
 				"mode": "0755",
-				"sha256": "5247243bf40920a56dbc0b13b48213062fe3bc25a515cda37cb8fdbc28ca8219"
+				"sha256": "b1d3ccb59d2aaf5b521953adb18c38f89e89144ef46e25748655893f8c306448"
 			},
 			{
 				"path": "scripts/worktree/exec.sh",
@@ -604,7 +624,7 @@
 			{
 				"path": "scripts/worktree/lib.sh",
 				"mode": "0755",
-				"sha256": "560e7e3a7ce28ca06a35519c566f11d5703df42db8598f884ea308c6d07837e9"
+				"sha256": "5b57494e36b2d21f6a1193cf6fc127661b8aa368eafc3a7ada6284ebfdfc3962"
 			},
 			{
 				"path": "scripts/worktree/lock.sh",
@@ -619,7 +639,7 @@
 			{
 				"path": "scripts/worktree/selftest.sh",
 				"mode": "0755",
-				"sha256": "d324642878ff890cecf52ce7abe93ca58ebf9667559b5831aa94dafc99a36161"
+				"sha256": "8d500a65a5650175dbd69d0ca5ad09c5750fd1f3dedde43c21d246b37f6b4da0"
 			},
 			{
 				"path": "scripts/worktree/services.sh",

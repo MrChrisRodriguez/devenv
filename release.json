@@ -15,12 +15,12 @@
 	"goldens": {
 		"directory": "fixtures/golden",
 		"regenerateWith": "bun run template:release-sync",
-		"totalFileCount": 413,
+		"totalFileCount": 425,
 		"fixtures": [
 			{
 				"fixture": "cloud",
 				"manifest": "fixtures/golden/cloud.json",
-				"fileCount": 122,
+				"fileCount": 126,
 				"omittedCount": 936,
 				"enabledCount": 11,
 				"disabledCount": 8
@@ -28,7 +28,7 @@
 			{
 				"fixture": "full",
 				"manifest": "fixtures/golden/full.json",
-				"fileCount": 171,
+				"fileCount": 175,
 				"omittedCount": 887,
 				"enabledCount": 19,
 				"disabledCount": 0
@@ -36,7 +36,7 @@
 			{
 				"fixture": "minimal",
 				"manifest": "fixtures/golden/minimal.json",
-				"fileCount": 120,
+				"fileCount": 124,
 				"omittedCount": 938,
 				"enabledCount": 6,
 				"disabledCount": 13
@@ -313,8 +313,8 @@
 			"evidenceRecord": "evidence/stage-6-doctor.json",
 			"boundarySha": "4a8894c2fb05c75bf2959ecedf9ca72ceb4f675b",
 			"ownedPaths": ["scripts/worktree/doctor.sh"],
-			"mode": "inherited",
-			"liveCommand": null,
+			"mode": "live",
+			"liveCommand": "bash scripts/worktree/doctor.sh --json at this head, after the shellcheck cleanup removed two dead variables: 32 checks pass including every security check; the two route checks report only that an idle template checkout has no dev server listening",
 			"knownNonDefects": []
 		},
 		{
@@ -323,8 +323,8 @@
 			"evidenceRecord": "evidence/stage-4-cloud.json",
 			"boundarySha": "fe433334f63a2c01e45b6a55c97dca057e00ea57",
 			"ownedPaths": [".codex/cloud"],
-			"mode": "inherited",
-			"liveCommand": null,
+			"mode": "live",
+			"liveCommand": "bash .codex/cloud/selftest.sh at this head, after the shellcheck directives landed: the hermetic bootstrap selftest passes",
 			"knownNonDefects": [
 				"a rendered fixture to report `cloud: fingerprint input bun.lock is missing`, which is correct by design: bun.lock is renderPolicy omit and a generated project installs its own. Do NOT 'fix' it by dropping bun.lock from fingerprint_inputs"
 			]

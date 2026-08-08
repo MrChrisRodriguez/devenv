@@ -218,6 +218,9 @@ check_generated_environment() {
 		fail "the main checkout must own offset 0"
 
 	registry="$(wt_contract_value registry_directory)"
+	# The quoted tilde arm is deliberate: it MATCHES a literal leading "~/" in
+	# the contract value rather than expanding one.
+	# shellcheck disable=SC2088
 	case "$registry" in
 		"~/"*)
 			registry="$SANDBOX/home/${registry#\~/}/ports.json"

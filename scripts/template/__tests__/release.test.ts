@@ -825,10 +825,18 @@ describe("18.2's ten acceptance items", () => {
 		);
 		// And the other direction, which is the half a guard usually forgets: a
 		// live claim over paths nothing has touched is a mode nobody derived.
+		// The victim is picked dynamically: any entry the committed registry
+		// holds as inherited has, by the same validation, byte-unchanged owned
+		// paths — a hardcoded id would rot the moment its paths legitimately
+		// moved and its mode legitimately flipped.
+		const inheritedEntry = COMMITTED.acceptance.find(
+			(entry) => entry.mode === "inherited",
+		);
+		expect(inheritedEntry).toBeDefined();
 		const asLive: ReleaseRegistry = {
 			...COMMITTED,
 			acceptance: COMMITTED.acceptance.map((entry) =>
-				entry.id === "doctor-security"
+				entry.id === inheritedEntry?.id
 					? { ...entry, mode: "live" as const, liveCommand: "something" }
 					: entry,
 			),
@@ -1580,12 +1588,18 @@ describe("the refusals this stage's record seals", () => {
 			).errors,
 			"an inherited claim is legal only while the paths that produced it are byte-unchanged",
 		);
+		// Dynamically picked for the same reason as the sibling test above: an
+		// inherited entry is exactly one whose owned paths are byte-unchanged,
+		// and a hardcoded id rots when its paths legitimately move.
+		const inheritedId = COMMITTED.acceptance.find(
+			(entry) => entry.mode === "inherited",
+		)?.id;
 		observed(
 			(
 				await validateAcceptance(ROOT, {
 					...COMMITTED,
 					acceptance: COMMITTED.acceptance.map((entry) =>
-						entry.id === "doctor-security"
+						entry.id === inheritedId
 							? { ...entry, mode: "live" as const, liveCommand: "something" }
 							: entry,
 					),

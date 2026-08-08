@@ -204,6 +204,13 @@ jobs:
       - name: Run hermetic worktree runtime selftest
         run: bash scripts/worktree/selftest.sh
 
+      # Every tracked shell script, one severity, one committed script. Biome
+      # owns TypeScript and JSON; this step is the shell's equivalent, and it
+      # lives in this lane because the script set is a fixed cost that does not
+      # scale with the project graph.
+      - name: Lint shell scripts
+        run: bash scripts/ci/lint-shell.sh
+
       # Lint, Typecheck and Test are NOT here. They are the three steps whose
       # cost scales with the project graph, so they live in the `project` job
       # below and run once per selected project. Everything this job still does
@@ -245,7 +252,33 @@ jobs:
       - name: Build selected image target
         run: |
           target="$(jq -r '.build.target' .devcontainer/devcontainer.json)"
-          docker build --progress=plain --target "$target" -f .devcontainer/Dockerfile .
+          bash scripts/ci/docker-build-retry.sh --progress=plain --target "$target" --tag devenv-image-ci -f .devcontainer/Dockerfile .
+
+      # The image used to be built and discarded unexamined: the seventeen
+      # on-create scripts were string-matched by contract tests but never
+      # executed. This step runs the real lifecycle chain — the same env -i
+      # incantation devcontainer.json's onCreateCommand spells — against this
+      # checkout, with no secrets and no config mounts, which the chain is
+      # designed to tolerate. The image-owned verifier inside it also re-checks
+      # the devcontainer fingerprint, so an image built from one tree and a
+      # checkout from another fail here rather than at a developer's first
+      # create.
+      # The chain runs against a throwaway copy in RUNNER_TEMP, chowned to the
+      # container's own user first: the runner's checkout is owned by a uid the
+      # image's vscode user does not have, and the chain's dependency install
+      # must be able to write node_modules. The copy also keeps the job's real
+      # checkout byte-identical for anything that inspects it afterwards.
+      - name: Run the on-create chain inside the built image
+        run: |
+          smoke="${RUNNER_TEMP}/image-smoke"
+          mkdir -p "$smoke"
+          cp -a . "$smoke"
+          docker run --rm --user root --volume "$smoke:/workspace" devenv-image-ci chown -R vscode:vscode /workspace
+          docker run --rm --user vscode \
+            --volume "$smoke:/workspace" --workdir /workspace \
+            devenv-image-ci \
+            /usr/bin/env -i HOME=/home/vscode PATH=/usr/bin:/bin /bin/bash -p -c \
+            '/bin/bash -p /usr/local/share/devenv-image/setup-proto.sh && exec /bin/bash -p /workspace/.devcontainer/on-create.sh'
 
   # ── Selection ───────────────────────────────────────────────────────────
   # Decide which projects the heavy lane runs over. SELECTION ONLY: the
@@ -388,6 +421,16 @@ jobs:
 
       - name: Reconcile the committed graph with moon
         run: bun run graph:check --query
+
+      # The standing execution surface for .moon/tasks.yml. Today the four
+      # targets resolve to zero projects — apps/ and libs/ ship empty and the
+      # root project excludes the inherited tasks — so this step is the wiring
+      # rather than the work: the first real project under apps/* or libs/*
+      # starts running its declared moon tasks here with no workflow change.
+      # Without it, .moon/tasks.yml is configuration nothing executes, free to
+      # diverge silently from what CI actually runs until the day it matters.
+      - name: Run declared moon tasks
+        run: moon ci :lint :typecheck :test :build
   # capability:end moon_affected_selection
 
   # capability:start playwright
@@ -422,7 +465,7 @@ jobs:
         run: |
           set -euo pipefail
           project="$(cat "${RUNNER_TEMP}/browser-project")"
-          docker build \
+          bash "${GITHUB_WORKSPACE}/scripts/ci/docker-build-retry.sh" \
             --progress=plain \
             --target development_browser \
             --tag devenv-browser-ci \

@@ -207,13 +207,11 @@ LAYOUT=""
 HOST_PORT=""
 DIRECT_URL=""
 FRIENDLY_URL=""
-FRIENDLY_HOST=""
 MANIFEST_PATH=""
 CADDY_SNIPPET_PATH=""
 
 HAVE_GIT="false"
 HAVE_ENGINE="false"
-HAVE_CLI="false"
 HAVE_PYTHON="false"
 HAVE_CURL="false"
 ENGINE_READY="false"
@@ -432,7 +430,6 @@ check_host_commands() {
 	fi
 
 	if command -v "$CONTAINER_CLI" >/dev/null 2>&1; then
-		HAVE_CLI="true"
 		add_result PASS host.command.cli "The container CLI is installed" "$CONTAINER_CLI"
 	else
 		add_result FAIL host.command.cli "The container CLI is missing" "$CONTAINER_CLI" \
@@ -596,7 +593,6 @@ load_state_values() {
 		HOST_PORT="$(read_state_value "$ENVIRONMENT_FILE" "$PUBLISHED_HOST_PORT_VARIABLE")"
 		DIRECT_URL="$(read_state_value "$ENVIRONMENT_FILE" "${prefix}_DIRECT_URL")"
 		FRIENDLY_URL="$(read_state_value "$ENVIRONMENT_FILE" "${prefix}_FRIENDLY_URL")"
-		FRIENDLY_HOST="$(read_state_value "$ENVIRONMENT_FILE" "${prefix}_FRIENDLY_HOST")"
 	fi
 	if [ -r "$MANIFEST_STATE_FILE" ]; then
 		MANIFEST_PATH="$(read_state_value "$MANIFEST_STATE_FILE" "${prefix}_MANIFEST_PATH")"
@@ -618,8 +614,6 @@ apply_route_state_overrides() {
 	[ -z "$value" ] || DIRECT_URL="$value"
 	value="$(read_state_value "$MANIFEST_STATE_FILE" "${prefix}_FRIENDLY_URL")"
 	[ -z "$value" ] || FRIENDLY_URL="$value"
-	value="$(read_state_value "$MANIFEST_STATE_FILE" "${prefix}_FRIENDLY_HOST")"
-	[ -z "$value" ] || FRIENDLY_HOST="$value"
 }
 
 # Nothing derived from generated state may build a path, a hostname, or a URL

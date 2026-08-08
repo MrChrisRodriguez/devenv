@@ -209,7 +209,7 @@
 			{
 				"path": ".devcontainer/on-create.sh",
 				"mode": "0755",
-				"sha256": "a5a1d3f58da6c7bfea2696a4a99d297d8f947a8435bff6e16c26a65fc951478d"
+				"sha256": "4084fc978108770edaf4df12bd6e18e66b390295d4c52228f410732fc7a2242b"
 			},
 			{
 				"path": ".devcontainer/on-create/codex-auth-snapshot.sh",
@@ -324,7 +324,7 @@
 			{
 				"path": ".github/workflows/ci.yml",
 				"mode": "0644",
-				"sha256": "1fc5a238739e512e9f0169a9ce81d6dc190c4e6c7520b659eee0acd7d492b5d1"
+				"sha256": "8b1788fcfe82080b055a38893348b79f065d006beb4ed7f9f03beb3667c710d6"
 			},
 			{
 				"path": ".gitignore",
@@ -340,6 +340,11 @@
 				"path": ".husky/pre-commit",
 				"mode": "0755",
 				"sha256": "8f4cc5012461481b8e8502f77eaef193e4c52d003756be5bf7c61e953c0938e4"
+			},
+			{
+				"path": ".husky/pre-push",
+				"mode": "0755",
+				"sha256": "87398b9187e4f01fc7121284257071cfb081d0863e30667e5a2d1491c8f11112"
 			},
 			{
 				"path": ".moon/tasks.yml",
@@ -452,9 +457,24 @@
 				"sha256": "19dd5eb9911ded0907670827c1dbabd1c9c01d06d71bb09e08ce20b224de1f97"
 			},
 			{
+				"path": "scripts/ci/docker-build-retry.sh",
+				"mode": "0755",
+				"sha256": "be4beb0435b38fe68064c9204b9490c5734e597f96b4bd0a1e7d211918b5e2af"
+			},
+			{
+				"path": "scripts/ci/lint-shell.sh",
+				"mode": "0755",
+				"sha256": "4fb777d9dfe426c17cc195661dd79032430a8f9a2f57de0babb763d3c0603eab"
+			},
+			{
+				"path": "scripts/ci/pre-push-checks.sh",
+				"mode": "0755",
+				"sha256": "1ea5ee96926f89c14dc9698423b7acafafa27cb5b6e5573d82acd8ac0a7c6bfa"
+			},
+			{
 				"path": "scripts/ci/run-tests.sh",
 				"mode": "0755",
-				"sha256": "e3c9d4c71b3406c8abf96fa1dbeb8604cf87e8314e3829f6309287156940e5d7"
+				"sha256": "87577ff87e554bff73d807150fe68ff681e4ff584de3993fc3efdfb4704dd94d"
 			},
 			{
 				"path": "scripts/ci/run-typecheck.sh",
@@ -559,7 +579,7 @@
 			{
 				"path": "scripts/template/worktree-contract.ts",
 				"mode": "0644",
-				"sha256": "29ae247ea2edc1fb4ebfb5a2e0a99558504ca54e874823eb751cd0a5b685710e"
+				"sha256": "c211d2fa49ed97c0f9a8f3c14cc3041e881ec5cf10382baa66d2b2648d3958da"
 			},
 			{
 				"path": "scripts/worktree/cleanup.sh",
@@ -574,7 +594,7 @@
 			{
 				"path": "scripts/worktree/doctor.sh",
 				"mode": "0755",
-				"sha256": "0ee98136c1f9faefaff2999a7b14dc3fa73a133d6049c48bd3582a5f0ddc1d1d"
+				"sha256": "03dc0b75037932068c6ab25113cb01bb81829ff2f904653caa2fad36a27c4b8f"
 			},
 			{
 				"path": "scripts/worktree/down.sh",
@@ -589,7 +609,7 @@
 			{
 				"path": "scripts/worktree/env.sh",
 				"mode": "0755",
-				"sha256": "bdb28ce76cfdb200e00a9700c5edf89cf61abb8a9e064e039516784afca2e63f"
+				"sha256": "5a25ffad94a44d35623e362f703aebd2804244ff8ac53a2893a3ab7bf54b21ae"
 			},
 			{
 				"path": "scripts/worktree/exec.sh",
@@ -599,7 +619,7 @@
 			{
 				"path": "scripts/worktree/lib.sh",
 				"mode": "0755",
-				"sha256": "560e7e3a7ce28ca06a35519c566f11d5703df42db8598f884ea308c6d07837e9"
+				"sha256": "5b57494e36b2d21f6a1193cf6fc127661b8aa368eafc3a7ada6284ebfdfc3962"
 			},
 			{
 				"path": "scripts/worktree/lock.sh",
@@ -614,7 +634,7 @@
 			{
 				"path": "scripts/worktree/selftest.sh",
 				"mode": "0755",
-				"sha256": "80ff61afe32d79bbe7d1108b0d2f49e537148ef3f9225665ba2587e6ac418af3"
+				"sha256": "0a4db5c3eb1d7374cd640a9851806a881c15abaeaf5f18b1bb9472d01c6deb24"
 			},
 			{
 				"path": "scripts/worktree/services.sh",

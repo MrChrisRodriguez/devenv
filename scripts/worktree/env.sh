@@ -552,6 +552,10 @@ write_environment_files() {
 report_json() {
 	local python
 	python="$(wt_python)"
+	# Every prefix assignment forwards the current shell's variable of the same
+	# name, so the expansions inside later values (DIRECT_URL) read exactly the
+	# value the forked interpreter receives.
+	# shellcheck disable=SC2097,SC2098
 	ENVIRONMENT_PREFIX="$ENVIRONMENT_PREFIX" \
 		WORKSPACE_ID="$WORKSPACE_ID" \
 		WORKTREE_FAMILY="$WORKTREE_FAMILY" \
