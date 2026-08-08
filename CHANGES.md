@@ -4,6 +4,20 @@ This file documents changes made to this template repository. Each entry provide
 
 ---
 
+## 2026-08-08 — Feat: the archive wrapper publishes through a pull request
+
+**Goal:** Remove the one path that could write the default branch without passing the CI gate, so `enforce_admins` can be enabled and *nothing* reaches `main` unreviewed by the gate — closing the hole that let a red archive commit land directly on `main` on 2026-08-07.
+
+**What changed.** `scripts/openspec/archive.sh` keeps phases 1–8 byte-for-byte — every precondition, the UTC pre-check, the post-state verification, the rollback, the re-validation, the commit — and replaces the publish tail. The archive commit now rides `chore/archive-<change>`: the branch is pushed (exit 10 on rejection, with the same parent-vs-origin freshness check), read back with `git ls-remote` and compared against the exact commit (exit 11), then `gh pr create` opens the pull request (exit 12) and `gh pr merge --auto --merge --delete-branch` arms auto-merge (exit 13), and finally the pull request itself is read back — `headRefOid` must equal the verified commit and auto-merge must actually be armed (exit 14). The GitHub CLI is a precondition checked before anything is touched (exit 5 when missing, unauthenticated, or when the repository refuses auto-merge), injectable for tests as `ARCHIVE_GH`, mirroring `OPENSPEC_BRIDGE`.
+
+**What deliberately did not change.** The readback discipline the sealed Stage 10B record pins — the query after the write, bound once, assigned once, distinct from the writer — holds for both writes now; every pinned refusal sentence survives; the self-healing property survives (a failed publish leaves the commit local and the next run refuses on `HEAD is ahead` until the operator acts); `external-writes.json` stays `skeleton` with the wrapper's delegation intact. Six new tests drive a fake `gh` through every new refusal, and the exit-code matrix stays closed in both directions at 14 codes.
+
+**Repository settings this pairs with:** `allow_auto_merge` enabled (the wrapper refuses without it), and `enforce_admins` enabled on `main`'s protection — direct pushes now fail for everyone, which is safe because nothing needs them any more.
+
+**Adopting this downstream:** replace the publish tail of `scripts/openspec/archive.sh`, enable auto-merge on the repository, and enable `enforce_admins` once nothing else pushes the default branch directly.
+
+---
+
 ## 2026-08-08 — CI: close the coverage, shell, image, moon and pre-push gaps
 
 **Goal:** Close five holes a CI/CD review found in the merge safety net, without adding a single job or touching a guard's verdict logic.

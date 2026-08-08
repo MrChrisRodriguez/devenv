@@ -62,12 +62,12 @@
 			},
 			{
 				"path": "fixtures/golden/full.json",
-				"sha256": "477aa74ea7e29d7b56c75a7b466d1628279098dc40e1666bf97b409d14c9d451",
+				"sha256": "337da529ffe9f3b6f2cfc62dd73f607205de9e39d55f9cd37c35e5711b378111",
 				"fileCount": 175
 			},
 			{
 				"path": "fixtures/golden/minimal.json",
-				"sha256": "2c2f0b032fd0cbc926f83fae23ec7644d7770740bc8732d57d28ace8eb6fc418",
+				"sha256": "d426dc6cb9f987287edc910622f9e315d1086dbf29a6012c724883f2b029f8f4",
 				"fileCount": 124
 			}
 		],

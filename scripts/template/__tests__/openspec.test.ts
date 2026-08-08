@@ -240,6 +240,10 @@ interface WrapperHarness {
 	root: string;
 	origin: string;
 	home: string;
+	/** The fake GitHub CLI the wrapper's ARCHIVE_GH injection point names. */
+	gh: string;
+	/** Every fake-gh invocation, one argument line per call. */
+	ghLog: string;
 }
 
 interface RunResult {
@@ -366,7 +370,52 @@ async function wrapperHarness(
 	gitOrThrow(root, "config", "user.name", "Archive Fixture");
 	gitOrThrow(root, "remote", "add", "origin", origin);
 	gitOrThrow(root, "push", "--quiet", "-u", "origin", "main");
-	return { root, origin, home: base };
+	// The publisher, faked at the wrapper's own injection point. The fake is
+	// mode-switched by FAKE_GH_MODE and answers `pr view` with the REAL branch
+	// tip read from the bare origin, so the PR readback verifies against what
+	// the push actually produced rather than a value the fixture invented.
+	const gh = resolve(base, "fake-gh");
+	const ghLog = resolve(base, "fake-gh.log");
+	await Bun.write(
+		gh,
+		[
+			"#!/usr/bin/env bash",
+			"set -uo pipefail",
+			'mode="${FAKE_GH_MODE:-faithful}"',
+			'[ -z "${FAKE_GH_LOG:-}" ] || printf \'%s\\n\' "$*" >> "$FAKE_GH_LOG"',
+			'case "${1:-}" in',
+			'\t--version) echo "gh version 0.0.0-fake"; exit 0 ;;',
+			"\tauth)",
+			'\t\t[ "$mode" = "unauthenticated" ] && exit 1',
+			"\t\texit 0 ;;",
+			"\trepo)",
+			'\t\tif [ "$mode" = "automerge-disabled" ]; then echo "false"; else echo "true"; fi',
+			"\t\texit 0 ;;",
+			"\tpr)",
+			'\t\tcase "${2:-}" in',
+			"\t\t\tcreate)",
+			'\t\t\t\t[ "$mode" = "pr-create-fails" ] && { echo "fake: pr create refused" >&2; exit 1; }',
+			'\t\t\t\techo "https://example.invalid/pull/1"; exit 0 ;;',
+			"\t\t\tmerge)",
+			'\t\t\t\t[ "$mode" = "auto-merge-refused" ] && { echo "fake: auto-merge refused" >&2; exit 1; }',
+			"\t\t\t\texit 0 ;;",
+			"\t\t\tview)",
+			'\t\t\t\tbranch="${3:-}"',
+			'\t\t\t\ttip="$(git --git-dir="$FAKE_GH_ORIGIN" rev-parse "refs/heads/$branch" 2>/dev/null || true)"',
+			'\t\t\t\tcase "$mode" in',
+			'\t\t\t\t\thead-sha-mismatch) echo "0000000000000000000000000000000000000000 armed" ;;',
+			'\t\t\t\t\tauto-merge-not-armed) echo "$tip unarmed" ;;',
+			'\t\t\t\t\t*) echo "$tip armed" ;;',
+			"\t\t\t\tesac",
+			"\t\t\t\texit 0 ;;",
+			"\t\tesac ;;",
+			"esac",
+			"exit 2",
+			"",
+		].join("\n"),
+	);
+	await chmod(gh, 0o755);
+	return { root, origin, home: base, gh, ghLog };
 }
 
 /**
@@ -393,6 +442,13 @@ const REFUSAL_MATRIX: ReadonlyArray<{ code: number; meaning: string }> = [
 	{ code: 9, meaning: "the archive did not verify and was rolled back" },
 	{ code: 10, meaning: "the push was refused" },
 	{ code: 11, meaning: "the push did not verify against the remote" },
+	{ code: 12, meaning: "the pull request could not be opened" },
+	{ code: 13, meaning: "auto-merge could not be armed" },
+	{
+		code: 14,
+		meaning:
+			"the pull request did not verify against the branch and auto-merge",
+	},
 ];
 
 const OBSERVED_EXIT_CODES = new Set<number>();
@@ -414,6 +470,11 @@ function runWrapper(
 				HOME: harness.home,
 				LANG: "C",
 				OPENSPEC_BRIDGE: "",
+				// Always the fake, never the real CLI: a wrapper test that reached
+				// a developer's authenticated gh would query a real repository.
+				ARCHIVE_GH: harness.gh,
+				FAKE_GH_ORIGIN: harness.origin,
+				FAKE_GH_LOG: harness.ghLog,
 				...overrides,
 			},
 			stdin: "ignore",
@@ -1159,6 +1220,14 @@ describe("openspec lifecycle contract", () => {
 			return gitOrThrow(harness.origin, "rev-parse", "refs/heads/main").trim();
 		}
 
+		function originBranch(harness: WrapperHarness, change: string): string {
+			return gitOrThrow(
+				harness.origin,
+				"rev-parse",
+				`refs/heads/chore/archive-${change}`,
+			).trim();
+		}
+
 		test("a complete change is archived, validated, committed and pushed", async () => {
 			await withWrapper(
 				async (harness) => {
@@ -1202,10 +1271,19 @@ describe("openspec lifecycle contract", () => {
 					expect(changed.length).toBeGreaterThan(0);
 					for (const path of changed)
 						expect(path.startsWith("openspec/")).toBe(true);
-					expect(originHead(harness)).not.toBe(before);
-					expect(originHead(harness)).toBe(
+					// The default branch is not written by hand any more: the archive
+					// rides its own branch, and main moves only when the CI gate
+					// releases the armed auto-merge.
+					expect(originHead(harness)).toBe(before);
+					expect(originBranch(harness, "probe-one")).toBe(
 						gitOrThrow(harness.root, "rev-parse", "HEAD").trim(),
 					);
+					const ghCalls = await Bun.file(harness.ghLog).text();
+					expect(ghCalls).toContain("pr create --head chore/archive-probe-one");
+					expect(ghCalls).toContain(
+						"pr merge chore/archive-probe-one --auto --merge --delete-branch",
+					);
+					expect(result.stdout).toContain("armed auto-merge for");
 					expect(gitOrThrow(harness.root, "status", "--porcelain")).toBe("");
 				},
 				{
@@ -1265,7 +1343,7 @@ describe("openspec lifecycle contract", () => {
 					await mkdir(dirname(hook), { recursive: true });
 					await Bun.write(
 						hook,
-						"#!/usr/bin/env bash\ngit update-ref refs/heads/main refs/heads/main^\n",
+						"#!/usr/bin/env bash\ngit update-ref refs/heads/chore/archive-probe-one refs/heads/chore/archive-probe-one^\n",
 					);
 					await chmod(hook, 0o755);
 					const result = runWrapper(harness, []);
@@ -1523,9 +1601,8 @@ describe("openspec lifecycle contract", () => {
 					const result = runWrapper(harness, []);
 					expect(result.exitCode).toBe(10);
 					expect(result.stderr).toContain("the push was rejected");
-					expect(result.stderr).toContain("push it as an administrator");
 					expect(result.stderr).toContain(
-						"git switch -c chore/archive-probe-one",
+						"git push origin :refs/heads/chore/archive-probe-one",
 					);
 					expect(result.stderr).toContain("git reset --hard origin/main");
 					expect(
@@ -1550,6 +1627,98 @@ describe("openspec lifecycle contract", () => {
 					],
 				},
 			);
+		}, 60_000);
+
+		const PROBE_OPTIONS = {
+			cli: "faithful" as const,
+			changes: [
+				{
+					name: "probe-one",
+					complete: 2,
+					remaining: 0,
+					requirement: "Probe Requirement",
+				},
+			],
+		};
+
+		test("a pull request that cannot be opened is a named refusal", async () => {
+			await withWrapper(async (harness) => {
+				const result = runWrapper(harness, [], {
+					FAKE_GH_MODE: "pr-create-fails",
+				});
+				expect(result.exitCode).toBe(12);
+				expect(result.stderr).toContain("the pull request could not be opened");
+				expect(result.stderr).toContain("Open it yourself");
+				// The branch push already happened and verified: the refusal names
+				// exactly the missing half rather than undoing the verified one.
+				expect(originBranch(harness, "probe-one")).toBe(
+					gitOrThrow(harness.root, "rev-parse", "HEAD").trim(),
+				);
+			}, PROBE_OPTIONS);
+		}, 60_000);
+
+		test("auto-merge that cannot be armed is a named refusal", async () => {
+			await withWrapper(async (harness) => {
+				const result = runWrapper(harness, [], {
+					FAKE_GH_MODE: "auto-merge-refused",
+				});
+				expect(result.exitCode).toBe(13);
+				expect(result.stderr).toContain("auto-merge could not be armed");
+				expect(result.stderr).toContain("gh pr merge chore/archive-probe-one");
+			}, PROBE_OPTIONS);
+		}, 60_000);
+
+		test("a pull request about the wrong head is refused by the readback", async () => {
+			await withWrapper(async (harness) => {
+				const result = runWrapper(harness, [], {
+					FAKE_GH_MODE: "head-sha-mismatch",
+				});
+				expect(result.exitCode).toBe(14);
+				expect(result.stderr).toContain(
+					"the pull request did not verify against the branch and auto-merge",
+				);
+			}, PROBE_OPTIONS);
+		}, 60_000);
+
+		test("auto-merge left unarmed is refused by the readback", async () => {
+			await withWrapper(async (harness) => {
+				const result = runWrapper(harness, [], {
+					FAKE_GH_MODE: "auto-merge-not-armed",
+				});
+				expect(result.exitCode).toBe(14);
+				expect(result.stderr).toContain("unarmed");
+				expect(result.stderr).toContain(
+					"the pull request did not verify against the branch and auto-merge",
+				);
+			}, PROBE_OPTIONS);
+		}, 60_000);
+
+		test("a missing gh login refuses before anything is touched", async () => {
+			await withWrapper(async (harness) => {
+				const before = await treeState(harness.root);
+				const result = runWrapper(harness, [], {
+					FAKE_GH_MODE: "unauthenticated",
+				});
+				expect(result.exitCode).toBe(5);
+				expect(result.stderr).toContain(
+					"the GitHub CLI is not authenticated; run `gh auth login`",
+				);
+				expect(await treeState(harness.root)).toEqual(before);
+			}, PROBE_OPTIONS);
+		}, 60_000);
+
+		test("a repository that refuses auto-merge refuses the run", async () => {
+			await withWrapper(async (harness) => {
+				const before = await treeState(harness.root);
+				const result = runWrapper(harness, [], {
+					FAKE_GH_MODE: "automerge-disabled",
+				});
+				expect(result.exitCode).toBe(5);
+				expect(result.stderr).toContain(
+					"the repository does not allow auto-merge",
+				);
+				expect(await treeState(harness.root)).toEqual(before);
+			}, PROBE_OPTIONS);
 		}, 60_000);
 	});
 
@@ -1693,10 +1862,16 @@ describe("one disposable lifecycle, end to end", () => {
 				expect(
 					gitOrThrow(harness.root, "log", "-1", "--format=%s").trim(),
 				).toBe("chore(openspec): archive disposable-archive-probe");
-				expect(originHead()).not.toBe(beforePush);
-				expect(originHead()).toBe(
-					gitOrThrow(harness.root, "rev-parse", "HEAD").trim(),
-				);
+				// The default branch waits for the CI gate; the archive branch holds
+				// the verified commit and auto-merge is armed on it.
+				expect(originHead()).toBe(beforePush);
+				expect(
+					gitOrThrow(
+						harness.origin,
+						"rev-parse",
+						"refs/heads/chore/archive-disposable-archive-probe",
+					).trim(),
+				).toBe(gitOrThrow(harness.root, "rev-parse", "HEAD").trim());
 				expect(gitOrThrow(harness.root, "status", "--porcelain")).toBe("");
 
 				// A second run over a re-created change refuses on the destination the
@@ -1965,7 +2140,7 @@ describe("the readback is ordered, bound and never superseded", () => {
 	}
 
 	const READBACK_LINE =
-		'REMOTE_AFTER="$(git ls-remote --exit-code origin "refs/heads/$DEFAULT_BRANCH" 2>/dev/null | awk \'{ print $1 }\' || true)"\n';
+		'REMOTE_AFTER="$(git ls-remote --exit-code origin "refs/heads/$ARCHIVE_BRANCH" 2>/dev/null | awk \'{ print $1 }\' || true)"\n';
 
 	test("the committed wrapper satisfies every readback rule", async () => {
 		expect(await validateWrapperPolicy(ROOT)).toEqual([]);
