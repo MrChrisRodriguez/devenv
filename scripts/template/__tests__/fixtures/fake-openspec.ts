@@ -21,6 +21,19 @@ import { resolve } from "node:path";
  *                   must never be able to wait forever on an answer nobody is
  *                   there to give.
  *
+ * And two answers about the change directory, the first of them observed live:
+ *
+ * - `bridge-change-dir` answers with the path as the CONTAINER sees it. The
+ *                       wrapper runs on the host and bridges only the CLI call,
+ *                       so a repository bind-mounted at /workspace really does
+ *                       come back as `/workspace/openspec/changes/<name>`. This
+ *                       is a correct answer from a different mount point and
+ *                       must be accepted.
+ * - `foreign-change-dir` answers about a different change entirely. It shares
+ *                       the mount-point shape of the case above and nothing
+ *                       else, which is what keeps the acceptance above from
+ *                       being an acceptance of everything.
+ *
  * And three ways `archive` lies, each of them observed:
  *
  * - `archive-noop`         prints "Aborted. No files were changed." and RETURNS
@@ -38,6 +51,8 @@ export type FakeOpenspecMode =
 	| "malformed"
 	| "nonzero"
 	| "prompt-hang"
+	| "bridge-change-dir"
+	| "foreign-change-dir"
 	| "archive-noop"
 	| "archive-drops-specs"
 	| "archive-strays";
@@ -127,8 +142,16 @@ case "@@{1:-}" in
 			open_count="$(grep -c -E '^[[:space:]]*-[[:space:]]*\[[[:space:]]\][[:space:]]' "$dir/tasks.md" || true)"
 			total=$((done_count + open_count))
 		fi
+		reported="$(cd "$dir" && pwd -P)"
+		case "$MODE" in
+			# The container's own view of the same directory, which is what the
+			# bridge produces and what a host-path comparison used to refuse.
+			bridge-change-dir) reported="/workspace/$dir" ;;
+			# The same shape, a different change.
+			foreign-change-dir) reported="/workspace/openspec/changes/$change-elsewhere" ;;
+		esac
 		printf '{\n  "changeName": "%s",\n  "changeDir": "%s",\n  "progress": {"total": %s, "complete": %s, "remaining": %s}\n}\n' \
-			"$change" "$(cd "$dir" && pwd -P)" "$total" "$done_count" "$((total - done_count))"
+			"$change" "$reported" "$total" "$done_count" "$((total - done_count))"
 		;;
 	archive)
 		shift
