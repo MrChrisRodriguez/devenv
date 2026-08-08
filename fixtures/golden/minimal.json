@@ -472,6 +472,11 @@
 				"sha256": "1ea5ee96926f89c14dc9698423b7acafafa27cb5b6e5573d82acd8ac0a7c6bfa"
 			},
 			{
+				"path": "scripts/ci/run-moon-tasks.sh",
+				"mode": "0755",
+				"sha256": "cebc506b54500704b98fae6892c5685bff9ecf08b533025a4d80bb9b4ea8f01d"
+			},
+			{
 				"path": "scripts/ci/run-tests.sh",
 				"mode": "0755",
 				"sha256": "87577ff87e554bff73d807150fe68ff681e4ff584de3993fc3efdfb4704dd94d"

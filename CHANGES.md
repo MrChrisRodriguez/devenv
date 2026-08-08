@@ -31,6 +31,8 @@ This file documents changes made to this template repository. Each entry provide
 
 **Adopting this downstream:** rendered projects receive all of it automatically (the four new files ship in every profile; goldens resynced and the Stage 11 record re-sealed, 413 → 425 files).
 
+**Follow-up (same day):** `moon ci` words an empty pipeline two ways — "No tasks affected by changed files" (exit 0) on a pull request, "No tasks found. Unable to execute action pipeline." (exit 1) on a shallow default-branch push — so the bare step greened every PR and then reddened the very first push run on `main`. The step now runs through `scripts/ci/run-moon-tasks.sh`, which classifies exactly the empty-pipeline wordings as a notice, in the same shape and for the same reason as `run-tests.sh`'s no-tests classification; a failing task still fails, proven by three committed tests over a stub `moon`.
+
 ---
 
 ## 2026-08-08 — Fix: rewrite the project slug in all four declared places at init

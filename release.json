@@ -15,12 +15,12 @@
 	"goldens": {
 		"directory": "fixtures/golden",
 		"regenerateWith": "bun run template:release-sync",
-		"totalFileCount": 425,
+		"totalFileCount": 428,
 		"fixtures": [
 			{
 				"fixture": "cloud",
 				"manifest": "fixtures/golden/cloud.json",
-				"fileCount": 126,
+				"fileCount": 127,
 				"omittedCount": 936,
 				"enabledCount": 11,
 				"disabledCount": 8
@@ -28,7 +28,7 @@
 			{
 				"fixture": "full",
 				"manifest": "fixtures/golden/full.json",
-				"fileCount": 175,
+				"fileCount": 176,
 				"omittedCount": 887,
 				"enabledCount": 19,
 				"disabledCount": 0
@@ -36,7 +36,7 @@
 			{
 				"fixture": "minimal",
 				"manifest": "fixtures/golden/minimal.json",
-				"fileCount": 124,
+				"fileCount": 125,
 				"omittedCount": 938,
 				"enabledCount": 6,
 				"disabledCount": 13

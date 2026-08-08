@@ -418,7 +418,7 @@
 			{
 				"path": ".github/workflows/ci.yml",
 				"mode": "0644",
-				"sha256": "11bdbbf724888c30f6cf7c8a00ab5ef789abd9f1f2e43155bea981916f470f71"
+				"sha256": "2479313af87de29f654ce78e7e0efd01fefc854be759a6c74ac32fe861a400f4"
 			},
 			{
 				"path": ".github/workflows/codex-cloud-smoke.yml",
@@ -614,6 +614,11 @@
 				"path": "scripts/ci/pre-push-checks.sh",
 				"mode": "0755",
 				"sha256": "1ea5ee96926f89c14dc9698423b7acafafa27cb5b6e5573d82acd8ac0a7c6bfa"
+			},
+			{
+				"path": "scripts/ci/run-moon-tasks.sh",
+				"mode": "0755",
+				"sha256": "cebc506b54500704b98fae6892c5685bff9ecf08b533025a4d80bb9b4ea8f01d"
 			},
 			{
 				"path": "scripts/ci/run-tests.sh",

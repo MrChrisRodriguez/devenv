@@ -53,22 +53,22 @@
 		"acceptanceInherited": 3,
 		"budgetFamilies": 4,
 		"goldenFixtures": 3,
-		"goldenTotalFileCount": 425,
+		"goldenTotalFileCount": 428,
 		"goldenDigests": [
 			{
 				"path": "fixtures/golden/cloud.json",
-				"sha256": "fc18b9fa777ab6e9706bd268d3da10d43fedb17fb506f4e46a6da34e300a6ae6",
-				"fileCount": 126
+				"sha256": "7616f353750728d5d35bcca87d15dfde05b48a168bf20861521e1668fa28ef1c",
+				"fileCount": 127
 			},
 			{
 				"path": "fixtures/golden/full.json",
-				"sha256": "337da529ffe9f3b6f2cfc62dd73f607205de9e39d55f9cd37c35e5711b378111",
-				"fileCount": 175
+				"sha256": "a1225f5023ec844af72fc9dfc9b77ae1263e9798afba02ddaf99a65dca4f3063",
+				"fileCount": 176
 			},
 			{
 				"path": "fixtures/golden/minimal.json",
-				"sha256": "d426dc6cb9f987287edc910622f9e315d1086dbf29a6012c724883f2b029f8f4",
-				"fileCount": 124
+				"sha256": "f4f5f6379d69f936a62ac7d7d46465d56f6c57e09eddce678022d2a0566ef37e",
+				"fileCount": 125
 			}
 		],
 		"postMergeSteps": [
