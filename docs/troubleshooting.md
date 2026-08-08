@@ -127,8 +127,8 @@ is worse than no command at all.
 
 | Question | Where it is answered |
 |---|---|
-| What a capability turns on or off | `template-parameters.toml` and `docs/devcontainer-upgrade/stage-0/template-ownership.json` |
-| Why a file is owned by the template or by the project | the `ownershipRules` list in that same file |
+| What a capability turns on or off | in the template repository: `template-parameters.toml` and `docs/devcontainer-upgrade/stage-0/template-ownership.json` (a generated project's capability set is fixed at render time and neither file ships with it) |
+| Why a file is owned by the template or by the project | the `ownershipRules` list in that same template-repository file |
 | What the runtime reads about itself | `scripts/worktree/contract.toml` |
 | Whether this checkout is healthy | `bash scripts/worktree/doctor.sh` and `--json` for a machine-readable answer |
 | What each guard refuses | the `## … Ownership` sections of `AGENTS.md` |

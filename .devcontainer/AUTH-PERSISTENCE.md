@@ -275,6 +275,7 @@ store, a shared cache). Apply it only where cross-worktree sharing is the goal a
 concurrent writes are either rare or benign — for churny live state, Mechanism 2's
 per-`${devcontainerId}` isolation is the correct answer.
 
+<!-- capability:start claude_warp -->
 ### Mechanism 4 — Host-captured terminal signals (Warp ACP)
 
 Some signals are injected by the host terminal **per session**, not stored
@@ -311,6 +312,7 @@ sources (Mechanism 3) — lives in the separate, unconditional
 render drop this file *and* its entry while the container still creates: gating
 the only `initializeCommand` would leave `runArgs --env-file` pointing at a file
 nothing writes, and `docker run` would fail at create.
+<!-- capability:end claude_warp -->
 
 ## What this container persists today
 

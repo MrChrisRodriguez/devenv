@@ -7,6 +7,13 @@ one whose deliverable is deliberately absent from every render.
 **Branch:** `feat/stage-11-release` · **PR:** #38
 **Evidence:** `evidence/stage-11-release.json`, run `stage11-20260807t193030z-decc5016`
 
+> **Status: complete (2026-08-07).** Every step of the post-merge runbook below
+> has since run: PR #38 merged, `v1.0.0` tagged, the change archived to
+> `openspec/changes/archive/2026-08-07-portable-devcontainer-upgrade/`, and
+> `release.json#decision` flipped to `released` with both signals `captured`
+> (PR #39). The runbook is kept in the tense it was written as a record of what
+> the stage required.
+
 ---
 
 ## The decision this stage turns on
