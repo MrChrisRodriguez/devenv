@@ -429,8 +429,11 @@ jobs:
       # starts running its declared moon tasks here with no workflow change.
       # Without it, .moon/tasks.yml is configuration nothing executes, free to
       # diverge silently from what CI actually runs until the day it matters.
+      # The wrapper classifies exactly the empty-pipeline case, which moon
+      # words differently on a pull request and on a shallow default-branch
+      # push, and exits nonzero for one of the two.
       - name: Run declared moon tasks
-        run: moon ci :lint :typecheck :test :build
+        run: bash scripts/ci/run-moon-tasks.sh :lint :typecheck :test :build
   # capability:end moon_affected_selection
 
   # capability:start playwright

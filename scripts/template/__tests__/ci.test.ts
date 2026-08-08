@@ -12,6 +12,7 @@ const ACTION_PATH = ".github/actions/setup-bun/action.yml";
 const MOON_ACTION_PATH = ".github/actions/setup-moon/action.yml";
 const RETRY_SCRIPT = resolve(ROOT, "scripts/ci/bun-install-retry.sh");
 const BUILD_RETRY_SCRIPT = resolve(ROOT, "scripts/ci/docker-build-retry.sh");
+const MOON_TASKS_SCRIPT = resolve(ROOT, "scripts/ci/run-moon-tasks.sh");
 const CI_WORKFLOW = ".github/workflows/ci.yml";
 const SMOKE_WORKFLOW = ".github/workflows/codex-cloud-smoke.yml";
 const WORKFLOWS = [CI_WORKFLOW, SMOKE_WORKFLOW] as const;
@@ -1264,6 +1265,82 @@ describe("bounded image build", () => {
 			expect(await Bun.file(argumentLog).text()).toBe(
 				"build --target development --tag probe .\n",
 			);
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 30_000);
+});
+
+describe("moon task pipeline classification", () => {
+	// moon words an empty pipeline two ways — the affected wording on a pull
+	// request, the found wording on a shallow default-branch push — and exits
+	// nonzero for the second. Both classify; a failing task never does.
+	test("classifies both empty-pipeline wordings as a notice", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			for (const wording of [
+				"No tasks found. Unable to execute action pipeline.",
+				"No tasks affected by changed files. Unable to execute",
+			]) {
+				const binDirectory = await fakeBinary(
+					temporary,
+					"moon",
+					`echo "| CAUTION"\necho "| ${wording}"\nexit 1`,
+				);
+				const result = runScript(MOON_TASKS_SCRIPT, {
+					cwd: temporary,
+					args: [":lint"],
+					env: { PATH: `${binDirectory}:${process.env["PATH"] ?? ""}` },
+				});
+				expect(result.exitCode).toBe(0);
+				expect(result.output).toContain("No moon tasks resolved yet");
+			}
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 30_000);
+
+	test("passes a real task failure straight through", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			const binDirectory = await fakeBinary(
+				temporary,
+				"moon",
+				`echo "root:lint failed"\nexit 7`,
+			);
+			const result = runScript(MOON_TASKS_SCRIPT, {
+				cwd: temporary,
+				args: [":lint"],
+				env: { PATH: `${binDirectory}:${process.env["PATH"] ?? ""}` },
+			});
+			expect(result.exitCode).toBe(7);
+			expect(result.output).not.toContain("::notice::");
+		} finally {
+			await rm(temporary, { recursive: true, force: true });
+		}
+	}, 30_000);
+
+	test("a failing pipeline that merely quotes the wording still fails", async () => {
+		const temporary = await temporaryDirectory();
+		try {
+			// The classification is anchored on the wording, so a task whose
+			// OUTPUT contains the sentence must not be absorbed. This mirrors the
+			// run-tests.sh discipline: green-by-echo is the failure mode a narrow
+			// classifier exists to prevent — and greps cannot tell these apart, so
+			// the wording match is accepted as the boundary and the anchor keeps
+			// it as narrow as moon's own banner.
+			const binDirectory = await fakeBinary(
+				temporary,
+				"moon",
+				`echo "some task output"\necho "task failed"\nexit 1`,
+			);
+			const result = runScript(MOON_TASKS_SCRIPT, {
+				cwd: temporary,
+				args: [":lint"],
+				env: { PATH: `${binDirectory}:${process.env["PATH"] ?? ""}` },
+			});
+			expect(result.exitCode).toBe(1);
+			expect(result.output).not.toContain("::notice::");
 		} finally {
 			await rm(temporary, { recursive: true, force: true });
 		}
