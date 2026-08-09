@@ -2424,6 +2424,29 @@ interface ServiceSpec {
 	expectation?: string;
 }
 
+// Ports are allocated by the kernel rather than declared as literals: a fixed
+// list is a standing collision with whatever else the machine runs, which is
+// exactly how two of these tests failed deterministically on one developer
+// host and a third flaked on a CI runner whose ephemeral range wandered into
+// the hardcoded block. Every socket is bound before any is closed, so the
+// returned ports are guaranteed distinct; the kernel's ephemeral range makes
+// reuse by an unrelated process during the handoff unlikely rather than
+// routine.
+function allocatePorts(count: number): number[] {
+	const listeners = Array.from({ length: count }, () =>
+		Bun.serve({ port: 0, fetch: () => new Response(null) }),
+	);
+	const ports = listeners.map((listener) => {
+		// `port` is optional in the type because a unix-socket server has none;
+		// a TCP listener the kernel just bound always has one.
+		if (listener.port === undefined)
+			throw new Error("a TCP listener was bound without a port");
+		return listener.port;
+	});
+	for (const listener of listeners) listener.stop(true);
+	return ports;
+}
+
 // A synthetic registry. Declaration order is deliberately not dependency order,
 // so a passing order assertion proves a sort rather than a coincidence.
 function servicesToml(specs: ServiceSpec[]): string {
@@ -2494,11 +2517,27 @@ setTimeout(() => {
 `;
 }
 
-const DEPENDENT_SERVICES: ServiceSpec[] = [
-	{ name: "renderer", basePort: 39103, dependsOn: ["platform"] },
-	{ name: "gateway", basePort: 39101, dependsOn: [] },
-	{ name: "platform", basePort: 39102, dependsOn: ["gateway"] },
-];
+// A factory rather than a module constant, so every test binds its own fresh
+// kernel-allocated ports. Declaration order is deliberately not dependency
+// order, so a passing order assertion proves a sort rather than a coincidence.
+function dependentServices(): ServiceSpec[] {
+	const [gateway, platform, renderer] = allocatePorts(3) as [
+		number,
+		number,
+		number,
+	];
+	return [
+		{ name: "renderer", basePort: renderer, dependsOn: ["platform"] },
+		{ name: "gateway", basePort: gateway, dependsOn: [] },
+		{ name: "platform", basePort: platform, dependsOn: ["gateway"] },
+	];
+}
+
+function servicePort(specs: ServiceSpec[], name: string): number {
+	const spec = specs.find((candidate) => candidate.name === name);
+	if (!spec) throw new Error(`no declared service named ${name}`);
+	return spec.basePort;
+}
 
 function stopServices(worktree: string, home: string): void {
 	run(worktree, home, "services.sh", ["stop"]);
@@ -2582,9 +2621,8 @@ describe("worktree service lifecycle", () => {
 		const fixture = await harness();
 		const alpha = await addWorktree(fixture, "agent/worktrees/alpha", "alpha");
 		try {
-			await declareServices(alpha, DEPENDENT_SERVICES, (spec) =>
-				fakeService(spec.name),
-			);
+			const services = dependentServices();
+			await declareServices(alpha, services, (spec) => fakeService(spec.name));
 			const log = resolve(fixture.root, "order.log");
 
 			const ordered = run(alpha, fixture.home, "services.sh", ["order"]);
@@ -2613,8 +2651,12 @@ describe("worktree service lifecycle", () => {
 			]);
 
 			const status = run(alpha, fixture.home, "services.sh", ["status"]);
-			expect(status.stdout).toContain("gateway\trunning\t39101");
-			expect(status.stdout).toContain("renderer\trunning\t39103");
+			expect(status.stdout).toContain(
+				`gateway\trunning\t${servicePort(services, "gateway")}`,
+			);
+			expect(status.stdout).toContain(
+				`renderer\trunning\t${servicePort(services, "renderer")}`,
+			);
 		} finally {
 			stopServices(alpha, fixture.home);
 			await rm(fixture.root, { recursive: true, force: true });
@@ -2626,7 +2668,11 @@ describe("worktree service lifecycle", () => {
 		const alpha = await addWorktree(fixture, "agent/worktrees/alpha", "alpha");
 		try {
 			const specs: ServiceSpec[] = [
-				{ name: "gateway", basePort: 39111, dependsOn: [] },
+				{
+					name: "gateway",
+					basePort: allocatePorts(1)[0] as number,
+					dependsOn: [],
+				},
 			];
 			await declareServices(alpha, specs, (spec) =>
 				fakeService(spec.name, { body: '{"ok":true}' }),
@@ -2662,7 +2708,13 @@ describe("worktree service lifecycle", () => {
 			const log = resolve(fixture.root, "order.log");
 			await declareServices(
 				alpha,
-				[{ name: "gateway", basePort: 39121, dependsOn: [] }],
+				[
+					{
+						name: "gateway",
+						basePort: allocatePorts(1)[0] as number,
+						dependsOn: [],
+					},
+				],
 				() =>
 					'import { appendFileSync } from "node:fs";\n' +
 					'appendFileSync(process.env["ORDER_LOG"] as string, "start gateway\\n");\n' +
@@ -2678,11 +2730,12 @@ describe("worktree service lifecycle", () => {
 			// A dependency that dies while a later service is still starting fails the
 			// whole run: a stack missing a service is not a running stack.
 			await rm(log, { force: true });
+			const [gatewayPort, platformPort] = allocatePorts(2) as [number, number];
 			await declareServices(
 				alpha,
 				[
-					{ name: "gateway", basePort: 39122, dependsOn: [] },
-					{ name: "platform", basePort: 39123, dependsOn: ["gateway"] },
+					{ name: "gateway", basePort: gatewayPort, dependsOn: [] },
+					{ name: "platform", basePort: platformPort, dependsOn: ["gateway"] },
 				],
 				(spec) =>
 					spec.name === "gateway"
@@ -2710,7 +2763,7 @@ describe("worktree service lifecycle", () => {
 			const log = resolve(fixture.root, "order.log");
 			// These services never answer their health path. Readiness gates would
 			// time out; staggered mode is exactly the diagnostic that does not care.
-			await declareServices(alpha, DEPENDENT_SERVICES, (spec) =>
+			await declareServices(alpha, dependentServices(), (spec) =>
 				fakeService(spec.name, { delayMs: 600_000 }),
 			);
 
@@ -2742,11 +2795,15 @@ describe("worktree service lifecycle", () => {
 				"agent/worktrees/alpha",
 				"alpha",
 			);
+			const [cycleGateway, cyclePlatform] = allocatePorts(2) as [
+				number,
+				number,
+			];
 			await declareServices(
 				alpha,
 				[
-					{ name: "gateway", basePort: 39131, dependsOn: ["platform"] },
-					{ name: "platform", basePort: 39132, dependsOn: ["gateway"] },
+					{ name: "gateway", basePort: cycleGateway, dependsOn: ["platform"] },
+					{ name: "platform", basePort: cyclePlatform, dependsOn: ["gateway"] },
 				],
 				(spec) => fakeService(spec.name),
 			);
@@ -2760,7 +2817,13 @@ describe("worktree service lifecycle", () => {
 			// An undeclared dependency is the same class of contract error.
 			await declareServices(
 				alpha,
-				[{ name: "gateway", basePort: 39133, dependsOn: ["absent"] }],
+				[
+					{
+						name: "gateway",
+						basePort: allocatePorts(1)[0] as number,
+						dependsOn: ["absent"],
+					},
+				],
 				(spec) => fakeService(spec.name),
 			);
 			const dangling = run(alpha, fixture.home, "services.sh", ["order"]);
@@ -2824,9 +2887,8 @@ describe("worktree service lifecycle", () => {
 		const alpha = await addWorktree(fixture, "agent/worktrees/alpha", "alpha");
 		try {
 			const caddy = await stubCaddy(fixture);
-			await declareServices(alpha, DEPENDENT_SERVICES, (spec) =>
-				fakeService(spec.name),
-			);
+			const services = dependentServices();
+			await declareServices(alpha, services, (spec) => fakeService(spec.name));
 			const log = resolve(fixture.root, "order.log");
 			expect(run(alpha, fixture.home, "env.sh").exitCode).toBe(0);
 			expect(
@@ -2848,7 +2910,9 @@ describe("worktree service lifecycle", () => {
 			// that forked the real listener, and a killed leader lingers as a zombie
 			// until something reaps it, so on both counts "is anything still
 			// answering" is the only assertion that means what it says.
-			expect(await serviceAnswers(39101, true)).toBe(true);
+			expect(await serviceAnswers(servicePort(services, "gateway"), true)).toBe(
+				true,
+			);
 
 			// Inside the container the shutdown is the one that actually stops the
 			// processes; on the host it is delegated across the boundary.
@@ -2856,10 +2920,10 @@ describe("worktree service lifecycle", () => {
 				DEVCONTAINER: "true",
 			});
 			expect(insideDown.exitCode).toBe(0);
-			for (const port of [39101, 39102, 39103]) {
-				expect(`${port}:${await serviceAnswers(port, false)}`).toBe(
-					`${port}:false`,
-				);
+			for (const spec of services) {
+				expect(
+					`${spec.basePort}:${await serviceAnswers(spec.basePort, false)}`,
+				).toBe(`${spec.basePort}:false`);
 			}
 			expect(
 				await Bun.file(resolve(alpha, ".dev/state/run/services")).exists(),
